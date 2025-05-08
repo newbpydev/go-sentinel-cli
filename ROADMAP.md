@@ -37,10 +37,10 @@ This roadmap is the single source of truth for Go Sentinel's development. All wo
 ## Phase 2: Core File Watcher & Debouncer (TDD)
 
 - [x] **2.1. Write File Watcher Tests** (scaffolded)
-  - [ ] 2.1.1. Test: Detect file changes in Go source dirs
-  - [ ] 2.1.2. Test: Ignore `vendor/` and hidden dirs
-  - [ ] 2.1.3. Test: Handle file create, write, remove events
-- [ ] **2.2. Implement File Watcher**
+  - [x] 2.1.1. Test: Detect file changes in Go source dirs
+  - [x] 2.1.2. Test: Ignore `vendor/` and hidden dirs
+  - [x] 2.1.3. Test: Handle file create, write, remove events
+- [x] **2.2. Implement File Watcher** (TDD-validated, all watcher tests pass)
   - [ ] 2.2.1. Integrate `fsnotify` for recursive watching
   - [ ] 2.2.2. Correctly skip excluded directories
   - [ ] 2.2.3. Emit events to channel
