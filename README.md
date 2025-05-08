@@ -1,6 +1,6 @@
 # Go Sentinel
 
-Go Sentinel is an open source, Go-native CLI utility that supercharges your test-driven development (TDD) workflow by automatically watching your Go source files, rerunning tests on changes, and presenting concise, actionable feedback in your terminal. 
+Go Sentinel is an open source, Go-native CLI utility that supercharges your test-driven development (TDD) workflow by automatically watching your Go source files, rerunning tests on changes, and presenting concise, actionable feedback in your terminal. Built with concurrency and resilience at its core, Go Sentinel helps you keep your TDD flow uninterrupted and productive.
 
 ## What Problem Does Go Sentinel Solve?
 
@@ -13,35 +13,78 @@ Manual test execution slows down TDD and feedback loops. Existing tools are ofte
 - **Ensuring stability** with robust error handling and structured logging
 
 ## Key Features
-- Fast, recursive file watching using [fsnotify](https://github.com/fsnotify/fsnotify)
-- Debounced test execution per package
-- Real-time, colored summary of test results
-- Minimal, intuitive keybindings (Enter: rerun, f: filter failures, q: quit)
-- Structured logging (Uber's zap)
-- Robust: recovers from panics, keeps the watcher alive
-- Configurable debounce interval, color, verbosity, and package scope
+- Fast, recursive file watching using [fsnotify](https://github.com/fsnotify/fsnotify) (Go 1.17+)
+- Intelligent debouncing that coalesces rapid events per package (~100ms quiet period)
+- Real-time, colored summary with test durations and contextual error information
+- Minimal, intuitive keybindings (Enter: rerun tests, f: filter failures only, q: quit)
+- Structured logging with [zap](https://github.com/uber-go/zap) for reliable diagnostics
+- Resilient architecture: pipeline pattern with panic recovery in each goroutine
+- Configurable via CLI flags and/or `watcher.yaml` file
+- Extensible plugin architecture for custom integrations (planned)
+- Test reruns at package or individual test level (future versions)
 
 ## Project Structure
 
 ```
 /go-sentinel
 │
+├── cmd/
+│   └── go-sentinel/         # CLI entrypoint (flag parsing, setup)
+│
+├── internal/
+│   ├── watcher/             # fsnotify logic, recursive directory watching
+│   ├── debouncer/           # Event debouncing to coalesce rapid changes
+│   ├── runner/              # Executes go test -json, streams output
+│   ├── parser/              # Parses JSON stream into test results
+│   ├── ui/                  # Rendering logic, key handling
+│   ├── config/              # Configuration management
+│   └── event/               # Event types shared across packages
+│
 ├── docs/
-│   ├── RESEARCH.md           # High-level & detailed design, rationale, technical notes
-│   └── assets/               # Architecture diagrams and images
+│   ├── RESEARCH.md          # High-level & detailed design, rationale, technical notes
+│   └── assets/              # Architecture diagrams and images
 │
-├── (src/)                    # (To be created) Main Go source code for CLI tool
-│
-└── README.md                 # This file
+├── README.md                # This file
+├── ROADMAP.md               # Development roadmap and task tracking
+└── LICENSE                  # MIT License
 ```
 
-> **Note:** The core Go implementation is planned; see `docs/RESEARCH.md` for architectural details and rationale.
+> **Note:** The package structure follows Go best practices with clear separation of concerns.
 
 ## Usage (Planned)
-- Install via Go or download binary (instructions coming soon)
-- Run in your project root: `go-sentinel`
-- Use keybindings to control test runs interactively
-- Configure via flags or config file (YAML/JSON)
+
+### Installation
+```bash
+# Install from source
+go install github.com/your-org/go-sentinel/cmd/go-sentinel@latest
+
+# Or download binary from releases (future)
+```
+
+### Basic Usage
+```bash
+# Run in your Go project root
+go-sentinel
+
+# With custom options
+go-sentinel --debounce 200ms --no-color --exclude "vendor,generated"
+```
+
+### Configuration File
+Create `watcher.yaml` in your project:
+```yaml
+exclude: ["vendor", "testdata", ".git"]
+debounce: 200ms
+color: true
+verbosity: info
+```
+
+### Keyboard Controls
+- `Enter`: Rerun the last test(s)
+- `f`: Toggle failure-only mode
+- `q`: Quit the watcher
+
+See `go-sentinel --help` for all options.
 
 ## Open Source & Contribution Guidelines
 Go Sentinel is an open source project and welcomes contributions! To get involved:
@@ -69,12 +112,21 @@ MIT License. See [LICENSE](LICENSE) for details.
 - Inspired by Go TDD workflows and community feedback
 - Uses [fsnotify](https://github.com/fsnotify/fsnotify), [zap](https://github.com/uber-go/zap), and other open source libraries
 
-## Roadmap
-- [ ] Implement core CLI watcher and debounce logic
-- [ ] Integrate test runner and output parser
-- [ ] Build interactive CLI UI
-- [ ] Add configuration and extensibility
-- [ ] Release initial stable version
+## Development Roadmap
+
+Our detailed [ROADMAP.md](ROADMAP.md) outlines the full development plan in phases:
+
+1. **Project & Environment Setup** - Git, package structure, CI/CD
+2. **Core File Watcher & Debouncer** - fsnotify integration, event coalescing
+3. **Test Runner & Output Parser** - JSON stream processing, structured results
+4. **Interactive CLI UI & Controller** - ANSI color, keybindings, code context
+5. **Concurrency & Resilience** - Pipeline pattern, panic recovery
+6. **Configuration & Validation** - CLI flags, config file support
+7. **Extensibility & Integrations** - Plugins, per-test reruns, coverage tools
+8. **Documentation, Packaging, Release** - Binaries, installation
+9. **Maintenance & Community** - Issue triage, continuous improvement
+
+We follow strict Test-Driven Development throughout all phases.
 
 ---
 
