@@ -1,0 +1,18 @@
+run:
+  timeout: 5m
+linters:
+  enable:
+    - govet
+    - golint
+    - gofmt
+    - staticcheck
+    - errcheck
+    - unused
+    - deadcode
+    - gocyclo
+    - ineffassign
+    - structcheck
+    - varcheck
+    - typecheck
+    - misspell
+    - revive

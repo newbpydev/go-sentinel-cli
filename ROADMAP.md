@@ -7,7 +7,7 @@ This roadmap is the single source of truth for Go Sentinel's development. All wo
 ## Phase 1: Project & Environment Setup
 
 - [ ] **1.1. Initialize Project Repository**
-  - [ ] 1.1.1. Create a new git repository (if not already done)
+  - [x] 1.1.1. Create a new git repository (if not already done)
   - [ ] 1.1.2. Add `.gitignore` for Go and editor files
   - [ ] 1.1.3. Set up repository on GitHub (public, with license)
   - [ ] 1.1.4. Add `README.md`, `ROADMAP.md`, and `LICENSE`

@@ -8,7 +8,7 @@ description: preferred response for most cases
 
 2. **Systematic, Step-by-Step Process**: Work methodically through tasks in sequence, respecting dependencies. Never skip ahead to later tasks before completing prerequisites.
 
-3. **Roadmap-Driven Development**: The ROADMAP.md file is our source of truth. Never deviate from it - if changes are needed, update the roadmap first, then implement.
+3. **Roadmap-Driven Development**: The ROADMAP.md file is our source of truth. Never deviate from it @ROADMAP.md - if changes are needed, update the roadmap first, then implement.
 
 4. **Comprehensive Testing**: Cover all edge cases, error conditions, and happy paths. Every feature must have exhaustive test coverage. Identify potential weak points in tests.
 
