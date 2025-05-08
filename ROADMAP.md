@@ -67,7 +67,7 @@ This roadmap is the single source of truth for Go Sentinel's development. All wo
   - [x] 3.2.3. Handle and log command errors properly
   - [x] 3.2.4. Support future per-test reruns with `-run=TestName`
 - [ ] **3.3. Write Output Parser Tests**
-  - [ ] 3.3.1. Test: Parse TestEvent JSON objects from output stream
+  - [x] 3.3.1. Test: Parse TestEvent JSON objects from output stream
   - [ ] 3.3.2. Test: Track test start/run/pass/fail/output events
   - [ ] 3.3.3. Test: Extract file/line information from failure output
   - [ ] 3.3.4. Test: Collect test durations and output lines
@@ -77,6 +77,9 @@ This roadmap is the single source of truth for Go Sentinel's development. All wo
   - [ ] 3.4.2. Group events by package/test name
   - [ ] 3.4.3. Extract error context and file locations
   - [ ] 3.4.4. Provide structured results to UI component
+
+*Output parser implementation has begun: TestEvent struct and ParseTestEvents are in place and validated by tests.*
+
 
 **Next up:**
 - Begin Phase 3.3 and 3.4: Implement and test the Output Parser.

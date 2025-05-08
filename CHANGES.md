@@ -19,6 +19,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - Runner implementation using `os/exec` for `go test -json`, robust output streaming with `bufio.Scanner`, and per-test rerun support
   - Utilities for running `go version`, `go env`, `go list`, `go mod tidy`, and `go fmt`
   - Cleaned up debug/test output and improved test reliability
+- **Phase 3.3/3.4: Output Parser Initiated**
+  - Added `parser.go` with `TestEvent` struct for `go test -json` output
+  - Implemented `ParseTestEvents` for reading/parsing JSON event streams
+  - Added initial TDD test for parsing simple test event streams
 
 ### Changed
 - Updated `ROADMAP.md` to reflect completed Phase 3.1 and 3.2 milestones and next steps
