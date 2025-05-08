@@ -5,23 +5,47 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/yourusername/go-sentinel/internal/ui"
 )
 
 func main() {
-	results := []ui.TestResult{
+	// Simulated static test results
+	staticResults := []ui.TestResult{
 		{Package: "pkg/foo", Passed: true, Summary: "ok   pkg/foo  0.05s"},
-		{Package: "pkg/bar", Passed: false, Summary: "FAIL pkg/bar  0.10s", Message: "expected true, got false"},
+		{Package: "pkg/bar", Passed: false, Summary: "FAIL pkg/bar  0.10s", Message: "expected true, got false", File: "main.go", Line: 42},
 		{Package: "pkg/baz", Passed: true, Summary: "ok   pkg/baz  0.02s"},
 		{Package: "pkg/qux", Passed: false, Summary: "FAIL pkg/qux  0.20s", Message: "panic: index out of range"},
 	}
+	resultsCh := make(chan []ui.TestResult)
+	requestCh := make(chan struct{})
+
+	// Simulated runner/controller goroutine
+	go func() {
+		for range requestCh {
+			time.Sleep(400 * time.Millisecond) // Simulate test run delay
+			resultsCh <- staticResults
+		}
+	}()
+
 	uiState := ui.NewUI()
-	uiState.SetResults(results)
 	reader := bufio.NewReader(os.Stdin)
 	filterFailures := false
+	results := staticResults
+
+	// Initial run
+	requestCh <- struct{}{}
 
 	for {
+		// Wait for new results from runner
+		select {
+		case results = <-resultsCh:
+			uiState.SetResults(results)
+		case <-time.After(10 * time.Millisecond):
+			// Allow UI to remain responsive
+		}
+
 		// Clear the screen (cross-platform ANSI)
 		fmt.Print("\033[H\033[2J")
 
@@ -96,9 +120,11 @@ func main() {
 				filterFailures = !filterFailures
 				continue
 			case 'r':
-				continue // manual refresh
+				requestCh <- struct{}{} // manual refresh
+				continue
 			case '\n':
-				continue // rerun (just redisplay)
+				requestCh <- struct{}{} // rerun
+				continue
 			default:
 				continue
 			}
