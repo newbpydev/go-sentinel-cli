@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - Added `parser.go` with `TestEvent` struct for `go test -json` output
   - Implemented `ParseTestEvents` for reading/parsing JSON event streams
   - Added TDD tests for parsing simple event streams, tracking all event types (start, run, pass, fail, output), extracting file/line info from failure output, collecting test durations/output lines, and handling edge cases (build errors, panics, timeouts)
+  - Implemented `GroupTestEvents` and tests to group events by package and test name
 
 ### Changed
 - Updated `ROADMAP.md` to reflect completed Phase 3.1 and 3.2 milestones and next steps
