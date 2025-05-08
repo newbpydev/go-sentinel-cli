@@ -3,6 +3,6 @@ package badbuild
 func Broken() {
 	// syntax error below
 	if true {
-		// missing closing brace and statement
-	}
+		// intentional syntax error - missing closing brace
+	// }
 }
