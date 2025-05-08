@@ -92,6 +92,92 @@ Because `go test -json` streams JSON without extra buffering, we can process res
 
 The **OutputParser** reads each JSON line from the test runner and unmarshals it into a Go struct mirroring `test2json` events. A typical struct is:
 
+## Test Timeout and Deadlock Protection
+
+Since Go Sentinel runs user code tests, the stability of our tool must not depend on the stability of the user's code. Tests with deadlocks, infinite loops, or other blocking issues must not cause Go Sentinel itself to hang or become unresponsive.
+
+### Timeout Implementation
+
+Go's test command has built-in timeout support, which we leverage and enhance:
+
+1. **Global Test Timeout**: We apply a sensible default timeout using the `-timeout` flag when executing `go test`. This ensures all test execution eventually terminates, even if user code deadlocks:
+
+```go
+execCmd := exec.CommandContext(ctx, "go", "test", "-json", "-timeout=2m", "./...")  // 2-minute default
+```
+
+2. **Context-Based Cancellation**: We wrap test execution with a context that supports cancellation, giving Go Sentinel fine-grained control:
+
+```go
+ctx, cancel := context.WithTimeout(context.Background(), time.Duration(config.TestTimeoutSeconds) * time.Second)
+defer cancel()
+// Use ctx when creating the command
+execCmd := exec.CommandContext(ctx, "go", "test", "-json", "./...")
+```
+
+3. **Graceful Termination**: When a timeout occurs, we ensure proper resource cleanup and provide users with helpful feedback:
+
+```go
+if errors.Is(err, context.DeadlineExceeded) {
+    logger.Warn("Test execution timed out", zap.String("package", pkgPath))
+    results <- TestResult{
+        Package: pkgPath,
+        Error: "Test execution timed out after " + config.TestTimeout.String(),
+        TimedOut: true,
+    }
+}
+```
+
+### Deadlock Detection
+
+Go's runtime includes automatic deadlock detection, but this can be suppressed by timeouts. Our approach ensures users get meaningful information:
+
+1. **Capture Runtime Messages**: Parse stderr output looking for deadlock indicators:
+
+```go
+if strings.Contains(errOutput, "all goroutines are asleep - deadlock!") {
+    results <- TestResult{
+        Package: pkgPath,
+        Error: "Deadlock detected in tests",
+        DeadlockDetected: true,
+    }
+}
+```
+
+2. **Resource Monitoring**: We track resource usage patterns that might indicate deadlocks even when Go's detection is bypassed:
+
+```go
+go func() {
+    ticker := time.NewTicker(5 * time.Second)
+    defer ticker.Stop()
+    
+    var lastOutput time.Time
+    for {
+        select {
+        case <-ctx.Done():
+            return
+        case <-ticker.C:
+            if time.Since(lastOutput) > 30*time.Second && cmdRunning {
+                logger.Warn("No output for 30 seconds, possible test hang",
+                    zap.String("package", pkgPath))
+            }
+        case <-outputReceived:
+            lastOutput = time.Now()
+        }
+    }
+}()
+```
+
+### Configuration Options
+
+Users can customize timeout behavior through configuration:
+
+- `test-timeout`: Override the default timeout duration (default: 2m)
+- `test-quiet-threshold`: Duration without output before warning about possible hang (default: 30s)
+- `test-disable-timeout`: Disable timeouts altogether (not recommended, but useful for debugging)
+
+This approach ensures Go Sentinel remains responsive and provides useful feedback even when facing challenging test scenarios in user code.
+
 ```go
 type TestEvent struct {
     Time       time.Time `json:"Time"`

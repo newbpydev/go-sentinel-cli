@@ -66,6 +66,10 @@ This roadmap is the single source of truth for Go Sentinel's development. All wo
   - [x] 3.2.2. Stream output to parser through channels
   - [x] 3.2.3. Handle and log command errors properly
   - [x] 3.2.4. Support future per-test reruns with `-run=TestName`
+  - [ ] 3.2.5. Implement timeout and deadlock protection
+    - [ ] 3.2.5.1. Set appropriate test timeouts with `-timeout` flag
+    - [ ] 3.2.5.2. Add context with cancel for graceful termination
+    - [ ] 3.2.5.3. Detect hanging tests and provide useful feedback
 - [ ] **3.3. Write Output Parser Tests**
   - [x] 3.3.1. Test: Parse TestEvent JSON objects from output stream
   - [x] 3.3.2. Test: Track test start/run/pass/fail/output events

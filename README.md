@@ -16,6 +16,11 @@ Manual test execution slows down TDD and feedback loops. Existing tools are ofte
 - Fast, recursive file watching using [fsnotify](https://github.com/fsnotify/fsnotify) (Go 1.17+)
 - Intelligent debouncing that coalesces rapid events per package (~100ms quiet period)
 - Real-time, colored summary with test durations and contextual error information
+- Robust timeout and deadlock protection:
+  - Automatic test timeouts with configurable duration (default: 2m)
+  - Context-based cancellation for graceful termination
+  - Deadlock detection and meaningful error reporting
+  - Inactivity monitoring to detect and report hanging tests
 - Minimal, intuitive keybindings (Enter: rerun tests, f: filter failures only, c/C: copy test information, q: quit)
 - Structured logging with [zap](https://github.com/uber-go/zap) for reliable diagnostics
 - Resilient architecture: pipeline pattern with panic recovery in each goroutine
