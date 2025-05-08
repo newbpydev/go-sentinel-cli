@@ -130,7 +130,18 @@ The CLI output is a hybrid live-summary. We render ANSI-colored text (for Window
   }
   ```
 * **Failure details:** For failed tests, we show the test name, source file\:line (from the parser’s output), and a small code snippet (e.g. 2 lines of context around the error). This may require scanning the source file to extract context.
-* **Interactivity:** We listen for stdin keypresses. On Enter, we rerun tests (re-triggering the last changed pkg). Pressing “f” toggles filter mode to display only failures. “q” quits. (In a full TUI we’d use raw mode or a library, but even simple `bufio.NewReader(os.Stdin)` and terminal escape toggles can work). Future versions might use a TUI framework like [Bubble Tea](https://github.com/charmbracelet/bubbletea) or \[tview], but for MVP ANSI output with simple key handling is sufficient.
+* **Interactivity:** We listen for stdin keypresses with the following controls:
+  * Enter: Rerun tests (re-triggering the last changed pkg)
+  * "f": Toggles filter mode to display only failures
+  * "c": Quick copy of all failed test information to clipboard
+  * "C": Enter selection mode for choosing specific test failures to copy
+    * Space: Toggle selection of a test under cursor
+    * Arrow keys: Navigate between tests
+    * Enter: Copy selected tests and return to main view
+    * Esc: Cancel selection and return to main view
+  * "q": Quits the application
+
+  We'll implement clipboard integration using platform-specific methods (e.g., `clip` on Windows, `pbcopy` on macOS, `xclip`/`xsel` on Linux). For the selection UI, we'll use ANSI codes to highlight the cursor position and selected items with visual indicators. In a full TUI we'd use raw mode or a library, but even simple `bufio.NewReader(os.Stdin)` and terminal escape toggles can work. Future versions might use a TUI framework like [Bubble Tea](https://github.com/charmbracelet/bubbletea) or \[tview], but for MVP ANSI output with simple key handling is sufficient.
 
 Output is updated on each run, but the program never exits on test errors (panics or compile failures just show as errors and continue watching).
 

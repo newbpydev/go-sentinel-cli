@@ -16,7 +16,7 @@ Manual test execution slows down TDD and feedback loops. Existing tools are ofte
 - Fast, recursive file watching using [fsnotify](https://github.com/fsnotify/fsnotify) (Go 1.17+)
 - Intelligent debouncing that coalesces rapid events per package (~100ms quiet period)
 - Real-time, colored summary with test durations and contextual error information
-- Minimal, intuitive keybindings (Enter: rerun tests, f: filter failures only, q: quit)
+- Minimal, intuitive keybindings (Enter: rerun tests, f: filter failures only, c/C: copy test information, q: quit)
 - Structured logging with [zap](https://github.com/uber-go/zap) for reliable diagnostics
 - Resilient architecture: pipeline pattern with panic recovery in each goroutine
 - Configurable via CLI flags and/or `watcher.yaml` file
@@ -82,6 +82,12 @@ verbosity: info
 ### Keyboard Controls
 - `Enter`: Rerun the last test(s)
 - `f`: Toggle failure-only mode
+- `c`: Quick copy of all failed test information to clipboard
+- `C`: Enter selection mode to choose specific test failures to copy
+  - `Space`: Toggle selection of a test under cursor
+  - `↑/↓`: Navigate between tests
+  - `Enter`: Copy selected tests and return to main view
+  - `Esc`: Cancel and return to main view
 - `q`: Quit the watcher
 
 See `go-sentinel --help` for all options.
