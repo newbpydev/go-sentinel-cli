@@ -68,9 +68,6 @@ func TestParseTestEvents_ExtractFileLineFromFailureOutput(t *testing.T) {
 	if failEvent.Action != "fail" || outputEvent.Action != "output" {
 		t.Fatalf("unexpected actions: %s, %s", failEvent.Action, outputEvent.Action)
 	}
-	// if outputEvent.Output == "" || outputEvent.Output[:11] != "main_test.go" {
-	// 	t.Errorf("expected file info in output, got %q", outputEvent.Output)
-	// }
 	if outputEvent.Output == "" || !strings.Contains(outputEvent.Output, "main_test.go:42:") {
 		t.Errorf("expected file info in output, got %q", outputEvent.Output)
 	}
