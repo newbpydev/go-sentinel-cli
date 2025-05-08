@@ -55,17 +55,17 @@ This roadmap is the single source of truth for Go Sentinel's development. All wo
 
 ## Phase 3: Test Runner & Output Parser (TDD)
 
-- [ ] **3.1. Write Test Runner Tests**
-  - [ ] 3.1.1. Test: Run `go test -json` in correct pkg
-  - [ ] 3.1.2. Test: Capture stdout/stderr, handle errors
-  - [ ] 3.1.3. Test: Handle non-JSON output (build errors)
-  - [ ] 3.1.4. Test: Pipe stdout/stderr for real-time output
-  - [ ] 3.1.5. Test: Integration with goroutine pipeline pattern
-- [ ] **3.2. Implement Test Runner**
-  - [ ] 3.2.1. Use `os/exec` to run `go test -json`
-  - [ ] 3.2.2. Stream output to parser through channels
-  - [ ] 3.2.3. Handle and log command errors properly
-  - [ ] 3.2.4. Support future per-test reruns with `-run=TestName`
+- [x] **3.1. Write Test Runner Tests**
+  - [x] 3.1.1. Test: Run `go test -json` in correct pkg
+  - [x] 3.1.2. Test: Capture stdout/stderr, handle errors
+  - [x] 3.1.3. Test: Handle non-JSON output (build errors)
+  - [x] 3.1.4. Test: Pipe stdout/stderr for real-time output
+  - [x] 3.1.5. Test: Integration with goroutine pipeline pattern
+- [x] **3.2. Implement Test Runner**
+  - [x] 3.2.1. Use `os/exec` to run `go test -json`
+  - [x] 3.2.2. Stream output to parser through channels
+  - [x] 3.2.3. Handle and log command errors properly
+  - [x] 3.2.4. Support future per-test reruns with `-run=TestName`
 - [ ] **3.3. Write Output Parser Tests**
   - [ ] 3.3.1. Test: Parse TestEvent JSON objects from output stream
   - [ ] 3.3.2. Test: Track test start/run/pass/fail/output events
@@ -77,6 +77,11 @@ This roadmap is the single source of truth for Go Sentinel's development. All wo
   - [ ] 3.4.2. Group events by package/test name
   - [ ] 3.4.3. Extract error context and file locations
   - [ ] 3.4.4. Provide structured results to UI component
+
+**Next up:**
+- Begin Phase 3.3 and 3.4: Implement and test the Output Parser.
+- Focus on parsing the JSON output from `go test -json`, tracking all test event types, extracting error/file context, and providing structured results for future UI or reporting integration.
+
 
 ---
 
