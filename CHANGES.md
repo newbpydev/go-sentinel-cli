@@ -14,11 +14,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Implemented event debouncer supporting per-package buffering and quiet period
 - TDD-driven debouncer tests for rapid, single, and overlapping events
 - Pre-commit hooks and linting configuration
+- **Phase 3: Go Test Runner**
+  - Comprehensive TDD-driven runner tests for: correct package execution, stdout/stderr capture, error handling, build errors, real-time output, and goroutine pipeline integration
+  - Runner implementation using `os/exec` for `go test -json`, robust output streaming with `bufio.Scanner`, and per-test rerun support
+  - Utilities for running `go version`, `go env`, `go list`, `go mod tidy`, and `go fmt`
+  - Cleaned up debug/test output and improved test reliability
 
 ### Changed
-- Updated `ROADMAP.md` to reflect completed milestones
+- Updated `ROADMAP.md` to reflect completed Phase 3.1 and 3.2 milestones and next steps
+- Refactored runner and utility code for maintainability and extensibility
 
 ### Fixed
-- N/A (initial implementation)
+- Cleaned up test log output and removed obsolete debug code
+- Resolved all runner test flakiness and output issues
+
+---
 
 ---
