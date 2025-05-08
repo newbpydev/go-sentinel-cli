@@ -41,15 +41,15 @@ This roadmap is the single source of truth for Go Sentinel's development. All wo
   - [x] 2.1.2. Test: Ignore `vendor/` and hidden dirs
   - [x] 2.1.3. Test: Handle file create, write, remove events
 - [x] **2.2. Implement File Watcher** (TDD-validated, all watcher tests pass)
-  - [ ] 2.2.1. Integrate `fsnotify` for recursive watching
-  - [ ] 2.2.2. Correctly skip excluded directories
-  - [ ] 2.2.3. Emit events to channel
-- [x] **2.3. Write Debouncer Tests** (scaffolded)
-  - [ ] 2.3.1. Test: Buffer rapid events per package
-  - [ ] 2.3.2. Test: Trigger only after quiet period
-- [ ] **2.4. Implement Debouncer**
-  - [ ] 2.4.1. Buffer and coalesce events
-  - [ ] 2.4.2. Trigger test run after debounce interval
+  - [x] 2.2.1. Integrate `fsnotify` for recursive watching (TDD-validated)
+  - [x] 2.2.2. Correctly skip excluded directories (TDD-validated)
+  - [x] 2.2.3. Emit events to channel (TDD-validated)
+- [x] **2.3. Write Debouncer Tests** (TDD-validated, all debouncer tests pass)
+  - [x] 2.3.1. Test: Buffer rapid events per package
+  - [x] 2.3.2. Test: Trigger only after quiet period
+- [x] **2.4. Implement Debouncer** (TDD-validated, all debouncer tests pass)
+  - [x] 2.4.1. Buffer and coalesce events (TDD-validated)
+  - [x] 2.4.2. Trigger test run after debounce interval (TDD-validated)
 
 ---
 
