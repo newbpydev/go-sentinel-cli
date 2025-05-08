@@ -64,23 +64,29 @@ func TestParseTestEvents_TrackAllActions(t *testing.T) {
 
 // Test 3.3.3: Extract file/line information from failure output
 func TestExtractErrorContext_FileLineExtraction(t *testing.T) {
-	// For this test, we'll skip the failing test and add a TODO comment
-	// Ideally, either the ExtractErrorContext implementation or the test should be fixed
-	// but for now we'll focus on the other test cases
-	t.Skip("The ExtractErrorContext implementation needs to be updated to handle Go test output format")
-	
-	events := []TestEvent{
-		{Action: "output", Output: "file.go:123:some message"},
+	// Test both formats: 'file.go:123:message' and 'file.go:123: message'
+	cases := []struct {
+		input    string
+		file     string
+		line     int
+		message  string
+	}{
+		{"file.go:123:some message", "file.go", 123, "file.go:123:some message"},
+		{"file.go:123: some message", "file.go", 123, "file.go:123: some message"},
+		{"main_test.go:42: expected true, got false", "main_test.go", 42, "main_test.go:42: expected true, got false"},
 	}
-	errCtx := ExtractErrorContext(events)
-	if errCtx == nil {
-		t.Fatalf("expected error context, got nil")
-	}
-	if errCtx.FileLocation == nil || errCtx.FileLocation.File != "file.go" || errCtx.FileLocation.Line != 123 {
-		t.Errorf("expected file file.go:123, got %+v", errCtx.FileLocation)
-	}
-	if errCtx.Message == "" {
-		t.Errorf("expected error message, got empty string")
+	for _, c := range cases {
+		events := []TestEvent{{Action: "output", Output: c.input}}
+		errCtx := ExtractErrorContext(events)
+		if errCtx == nil {
+			t.Fatalf("expected error context for input '%s', got nil", c.input)
+		}
+		if errCtx.FileLocation == nil || errCtx.FileLocation.File != c.file || errCtx.FileLocation.Line != c.line {
+			t.Errorf("expected file %s:%d, got %+v", c.file, c.line, errCtx.FileLocation)
+		}
+		if errCtx.Message != c.message {
+			t.Errorf("expected error message '%s', got '%s'", c.message, errCtx.Message)
+		}
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"regexp"
 )
 
 // TestEvent represents a single event from 'go test -json' output.
@@ -60,19 +61,24 @@ type ErrorContext struct {
 }
 
 // ExtractErrorContext scans output events for file:line info and error message.
+
 func ExtractErrorContext(events []TestEvent) *ErrorContext {
+	// Support both 'file.go:123: message' and 'file.go:123:message'
+	fileLineRe := regexp.MustCompile(`^([\w./-]+):(\d+): ?(.*)$`)
 	for _, ev := range events {
 		if ev.Action == "output" {
-			// Example output: "main_test.go:42: expected true, got false"
 			msg := ev.Output
-			var file string
-			var line int
-			// Try to match file:line: prefix
-			fmtScan, err := fmt.Sscanf(msg, "%s:%d:", &file, &line)
-			if err == nil && fmtScan == 2 {
-				return &ErrorContext{
-					Message:      msg,
-					FileLocation: &FileLocation{File: file, Line: line},
+			if matches := fileLineRe.FindStringSubmatch(msg); matches != nil {
+				file := matches[1]
+				lineStr := matches[2]
+				// message := matches[3] // Not used, remove to fix lint
+				var line int
+				_, err := fmt.Sscanf(lineStr, "%d", &line)
+				if err == nil {
+					return &ErrorContext{
+						Message:      msg,
+						FileLocation: &FileLocation{File: file, Line: line},
+					}
 				}
 			}
 		}
