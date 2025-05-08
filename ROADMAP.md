@@ -6,13 +6,13 @@ This roadmap is the single source of truth for Go Sentinel's development. All wo
 
 ## Phase 1: Project & Environment Setup
 
-- [ ] **1.1. Initialize Project Repository**
+- [x] **1.1. Initialize Project Repository**
   - [x] 1.1.1. Create a new git repository (if not already done)
   - [x] 1.1.2. Add `.gitignore` for Go and editor files
-  - [ ] 1.1.3. Set up repository on GitHub (public, with license)
+  - [x] 1.1.3. Set up repository on GitHub (public, with license)
   - [x] 1.1.4. Add `README.md`, `ROADMAP.md`, and `LICENSE`
-- [ ] **1.2. Go Environment Setup**
-  - [ ] 1.2.1. Install Go (minimum version 1.17+ required for fsnotify)
+- [x] **1.2. Go Environment Setup**
+  - [x] 1.2.1. Install Go (minimum version 1.17+ required for fsnotify)
   - [x] 1.2.2. Initialize Go module (`go mod init`)
   - [x] 1.2.3. Set up package structure following Go best practices:
     > Project structure scaffolded as per README.md guidance.
@@ -26,7 +26,7 @@ This roadmap is the single source of truth for Go Sentinel's development. All wo
     internal/config/config.go      # Reads flags/yaml, holds options
     internal/event/event.go        # Defines event/result types shared across packages
     ```
-- [ ] **1.3. Tooling & CI/CD**
+- [x] **1.3. Tooling & CI/CD**
   - [x] 1.3.1. Set up code formatter (`gofmt`, `goimports`)
   - [x] 1.3.2. Set up linter (e.g., `golangci-lint`)
   - [x] 1.3.3. Set up pre-commit hooks
