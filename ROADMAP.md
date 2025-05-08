@@ -27,16 +27,16 @@ This roadmap is the single source of truth for Go Sentinel's development. All wo
     internal/event/event.go        # Defines event/result types shared across packages
     ```
 - [ ] **1.3. Tooling & CI/CD**
-  - [ ] 1.3.1. Set up code formatter (`gofmt`, `goimports`)
+  - [x] 1.3.1. Set up code formatter (`gofmt`, `goimports`)
   - [x] 1.3.2. Set up linter (e.g., `golangci-lint`)
-  - [ ] 1.3.3. Set up pre-commit hooks
+  - [x] 1.3.3. Set up pre-commit hooks
   - [x] 1.3.4. Configure CI (GitHub Actions) for test, lint, build
 
 ---
 
 ## Phase 2: Core File Watcher & Debouncer (TDD)
 
-- [ ] **2.1. Write File Watcher Tests**
+- [x] **2.1. Write File Watcher Tests** (scaffolded)
   - [ ] 2.1.1. Test: Detect file changes in Go source dirs
   - [ ] 2.1.2. Test: Ignore `vendor/` and hidden dirs
   - [ ] 2.1.3. Test: Handle file create, write, remove events
@@ -44,7 +44,7 @@ This roadmap is the single source of truth for Go Sentinel's development. All wo
   - [ ] 2.2.1. Integrate `fsnotify` for recursive watching
   - [ ] 2.2.2. Correctly skip excluded directories
   - [ ] 2.2.3. Emit events to channel
-- [ ] **2.3. Write Debouncer Tests**
+- [x] **2.3. Write Debouncer Tests** (scaffolded)
   - [ ] 2.3.1. Test: Buffer rapid events per package
   - [ ] 2.3.2. Test: Trigger only after quiet period
 - [ ] **2.4. Implement Debouncer**
