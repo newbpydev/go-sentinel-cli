@@ -20,8 +20,8 @@ func main() {
 		{Package: "pkg/baz", Passed: true, Summary: "ok   pkg/baz  0.02s"},
 		{Package: "pkg/qux", Passed: false, Summary: "FAIL pkg/qux  0.20s", Message: "panic: index out of range"},
 	}
-	resultsCh := make(chan []ui.TestResult)
-	requestCh := make(chan struct{})
+	resultsCh := make(chan []ui.TestResult, 2)
+	requestCh := make(chan struct{}, 2)
 
 	// Simulated runner/controller goroutine
 	go func() {
@@ -116,11 +116,8 @@ func main() {
 		if len(input) > 0 {
 			switch input[0] {
 			case 'C':
-				// Interactive selection mode
-				selectionIndices := make(map[int]int) // visible idx -> global idx
-				for i := 0; i < len(uiState.VisibleResults()); i++ {
-					selectionIndices[i] = i
-				}
+				// Always set results before entering selection mode to avoid stale/empty state
+				uiState.SetResults(results)
 				uiState.DeselectAll()
 				for {
 					failures := uiState.VisibleResults()
@@ -163,13 +160,6 @@ func main() {
 					fmt.Print("Toggle (1-9), a=all, Enter=copy, q=quit: ")
 					inputSel, _ := reader.ReadString('\n')
 					if len(inputSel) > 0 {
-						// Debug - show the input string with each character as hex
-						fmt.Print("DEBUG - Input received: ")
-						for i, c := range inputSel {
-							fmt.Printf("%d:[%02x] ", i, c)
-						}
-						fmt.Println()
-
 						// Remove trailing newline from input
 						inputSel = strings.TrimSuffix(inputSel, "\n")
 						inputSel = strings.TrimSuffix(inputSel, "\r")
@@ -184,7 +174,6 @@ func main() {
 							break
 						} else if inputSel == "a" {
 							// Toggle all: select all if any unselected, else deselect all
-							fmt.Println("DEBUG - 'a' (all) key detected")
 							// First, count how many are currently selected without modifying
 							selectedCount := 0
 							totalCount := len(selectable)
@@ -212,8 +201,7 @@ func main() {
 								fmt.Println("Selected all failures.")
 							}
 							continue
-						} else if inputSel == "" {  // Enter key (empty after trimming)
-							fmt.Println("DEBUG - Enter key detected")
+						} else if inputSel == "" { // Enter key (empty after trimming)
 							copied := uiState.CopySelectedFailures()
 							if copied != "" {
 								err := clipboard.WriteAll(copied)
