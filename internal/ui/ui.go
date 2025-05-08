@@ -85,9 +85,31 @@ func (ui *UI) CopyFailure() string {
 	return ""
 }
 
-func (ui *UI) SelectTest(idx int) {
-	ui.selected[idx] = true
+// Toggle selection for a given index
+func (ui *UI) SelectTest(idx int) bool {
+	if ui.selected[idx] {
+		delete(ui.selected, idx)
+		return false // deselected
+	} else {
+		ui.selected[idx] = true
+		return true // selected
+	}
 }
+
+// Select all given indices
+func (ui *UI) SelectAll(indices []int) {
+	for _, idx := range indices {
+		ui.selected[idx] = true
+	}
+}
+
+// Deselect all
+func (ui *UI) DeselectAll() {
+	for k := range ui.selected {
+		delete(ui.selected, k)
+	}
+}
+
 
 func (ui *UI) SelectedTests() []TestResult {
 	var sel []TestResult
@@ -97,6 +119,11 @@ func (ui *UI) SelectedTests() []TestResult {
 		}
 	}
 	return sel
+}
+
+// Clear all selection
+func (ui *UI) ClearSelection() {
+	ui.selected = make(map[int]bool)
 }
 
 func (ui *UI) CopySelectedFailures() string {

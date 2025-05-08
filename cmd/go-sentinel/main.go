@@ -5,10 +5,11 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
-	"github.com/yourusername/go-sentinel/internal/ui"
 	clipboard "github.com/atotto/clipboard"
+	"github.com/yourusername/go-sentinel/internal/ui"
 )
 
 func main() {
@@ -107,13 +108,151 @@ func main() {
 		} else {
 			filterLabel = "[OFF]"
 		}
-		fmt.Fprintf(output, "\n[Enter] Rerun   [f] Filter failures %s   [r] Refresh   [c] Copy failure   [q] Quit\n", filterLabel)
+		fmt.Fprintf(output, "\n[Enter] Rerun   [f] Filter failures %s   [r] Refresh   [c] Copy all failures   [C] Select failures   [q] Quit\n", filterLabel)
 		os.Stdout.Write(output.Bytes())
 
 		fmt.Print(": ")
 		input, _ := reader.ReadString('\n')
 		if len(input) > 0 {
 			switch input[0] {
+			case 'C':
+				// Interactive selection mode
+				selectionIndices := make(map[int]int) // visible idx -> global idx
+				for i := 0; i < len(uiState.VisibleResults()); i++ {
+					selectionIndices[i] = i
+				}
+				uiState.DeselectAll()
+				for {
+					failures := uiState.VisibleResults()
+					var selectable []ui.TestResult
+					for _, r := range failures {
+						if !r.Passed {
+							selectable = append(selectable, r)
+						}
+					}
+					if len(selectable) == 0 {
+						fmt.Println("No failures to select.")
+						fmt.Print("Press Enter to continue...")
+						reader.ReadString('\n')
+						break
+					}
+					fmt.Print("\033[H\033[2J") // Clear screen
+					fmt.Println("Select test failures (toggle: 1-9, space=all, Enter=copy, q=quit):")
+					// Build mapping from visible (filtered) failures to real indices in results
+					visibleToReal := make([]int, 0, len(selectable))
+					for _, r := range selectable {
+						for realIdx, rr := range results {
+							if rr.Package == r.Package && rr.Summary == r.Summary {
+								visibleToReal = append(visibleToReal, realIdx)
+								break
+							}
+						}
+					}
+					for idx, r := range selectable {
+						selected := "[ ]"
+						_ = visibleToReal[idx] // keep mapping for selection, but not needed for display
+						if uiState.SelectedTests() != nil {
+							for _, sel := range uiState.SelectedTests() {
+								if sel.Package == r.Package && sel.Summary == r.Summary {
+									selected = "[x]"
+								}
+							}
+						}
+						fmt.Printf("%d. %s %s\n", idx+1, selected, r.Summary)
+					}
+					fmt.Print("Toggle (1-9), a=all, Enter=copy, q=quit: ")
+					inputSel, _ := reader.ReadString('\n')
+					if len(inputSel) > 0 {
+						// Debug - show the input string with each character as hex
+						fmt.Print("DEBUG - Input received: ")
+						for i, c := range inputSel {
+							fmt.Printf("%d:[%02x] ", i, c)
+						}
+						fmt.Println()
+
+						// Remove trailing newline from input
+						inputSel = strings.TrimSuffix(inputSel, "\n")
+						inputSel = strings.TrimSuffix(inputSel, "\r")
+
+						// Handle keys based on cleaned input
+						if inputSel == "q" {
+							// Quit selection mode
+							uiState.ClearSelection()
+							fmt.Println("Exited selection mode.")
+							fmt.Print("Press Enter to continue...")
+							reader.ReadString('\n')
+							break
+						} else if inputSel == "a" {
+							// Toggle all: select all if any unselected, else deselect all
+							fmt.Println("DEBUG - 'a' (all) key detected")
+							// First, count how many are currently selected without modifying
+							selectedCount := 0
+							totalCount := len(selectable)
+							for _, sel := range uiState.SelectedTests() {
+								for _, r := range selectable {
+									if sel.Package == r.Package && sel.Summary == r.Summary {
+										selectedCount++
+										break
+									}
+								}
+							}
+							// If all are selected, deselect all; otherwise select all
+							if selectedCount == totalCount {
+								// Deselect all
+								uiState.DeselectAll()
+								fmt.Println("Deselected all failures.")
+							} else {
+								// Select all
+								// First clear current selections to avoid duplicates
+								uiState.DeselectAll()
+								for idx := range selectable {
+									realIdx := visibleToReal[idx]
+									uiState.SelectTest(realIdx)
+								}
+								fmt.Println("Selected all failures.")
+							}
+							continue
+						} else if inputSel == "" {  // Enter key (empty after trimming)
+							fmt.Println("DEBUG - Enter key detected")
+							copied := uiState.CopySelectedFailures()
+							if copied != "" {
+								err := clipboard.WriteAll(copied)
+								if err != nil {
+									fmt.Println("Failed to copy to clipboard:", err)
+								} else {
+									fmt.Println("Copied selected failures to clipboard:")
+									fmt.Println(copied)
+								}
+							} else {
+								fmt.Println("No failures selected to copy.")
+							}
+							uiState.ClearSelection()
+							fmt.Print("Press Enter to continue...")
+							reader.ReadString('\n')
+							break
+						} else if len(inputSel) == 1 && inputSel[0] >= '1' && inputSel[0] <= '9' {
+							// Number key for toggling specific tests
+							idx := int(inputSel[0] - '1')
+							if idx >= 0 && idx < len(selectable) {
+								realIdx := visibleToReal[idx]
+								selected := uiState.SelectTest(realIdx)
+								if selected {
+									fmt.Printf("Selected failure %d.\n", idx+1)
+								} else {
+									fmt.Printf("Deselected failure %d.\n", idx+1)
+								}
+							}
+							continue
+						} else {
+							// Unrecognized input
+							fmt.Printf("DEBUG - Unrecognized input: '%s'\n", inputSel)
+							continue
+						}
+					}
+					break
+				}
+				continue
+
 			case 'q':
 				fmt.Println("Exiting.")
 				return
@@ -124,17 +263,43 @@ func main() {
 				requestCh <- struct{}{} // manual refresh
 				continue
 			case 'c':
-				failure := uiState.CopyFailure()
-				if failure != "" {
-					err := clipboard.WriteAll(failure)
+				// Copy all failures (select all visible failures and copy)
+				// Always copy all failures from the full results, not just filtered/visible
+				var allFailures []ui.TestResult
+				for _, r := range results {
+					if !r.Passed {
+						allFailures = append(allFailures, r)
+					}
+				}
+				if len(allFailures) == 0 {
+					fmt.Println("No failures to copy.")
+					fmt.Print("Press Enter to continue...")
+					reader.ReadString('\n')
+					continue
+				}
+				// Select all failures
+				uiState.DeselectAll()
+				for _, r := range allFailures {
+					for realIdx, rr := range results {
+						if rr.Package == r.Package && rr.Summary == r.Summary {
+							uiState.SelectTest(realIdx)
+							break
+						}
+					}
+				}
+				copied := uiState.CopySelectedFailures()
+				if copied != "" {
+					err := clipboard.WriteAll(copied)
 					if err != nil {
 						fmt.Println("Failed to copy to clipboard:", err)
 					} else {
-						fmt.Println("Copied first failure to clipboard.")
+						fmt.Println("Copied all failures to clipboard:")
+						fmt.Println(copied)
 					}
 				} else {
 					fmt.Println("No failures to copy.")
 				}
+				uiState.ClearSelection()
 				fmt.Print("Press Enter to continue...")
 				reader.ReadString('\n')
 				continue
@@ -147,4 +312,3 @@ func main() {
 		}
 	}
 }
-
