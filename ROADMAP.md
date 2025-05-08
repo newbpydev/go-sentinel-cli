@@ -96,14 +96,16 @@ This roadmap is the single source of truth for Go Sentinel's development. All wo
 
 ## Phase 4: Interactive CLI UI & Controller (TDD)
 
-- [ ] **4.1. Write UI/Controller Tests**
-  - [ ] 4.1.1. Test: Display summary with color (ANSI)
-  - [ ] 4.1.2. Test: Keybindings (Enter, f, q)
-  - [ ] 4.1.3. Test: Filter failures mode
-  - [ ] 4.1.4. Test: Show code context for failed tests
-  - [ ] 4.1.5. Test: UI updates on each run without exit
-  - [ ] 4.1.6. Test: Copy failed test information to clipboard ('c' key)
-  - [ ] 4.1.7. Test: Interactive test selection and copying ('C' key, space for selection)
+- [x] **4.1. Write UI/Controller Tests**
+  - [x] 4.1.1. Test: Display summary with color (ANSI)
+  - [x] 4.1.2. Test: Keybindings (Enter, f, q)
+  - [x] 4.1.3. Test: Filter failures mode
+  - [x] 4.1.4. Test: Show code context for failed tests
+  - [x] 4.1.5. Test: UI updates on each run without exit
+  - [x] 4.1.6. Test: Copy failed test information to clipboard ('c' key)
+  - [x] 4.1.7. Test: Interactive test selection and copying ('C' key, space for selection)
+  
+  > **All UI/controller test cases for MVP are implemented and passing.**
 - [ ] **4.2. Implement CLI UI**
   - [ ] 4.2.1. Render summary, color output, icons
   - [ ] 4.2.2. Implement interactive controls (keypresses)

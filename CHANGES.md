@@ -24,6 +24,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - Implemented `ParseTestEvents` for reading/parsing JSON event streams
   - Added TDD tests for parsing simple event streams, tracking all event types (start, run, pass, fail, output), extracting file/line info from failure output, collecting test durations/output lines, and handling edge cases (build errors, panics, timeouts)
   - Implemented `GroupTestEvents` and tests to group events by package and test name
+- **Phase 4.1: UI/Controller Tests (MVP CLI UI)**
+  - All UI/controller tests for the MVP CLI UI are implemented and passing:
+    - Color summary output (ANSI)
+    - Keybindings (Enter, f, q)
+    - Failure filtering mode
+    - Code context for failed tests
+    - UI updates on each run
+    - Clipboard copy of failed test info ('c' key)
+    - Interactive test selection and copying ('C' key, space)
+  - Minimal custom implementation (no external TUI framework yet), ready for further CLI/TUI development.
 
 ### Changed
 - Updated `ROADMAP.md` to reflect completed Phase 3.1 and 3.2 milestones and next steps
