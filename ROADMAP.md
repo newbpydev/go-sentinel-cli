@@ -68,7 +68,7 @@ This roadmap is the single source of truth for Go Sentinel's development. All wo
   - [x] 3.2.4. Support future per-test reruns with `-run=TestName`
 - [ ] **3.3. Write Output Parser Tests**
   - [x] 3.3.1. Test: Parse TestEvent JSON objects from output stream
-  - [ ] 3.3.2. Test: Track test start/run/pass/fail/output events
+  - [x] 3.3.2. Test: Track test start/run/pass/fail/output events
   - [ ] 3.3.3. Test: Extract file/line information from failure output
   - [ ] 3.3.4. Test: Collect test durations and output lines
   - [ ] 3.3.5. Test: Handle edge cases (build errors, test panics, timeouts)

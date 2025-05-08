@@ -22,7 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Phase 3.3/3.4: Output Parser Initiated**
   - Added `parser.go` with `TestEvent` struct for `go test -json` output
   - Implemented `ParseTestEvents` for reading/parsing JSON event streams
-  - Added initial TDD test for parsing simple test event streams
+  - Added TDD tests for parsing simple event streams and tracking all event types (start, run, pass, fail, output)
 
 ### Changed
 - Updated `ROADMAP.md` to reflect completed Phase 3.1 and 3.2 milestones and next steps
