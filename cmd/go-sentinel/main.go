@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/yourusername/go-sentinel/internal/ui"
+	clipboard "github.com/atotto/clipboard"
 )
 
 func main() {
@@ -106,7 +107,7 @@ func main() {
 		} else {
 			filterLabel = "[OFF]"
 		}
-		fmt.Fprintf(output, "\n[Enter] Rerun   [f] Filter failures %s   [r] Refresh   [q] Quit\n", filterLabel)
+		fmt.Fprintf(output, "\n[Enter] Rerun   [f] Filter failures %s   [r] Refresh   [c] Copy failure   [q] Quit\n", filterLabel)
 		os.Stdout.Write(output.Bytes())
 
 		fmt.Print(": ")
@@ -121,6 +122,21 @@ func main() {
 				continue
 			case 'r':
 				requestCh <- struct{}{} // manual refresh
+				continue
+			case 'c':
+				failure := uiState.CopyFailure()
+				if failure != "" {
+					err := clipboard.WriteAll(failure)
+					if err != nil {
+						fmt.Println("Failed to copy to clipboard:", err)
+					} else {
+						fmt.Println("Copied first failure to clipboard.")
+					}
+				} else {
+					fmt.Println("No failures to copy.")
+				}
+				fmt.Print("Press Enter to continue...")
+				reader.ReadString('\n')
 				continue
 			case '\n':
 				requestCh <- struct{}{} // rerun

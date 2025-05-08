@@ -34,6 +34,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
     - Clipboard copy of failed test info ('c' key)
     - Interactive test selection and copying ('C' key, space)
   - Minimal custom implementation (no external TUI framework yet), ready for further CLI/TUI development.
+- **Phase 4.2.1–4.2.4: CLI UI MVP**
+  - CLI UI MVP now includes summary, color, icons, interactive controls, code context for failures, and channel-based communication between UI and runner/controller.
+  - Event-driven updates and responsive UI loop implemented.
+  - Clipboard integration for test failures is next.
 
 ### Changed
 - Updated `ROADMAP.md` to reflect completed Phase 3.1 and 3.2 milestones and next steps

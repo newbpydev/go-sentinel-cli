@@ -7,4 +7,7 @@ require (
 	go.uber.org/zap v1.24.0
 )
 
-require golang.org/x/sys v0.13.0 // indirect
+require (
+	github.com/atotto/clipboard v0.1.4 // indirect
+	golang.org/x/sys v0.13.0 // indirect
+)

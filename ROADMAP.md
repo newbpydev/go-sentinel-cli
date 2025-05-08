@@ -107,10 +107,12 @@ This roadmap is the single source of truth for Go Sentinel's development. All wo
   
   > **All UI/controller test cases for MVP are implemented and passing.**
 - [ ] **4.2. Implement CLI UI**
-  - [ ] 4.2.1. Render summary, color output, icons
-  - [ ] 4.2.2. Implement interactive controls (keypresses)
-  - [ ] 4.2.3. Display code context for failures (extract lines from source)
-  - [ ] 4.2.4. Channel communication between components
+  - [x] 4.2.1. Render summary, color output, icons
+  - [x] 4.2.2. Implement interactive controls (keypresses)
+  - [x] 4.2.3. Display code context for failures (extract lines from source)
+  - [x] 4.2.4. Channel communication between components
+    > CLI UI and runner/controller now communicate via Go channels and goroutines; event-driven updates and responsive UI loop implemented.
+
   - [ ] 4.2.5. Implement clipboard integration for test failures
   - [ ] 4.2.6. Create interactive test selection mode with visual indicators
   - [ ] 4.2.7. (Future) Integrate TUI framework (Bubble Tea/tview)
