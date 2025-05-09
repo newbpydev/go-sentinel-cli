@@ -201,12 +201,12 @@ func TestFuzzySearchFiltersTests(t *testing.T) {
 	m.searchQuery = "a"
 	filtered := m.FuzzyFilteredTests()
 	if len(filtered) != 3 {
-		t.Errorf("expected 3 tests to match fuzzy search 'a', got: %d", len(filtered))
+		t.Errorf("expected 3 tests to match fuzzy search 'a' (Alpha, Beta, Gamma), got: %d, matches: %v", len(filtered), filtered)
 	}
 	m.searchQuery = "mm"
 	filtered = m.FuzzyFilteredTests()
 	if len(filtered) != 1 || filtered[0] != "Gamma" {
-		t.Errorf("expected only 'Gamma' to match fuzzy search 'mm'")
+		t.Errorf("expected only 'Gamma' to match fuzzy search 'mm', got: %v", filtered)
 	}
 }
 

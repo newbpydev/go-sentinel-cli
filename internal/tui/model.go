@@ -17,6 +17,19 @@ type Model struct {
 	searchQuery string
 }
 
+// --- Exported Setters/Getters for demo and external use ---
+func (m *Model) SetTests(tests []string) { m.tests = tests }
+func (m *Model) SetProgress(p float64) { m.progress = p }
+func (m *Model) SetMode(mode string) { m.mode = mode }
+func (m *Model) SetSearchQuery(q string) { m.searchQuery = q }
+func (m *Model) SetSelected(idx int) { m.selected = idx }
+func (m *Model) GetProgress() float64 { return m.progress }
+func (m *Model) GetMode() string { return m.mode }
+func (m *Model) GetSearchQuery() string { return m.searchQuery }
+func (m *Model) GetSelected() int { return m.selected }
+func (m *Model) GetTests() []string { return m.tests }
+
+
 func NewModel() Model {
 	return Model{
 		tests:       []string{"TestFoo", "TestBar", "TestBaz"},
