@@ -62,15 +62,11 @@ func main() {
 			uiState.SetFilterFailures(false)
 		}
 		for _, r := range visible {
-			icon := "✔"
+			label := "\x1b[42m\x1b[30m PASS \x1b[0m"
 			if !r.Passed {
-				icon = "✖"
+				label = "\x1b[41m\x1b[30m FAIL \x1b[0m"
 			}
-			colorStart := "\x1b[32m"
-			if !r.Passed {
-				colorStart = "\x1b[31m"
-			}
-			fmt.Fprintf(output, "%s %s%s\x1b[0m\n", icon, colorStart, r.Summary)
+			fmt.Fprintf(output, "%s %s\n", label, r.Summary)
 		}
 
 		// Failure context when filtering failures or if any failures are visible
@@ -146,16 +142,20 @@ func main() {
 						}
 					}
 					for idx, r := range selectable {
-						selected := "[ ]"
+						selected := "\x1b[2m[ ]\x1b[0m" // dim by default
 						_ = visibleToReal[idx] // keep mapping for selection, but not needed for display
 						if uiState.SelectedTests() != nil {
 							for _, sel := range uiState.SelectedTests() {
 								if sel.Package == r.Package && sel.Summary == r.Summary {
-									selected = "[x]"
+									selected = "\x1b[32m[x]\x1b[0m" // green for selected
 								}
 							}
 						}
-						fmt.Printf("%d. %s %s\n", idx+1, selected, r.Summary)
+						label := "\x1b[41m\x1b[30m FAIL \x1b[0m"
+						if r.Passed {
+							label = "\x1b[42m\x1b[30m PASS \x1b[0m"
+						}
+						fmt.Printf("%d. %s %s %s\n", idx+1, selected, label, r.Summary)
 					}
 					fmt.Print("Toggle (1-9), a=all, Enter=copy, q=quit: ")
 					inputSel, _ := reader.ReadString('\n')

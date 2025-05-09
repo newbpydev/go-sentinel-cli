@@ -48,9 +48,9 @@ func (ui *UI) VisibleResults() []TestResult {
 func DisplaySummary(output *bytes.Buffer, results []TestResult) {
 	for _, r := range results {
 		if r.Passed {
-			output.WriteString("\x1b[32m" + r.Summary + "\x1b[0m\n") // Green
+			output.WriteString("\x1b[42m\x1b[30m PASS \x1b[0m " + r.Summary + "\n")
 		} else {
-			output.WriteString("\x1b[31m" + r.Summary + "\x1b[0m\n") // Red
+			output.WriteString("\x1b[41m\x1b[30m FAIL \x1b[0m " + r.Summary + "\n")
 		}
 	}
 }
