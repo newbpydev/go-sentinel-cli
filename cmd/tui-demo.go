@@ -198,7 +198,7 @@ func highlightQuery(target, query string) string {
 	res := ""
 	j := 0
 	for i := 0; i < len(tRunes); i++ {
-		if j < len(qRunes) && (tRunes[i] == qRunes[j] || strings.ToLower(string(tRunes[i])) == strings.ToLower(string(qRunes[j]))) {
+		if j < len(qRunes) && (tRunes[i] == qRunes[j] || strings.EqualFold(string(tRunes[i]), string(qRunes[j]))) {
 			// Color match cyan
 			res += "\x1b[36m" + string(tRunes[i]) + "\x1b[0m"
 			j++
@@ -220,7 +220,7 @@ func (m DemoModel) View() string {
 	}
 	// Header Panel (logo only)
 	headerPanel := tui.Panel{
-		Content: []string{m.Model.LogoView()},
+		Content: []string{header}, // Always use the computed header string
 		Options: tui.PanelOptions{
 			Flex:        false,
 			Padding:     1,
