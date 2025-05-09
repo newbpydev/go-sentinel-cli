@@ -16,6 +16,32 @@ func TestTUITreeSidebar_RenderInitialTree(t *testing.T) {
 	}
 }
 
+func TestTUITreeSidebar_IndentationAndIcons(t *testing.T) {
+	model := ui.NewTUITestExplorerModel(mockTestTree())
+	output := model.Sidebar.View()
+	// Check for icons and indentation
+	if !contains(output, "📦 root") {
+		t.Errorf("sidebar missing root icon or label: %s", output)
+	}
+	if !contains(output, "  📁 pkg/foo") {
+		t.Errorf("sidebar missing file/folder icon or indentation for pkg/foo: %s", output)
+	}
+	if !contains(output, "    🧪 TestAlpha") {
+		t.Errorf("sidebar missing test icon or indentation for TestAlpha: %s", output)
+	}
+	if !contains(output, "  📁 pkg/bar") {
+		t.Errorf("sidebar missing file/folder icon or indentation for pkg/bar: %s", output)
+	}
+	if !contains(output, "    🧪 TestGamma") {
+		t.Errorf("sidebar missing test icon or indentation for TestGamma: %s", output)
+	}
+}
+
+func contains(s, substr string) bool {
+	return len(s) > 0 && (s == substr || (len(s) > len(substr) && (contains(s[1:], substr) || s[:len(substr)] == substr)))
+}
+
+
 func TestTUITreeSidebar_VIMNavigation(t *testing.T) {
 	model := ui.NewTUITestExplorerModel(mockTestTree())
 	model.SelectedIndex = 1 // move down
