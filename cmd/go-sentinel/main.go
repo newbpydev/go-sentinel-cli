@@ -50,13 +50,12 @@ func main() {
 	}()
 	progress := []string{"|", "/", "-", "\\"}
 	idx := 0
-	fmt.Print("Loading test results: ")
 	for {
 		select {
 		case <-loadingDone:
 			break
 		default:
-			fmt.Printf("%s\r", progress[idx%len(progress)])
+			fmt.Printf("%s Loading test results...\r", progress[idx%len(progress)])
 			time.Sleep(120 * time.Millisecond)
 			idx++
 		}
