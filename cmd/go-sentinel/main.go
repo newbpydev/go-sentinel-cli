@@ -9,8 +9,8 @@ import (
 	"time"
 
 	clipboard "github.com/atotto/clipboard"
-	"github.com/yourusername/go-sentinel/internal/ui"
-	"github.com/yourusername/go-sentinel/internal/parser"
+	"github.com/newbpydev/go-sentinel/internal/parser"
+	"github.com/newbpydev/go-sentinel/internal/ui"
 )
 
 func main() {
@@ -111,9 +111,13 @@ func main() {
 							lines = append(lines, scanner.Text())
 						}
 						start := r.Line - 3
-						if start < 0 { start = 0 }
+						if start < 0 {
+							start = 0
+						}
 						end := r.Line + 2
-						if end > len(lines) { end = len(lines) }
+						if end > len(lines) {
+							end = len(lines)
+						}
 						for i := start; i < end; i++ {
 							lnum := i + 1
 							code := lines[i]
@@ -206,7 +210,7 @@ func main() {
 					}
 					for idx, r := range selectable {
 						selected := "\x1b[2m[ ]\x1b[0m" // dim by default
-						_ = visibleToReal[idx] // keep mapping for selection, but not needed for display
+						_ = visibleToReal[idx]          // keep mapping for selection, but not needed for display
 						if uiState.SelectedTests() != nil {
 							for _, sel := range uiState.SelectedTests() {
 								if sel.Package == r.Package && sel.Summary == r.Summary {

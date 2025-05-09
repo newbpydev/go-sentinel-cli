@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/yourusername/go-sentinel/internal/ui"
+	"github.com/newbpydev/go-sentinel/internal/ui"
 )
 
 type goTestEvent struct {
