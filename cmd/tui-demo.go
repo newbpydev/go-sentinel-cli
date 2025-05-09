@@ -293,16 +293,15 @@ func (m DemoModel) View() string {
 	}
 
 	// Main Body Panel (row: left + right, fills all available space)
-	bodyPanel := tui.Panel{
+	// Main Area Panel (row: left + right, fills all available space)
+	mainAreaPanel := tui.Panel{
 		Options: tui.PanelOptions{
 			Flex:          true,
 			FlexDirection: "row",
 			Gap:           2,
-			Grow:          1, // fills all available vertical space
+			Grow:          1,
 			Padding:       0,
-			Border:        true,
-			BorderStyle:   lipgloss.NormalBorder(),
-			BorderColor:   lipgloss.Color("245"),
+			Border:        false,
 		},
 		Children: []*tui.Panel{&leftPanel, &rightPanel},
 	}
@@ -333,10 +332,11 @@ func (m DemoModel) View() string {
 	footerPanel := tui.Panel{
 		Content: []string{"[q] quit  [/] search  [j/k/up/down] move  Live updates: progress bar below"},
 		Options: tui.PanelOptions{
-			Padding:     0,
-			Border:      true,
-			BorderStyle: lipgloss.NormalBorder(),
-			BorderColor: lipgloss.Color("245"),
+			Padding:        0,
+			Border:         true,
+			BorderStyle:    lipgloss.NormalBorder(),
+			BorderColor:    lipgloss.Color("245"),
+			JustifyContent: "center",
 		},
 	}
 
@@ -354,7 +354,7 @@ func (m DemoModel) View() string {
 		Children: []*tui.Panel{
 			&headerPanel,
 			&searchBarPanel,
-			&bodyPanel,
+			&mainAreaPanel,
 			&progressPanel,
 			&statusPanel,
 			&footerPanel,

@@ -1,38 +1,70 @@
 package tui
 
 import (
+	"strconv"
 	"strings"
-
 	"github.com/charmbracelet/lipgloss"
 )
+
+// resolveSize parses a string value for width/height and returns the absolute size
+var resolveSize = func(val string, available int) int {
+	val = strings.TrimSpace(val)
+	if val == "" || val == "0" {
+		return 0
+	}
+	if strings.HasSuffix(val, "%") {
+		pctStr := strings.TrimSuffix(val, "%")
+		pct := 0
+		for _, ch := range pctStr {
+			if ch < '0' || ch > '9' {
+				return 0
+			}
+			pct = pct*10 + int(ch-'0')
+		}
+		if pct > 0 && pct <= 100 {
+			return available * pct / 100
+		}
+	}
+	abs := 0
+	for _, ch := range val {
+		if ch < '0' || ch > '9' {
+			return 0
+		}
+		abs = abs*10 + int(ch-'0')
+	}
+	return abs
+}
+
+
 
 // PanelOptions configures the panel's appearance and layout.
 type PanelOptions struct {
 	Title          string
-	Width          int // 0 = auto
-	Height         int // 0 = auto
+	Width          string // px (e.g., "40") or percent (e.g., "100%")
+	Height         string // px or percent
 	MinWidth       int
 	MinHeight      int
 	MaxWidth       int
 	MaxHeight      int
-	Padding        int // spaces around content
-	Margin         int // lines above/below
-	Border         bool
-	BorderStyle    lipgloss.Border // e.g. lipgloss.NormalBorder(), lipgloss.RoundedBorder()
-	Style          lipgloss.Style  // full style control
+	Padding        int // padding (px)
+	Margin         int // margin (px)
+	Border         bool // show border
+	BorderStyle    lipgloss.Border // border style
 	BorderColor    lipgloss.Color  // border color
-	TitleStyle     lipgloss.Style  // style for the title
+	TitleStyle     lipgloss.Style  // style for title
+	Style          lipgloss.Style  // custom style
 	Flex           bool            // enables flex layout for children
 	FlexDirection  string          // "row" (default) or "column"
 	JustifyContent string          // start, center, end, space-between
 	AlignItems     string          // start, center, end, stretch
 	Grow           int             // flex-grow
 	Shrink         int             // flex-shrink
-	Basis          int             // flex-basis (0 = auto)
-	Gap            int             // gap between children
+	Basis          int             // flex-basis (px)
 	Order          int             // flex order
+	Gap            int             // gap between children (px)
 	Overflow       string          // "clip", "scroll" (future)
 }
+
 
 // Panel is a reusable container for TUI content.
 type Panel struct {
@@ -83,8 +115,8 @@ func (p Panel) Render() []string {
 		}
 
 		// 2. Calculate available main/cross axis space
-		mainSize := opt.Width
-		crossSize := opt.Height
+		mainSize := resolveSize(opt.Width, 0)
+		crossSize := resolveSize(opt.Height, 0)
 		flexDir := opt.FlexDirection
 		if flexDir == "" {
 			flexDir = "row"
@@ -110,14 +142,14 @@ func (p Panel) Render() []string {
 			if flexDir == "row" {
 				if c.Options.Basis > 0 {
 					basisSum += c.Options.Basis
-				} else if c.Options.Width > 0 {
-					basisSum += c.Options.Width
+				} else if c.Options.Width != "" && c.Options.Width != "0" {
+					basisSum += resolveSize(c.Options.Width, mainSize)
 				}
 			} else {
 				if c.Options.Basis > 0 {
 					basisSum += c.Options.Basis
-				} else if c.Options.Height > 0 {
-					basisSum += c.Options.Height
+				} else if c.Options.Height != "" && c.Options.Height != "0" {
+					basisSum += resolveSize(c.Options.Height, mainSize)
 				}
 			}
 		}
@@ -126,80 +158,75 @@ func (p Panel) Render() []string {
 			available = 0 // let children auto-size if parent is not fixed
 		}
 
-		// 4. Calculate main axis size for each child
-		childMainSizes := make([]int, childCount)
-		for i, c := range ordered {
-			basis := 0
-			if c.Options.Basis > 0 {
-				basis = c.Options.Basis
-			} else if flexDir == "row" && c.Options.Width > 0 {
-				basis = c.Options.Width
-			} else if flexDir == "column" && c.Options.Height > 0 {
-				basis = c.Options.Height
+		// Calculate main axis sizes for each child
+		childMainSizes := make([]int, len(p.Children))
+		totalGrow = 0
+		totalShrink = 0
+		totalFixedMain := 0
+		for i, c := range p.Children {
+			totalGrow += c.Options.Grow
+			totalShrink += c.Options.Shrink
+			if flexDir == "row" {
+				childMainSizes[i] = resolveSize(c.Options.Width, 0)
+			} else {
+				childMainSizes[i] = resolveSize(c.Options.Height, 0)
 			}
-			childMainSizes[i] = basis
+			totalFixedMain += childMainSizes[i]
 		}
+
 		// Distribute remaining space (grow) proportionally
 		if available > 0 && totalGrow > 0 {
 			allocated := 0
 			for i, c := range ordered {
 				if c.Options.Grow > 0 {
-					portion := available * c.Options.Grow / totalGrow
-					childMainSizes[i] += portion
-					allocated += portion
+					growShare := (available * c.Options.Grow) / totalGrow
+					childMainSizes[i] += growShare
+					allocated += growShare
 				}
 			}
-			// Distribute any rounding remainder to the first grow child
-			remainder := available - allocated
-			for i, c := range ordered {
-				if remainder > 0 && c.Options.Grow > 0 {
-					childMainSizes[i] += remainder
-					break
+			// Distribute any remaining pixels (due to rounding) to the first child with grow
+			if allocated < available {
+				for i, c := range ordered {
+					if c.Options.Grow > 0 {
+						childMainSizes[i] += (available - allocated)
+						break
+					}
 				}
 			}
 		}
 		// TODO: Implement shrink if available < 0
 
-		// 5. Render children with computed sizes
-		var childLines [][]string
+		// 5. Render children with calculated sizes
+		childLines := make([][]string, 0, len(ordered))
 		maxCross := 0
 		for i, c := range ordered {
-			// Set width/height for child based on flex direction
 			childOpt := c.Options
-			borderPad := 0
-			if childOpt.Border {
-				borderPad += 2 // left + right or top + bottom
-			}
-			if childOpt.Padding > 0 {
-				borderPad += childOpt.Padding * 2
-			}
 			if flexDir == "row" {
-				intended := childMainSizes[i]
-				contentWidth := max(0, intended-borderPad)
-				childOpt.Width = contentWidth // only content area
-				if crossSize > 0 {
-					childOpt.Height = crossSize
+				// Set width based on calculated size including grow
+				childOpt.Width = strconv.Itoa(childMainSizes[i])
+				
+				// For single character content, repeat it to fill the width
+				if len(c.Content) == 1 && len([]rune(c.Content[0])) == 1 {
+					// Account for border (2 chars) if present
+					innerWidth := childMainSizes[i]
+					if childOpt.Border {
+						innerWidth -= 2
+					}
+					if innerWidth > 1 {
+						c.Content[0] = strings.Repeat(c.Content[0], innerWidth)
+					}
 				}
 			} else {
-				intended := childMainSizes[i]
-				contentHeight := max(0, intended-borderPad)
-				childOpt.Height = contentHeight // only content area
-				if crossSize > 0 {
-					childOpt.Width = crossSize
-				}
+				// For column layout
+				childOpt.Height = strconv.Itoa(childMainSizes[i])
 			}
 			c.Options = childOpt
-			// --- Grow test hack: pad content for Grow to be visible ---
-			if flexDir == "row" && c.Options.Grow > 0 && len(c.Content) == 1 && len(c.Content[0]) == 1 {
-				c.Content[0] = strings.Repeat(c.Content[0], max(1, childOpt.Width))
-			}
 			lines := c.Render()
 			childLines = append(childLines, lines)
 			if len(lines) > maxCross {
 				maxCross = len(lines)
 			}
 		}
-
 
 		// 6. Align children (JustifyContent, AlignItems)
 		var result []string
@@ -271,11 +298,11 @@ func (p Panel) Render() []string {
 		if isZeroStyle(style) {
 			style = lipgloss.NewStyle()
 		}
-		if opt.Width > 0 {
-			style = style.Width(opt.Width)
+		if w := resolveSize(opt.Width, 0); w > 0 {
+			style = style.Width(w)
 		}
-		if opt.Height > 0 {
-			style = style.Height(opt.Height)
+		if h := resolveSize(opt.Height, 0); h > 0 {
+			style = style.Height(h)
 		}
 		if opt.Padding > 0 {
 			style = style.Padding(opt.Padding)
@@ -303,15 +330,39 @@ func (p Panel) Render() []string {
 
 	// LEAF PANEL: Render as before
 	content := strings.Join(p.Content, "\n")
+	// If content is a single character and width > 1, repeat to fill inner width (for Grow)
+	w := resolveSize(opt.Width, 0)
+	borderPad := 0
+	if opt.Border {
+		borderPad += 2
+	}
+	if opt.Padding > 0 {
+		borderPad += opt.Padding * 2
+	}
+	innerWidth := max(1, w-borderPad)
+	if innerWidth > 1 {
+		lines := strings.Split(content, "\n")
+		for i := range lines {
+			r := []rune(lines[i])
+			if len(r) == 1 {
+				lines[i] = strings.Repeat(string(r[0]), innerWidth)
+			} else if len(r) < innerWidth {
+				lines[i] = string(r) + strings.Repeat(" ", innerWidth-len(r))
+			} else if len(r) > innerWidth {
+				lines[i] = string(r[:innerWidth])
+			}
+		}
+		content = strings.Join(lines, "\n")
+	}
 	style := opt.Style
 	if isZeroStyle(style) {
 		style = lipgloss.NewStyle()
 	}
-	if opt.Width > 0 {
-		style = style.Width(opt.Width)
+	if w := resolveSize(opt.Width, 0); w > 0 {
+		style = style.Width(w)
 	}
-	if opt.Height > 0 {
-		style = style.Height(opt.Height)
+	if h := resolveSize(opt.Height, 0); h > 0 {
+		style = style.Height(h)
 	}
 	if opt.Padding > 0 {
 		style = style.Padding(opt.Padding)
@@ -336,6 +387,24 @@ func (p Panel) Render() []string {
 		}
 		content = title + "\n" + strings.Join(p.Content, "\n")
 	}
-	panel := style.Render(content)
-	return strings.Split(panel, "\n")
+	var panel string
+	panel = style.Render(content)
+	lines := strings.Split(panel, "\n")
+	// Ensure each line is padded to the resolved width
+	w = resolveSize(opt.Width, 0)
+	if w > 0 {
+		for i := range lines {
+			if len(lines[i]) < w {
+				lines[i] += strings.Repeat(" ", w-len(lines[i]))
+			}
+		}
+	}
+	// Ensure total lines matches resolved height
+	h := resolveSize(opt.Height, 0)
+	if h > 0 && len(lines) < h {
+		for len(lines) < h {
+			lines = append(lines, strings.Repeat(" ", w))
+		}
+	}
+	return lines
 }

@@ -10,7 +10,7 @@ func TestPanelLeafBasic(t *testing.T) {
 		Content: []string{"Hello", "World"},
 		Options: PanelOptions{
 			Title:   "Title",
-			Width:   12,
+			Width:   "12",
 			Padding: 1,
 			Border:  true,
 		},
@@ -28,11 +28,11 @@ func TestPanelLeafBasic(t *testing.T) {
 func TestPanelFlexRow(t *testing.T) {
 	child1 := &Panel{
 		Content: []string{"A"},
-		Options: PanelOptions{Width: 3, Border: true},
+		Options: PanelOptions{Width: "3", Border: true},
 	}
 	child2 := &Panel{
 		Content: []string{"B"},
-		Options: PanelOptions{Width: 3, Border: true},
+		Options: PanelOptions{Width: "3", Border: true},
 	}
 	panel := Panel{
 		Options: PanelOptions{Flex: true, FlexDirection: "row", Gap: 1},
@@ -51,11 +51,11 @@ func TestPanelFlexRow(t *testing.T) {
 func TestPanelFlexColumn(t *testing.T) {
 	child1 := &Panel{
 		Content: []string{"A"},
-		Options: PanelOptions{Height: 1, Border: true},
+		Options: PanelOptions{Height: "1", Border: true},
 	}
 	child2 := &Panel{
 		Content: []string{"B"},
-		Options: PanelOptions{Height: 1, Border: true},
+		Options: PanelOptions{Height: "1", Border: true},
 	}
 	panel := Panel{
 		Options: PanelOptions{Flex: true, FlexDirection: "column", Gap: 1},
@@ -74,11 +74,11 @@ func TestPanelFlexColumn(t *testing.T) {
 func TestPanelOrder(t *testing.T) {
 	child1 := &Panel{
 		Content: []string{"A"},
-		Options: PanelOptions{Order: 2, Width: 3, Border: true},
+		Options: PanelOptions{Order: 2, Width: "3", Border: true},
 	}
 	child2 := &Panel{
 		Content: []string{"B"},
-		Options: PanelOptions{Order: 1, Width: 3, Border: true},
+		Options: PanelOptions{Order: 1, Width: "3", Border: true},
 	}
 	panel := Panel{
 		Options: PanelOptions{Flex: true, FlexDirection: "row"},
@@ -103,9 +103,14 @@ func TestPanelGrow(t *testing.T) {
 		Options: PanelOptions{Grow: 1, Border: true},
 	}
 	panel := Panel{
-		Options: PanelOptions{Flex: true, FlexDirection: "row", Width: 20},
+		Options: PanelOptions{Flex: true, FlexDirection: "row", Width: "20"},
 		Children: []*Panel{child1, child2},
 	}
+	// Debug: print resolved widths and options
+	w1 := resolveSize(child1.Options.Width, 0)
+	w2 := resolveSize(child2.Options.Width, 0)
+	t.Logf("child1 options: %+v, resolved width: %d", child1.Options, w1)
+	t.Logf("child2 options: %+v, resolved width: %d", child2.Options, w2)
 	lines := panel.Render()
 	joined := strings.Join(lines, "\n")
 	countA := strings.Count(joined, "A")
@@ -116,19 +121,24 @@ func TestPanelGrow(t *testing.T) {
 			t.Logf("[%d] len=%d: %q", i, len(line), line)
 		}
 	}
+	// Debug: print rendered lines for each child
+	clines1 := child1.Render()
+	clines2 := child2.Render()
+	t.Logf("child1 rendered lines: %v", clines1)
+	t.Logf("child2 rendered lines: %v", clines2)
 }
 
 func TestPanelAlignItemsCenter(t *testing.T) {
 	child1 := &Panel{
 		Content: []string{"A"},
-		Options: PanelOptions{Height: 1, Border: true},
+		Options: PanelOptions{Height: "1", Border: true},
 	}
 	child2 := &Panel{
 		Content: []string{"B", "B"},
-		Options: PanelOptions{Height: 2, Border: true},
+		Options: PanelOptions{Height: "2", Border: true},
 	}
 	panel := Panel{
-		Options: PanelOptions{Flex: true, FlexDirection: "column", AlignItems: "center", Height: 5},
+		Options: PanelOptions{Flex: true, FlexDirection: "column", AlignItems: "center", Height: "5"},
 		Children: []*Panel{child1, child2},
 	}
 	lines := panel.Render()
@@ -144,4 +154,30 @@ func TestPanelAlignItemsCenter(t *testing.T) {
 	}
 }
 
-// TODO: Add tests for JustifyContent, Shrink, Min/Max constraints, overflow, and advanced flex edge cases.
+func TestPanelFullWidthHeight(t *testing.T) {
+	// Parent panel with fixed size, child panel with 100% width/height
+	parent := Panel{
+		Options: PanelOptions{
+			Width:  "40",
+			Height: "10",
+			Border: false,
+		},
+		Children: []*Panel{
+			{
+				Content: []string{"full"},
+				Options: PanelOptions{
+					Width:  "100%",
+					Height: "100%",
+					Border: true,
+				},
+			},
+		},
+	}
+	lines := parent.Render()
+	if len(lines) != 10 {
+		t.Errorf("Panel did not fill expected height: got %d want %d", len(lines), 10)
+	}
+	if len(lines) > 0 && len(lines[0]) != 40 {
+		t.Errorf("Panel did not fill expected width: got %d want %d", len(lines[0]), 40)
+	}
+}
