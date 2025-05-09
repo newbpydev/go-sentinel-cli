@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/bubbles/progress"
 	"github.com/atotto/clipboard"
 	"github.com/yourusername/go-sentinel/internal/tui"
@@ -222,59 +223,78 @@ func (m DemoModel) View() string {
 	sb.WriteString("\n")
 	sb.WriteString(header + "\n\n")
 
-	// Split panel: left = filtered test list, right = details/logs for selected test
-	// Render left and right panels as slices of lines
-	leftLines := []string{}
-	filtered := m.FuzzyFilteredTests()
-	query := m.GetSearchQuery()
-	for i, t := range filtered {
-		cursor := "  "
-		if i == m.GetSelected() {
-			cursor = "> "
-		}
-		check := "[ ]"
-		if m.selectedMap != nil && m.selectedMap[t] {
-			check = "[x]"
-		}
-		name := t
-		if m.GetMode() == "search" && query != "" {
-			name = highlightQuery(t, query)
-		}
-		leftLines = append(leftLines, fmt.Sprintf("%s%s %s", cursor, check, name))
-	}
-	if len(leftLines) == 0 {
-		leftLines = append(leftLines, "(no tests)")
-	} 
-
-	rightLines := []string{"No test selected."}
-	if len(filtered) > 0 && m.GetSelected() < len(filtered) {
-		sel := filtered[m.GetSelected()]
-		if log, ok := m.logs[sel]; ok {
-			rightLines = []string{log}
-		} else {
-			rightLines = []string{"---"}
-		}
-	}
-
-	// Pad panels to same height
-	maxLines := len(leftLines)
-	if len(rightLines) > maxLines {
-		maxLines = len(rightLines)
-	}
-	for len(leftLines) < maxLines {
-		leftLines = append(leftLines, "")
-	}
-	for len(rightLines) < maxLines {
-		rightLines = append(rightLines, "")
-	}
-
 	// Always render search bar above the list (avoid layout shift)
 	searchBar := fmt.Sprintf("\x1b[36mSearch [/]\x1b[0m: %s\n", m.GetSearchQuery())
-
-	// Render side by side
 	sb.WriteString(searchBar)
+
+	// Prepare left panel (test list)
+	filtered := m.FuzzyFilteredTests()
+	selected := m.GetSelected()
+	leftLines := make([]string, len(filtered))
+	for i, t := range filtered {
+		prefix := "  "
+		if i == selected {
+			prefix = "> "
+		}
+		checked := "[ ]"
+		if m.selectedMap != nil && m.selectedMap[t] {
+			checked = "[x]"
+		}
+		leftLines[i] = fmt.Sprintf("%s%s %s", prefix, checked, highlightQuery(t, m.GetSearchQuery()))
+	}
+	leftPanel := tui.Panel{
+		Content:  leftLines,
+		Options: tui.PanelOptions{
+			Title:       "Tests",
+			Padding:     1,
+			Border:      true,
+			BorderStyle: lipgloss.RoundedBorder(),
+			BorderColor: lipgloss.Color("63"),
+			TitleStyle:  lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("228")),
+			Width:       28,
+		},
+	}
+
+	// Prepare right panel (details/logs)
+	var rightLines []string
+	if len(filtered) > 0 && selected < len(filtered) {
+		name := filtered[selected]
+		log := m.logs[name]
+		if log == "" {
+			log = "No test selected."
+		}
+		rightLines = strings.Split(log, "\n")
+	} else {
+		rightLines = []string{"No test selected."}
+	}
+	rightPanel := tui.Panel{
+		Content:  rightLines,
+		Options: tui.PanelOptions{
+			Title:       "Details",
+			Padding:     1,
+			Border:      true,
+			BorderStyle: lipgloss.RoundedBorder(),
+			BorderColor: lipgloss.Color("63"),
+			TitleStyle:  lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("228")),
+			Width:       38,
+		},
+	}
+
+	// Render both panels side by side, line by line
+	leftRendered := leftPanel.Render()
+	rightRendered := rightPanel.Render()
+	maxLines := len(leftRendered)
+	if len(rightRendered) > maxLines {
+		maxLines = len(rightRendered)
+	}
+	for len(leftRendered) < maxLines {
+		leftRendered = append(leftRendered, strings.Repeat(" ", 28+4)) // width + borders
+	}
+	for len(rightRendered) < maxLines {
+		rightRendered = append(rightRendered, strings.Repeat(" ", 38+4))
+	}
 	for i := 0; i < maxLines; i++ {
-		sb.WriteString(fmt.Sprintf("%-30s │ %s\n", leftLines[i], rightLines[i]))
+		sb.WriteString(leftRendered[i] + " " + rightRendered[i] + "\n")
 	}
 
 	// Fancy animated progress bar
