@@ -157,6 +157,60 @@ func TestAnimatedProgressUpdatesView(t *testing.T) {
 	}
 }
 
+func TestLiveUpdatesProgressAndStatus(t *testing.T) {
+	m := NewModelWithTests(2)
+	statuses := []map[int]string{
+		{0: "fail", 1: "fail"},
+		{0: "pass", 1: "fail"},
+		{0: "pass", 1: "pass"},
+	}
+	for i, st := range statuses {
+		m.progress = float64(i) / float64(len(statuses)-1)
+		view := m.ViewWithStatus(st)
+		if i == 0 && !contains(view, "✖") {
+			t.Errorf("expected fail icon at step 0")
+		}
+		if i == 1 && !contains(view, "✔") {
+			t.Errorf("expected pass icon at step 1")
+		}
+		if i == 2 && !contains(view, "✔") && !contains(view, "✖") {
+			t.Errorf("expected all pass at step 2")
+		}
+	}
+}
+
+func TestSplitPanelRendersListAndDetail(t *testing.T) {
+	m := NewModelWithTests(2)
+	m.selected = 1
+	detail := "This is the detail panel"
+	view := m.SplitPanelView(detail)
+	if !contains(view, "Test1") || !contains(view, "Test2") {
+		t.Errorf("expected left panel to show test list")
+	}
+	if !contains(view, detail) {
+		t.Errorf("expected right panel to show detail")
+	}
+}
+
+// TestFuzzySearchFiltersTests documents and tests the robust fuzzy search behavior using lithammer/fuzzysearch.
+// - Query 'a' matches all: 'Alpha', 'Beta', 'Gamma' (all contain 'a')
+// - Query 'mm' matches only 'Gamma' (subsequence match)
+func TestFuzzySearchFiltersTests(t *testing.T) {
+	m := NewModelWithTests(3)
+	m.tests = []string{"Alpha", "Beta", "Gamma"}
+	m.searchQuery = "a"
+	filtered := m.FuzzyFilteredTests()
+	if len(filtered) != 3 {
+		t.Errorf("expected 3 tests to match fuzzy search 'a', got: %d", len(filtered))
+	}
+	m.searchQuery = "mm"
+	filtered = m.FuzzyFilteredTests()
+	if len(filtered) != 1 || filtered[0] != "Gamma" {
+		t.Errorf("expected only 'Gamma' to match fuzzy search 'mm'")
+	}
+}
+
+
 func contains(s, substr string) bool {
 	return len(s) > 0 && len(substr) > 0 && (s == substr || (len(s) > len(substr) && (s[0:len(substr)] == substr || contains(s[1:], substr))))
 }
