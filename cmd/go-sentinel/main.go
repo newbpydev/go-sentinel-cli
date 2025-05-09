@@ -10,6 +10,7 @@ import (
 
 	clipboard "github.com/atotto/clipboard"
 	"github.com/yourusername/go-sentinel/internal/ui"
+	"github.com/yourusername/go-sentinel/internal/parser"
 )
 
 func main() {
@@ -23,11 +24,14 @@ func main() {
 	resultsCh := make(chan []ui.TestResult, 2)
 	requestCh := make(chan struct{}, 2)
 
-	// Simulated runner/controller goroutine
+	// Real runner/controller goroutine
 	go func() {
 		for range requestCh {
-			time.Sleep(400 * time.Millisecond) // Simulate test run delay
-			resultsCh <- staticResults
+			results, err := parser.ParseTestResults()
+			if err != nil || len(results) == 0 {
+				results = staticResults // fallback for dev/demo
+			}
+			resultsCh <- results
 		}
 	}()
 
@@ -36,8 +40,33 @@ func main() {
 	filterFailures := false
 	results := staticResults
 
-	// Initial run
+	// Initial run: block until real results are loaded, show loading/progress bar
 	requestCh <- struct{}{}
+	loadingDone := make(chan struct{})
+	var loadResults []ui.TestResult
+	go func() {
+		loadResults = <-resultsCh
+		close(loadingDone)
+	}()
+	progress := []string{"|", "/", "-", "\\"}
+	idx := 0
+	fmt.Print("Loading test results: ")
+	for {
+		select {
+		case <-loadingDone:
+			break
+		default:
+			fmt.Printf("%s\r", progress[idx%len(progress)])
+			time.Sleep(120 * time.Millisecond)
+			idx++
+		}
+		if len(loadResults) > 0 {
+			break
+		}
+	}
+	fmt.Print("\r\033[K") // clear loading line
+	results = loadResults
+	uiState.SetResults(results)
 
 	for {
 		// Wait for new results from runner
