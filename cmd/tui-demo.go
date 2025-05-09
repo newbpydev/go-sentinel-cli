@@ -8,6 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/bubbles/progress"
+	"github.com/atotto/clipboard"
 	"github.com/yourusername/go-sentinel/internal/tui"
 )
 
@@ -54,13 +55,20 @@ func (m DemoModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.quit = true
 			return m, tea.Quit
 		case "/":
-			m.SetMode("search")
-			m.detail = "Type to filter tests. Press Esc to exit search."
+			if m.GetMode() == "search" {
+				m.SetMode("normal")
+				m.detail = ""
+			} else {
+				m.SetMode("search")
+				m.detail = "Type to filter tests. Press Esc to exit search."
+			}
 			return m, nil
 		case "esc":
-			m.SetMode("normal")
-			m.SetSearchQuery("")
-			m.detail = ""
+			if m.GetSearchQuery() != "" {
+				m.SetSearchQuery("")
+				m.SetMode("normal")
+				m.detail = ""
+			}
 			return m, nil
 		case "up", "k":
 			if m.GetSelected() > 0 {
@@ -89,9 +97,16 @@ func (m DemoModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case "a":
+			// Only allow select all in normal mode
+			if m.GetMode() != "normal" {
+				return m, nil
+			}
 			filtered := m.FuzzyFilteredTests()
 			if len(filtered) == 0 {
 				return m, nil
+			}
+			if m.selectedMap == nil {
+				m.selectedMap = make(map[string]bool)
 			}
 			allSelected := true
 			for _, t := range filtered {
@@ -110,6 +125,26 @@ func (m DemoModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.selectedMap[t] = true
 				}
 				m.statusMsg = "Selected all"
+			}
+			return m, nil
+		case "c":
+			// Copy selected test names to clipboard
+			var selected []string
+			for test := range m.selectedMap {
+				if m.selectedMap[test] {
+					selected = append(selected, test)
+				}
+			}
+			if len(selected) == 0 {
+				m.statusMsg = "No tests selected to copy"
+				return m, nil
+			}
+			clipText := strings.Join(selected, "\n")
+			err := clipboard.WriteAll(clipText)
+			if err != nil {
+				m.statusMsg = "Clipboard error: " + err.Error()
+			} else {
+				m.statusMsg = fmt.Sprintf("Copied %d tests!", len(selected))
 			}
 			return m, nil
 		}
@@ -136,9 +171,12 @@ func (m DemoModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m DemoModel) View() string {
 	var sb strings.Builder
 	// Header with search mode indicator
-	header := "[q] quit  [/] search  [esc] clear search  [j/k/up/down] move  Live updates: progress bar below"
+	header := "[q] quit  [/] search  [j/k/up/down] move  Live updates: progress bar below"
 	if m.GetMode() == "search" {
 		header = "[SEARCH MODE] " + header
+	}
+	if m.GetSearchQuery() != "" {
+		header = header[:strings.Index(header, "[")] + "[esc] clear search  " + header[strings.Index(header, "["):]
 	}
 	sb.WriteString(m.Model.LogoView())
 	sb.WriteString("\n")
