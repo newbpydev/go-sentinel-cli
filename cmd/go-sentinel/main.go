@@ -67,6 +67,41 @@ func main() {
 				label = "\x1b[41m\x1b[30m FAIL \x1b[0m"
 			}
 			fmt.Fprintf(output, "%s %s\n", label, r.Summary)
+			if !r.Passed {
+				// Print failure message
+				if r.Message != "" {
+					fmt.Fprintf(output, "    %s\n", r.Message)
+				}
+				// Print code snippet if file and line are available
+				if r.File != "" && r.Line > 0 {
+					file, err := os.Open(r.File)
+					if err == nil {
+						defer file.Close()
+						scanner := bufio.NewScanner(file)
+						var lines []string
+						for scanner.Scan() {
+							lines = append(lines, scanner.Text())
+						}
+						start := r.Line - 3
+						if start < 0 { start = 0 }
+						end := r.Line + 2
+						if end > len(lines) { end = len(lines) }
+						for i := start; i < end; i++ {
+							lnum := i + 1
+							code := lines[i]
+							arrow := "  "
+							prefix := ""
+							reset := ""
+							if lnum == r.Line {
+								arrow = "> "
+								prefix = "\x1b[41m"
+								reset = "\x1b[0m"
+							}
+							fmt.Fprintf(output, "%s%3d |\t%s%s%s\n", arrow, lnum, prefix, code, reset)
+						}
+					}
+				}
+			}
 		}
 
 		// Failure context when filtering failures or if any failures are visible
