@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/atotto/clipboard"
+	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/bubbles/progress"
-	"github.com/atotto/clipboard"
 	"github.com/yourusername/go-sentinel/internal/tui"
 )
 
@@ -210,8 +210,7 @@ func highlightQuery(target, query string) string {
 }
 
 func (m DemoModel) View() string {
-	var sb strings.Builder
-	// Header with search mode indicator
+	// Header Panel
 	header := "[q] quit  [/] search  [j/k/up/down] move  Live updates: progress bar below"
 	if m.GetMode() == "search" {
 		header = "[SEARCH MODE] " + header
@@ -219,13 +218,28 @@ func (m DemoModel) View() string {
 	if m.GetSearchQuery() != "" {
 		header = header[:strings.Index(header, "[")] + "[esc] clear search  " + header[strings.Index(header, "["):]
 	}
-	sb.WriteString(m.Model.LogoView())
-	sb.WriteString("\n")
-	sb.WriteString(header + "\n\n")
+	// Header Panel (logo only)
+	headerPanel := tui.Panel{
+		Content: []string{m.Model.LogoView()},
+		Options: tui.PanelOptions{
+			Flex:        false,
+			Padding:     1,
+			Border:      true,
+			BorderStyle: lipgloss.NormalBorder(),
+			BorderColor: lipgloss.Color("245"),
+		},
+	}
 
-	// Always render search bar above the list (avoid layout shift)
-	searchBar := fmt.Sprintf("\x1b[36mSearch [/]\x1b[0m: %s\n", m.GetSearchQuery())
-	sb.WriteString(searchBar)
+	// Search Bar Panel
+	searchBarPanel := tui.Panel{
+		Content: []string{fmt.Sprintf("\x1b[36mSearch [/]\x1b[0m: %s", m.GetSearchQuery())},
+		Options: tui.PanelOptions{
+			Padding:     0,
+			Border:      true,
+			BorderStyle: lipgloss.NormalBorder(),
+			BorderColor: lipgloss.Color("245"),
+		},
+	}
 
 	// Prepare left panel (test list)
 	filtered := m.FuzzyFilteredTests()
@@ -243,15 +257,14 @@ func (m DemoModel) View() string {
 		leftLines[i] = fmt.Sprintf("%s%s %s", prefix, checked, highlightQuery(t, m.GetSearchQuery()))
 	}
 	leftPanel := tui.Panel{
-		Content:  leftLines,
+		Content: leftLines,
 		Options: tui.PanelOptions{
 			Title:       "Tests",
-			Padding:     1,
 			Border:      true,
 			BorderStyle: lipgloss.RoundedBorder(),
 			BorderColor: lipgloss.Color("63"),
 			TitleStyle:  lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("228")),
-			Width:       28,
+			Grow:        1,
 		},
 	}
 
@@ -268,42 +281,88 @@ func (m DemoModel) View() string {
 		rightLines = []string{"No test selected."}
 	}
 	rightPanel := tui.Panel{
-		Content:  rightLines,
+		Content: rightLines,
 		Options: tui.PanelOptions{
 			Title:       "Details",
-			Padding:     1,
 			Border:      true,
 			BorderStyle: lipgloss.RoundedBorder(),
 			BorderColor: lipgloss.Color("63"),
 			TitleStyle:  lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("228")),
-			Width:       38,
+			Grow:        1,
 		},
 	}
 
-	// Render both panels side by side, line by line
-	leftRendered := leftPanel.Render()
-	rightRendered := rightPanel.Render()
-	maxLines := len(leftRendered)
-	if len(rightRendered) > maxLines {
-		maxLines = len(rightRendered)
-	}
-	for len(leftRendered) < maxLines {
-		leftRendered = append(leftRendered, strings.Repeat(" ", 28+4)) // width + borders
-	}
-	for len(rightRendered) < maxLines {
-		rightRendered = append(rightRendered, strings.Repeat(" ", 38+4))
-	}
-	for i := 0; i < maxLines; i++ {
-		sb.WriteString(leftRendered[i] + " " + rightRendered[i] + "\n")
+	// Main Body Panel (row: left + right, fills all available space)
+	bodyPanel := tui.Panel{
+		Options: tui.PanelOptions{
+			Flex:          true,
+			FlexDirection: "row",
+			Gap:           2,
+			Grow:          1, // fills all available vertical space
+			Padding:       0,
+			Border:        true,
+			BorderStyle:   lipgloss.NormalBorder(),
+			BorderColor:   lipgloss.Color("245"),
+		},
+		Children: []*tui.Panel{&leftPanel, &rightPanel},
 	}
 
-	// Fancy animated progress bar
-	sb.WriteString(m.progress.ViewAs(m.GetProgress()))
-	// Status message (if any)
-	if m.statusMsg != "" {
-		sb.WriteString("\n" + m.statusMsg + "\n")
+	// Progress Bar Panel
+	progressPanel := tui.Panel{
+		Content: []string{m.progress.ViewAs(m.GetProgress())},
+		Options: tui.PanelOptions{
+			Padding:     0,
+			Border:      true,
+			BorderStyle: lipgloss.NormalBorder(),
+			BorderColor: lipgloss.Color("245"),
+		},
 	}
-	return sb.String()
+
+	// Status Message Panel
+	statusPanel := tui.Panel{
+		Content: []string{m.statusMsg},
+		Options: tui.PanelOptions{
+			Padding:     0,
+			Border:      true,
+			BorderStyle: lipgloss.NormalBorder(),
+			BorderColor: lipgloss.Color("245"),
+		},
+	}
+
+	// Footer Panel (info/helper keys)
+	footerPanel := tui.Panel{
+		Content: []string{"[q] quit  [/] search  [j/k/up/down] move  Live updates: progress bar below"},
+		Options: tui.PanelOptions{
+			Padding:     0,
+			Border:      true,
+			BorderStyle: lipgloss.NormalBorder(),
+			BorderColor: lipgloss.Color("245"),
+		},
+	}
+
+	// Root Panel (column: header, search, body, progress, status, footer)
+	rootPanel := tui.Panel{
+		Options: tui.PanelOptions{
+			Flex:          true,
+			FlexDirection: "column",
+			Gap:           1,
+			Padding:       0,
+			Border:        true,
+			BorderStyle:   lipgloss.NormalBorder(),
+			BorderColor:   lipgloss.Color("245"),
+		},
+		Children: []*tui.Panel{
+			&headerPanel,
+			&searchBarPanel,
+			&bodyPanel,
+			&progressPanel,
+			&statusPanel,
+			&footerPanel,
+		},
+	}
+
+	lines := rootPanel.Render()
+	return strings.Join(lines, "\n")
 }
 
 func main() {
