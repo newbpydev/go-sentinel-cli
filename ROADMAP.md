@@ -114,7 +114,8 @@ This roadmap is the single source of truth for Go Sentinel's development. All wo
     > CLI UI and runner/controller now communicate via Go channels and goroutines; event-driven updates and responsive UI loop implemented.
 
   - [x] 4.2.5. Implement clipboard integration for test failures
-  - [ ] 4.2.6. Create interactive test selection mode with visual indicators
+  - [x] 4.2.6. Create interactive test selection mode with visual indicators
+    > Interactive selection mode with visual indicators, keybindings, and clipboard integration implemented and tested.
   - [ ] 4.2.7. (Future) Integrate TUI framework (Bubble Tea/tview)
 
 ---
