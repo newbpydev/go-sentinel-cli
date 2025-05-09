@@ -50,6 +50,40 @@ func (m DemoModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.progress = progressModel.(progress.Model)
 		return m, cmd
 	case tea.KeyMsg:
+		if m.GetMode() == "search" {
+			switch msg.String() {
+			case "/":
+				// Toggle out of search mode
+				m.SetMode("normal")
+				m.detail = ""
+				return m, nil
+			case "esc":
+				// Clear search and exit
+				if m.GetSearchQuery() != "" {
+					m.SetSearchQuery("")
+					m.SetMode("normal")
+					m.detail = ""
+				}
+				return m, nil
+			case "backspace", "delete":
+				q := m.GetSearchQuery()
+				if len(q) > 0 {
+					q = q[:len(q)-1]
+					m.SetSearchQuery(q)
+					m.detail = "Search: " + m.GetSearchQuery()
+					m.SetSelected(0)
+				}
+				return m, nil
+			default:
+				if msg.Type == tea.KeyRunes {
+					q := m.GetSearchQuery() + msg.String()
+					m.SetSearchQuery(q)
+					m.detail = "Search: " + m.GetSearchQuery()
+					m.SetSelected(0)
+				}
+				return m, nil
+			}
+		}
 		switch msg.String() {
 		case "q", "ctrl+c":
 			m.quit = true
@@ -148,24 +182,30 @@ func (m DemoModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
-		if m.GetMode() == "search" {
-			q := m.GetSearchQuery()
-			switch msg.Type {
-			case tea.KeyBackspace, tea.KeyDelete:
-				if len(q) > 0 {
-					q = q[:len(q)-1]
-				}
-			case tea.KeyRunes:
-				q += msg.String()
-			}
-			m.SetSearchQuery(q)
-			m.detail = "Search: " + m.GetSearchQuery()
-			// Reset selection to top of filtered list
-			m.SetSelected(0)
-			return m, nil
-		}
+		return m, nil
 	}
 	return m, nil
+}
+
+// highlightQuery colors all characters of query as a fuzzy subsequence in target (case-insensitive, cyan)
+func highlightQuery(target, query string) string {
+	tRunes := []rune(target)
+	qRunes := []rune(query)
+	if len(qRunes) == 0 {
+		return target
+	}
+	res := ""
+	j := 0
+	for i := 0; i < len(tRunes); i++ {
+		if j < len(qRunes) && (tRunes[i] == qRunes[j] || strings.ToLower(string(tRunes[i])) == strings.ToLower(string(qRunes[j]))) {
+			// Color match cyan
+			res += "\x1b[36m" + string(tRunes[i]) + "\x1b[0m"
+			j++
+		} else {
+			res += string(tRunes[i])
+		}
+	}
+	return res
 }
 
 func (m DemoModel) View() string {
@@ -186,6 +226,7 @@ func (m DemoModel) View() string {
 	// Render left and right panels as slices of lines
 	leftLines := []string{}
 	filtered := m.FuzzyFilteredTests()
+	query := m.GetSearchQuery()
 	for i, t := range filtered {
 		cursor := "  "
 		if i == m.GetSelected() {
@@ -195,7 +236,11 @@ func (m DemoModel) View() string {
 		if m.selectedMap != nil && m.selectedMap[t] {
 			check = "[x]"
 		}
-		leftLines = append(leftLines, fmt.Sprintf("%s%s %s", cursor, check, t))
+		name := t
+		if m.GetMode() == "search" && query != "" {
+			name = highlightQuery(t, query)
+		}
+		leftLines = append(leftLines, fmt.Sprintf("%s%s %s", cursor, check, name))
 	}
 	if len(leftLines) == 0 {
 		leftLines = append(leftLines, "(no tests)")
@@ -203,50 +248,33 @@ func (m DemoModel) View() string {
 
 	rightLines := []string{"No test selected."}
 	if len(filtered) > 0 && m.GetSelected() < len(filtered) {
-		testName := filtered[m.GetSelected()]
-		log, ok := m.logs[testName]
-		if !ok {
-			rightLines = []string{fmt.Sprintf("No log for %s", testName)}
+		sel := filtered[m.GetSelected()]
+		if log, ok := m.logs[sel]; ok {
+			rightLines = []string{log}
 		} else {
-			rightLines = append([]string{fmt.Sprintf("Details for %s", testName), "---"}, strings.Split(log, "\n")...)
+			rightLines = []string{"---"}
 		}
 	}
 
-	// Panel width config
-	leftWidth := 18
-	rightWidth := 40
-	panelGap := "  "
+	// Pad panels to same height
 	maxLines := len(leftLines)
 	if len(rightLines) > maxLines {
 		maxLines = len(rightLines)
 	}
+	for len(leftLines) < maxLines {
+		leftLines = append(leftLines, "")
+	}
+	for len(rightLines) < maxLines {
+		rightLines = append(rightLines, "")
+	}
 
-	// Render both panels side by side
+	// Always render search bar above the list (avoid layout shift)
+	searchBar := fmt.Sprintf("\x1b[36mSearch [/]\x1b[0m: %s\n", m.GetSearchQuery())
+
+	// Render side by side
+	sb.WriteString(searchBar)
 	for i := 0; i < maxLines; i++ {
-		var left, right string
-		if i < len(leftLines) {
-			left = leftLines[i]
-		} else {
-			left = ""
-		}
-		if i < len(rightLines) {
-			right = rightLines[i]
-		} else {
-			right = ""
-		}
-		// Pad left panel to leftWidth
-		if len(left) < leftWidth {
-			left = left + strings.Repeat(" ", leftWidth-len(left))
-		} else if len(left) > leftWidth {
-			left = left[:leftWidth]
-		}
-		// Pad right panel to rightWidth (optional)
-		if len(right) < rightWidth {
-			right = right + strings.Repeat(" ", rightWidth-len(right))
-		} else if len(right) > rightWidth {
-			right = right[:rightWidth]
-		}
-		sb.WriteString(left + panelGap + right + "\n")
+		sb.WriteString(fmt.Sprintf("%-30s │ %s\n", leftLines[i], rightLines[i]))
 	}
 
 	// Fancy animated progress bar
@@ -279,8 +307,9 @@ func main() {
 		logs:     logs,
 	}
 	m.SetTests([]string{"Alpha", "Beta", "Gamma", "TestFoo", "TestBar", "TestBaz", "Delta", "Omega", "Lambda"})
-	if _, err := tea.NewProgram(m).Run(); err != nil {
-		fmt.Fprintln(os.Stderr, "Error running TUI demo:", err)
+	p := tea.NewProgram(m, tea.WithAltScreen())
+	if err := p.Start(); err != nil {
+		fmt.Println("Error running TUI demo:", err)
 		os.Exit(1)
 	}
 }
