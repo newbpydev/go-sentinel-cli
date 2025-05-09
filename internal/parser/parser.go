@@ -28,6 +28,8 @@ func ParseTestResults() ([]ui.TestResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Suppress stderr from leaking to terminal
+	cmd.Stderr = nil
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
