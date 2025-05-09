@@ -5,6 +5,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	"fmt"
 	"github.com/sahilm/fuzzy"
+	"io"
 )
 
 // TUITestExplorerModel is the Bubble Tea model for the tree-based test explorer.
@@ -18,6 +19,8 @@ type TUITestExplorerModel struct {
 	SearchActive bool
 	SearchInput string
 	FilteredItems []list.Item
+	// Modal state
+	ShowHelpModal bool
 } 
 
 // TreeNode represents a node in the test tree (suite/file/test)
@@ -37,15 +40,47 @@ type treeItem struct {
 	node *TreeNode
 }
 
-func (ti treeItem) Title() string    { return ti.node.Title }
+func (ti treeItem) Title() string {
+	icon := ""
+	switch {
+	case ti.node.Level == 0:
+		icon = "📦"
+	case len(ti.node.Children) > 0:
+		icon = "📁"
+	default:
+		icon = "🧪"
+	}
+	indent := ""
+	for i := 0; i < ti.node.Level; i++ {
+		indent += "  "
+	}
+	return indent + icon + " " + ti.node.Title
+}
 func (ti treeItem) Description() string { return "" }
 func (ti treeItem) FilterValue() string { return ti.node.Title }
 
 // NewTUITestExplorerModel creates a new TUI model with the given tree.
+type treeItemDelegate struct{}
+
+func (d treeItemDelegate) Height() int          { return 1 }
+func (d treeItemDelegate) Spacing() int         { return 0 }
+func (d treeItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd { return nil }
+func (d treeItemDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
+	title := item.(treeItem).Title()
+	selected := m.Index() == index
+	if selected {
+		fmt.Fprintf(w, "> %s", title)
+	} else {
+		fmt.Fprintf(w, "  %s", title)
+	}
+}
+
 func NewTUITestExplorerModel(root *TreeNode) TUITestExplorerModel {
 	items := flattenTree(root)
-	l := list.New(items, list.NewDefaultDelegate(), 30, 20)
-	l.Title = "Test Explorer"
+
+dlgt := treeItemDelegate{}
+l := list.New(items, dlgt, 30, 20)
+l.Title = "Test Explorer"
 	return TUITestExplorerModel{
 		Sidebar: l,
 		Items: items,
@@ -58,17 +93,19 @@ func NewTUITestExplorerModel(root *TreeNode) TUITestExplorerModel {
 // flattenTree returns a flat slice of treeItems for visible nodes
 func flattenTree(root *TreeNode) []list.Item {
 	var items []list.Item
-	var walk func(node *TreeNode)
-	walk = func(node *TreeNode) {
+	var walk func(node *TreeNode, level int, parent *TreeNode)
+	walk = func(node *TreeNode, level int, parent *TreeNode) {
 		if node == nil { return }
+		node.Level = level
+		node.Parent = parent
 		items = append(items, treeItem{node})
 		if node.Expanded {
 			for _, child := range node.Children {
-				walk(child)
+				walk(child, level+1, node)
 			}
 		}
 	}
-	walk(root)
+	walk(root, 0, nil)
 	return items
 }
 
@@ -78,6 +115,18 @@ func (m TUITestExplorerModel) Init() tea.Cmd {
 }
 
 func (m TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Help modal open: only handle modal keys
+	if m.ShowHelpModal {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "q", "esc":
+				m.ShowHelpModal = false
+			}
+		}
+		return m, nil
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if m.SearchActive {
@@ -111,6 +160,10 @@ func (m TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.SelectedIndex = 0
 				m.Sidebar.Select(0)
 			}
+			return m, nil
+		}
+		if msg.String() == "?" {
+			m.ShowHelpModal = true
 			return m, nil
 		}
 		switch msg.String() {
@@ -172,6 +225,24 @@ func (m TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m TUITestExplorerModel) View() string {
+	statusBar := "↑/k up • ↓/j down • / filter • q quit • ? help"
+	if m.ShowHelpModal {
+		help := ""
+		help += "┌────────────────────────────── Go-Sentinel Help ──────────────────────────────┐\n"
+		help += "│  Keybindings:                                                             │\n"
+		help += "│  ↑/k up    ↓/j down   / filter   q quit   ? help   Enter details            │\n"
+		help += "│                                                                            │\n"
+		help += "│  Navigation:                                                               │\n"
+		help += "│    - Use ↑/k and ↓/j to move selection                                     │\n"
+		help += "│    - Press / to filter/search                                              │\n"
+		help += "│    - Press Enter to view details                                           │\n"
+		help += "│    - Press q to quit, ? for help                                           │\n"
+		help += "│                                                                            │\n"
+		help += "│  Press q or Esc to close this help.                                        │\n"
+		help += "└────────────────────────────────────────────────────────────────────────────┘\n"
+		return help + "\n" + statusBar
+	}
+
 	var mainPane string
 	if len(m.Items) > 0 && m.SelectedIndex < len(m.Items) {
 		item := m.Items[m.SelectedIndex].(treeItem)
@@ -184,7 +255,7 @@ func (m TUITestExplorerModel) View() string {
 		searchBar = fmt.Sprintf("/ %s", m.SearchInput)
 	}
 	sidebar := m.Sidebar.View()
-return fmt.Sprintf("%s\n%s\n%s", sidebar, searchBar, mainPane)
+	return fmt.Sprintf("%s\n%s\n%s\n%s", sidebar, searchBar, mainPane, statusBar)
 } 
 
 // --- Test helpers for TDD ---

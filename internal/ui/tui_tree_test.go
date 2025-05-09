@@ -1,23 +1,22 @@
-package ui_test
+package ui
 
 import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
-	ui "github.com/newbpydev/go-sentinel/internal/ui"
 )
 
 // TestTUITreeSidebar_RenderInitialTree ensures the tree sidebar renders test suites/files/tests correctly.
 
 func TestTUITreeSidebar_RenderInitialTree(t *testing.T) {
-	model := ui.NewTUITestExplorerModel(mockTestTree())
+	model := NewTUITestExplorerModel(mockTestTree())
 	if !model.SidebarHasTree() {
 		t.Errorf("sidebar did not render tree structure as expected")
 	}
 }
 
 func TestTUITreeSidebar_IndentationAndIcons(t *testing.T) {
-	model := ui.NewTUITestExplorerModel(mockTestTree())
+	model := NewTUITestExplorerModel(mockTestTree())
 	output := model.Sidebar.View()
 	// Check for icons and indentation
 	if !contains(output, "📦 root") {
@@ -43,7 +42,7 @@ func contains(s, substr string) bool {
 
 
 func TestTUITreeSidebar_VIMNavigation(t *testing.T) {
-	model := ui.NewTUITestExplorerModel(mockTestTree())
+	model := NewTUITestExplorerModel(mockTestTree())
 	model.SelectedIndex = 1 // move down
 	model.SelectedIndex = 0 // move up
 	if !model.VIMNavigationWorked() {
@@ -52,7 +51,7 @@ func TestTUITreeSidebar_VIMNavigation(t *testing.T) {
 }
 
 func TestTUITreeSidebar_QuitKey(t *testing.T) {
-	model := ui.NewTUITestExplorerModel(mockTestTree())
+	model := NewTUITestExplorerModel(mockTestTree())
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}}
 	_, cmd := model.Update(msg)
 	if cmd == nil {
@@ -61,7 +60,7 @@ func TestTUITreeSidebar_QuitKey(t *testing.T) {
 }
 
 func TestTUITreeSidebar_EnterShowsDetails(t *testing.T) {
-	model := ui.NewTUITestExplorerModel(mockTestTree())
+	model := NewTUITestExplorerModel(mockTestTree())
 	model.SelectedIndex = 1 // select second test
 	if !model.MainPaneShowsTestDetails() {
 		t.Errorf("main pane did not show test details after Enter")
@@ -69,7 +68,7 @@ func TestTUITreeSidebar_EnterShowsDetails(t *testing.T) {
 }
 
 func TestTUITreeSidebar_FilterSearch(t *testing.T) {
-	model := ui.NewTUITestExplorerModel(mockTestTree())
+	model := NewTUITestExplorerModel(mockTestTree())
 	if !model.SidebarFiltered("foo") {
 		t.Errorf("sidebar did not filter by search term as expected")
 	}
@@ -79,20 +78,20 @@ func TestTUITreeSidebar_FilterSearch(t *testing.T) {
 
 // --- Helpers ---
 
-func mockTestTree() *ui.TreeNode {
-	return &ui.TreeNode{
+func mockTestTree() *TreeNode {
+	return &TreeNode{
 		Title:    "root",
 		Expanded: true,
-		Children: []*ui.TreeNode{
+		Children: []*TreeNode{
 			{
 				Title:    "pkg/foo",
 				Expanded: true,
-				Children: []*ui.TreeNode{{Title: "TestAlpha"}, {Title: "TestBeta"}},
+				Children: []*TreeNode{{Title: "TestAlpha"}, {Title: "TestBeta"}},
 			},
 			{
 				Title:    "pkg/bar",
 				Expanded: true,
-				Children: []*ui.TreeNode{{Title: "TestGamma"}},
+				Children: []*TreeNode{{Title: "TestGamma"}},
 			},
 		},
 	}
