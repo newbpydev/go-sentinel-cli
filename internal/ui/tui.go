@@ -112,9 +112,10 @@ func (d treeItemDelegate) Render(w io.Writer, m list.Model, index int, item list
 		colored = title
 	}
 
-	// Apply selection styling
+	// Apply pointer for selection instead of highlight
+	pointer := "➤"
 	if selected {
-		fmt.Fprint(w, SelectedItemStyle.Render(" "+colored+" "))
+		fmt.Fprintf(w, "%s %s", pointer, colored)
 	} else {
 		fmt.Fprintf(w, "  %s", colored)
 	}
