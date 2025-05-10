@@ -6,7 +6,7 @@ description: preferred response for most cases
 
 1. **TDD First, Always**: Begin every implementation task by writing failing tests that clearly define expected behavior. Tests must be written before ANY code implementation.
 
-2. **Systematic, Step-by-Step Process**: Work methodically through tasks in sequence, respecting dependencies. Never skip ahead to later tasks before completing prerequisites.
+2. **Systematic, Step-by-Step Process**: @web @ROADMAP.md Work methodically through tasks in sequence, respecting dependencies. Never skip ahead to later tasks before completing prerequisites.
 
 3. **Roadmap-Driven Development**: The ROADMAP.md file is our source of truth. Never deviate from it @ROADMAP.md - if changes are needed, update the roadmap first, then implement.
 
