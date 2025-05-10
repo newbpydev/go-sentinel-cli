@@ -59,12 +59,13 @@ func (ti treeItem) Title() string {
 	switch {
 	case ti.node.Level == 0:
 		icon = "📦"
+	case ti.node.Error == "skip":
+		icon = "📁" // skipped folders are folders
 	case len(ti.node.Children) > 0:
 		icon = "📁"
 	default:
 		icon = "🧪"
 		// Try to extract test name from summary/title
-		// If Title is like "ok   pkg/foo/TestAlpha" or "FAIL pkg/foo/TestBeta"
 		if ti.node.Title != "" {
 			parts := strings.Split(ti.node.Title, "/")
 			if len(parts) > 1 {
@@ -106,6 +107,13 @@ func (d treeItemDelegate) Render(w io.Writer, m list.Model, index int, item list
 	case treeItem.node.Passed != nil && !*treeItem.node.Passed:
 		// Failing test
 		colored = lipgloss.NewStyle().Foreground(AccentRed).Render(title)
+	case treeItem.node.Error == "skip":
+		// Skipped/no-test folder
+		label := title
+		if !strings.Contains(label, "(skipped)") {
+			label += " (skipped)"
+		}
+		colored = lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render(label)
 	case treeItem.node.Level == 0:
 		// Root node
 		colored = lipgloss.NewStyle().Foreground(AccentBlue).Render(title)
@@ -129,7 +137,7 @@ func NewTUITestExplorerModel(root *TreeNode) TUITestExplorerModel {
 	items := flattenTree(root)
 
 	dlgt := treeItemDelegate{}
-	l := list.New(items, dlgt, 30, 20)
+	l := list.New(items, dlgt, 50, 20) // wider list for test names
 	l.Title = "Test Explorer"
 	return TUITestExplorerModel{
 		Sidebar:         l,
@@ -137,7 +145,7 @@ func NewTUITestExplorerModel(root *TreeNode) TUITestExplorerModel {
 		Tree:            root,
 		SelectedIndex:   0,
 		MainPaneContent: "",
-		Width:           80, // default, will be set on first WindowSizeMsg
+		Width:           100, // wider default
 		Height:          24, // default, will be set on first WindowSizeMsg
 	}
 } // Default size, updated on resize
@@ -287,10 +295,10 @@ func (m TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m TUITestExplorerModel) View() string {
 	// Layout constants
-	minSidebarWidth := 40 // was 24
+	minSidebarWidth := 50 // was 40, make wider
 	minMainWidth := 30
 	minHeight := 10
-	maxSidebarWidth := 60 // was 40
+	maxSidebarWidth := 80 // was 60, make wider
 
 	width := m.Width
 	height := m.Height
@@ -314,8 +322,9 @@ func (m TUITestExplorerModel) View() string {
 		mainHeight = 3
 	}
 	// Compose panes with Lipgloss
-	// Header
-	header := HeaderStyle.Width(width).Render("Go-Sentinel Test Explorer")
+	// Header: centered, bold logo on full terminal width (no highlight)
+	logoText := "Go-Sentinel Test Explorer"
+	centeredLogo := HeaderStyle.Bold(true).Width(m.Width).Align(lipgloss.Center).Render(logoText)
 
 	// Search bar - always visible above the sidebar list
 	searchInput := m.SearchInput
@@ -330,12 +339,12 @@ func (m TUITestExplorerModel) View() string {
 	}
 	searchBar := searchBarStyle.Render(searchPrompt + searchInput)
 
-	// Sidebar always has search bar at the top
+	// Sidebar always has search bar at the top (no logo in sidebar)
 	sidebarContent := m.Sidebar.View()
-	sidebarWithSearch := searchBar + "\n" + sidebarContent
+	sidebarWithHeader := searchBar + "\n" + sidebarContent
 
 	// Sidebar with search bar integrated
-	sidebar := SidebarStyle.Width(sidebarWidth).Height(mainHeight).Render(sidebarWithSearch)
+	sidebar := SidebarStyle.Width(sidebarWidth).Height(mainHeight).Render(sidebarWithHeader)
 
 	// Main pane
 	mainPaneContent := "[MainPane: details placeholder]"
@@ -355,8 +364,8 @@ func (m TUITestExplorerModel) View() string {
 		Align(lipgloss.Center). // Center the text
 		Render(footerContent)
 
-	// Full layout (no separate searchBar since it's now integrated in the sidebar)
-	layout := lipgloss.JoinVertical(lipgloss.Left, header, row, footer)
+	// Full layout: header/logo at top, then row, then footer
+	layout := lipgloss.JoinVertical(lipgloss.Left, centeredLogo, row, footer)
 	return layout
 }
 
