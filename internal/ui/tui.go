@@ -361,13 +361,24 @@ func (m TUITestExplorerModel) View() string {
 		selectedItem, ok := m.Items[m.SelectedIndex].(treeItem)
 		if ok && selectedItem.node != nil && len(selectedItem.node.Children) > 0 {
 			pkg := selectedItem.node
-			covValue := AverageCoverage(pkg.Children)
+			covValue := pkg.Coverage
 			avgCoverage := FormatCoverage(covValue)
 			totalDuration := FormatDurationSmart(TotalDuration(pkg.Children))
 			// Set the animated coverage bar value
 			m.CoverageBar.SetCoverage(covValue)
-			bar := m.CoverageBar.View()
-			percentLabel := lipgloss.NewStyle().Foreground(AccentGreen).Render(avgCoverage)
+			// Animate bar color: red (0) to yellow (0.5) to green (1)
+			var barColor string
+			if covValue == 0 {
+				barColor = "240" // gray for no tests
+			} else if covValue < 0.5 {
+				barColor = "196" // red
+			} else if covValue < 0.8 {
+				barColor = "220" // yellow
+			} else {
+				barColor = "42" // green
+			}
+			bar := lipgloss.NewStyle().Foreground(lipgloss.Color(barColor)).Render(m.CoverageBar.View())
+			percentLabel := lipgloss.NewStyle().Foreground(lipgloss.Color(barColor)).Render(avgCoverage)
 			mainPaneContent = fmt.Sprintf("Package: %s\nCoverage: %s\n%s\nSuite Duration: %s\n\n", pkg.Title, percentLabel, bar, totalDuration)
 			for _, child := range pkg.Children {
 				if len(child.Children) == 0 { // leaf/test node

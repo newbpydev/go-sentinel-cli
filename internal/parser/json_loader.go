@@ -174,6 +174,35 @@ func ConvertTestResultsToTree(results []TestResult) *ui.TreeNode {
 		}
 		parent.Children = append(parent.Children, testNode)
 	}
+
+	// --- Coverage Calculation ---
+	var calcCoverage func(node *ui.TreeNode) (passed, total int)
+	calcCoverage = func(node *ui.TreeNode) (passed, total int) {
+		if len(node.Children) == 0 {
+			if node.Passed != nil {
+				total = 1
+				if *node.Passed {
+					passed = 1
+				}
+			}
+			return
+		}
+		aggPassed, aggTotal := 0, 0
+		for _, child := range node.Children {
+			p, t := calcCoverage(child)
+			aggPassed += p
+			aggTotal += t
+		}
+		if aggTotal > 0 {
+			node.Coverage = float64(aggPassed) / float64(aggTotal)
+		} else {
+			node.Coverage = 0.0
+		}
+		return aggPassed, aggTotal
+	}
+	for _, node := range topNodes {
+		calcCoverage(node)
+	}
 	// Wrap all top-level nodes in a dummy parent for TUI compatibility
 	return &ui.TreeNode{Title: "", Children: topNodes, Expanded: true}
 }
