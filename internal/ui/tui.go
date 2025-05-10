@@ -9,7 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/sahilm/fuzzy"
-)
+) // progressbar.go is part of the same package; no import needed
 
 // The styles and colors are defined in theme.go within the same package
 
@@ -29,6 +29,8 @@ type TUITestExplorerModel struct {
 	// Layout/size state
 	Width  int
 	Height int
+	// Animated coverage bar for details panel
+	CoverageBar AnimatedCoverageBar
 } // Now tracks terminal width/height
 
 // TreeNode represents a node in the test tree (suite/file/test)
@@ -147,6 +149,7 @@ func NewTUITestExplorerModel(root *TreeNode) TUITestExplorerModel {
 		MainPaneContent: "",
 		Width:           100, // wider default
 		Height:          24, // default, will be set on first WindowSizeMsg
+		CoverageBar:     NewAnimatedCoverageBar(),
 	}
 } // Default size, updated on resize
 
@@ -358,9 +361,14 @@ func (m TUITestExplorerModel) View() string {
 		selectedItem, ok := m.Items[m.SelectedIndex].(treeItem)
 		if ok && selectedItem.node != nil && len(selectedItem.node.Children) > 0 {
 			pkg := selectedItem.node
-			avgCoverage := FormatCoverage(AverageCoverage(pkg.Children))
+			covValue := AverageCoverage(pkg.Children)
+			avgCoverage := FormatCoverage(covValue)
 			totalDuration := FormatDurationSmart(TotalDuration(pkg.Children))
-			mainPaneContent = fmt.Sprintf("Package: %s\nCoverage: %s\nSuite Duration: %s\n\n", pkg.Title, avgCoverage, totalDuration)
+			// Set the animated coverage bar value
+			m.CoverageBar.SetCoverage(covValue)
+			bar := m.CoverageBar.View()
+			percentLabel := lipgloss.NewStyle().Foreground(AccentGreen).Render(avgCoverage)
+			mainPaneContent = fmt.Sprintf("Package: %s\nCoverage: %s\n%s\nSuite Duration: %s\n\n", pkg.Title, percentLabel, bar, totalDuration)
 			for _, child := range pkg.Children {
 				if len(child.Children) == 0 { // leaf/test node
 					status := "PASS"
