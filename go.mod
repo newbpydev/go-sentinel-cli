@@ -33,7 +33,7 @@ require (
 )
 
 require (
-	github.com/atotto/clipboard v0.1.4
+	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/charmbracelet/bubbletea v1.3.5
 	golang.org/x/sys v0.32.0 // indirect
 )
