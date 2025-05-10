@@ -362,24 +362,48 @@ func (m TUITestExplorerModel) View() string {
 	// Forcibly hide status bar and pagination every render
 	m.Sidebar.SetShowStatusBar(false)
 	m.Sidebar.SetShowPagination(true)
-	// Forcibly hide the help bar/footer in the sidebar list every render
-	m.Sidebar.Help.ShowAll = false
-	// No way to override Help.View in this version
+
+	// Main pane content: show package details if a folder is selected
+	mainPaneContent := ""
+	if m.SelectedIndex >= 0 && m.SelectedIndex < len(m.Items) {
+		selectedItem, ok := m.Items[m.SelectedIndex].(treeItem)
+		if ok && selectedItem.node != nil && len(selectedItem.node.Children) > 0 {
+			// It's a folder/package node
+			pkg := selectedItem.node
+			coverage := pkg.Coverage * 100
+			mainPaneContent = fmt.Sprintf("Package: %s\nCoverage: %.2f%%\n\n", pkg.Title, coverage)
+			for _, child := range pkg.Children {
+				if len(child.Children) == 0 { // leaf/test node
+					status := ""
+					color := ""
+					if child.Passed != nil && *child.Passed {
+						status = "PASS"
+						color = lipgloss.NewStyle().Foreground(AccentGreen).Render(status)
+					} else if child.Passed != nil && !*child.Passed {
+						status = "FAIL"
+						color = lipgloss.NewStyle().Foreground(AccentRed).Render(status)
+					} else {
+						status = "?"
+						color = status
+					}
+					icon := "✖"
+					if child.Passed != nil && *child.Passed {
+						icon = "✔"
+					}
+					mainPaneContent += fmt.Sprintf("%s %s (%.2fs)  %s\n", icon, child.Title, child.Duration, color)
+				}
+			}
+		}
+	}
+	if mainPaneContent == "" {
+		mainPaneContent = "details placeholder!"
+	}
+	mainPane := MainPaneStyle.Width(mainWidth).Height(mainHeight).Render(mainPaneContent)
 
 	// Sidebar always has search bar at the top (no logo in sidebar)
 	sidebarContent := m.Sidebar.View()
 	sidebarWithHeader := searchBar + "\n" + sidebarContent
-
-	// Sidebar with search bar integrated
-	sidebar := SidebarStyle.Width(sidebarWidth).Height(mainHeight).Render(sidebarWithHeader)
-
-	// Main pane
-	mainPaneContent := "[MainPane: details placeholder]"
-	if len(m.Items) > 0 && m.SelectedIndex < len(m.Items) {
-		item := m.Items[m.SelectedIndex].(treeItem)
-		mainPaneContent = fmt.Sprintf("[MainPane: %s details placeholder]", item.node.Title)
-	}
-	mainPane := MainPaneStyle.Width(mainWidth).Height(mainHeight).Render(mainPaneContent)
+	sidebar := SidebarStyle.Width(sidebarWidth).Render(sidebarWithHeader)
 
 	// Join horizontally
 	row := lipgloss.JoinHorizontal(lipgloss.Top, sidebar, mainPane)
