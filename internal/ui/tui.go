@@ -368,29 +368,24 @@ func (m TUITestExplorerModel) View() string {
 	if m.SelectedIndex >= 0 && m.SelectedIndex < len(m.Items) {
 		selectedItem, ok := m.Items[m.SelectedIndex].(treeItem)
 		if ok && selectedItem.node != nil && len(selectedItem.node.Children) > 0 {
-			// It's a folder/package node
 			pkg := selectedItem.node
-			coverage := pkg.Coverage * 100
-			mainPaneContent = fmt.Sprintf("Package: %s\nCoverage: %.2f%%\n\n", pkg.Title, coverage)
+			avgCoverage := FormatCoverage(AverageCoverage(pkg.Children))
+			totalDuration := FormatDurationSmart(TotalDuration(pkg.Children))
+			mainPaneContent = fmt.Sprintf("Package: %s\nCoverage: %s\nSuite Duration: %s\n\n", pkg.Title, avgCoverage, totalDuration)
 			for _, child := range pkg.Children {
 				if len(child.Children) == 0 { // leaf/test node
-					status := ""
-					color := ""
-					if child.Passed != nil && *child.Passed {
-						status = "PASS"
-						color = lipgloss.NewStyle().Foreground(AccentGreen).Render(status)
-					} else if child.Passed != nil && !*child.Passed {
+					status := "PASS"
+					color := AccentGreen
+					if child.Passed != nil && !*child.Passed {
 						status = "FAIL"
-						color = lipgloss.NewStyle().Foreground(AccentRed).Render(status)
-					} else {
+						color = AccentRed
+					}
+					if child.Passed == nil {
 						status = "?"
-						color = status
+						color = ""
 					}
-					icon := "✖"
-					if child.Passed != nil && *child.Passed {
-						icon = "✔"
-					}
-					mainPaneContent += fmt.Sprintf("%s %s (%.2fs)  %s\n", icon, child.Title, child.Duration, color)
+					statusStr := lipgloss.NewStyle().Foreground(color).Render(status)
+					mainPaneContent += fmt.Sprintf("%s  %s  %s\n", statusStr, child.Title, FormatDurationSmart(child.Duration))
 				}
 			}
 		}
