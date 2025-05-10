@@ -56,6 +56,17 @@ Manual test execution slows down TDD and feedback loops. Existing tools are ofte
 
 > **Note:** The package structure follows Go best practices with clear separation of concerns.
 
+## TUI Sidebar Conventions
+
+The Go Sentinel TUI sidebar displays a minimal, clean tree of your test suite:
+
+- **Sidebar shows only node names** for packages, files, and tests.
+- **No icons, durations, or coverage** are shown for test nodes in the sidebar.
+- **All test status, durations, and coverage** are shown in the details pane when a node is selected.
+- **Whitespace and formatting** in the sidebar are robustly handled by the test suite, ensuring consistent output across platforms.
+
+This approach keeps the sidebar uncluttered and focused, while providing full details in the main pane for selected items.
+
 ## Usage (Planned)
 
 ### Installation
