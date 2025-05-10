@@ -139,6 +139,17 @@ func NewTUITestExplorerModel(root *TreeNode) TUITestExplorerModel {
 	dlgt := treeItemDelegate{}
 	l := list.New(items, dlgt, 50, 20) // wider list for test names
 	l.Title = "Test Explorer"
+	l.SetShowStatusBar(false)
+	l.SetShowPagination(false)
+	// Forcibly hide the help bar/footer in the sidebar list
+	if setShowHelp, ok := interface{}(&l).(interface{ SetShowHelp(bool) }); ok {
+		setShowHelp.SetShowHelp(false)
+	} else {
+		l.Help.ShowAll = false
+		// No way to override Help.View in this version
+	}
+	l.SetShowPagination(true)
+	l.SetShowStatusBar(false)
 	return TUITestExplorerModel{
 		Sidebar:         l,
 		Items:           items,
@@ -338,6 +349,22 @@ func (m TUITestExplorerModel) View() string {
 		searchBarStyle = searchBarStyle.Foreground(lipgloss.Color("240")) // dim text
 	}
 	searchBar := searchBarStyle.Render(searchPrompt + searchInput)
+
+	// Dynamically calculate the height for the sidebar list
+	headerHeight := 1 // the logo/header line
+	footerHeight := 1 // the footer help line
+	searchBarHeight := 1
+	sidebarListHeight := height - headerHeight - footerHeight - searchBarHeight
+	if sidebarListHeight < 3 {
+		sidebarListHeight = 3
+	}
+	m.Sidebar.SetSize(sidebarWidth, sidebarListHeight)
+	// Forcibly hide status bar and pagination every render
+	m.Sidebar.SetShowStatusBar(false)
+	m.Sidebar.SetShowPagination(true)
+	// Forcibly hide the help bar/footer in the sidebar list every render
+	m.Sidebar.Help.ShowAll = false
+	// No way to override Help.View in this version
 
 	// Sidebar always has search bar at the top (no logo in sidebar)
 	sidebarContent := m.Sidebar.View()
