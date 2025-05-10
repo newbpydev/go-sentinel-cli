@@ -55,32 +55,23 @@ type treeItem struct {
 
 func (ti treeItem) Title() string {
 	icon := ""
-	testName := ""
 	switch {
 	case ti.node.Level == 0:
 		icon = "📦"
 	case ti.node.Error == "skip":
-		icon = "📁" // skipped folders are folders
+		icon = "📁"
 	case len(ti.node.Children) > 0:
 		icon = "📁"
 	default:
-		icon = "🧪"
-		// Try to extract test name from summary/title
-		if ti.node.Title != "" {
-			parts := strings.Split(ti.node.Title, "/")
-			if len(parts) > 1 {
-				testName = parts[len(parts)-1]
-			} else {
-				testName = ti.node.Title
-			}
-		}
+		icon = ""
 	}
 	indent := ""
 	for i := 0; i < ti.node.Level; i++ {
 		indent += "  "
 	}
-	if testName != "" {
-		return fmt.Sprintf("%s%s %s", indent, icon, testName)
+	// For test nodes (leaf), only show name, no icon
+	if len(ti.node.Children) == 0 {
+		return fmt.Sprintf("%s%s", indent, ti.node.Title)
 	}
 	return fmt.Sprintf("%s%s %s", indent, icon, ti.node.Title)
 }
@@ -102,26 +93,22 @@ func (d treeItemDelegate) Render(w io.Writer, m list.Model, index int, item list
 	var colored string
 	switch {
 	case treeItem.node.Passed != nil && *treeItem.node.Passed:
-		// Passing test
+		// Passing test (leaf)
 		colored = lipgloss.NewStyle().Foreground(AccentGreen).Render(title)
 	case treeItem.node.Passed != nil && !*treeItem.node.Passed:
-		// Failing test
+		// Failing test (leaf)
 		colored = lipgloss.NewStyle().Foreground(AccentRed).Render(title)
 	case treeItem.node.Error == "skip":
-		// Skipped/no-test folder
 		label := title
 		if !strings.Contains(label, "(skipped)") {
 			label += " (skipped)"
 		}
 		colored = lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render(label)
 	case treeItem.node.Level == 0:
-		// Root node
 		colored = lipgloss.NewStyle().Foreground(AccentBlue).Render(title)
 	case len(treeItem.node.Children) > 0:
-		// Package/directory with children
 		colored = lipgloss.NewStyle().Foreground(AccentYellow).Render(title)
 	default:
-		// Other nodes
 		colored = title
 	}
 

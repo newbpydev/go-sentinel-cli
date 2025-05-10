@@ -19,20 +19,16 @@ func FormatCoverage(coverage float64) string {
 	return fmt.Sprintf("%.2f%%", coverage*100)
 }
 
-// AverageCoverage computes average coverage for a slice of test nodes (0-1 float)
+// AverageCoverage computes average coverage for a slice of test nodes (0-1 float), including zeros
 func AverageCoverage(nodes []*TreeNode) float64 {
-	var sum float64
-	var count int
-	for _, n := range nodes {
-		if n.Coverage > 0 {
-			sum += n.Coverage
-			count++
-		}
-	}
-	if count == 0 {
+	if len(nodes) == 0 {
 		return 0
 	}
-	return sum / float64(count)
+	sum := 0.0
+	for _, n := range nodes {
+		sum += n.Coverage
+	}
+	return sum / float64(len(nodes))
 }
 
 // TotalDuration sums durations for a slice of test nodes (seconds)
