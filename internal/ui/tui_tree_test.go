@@ -36,6 +36,59 @@ func TestTUITreeSidebar_IndentationAndIcons(t *testing.T) {
 	}
 }
 
+func TestTUITreeSidebar_RendersCoverageAndTestDetails(t *testing.T) {
+	// Simulate parsed test data with coverage
+	root := &TreeNode{
+		Title:    "src",
+		Expanded: true,
+		Coverage: 0.0769, // 7.69%
+		Children: []*TreeNode{
+			{
+				Title:    "App.js",
+				Expanded: true,
+				Coverage: 1.0,
+				Children: []*TreeNode{{Title: "App renders", Passed: boolPtr(true), Duration: 0.01}},
+			},
+			{
+				Title:    "index.js",
+				Coverage: 0.0,
+				Children: []*TreeNode{{Title: "index loads", Passed: boolPtr(false), Duration: 0.02, Error: "ReferenceError"}},
+			},
+			{
+				Title:    "serviceWorker.js",
+				Coverage: 0.0,
+				Children: []*TreeNode{{Title: "service registers", Passed: boolPtr(false), Duration: 0.01, Error: "TypeError"}},
+			},
+			{
+				Title:    "setupTests.js",
+				Coverage: 1.0,
+				Children: []*TreeNode{{Title: "setup runs", Passed: boolPtr(true), Duration: 0.005}},
+			},
+		},
+	}
+	model := NewTUITestExplorerModel(root)
+	output := model.Sidebar.View()
+	// Check file node coverage bar and percent
+	if !contains(output, "App.js") || !contains(output, "100%") {
+		t.Errorf("App.js node missing or missing coverage: %s", output)
+	}
+	if !contains(output, "index.js") || !contains(output, "0%") {
+		t.Errorf("index.js node missing or missing coverage: %s", output)
+	}
+	if !contains(output, "7.69%") {
+		t.Errorf("root node missing or missing total coverage: %s", output)
+	}
+	// Check test node pass/fail, duration, error
+	if !contains(output, "✔ App renders (0.01s)") {
+		t.Errorf("passing test missing or missing duration: %s", output)
+	}
+	if !contains(output, "✖ index loads (0.02s)") || !contains(output, "ReferenceError") {
+		t.Errorf("failing test missing, missing duration, or missing error: %s", output)
+	}
+}
+
+func boolPtr(b bool) *bool { return &b }
+
 func contains(s, substr string) bool {
 	return len(s) > 0 && (s == substr || (len(s) > len(substr) && (contains(s[1:], substr) || s[:len(substr)] == substr)))
 }

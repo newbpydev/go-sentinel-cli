@@ -116,7 +116,111 @@ This roadmap is the single source of truth for Go Sentinel's development. All wo
   - [x] 4.2.5. Implement clipboard integration for test failures
   - [x] 4.2.6. Create interactive test selection mode with visual indicators
     > Interactive selection mode with visual indicators, keybindings, and clipboard integration implemented and tested.
-  - [ ] 4.2.7. (Future) Integrate TUI framework (Bubble Tea/tview)
+  - [ ] 4.2.7. Full-Screen TUI Framework Integration (Bubble Tea + Lipgloss)
+    1. TUI Layout Foundation (TDD)
+      1.1. Layout Testing
+        1.1.1. Test: 4-pane layout renders at various terminal sizes (min, max, odd sizes)
+        1.1.2. Test: Each pane (header, footer, test list, details) is rendered and non-overlapping
+        1.1.3. Test: Layout adapts to terminal resizing (increasing, decreasing, edge cases)
+        1.1.4. Test: Handles extremely small terminal sizes gracefully (panes collapse/scroll/warning)
+        1.1.5. Test: Handles extremely large terminal sizes (no empty gaps, layout stretches appropriately)
+      1.2. Layout Implementation
+        1.2.1. Define theme constants for colors, borders, padding
+        1.2.2. Implement Lipgloss styles for each pane
+        1.2.3. Compose layout using JoinVertical/JoinHorizontal
+        1.2.4. Ensure model tracks width/height and passes to layout
+        1.2.5. Implement minimum/maximum size logic for panes
+      1.3. Window Resize Handling
+        1.3.1. Listen for WindowSizeMsg and update model
+        1.3.2. Recalculate pane sizes and trigger redraw
+        1.3.3. Test: No visual artifacts or overlaps on rapid resize
+        1.3.4. Test: Pane content is never truncated mid-character (UTF-8 safe)
+
+    2. Header Component (Div 1)
+      2.1. Header Testing
+        2.1.1. Test: Logo, app name, version render at all widths
+        2.1.2. Test: Stats (pass/fail/total) and refresh time update live
+        2.1.3. Test: Progress bar and coverage display correct values
+        2.1.4. Test: Header truncates or wraps gracefully on overflow
+        2.1.5. Test: Header does not overlap with other panes
+      2.2. Header Implementation
+        2.2.1. Create ASCII/Unicode logo and style
+        2.2.2. Implement stats area: pass/fail/total, last refresh, coverage
+        2.2.3. Add progress bar (Bubble Tea progress bubble or Unicode)
+        2.2.4. Implement responsive header layout (truncation, ellipsis, wrapping)
+        2.2.5. Add error handling for missing stats/coverage (shows N/A or warning)
+
+    3. Test List Panel (Div 3)
+      3.1. Test List Testing
+        3.1.1. Test: Tree renders icons (suite, file, test) and indentation
+        3.1.2. Test: Test status (pass/fail/running/skipped) is shown with color/icon
+        3.1.3. Test: Selection highlighting is visible and accessible
+        3.1.4. Test: Filtering/search updates list and preserves selection
+        3.1.5. Test: Handles empty test lists (shows message)
+        3.1.6. Test: Handles very large test lists (performance, scrolling)
+        3.1.7. Test: Handles deeply nested test suites/files
+        3.1.8. Test: Handles test names with non-ASCII/emoji characters
+      3.2. Test List Implementation
+        3.2.1. Style tree items and status icons with Lipgloss
+        3.2.2. Implement fuzzy search and filter controls
+        3.2.3. Add selection mode: toggling, select all/deselect all, copying
+        3.2.4. Show selection state visually (checkbox, highlight)
+        3.2.5. Clipboard logic for copying selected tests
+        3.2.6. Ensure selection state maps correctly to filtered/visible items
+        3.2.7. Handle input edge cases (rapid keypress, invalid keys)
+        3.2.8. Test: Selection/copy logic with empty/large/filtered lists
+
+    4. Details Panel (Div 4)
+      4.1. Details Panel Testing
+        4.1.1. Test: Selecting a test shows details (output, error, code context)
+        4.1.2. Test: Error messages, stack traces, and code context are formatted and highlighted
+        4.1.3. Test: Tabs (output/source/coverage) switch content
+        4.1.4. Test: Handles missing output, missing source, missing coverage
+        4.1.5. Test: Handles very large outputs (scrolling, truncation)
+        4.1.6. Test: Handles non-UTF8 or binary output gracefully
+      4.2. Details Panel Implementation
+        4.2.1. Implement tabbed interface for details
+        4.2.2. Syntax highlighting for code context
+        4.2.3. Scroll support for long outputs
+        4.2.4. Highlight error lines, show coverage if available
+        4.2.5. Show placeholder or warning if details unavailable
+
+    5. Footer Component (Div 2)
+      5.1. Footer Testing
+        5.1.1. Test: Footer displays context-aware keybindings for all modes
+        5.1.2. Test: Status messages (info, warning, error) display and auto-clear
+        5.1.3. Test: Footer remains visible at minimal terminal height
+        5.1.4. Test: Handles overflow of keybindings (truncates, scrolls, or wraps)
+      5.2. Footer Implementation
+        5.2.1. Dynamic keybinding bar updates by selection/mode
+        5.2.2. Message queue for status messages (timeouts, severity coloring)
+        5.2.3. Footer always visible and styled
+        5.2.4. Graceful handling of unknown/unsupported keybindings
+
+    6. Event System & Integration
+      6.1. Event System Testing
+        6.1.1. Test: File watcher/test runner events update UI in real time
+        6.1.2. Test: User actions (rerun, filter, select) trigger correct updates in all panes
+        6.1.3. Test: Handles rapid/frequent events without UI lag or missed updates
+        6.1.4. Test: Handles event errors (invalid data, lost connection)
+      6.2. Event System Implementation
+        6.2.1. Define custom Bubble Tea messages for all relevant events
+        6.2.2. Event handlers in model update state and trigger re-renders
+        6.2.3. All panes subscribe to and reflect state changes
+        6.2.4. Error handling for event routing failures
+
+    7. Performance & Polish
+      7.1. Performance Testing
+        7.1.1. Test: Rendering/interaction with large test suites (hundreds/thousands)
+        7.1.2. Test: Viewport/lazy loading logic prevents lag or flicker
+        7.1.3. Test: UI remains responsive under heavy load
+        7.1.4. Test: Handles rapid user input (keypress spamming)
+      7.2. Performance Implementation
+        7.2.1. Viewport rendering for large lists (Bubble Tea viewport bubble)
+        7.2.2. Lazy loading for details panel
+        7.2.3. Subtle transitions/animations for state changes
+        7.2.4. Polish help overlay and keyboard shortcut reference
+        7.2.5. Defensive coding for all known edge cases (panics, nils, out-of-bounds, etc.)
 
 ---
 

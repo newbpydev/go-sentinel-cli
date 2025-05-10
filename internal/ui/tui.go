@@ -30,6 +30,11 @@ type TreeNode struct {
 	Expanded bool
 	Level    int // indentation level
 	Parent   *TreeNode
+	// Extended fields for real test data
+	Coverage float64   // For file nodes (0.0-1.0)
+	Passed   *bool     // For test nodes (nil for parent, true/false for tests)
+	Duration float64   // For test nodes (seconds)
+	Error    string    // For test nodes (error message)
 }
 
 // treeItem implements list.Item for bubbles/list
