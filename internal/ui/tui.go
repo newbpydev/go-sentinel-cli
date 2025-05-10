@@ -115,7 +115,8 @@ func (d treeItemDelegate) Render(w io.Writer, m list.Model, index int, item list
 	// Apply pointer for selection instead of highlight
 	pointer := "➤"
 	if selected {
-		fmt.Fprintf(w, "%s %s", pointer, colored)
+		line := fmt.Sprintf("%s %s", pointer, colored)
+		fmt.Fprint(w, SidebarSelectedItemStyle.Render(line))
 	} else {
 		fmt.Fprintf(w, "  %s", colored)
 	}

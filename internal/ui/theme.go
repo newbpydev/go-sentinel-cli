@@ -41,6 +41,11 @@ var (
 	AccentYellow = lipgloss.Color("220")        // Gold/Yellow for progress
 	
 	// Selection styles
+	SidebarSelectedItemStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("15")).         // White text
+		Background(lipgloss.Color("238")).        // Darker gray background
+		Padding(0, 0)
+
 	SelectedItemStyle = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("15")).         // White text
 		Background(lipgloss.Color("90"))          // Highlighted background
