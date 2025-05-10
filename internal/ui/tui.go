@@ -1,27 +1,34 @@
 package ui
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/bubbles/list"
 	"fmt"
-	"github.com/sahilm/fuzzy"
 	"io"
+
+	"github.com/charmbracelet/bubbles/list"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/sahilm/fuzzy"
 )
+
+// The styles and colors are defined in theme.go within the same package
 
 // TUITestExplorerModel is the Bubble Tea model for the tree-based test explorer.
 type TUITestExplorerModel struct {
-	Sidebar list.Model
-	Items   []list.Item // flat view of visible tree nodes
-	Tree    *TreeNode   // actual tree structure
-	SelectedIndex int
+	Sidebar         list.Model
+	Items           []list.Item // flat view of visible tree nodes
+	Tree            *TreeNode   // actual tree structure
+	SelectedIndex   int
 	MainPaneContent string
 	// Search/filter state
-	SearchActive bool
-	SearchInput string
+	SearchActive  bool
+	SearchInput   string
 	FilteredItems []list.Item
 	// Modal state
 	ShowHelpModal bool
-} 
+	// Layout/size state
+	Width  int
+	Height int
+} // Now tracks terminal width/height
 
 // TreeNode represents a node in the test tree (suite/file/test)
 type TreeNode struct {
@@ -31,10 +38,10 @@ type TreeNode struct {
 	Level    int // indentation level
 	Parent   *TreeNode
 	// Extended fields for real test data
-	Coverage float64   // For file nodes (0.0-1.0)
-	Passed   *bool     // For test nodes (nil for parent, true/false for tests)
-	Duration float64   // For test nodes (seconds)
-	Error    string    // For test nodes (error message)
+	Coverage float64 // For file nodes (0.0-1.0)
+	Passed   *bool   // For test nodes (nil for parent, true/false for tests)
+	Duration float64 // For test nodes (seconds)
+	Error    string  // For test nodes (error message)
 }
 
 // treeItem implements list.Item for bubbles/list
@@ -67,40 +74,67 @@ func (ti treeItem) FilterValue() string { return ti.node.Title }
 // NewTUITestExplorerModel creates a new TUI model with the given tree.
 type treeItemDelegate struct{}
 
-func (d treeItemDelegate) Height() int          { return 1 }
-func (d treeItemDelegate) Spacing() int         { return 0 }
+func (d treeItemDelegate) Height() int                               { return 1 }
+func (d treeItemDelegate) Spacing() int                              { return 0 }
 func (d treeItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd { return nil }
 func (d treeItemDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
-	title := item.(treeItem).Title()
+	treeItem := item.(treeItem)
+	title := treeItem.Title()
 	selected := m.Index() == index
+
+	// Add color based on node type
+	var colored string
+	switch {
+	case treeItem.node.Passed != nil && *treeItem.node.Passed:
+		// Passing test
+		colored = lipgloss.NewStyle().Foreground(AccentGreen).Render(title)
+	case treeItem.node.Passed != nil && !*treeItem.node.Passed:
+		// Failing test
+		colored = lipgloss.NewStyle().Foreground(AccentRed).Render(title)
+	case treeItem.node.Level == 0:
+		// Root node
+		colored = lipgloss.NewStyle().Foreground(AccentBlue).Render(title)
+	case len(treeItem.node.Children) > 0:
+		// Package/directory with children
+		colored = lipgloss.NewStyle().Foreground(AccentYellow).Render(title)
+	default:
+		// Other nodes
+		colored = title
+	}
+
+	// Apply selection styling
 	if selected {
-		fmt.Fprintf(w, "> %s", title)
+		fmt.Fprint(w, SelectedItemStyle.Render(" "+colored+" "))
 	} else {
-		fmt.Fprintf(w, "  %s", title)
+		fmt.Fprintf(w, "  %s", colored)
 	}
 }
 
 func NewTUITestExplorerModel(root *TreeNode) TUITestExplorerModel {
 	items := flattenTree(root)
 
-dlgt := treeItemDelegate{}
-l := list.New(items, dlgt, 30, 20)
-l.Title = "Test Explorer"
+	dlgt := treeItemDelegate{}
+	l := list.New(items, dlgt, 30, 20)
+	l.Title = "Test Explorer"
 	return TUITestExplorerModel{
-		Sidebar: l,
-		Items: items,
-		Tree: root,
-		SelectedIndex: 0,
+		Sidebar:         l,
+		Items:           items,
+		Tree:            root,
+		SelectedIndex:   0,
 		MainPaneContent: "",
+		Width:           80, // default, will be set on first WindowSizeMsg
+		Height:          24, // default, will be set on first WindowSizeMsg
 	}
-}
+} // Default size, updated on resize
 
 // flattenTree returns a flat slice of treeItems for visible nodes
 func flattenTree(root *TreeNode) []list.Item {
 	var items []list.Item
 	var walk func(node *TreeNode, level int, parent *TreeNode)
 	walk = func(node *TreeNode, level int, parent *TreeNode) {
-		if node == nil { return }
+		if node == nil {
+			return
+		}
 		node.Level = level
 		node.Parent = parent
 		items = append(items, treeItem{node})
@@ -120,6 +154,13 @@ func (m TUITestExplorerModel) Init() tea.Cmd {
 }
 
 func (m TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Handle window resize
+	if ws, ok := msg.(tea.WindowSizeMsg); ok {
+		m.Width = ws.Width
+		m.Height = ws.Height
+		return m, nil
+	}
+
 	// Help modal open: only handle modal keys
 	if m.ShowHelpModal {
 		switch msg := msg.(type) {
@@ -230,38 +271,79 @@ func (m TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m TUITestExplorerModel) View() string {
-	statusBar := "↑/k up • ↓/j down • / filter • q quit • ? help"
-	if m.ShowHelpModal {
-		help := ""
-		help += "┌────────────────────────────── Go-Sentinel Help ──────────────────────────────┐\n"
-		help += "│  Keybindings:                                                             │\n"
-		help += "│  ↑/k up    ↓/j down   / filter   q quit   ? help   Enter details            │\n"
-		help += "│                                                                            │\n"
-		help += "│  Navigation:                                                               │\n"
-		help += "│    - Use ↑/k and ↓/j to move selection                                     │\n"
-		help += "│    - Press / to filter/search                                              │\n"
-		help += "│    - Press Enter to view details                                           │\n"
-		help += "│    - Press q to quit, ? for help                                           │\n"
-		help += "│                                                                            │\n"
-		help += "│  Press q or Esc to close this help.                                        │\n"
-		help += "└────────────────────────────────────────────────────────────────────────────┘\n"
-		return help + "\n" + statusBar
-	}
+	// Layout constants
+	minSidebarWidth := 24
+	minMainWidth := 30
+	minHeight := 10
+	maxSidebarWidth := 40
 
-	var mainPane string
+	width := m.Width
+	height := m.Height
+	if width < minSidebarWidth+minMainWidth {
+		width = minSidebarWidth + minMainWidth
+	}
+	if height < minHeight {
+		height = minHeight
+	}
+	// Calculate pane sizes
+	sidebarWidth := width / 3
+	if sidebarWidth < minSidebarWidth {
+		sidebarWidth = minSidebarWidth
+	}
+	if sidebarWidth > maxSidebarWidth {
+		sidebarWidth = maxSidebarWidth
+	}
+	mainWidth := width - sidebarWidth - 2 // Account for border spacing
+	mainHeight := height - 4              // header+footer+searchbar
+	if mainHeight < 3 {
+		mainHeight = 3
+	}
+	// Compose panes with Lipgloss
+	// Header
+	header := HeaderStyle.Width(width).Render("Go-Sentinel Test Explorer")
+
+	// Search bar - always visible above the sidebar list
+	searchInput := m.SearchInput
+	searchPrompt := "/ "
+	searchBarStyle := FooterStyle.Width(sidebarWidth)
+	if !m.SearchActive {
+		// Dim style or placeholder when not active
+		if searchInput == "" {
+			searchPrompt = "/ filter..."
+		}
+		searchBarStyle = searchBarStyle.Foreground(lipgloss.Color("240")) // dim text
+	}
+	searchBar := searchBarStyle.Render(searchPrompt + searchInput)
+
+	// Sidebar always has search bar at the top
+	sidebarContent := m.Sidebar.View()
+	sidebarWithSearch := searchBar + "\n" + sidebarContent
+
+	// Sidebar with search bar integrated
+	sidebar := SidebarStyle.Width(sidebarWidth).Height(mainHeight).Render(sidebarWithSearch)
+
+	// Main pane
+	mainPaneContent := "[MainPane: details placeholder]"
 	if len(m.Items) > 0 && m.SelectedIndex < len(m.Items) {
 		item := m.Items[m.SelectedIndex].(treeItem)
-		mainPane = fmt.Sprintf("[MainPane: %s details placeholder]", item.node.Title)
-	} else {
-		mainPane = "[MainPane: details placeholder]"
+		mainPaneContent = fmt.Sprintf("[MainPane: %s details placeholder]", item.node.Title)
 	}
-	searchBar := ""
-	if m.SearchActive {
-		searchBar = fmt.Sprintf("/ %s", m.SearchInput)
-	}
-	sidebar := m.Sidebar.View()
-	return fmt.Sprintf("%s\n%s\n%s\n%s", sidebar, searchBar, mainPane, statusBar)
-} 
+	mainPane := MainPaneStyle.Width(mainWidth).Height(mainHeight).Render(mainPaneContent)
+
+	// Join horizontally
+	row := lipgloss.JoinHorizontal(lipgloss.Top, sidebar, mainPane)
+
+	// Footer - now centered
+	footerContent := "↑/k up • ↓/j down • / filter • q quit • ? help"
+	footer := FooterStyle.
+		Width(width).
+		Align(lipgloss.Center). // Center the text
+		Render(footerContent)
+
+	// Full layout (no separate searchBar since it's now integrated in the sidebar)
+	layout := lipgloss.JoinVertical(lipgloss.Left, header, row, footer)
+	return layout
+}
 
 // --- Test helpers for TDD ---
 
