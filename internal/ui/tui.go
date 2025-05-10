@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -54,6 +55,7 @@ type treeItem struct {
 
 func (ti treeItem) Title() string {
 	icon := ""
+	testName := ""
 	switch {
 	case ti.node.Level == 0:
 		icon = "📦"
@@ -61,12 +63,25 @@ func (ti treeItem) Title() string {
 		icon = "📁"
 	default:
 		icon = "🧪"
+		// Try to extract test name from summary/title
+		// If Title is like "ok   pkg/foo/TestAlpha" or "FAIL pkg/foo/TestBeta"
+		if ti.node.Title != "" {
+			parts := strings.Split(ti.node.Title, "/")
+			if len(parts) > 1 {
+				testName = parts[len(parts)-1]
+			} else {
+				testName = ti.node.Title
+			}
+		}
 	}
 	indent := ""
 	for i := 0; i < ti.node.Level; i++ {
 		indent += "  "
 	}
-	return indent + icon + " " + ti.node.Title
+	if testName != "" {
+		return fmt.Sprintf("%s%s %s", indent, icon, testName)
+	}
+	return fmt.Sprintf("%s%s %s", indent, icon, ti.node.Title)
 }
 func (ti treeItem) Description() string { return "" }
 func (ti treeItem) FilterValue() string { return ti.node.Title }
@@ -272,10 +287,10 @@ func (m TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m TUITestExplorerModel) View() string {
 	// Layout constants
-	minSidebarWidth := 24
+	minSidebarWidth := 40 // was 24
 	minMainWidth := 30
 	minHeight := 10
-	maxSidebarWidth := 40
+	maxSidebarWidth := 60 // was 40
 
 	width := m.Width
 	height := m.Height
