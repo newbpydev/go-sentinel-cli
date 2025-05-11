@@ -33,6 +33,10 @@ type TUITestExplorerModel struct {
 	CoverageBar AnimatedCoverageBar
 	// Track folder expansion state for search UX
 	prevExpansion map[string]bool
+	// Track if currently showing a locked filtered set
+	FilteredMode bool
+	// Store the accepted filter term for updating filtered results
+	AcceptedFilter string
 } // Now tracks terminal width/height
 
 // saveExpansionState saves the expansion state of all folders in the tree.
@@ -270,14 +274,17 @@ func (m *TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.SearchActive = false
 				m.SearchInput = ""
 				m.FilteredItems = nil
+				m.FilteredMode = false
 				m.restoreExpansionState()
 				m.Items = flattenTree(m.Tree)
 				m.Sidebar.SetItems(m.Items)
 				m.SelectedIndex = 0
 				m.Sidebar.Select(0)
 			case tea.KeyEnter:
-				// Accept filtered list: exit search mode, keep only filtered items
+				// Accept filtered list: exit search mode, keep only filtered items, enter filtered mode
 				m.SearchActive = false
+				m.FilteredMode = true
+				m.AcceptedFilter = m.SearchInput
 				m.Items = m.FilteredItems
 				m.Sidebar.SetItems(m.Items)
 				// Clamp selection
@@ -330,8 +337,10 @@ func (m *TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				// Otherwise, treat as normal input
 				m.SearchInput += msg.String()
-				m.FilteredItems = fuzzyFilterTreeItems(flattenTree(m.Tree), m.SearchInput)
-				m.Sidebar.SetItems(m.FilteredItems)
+				// Use our improved fuzzy search with hierarchy preservation
+				m.FilteredItems = getNodesMatchingFilter(m.Tree, m.SearchInput)
+				m.Items = m.FilteredItems
+				m.Sidebar.SetItems(m.Items)
 				m.SelectedIndex = 0
 				m.Sidebar.Select(0)
 				return m, nil
@@ -340,11 +349,19 @@ func (m *TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if len(m.SearchInput) > 0 {
 						m.SearchInput = m.SearchInput[:len(m.SearchInput)-1]
 					}
-					// Fuzzy filter
-					m.FilteredItems = fuzzyFilterTreeItems(flattenTree(m.Tree), m.SearchInput)
-					m.Sidebar.SetItems(m.FilteredItems)
+					// Update search results
+					if m.SearchInput == "" {
+						m.FilteredItems = flattenTree(m.Tree)
+					} else {
+						// Use our improved fuzzy search with hierarchy preservation
+						m.FilteredItems = getNodesMatchingFilter(m.Tree, m.SearchInput)
+					}
+					m.Items = m.FilteredItems
+					// Reset selection to top
 					m.SelectedIndex = 0
+					m.Sidebar.SetItems(m.Items)
 					m.Sidebar.Select(0)
+					return m, nil
 				}
 				return m, nil
 			}
@@ -361,7 +378,13 @@ func (m *TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				item := m.Items[m.SelectedIndex].(treeItem)
 				if len(item.node.Children) > 0 {
 					item.node.Expanded = !item.node.Expanded
-					m.Items = flattenTree(m.Tree)
+					if m.FilteredMode {
+						// Re-run the improved fuzzy search with hierarchy preservation
+						m.FilteredItems = getNodesMatchingFilter(m.Tree, m.AcceptedFilter)
+						m.Items = m.FilteredItems
+					} else {
+						m.Items = flattenTree(m.Tree)
+					}
 					// Clamp selection to valid range
 					if m.SelectedIndex >= len(m.Items) {
 						m.SelectedIndex = len(m.Items) - 1
@@ -602,6 +625,106 @@ func (m TUITestExplorerModel) SidebarFiltered(term string) bool {
 	}
 	filtered := fuzzyFilterTreeItems(flattenAllTree(m.Tree), term)
 	return len(filtered) > 0
+}
+
+// getNodesMatchingFilter returns items that match the input filter
+// It performs fuzzy search and preserves parent-child relationships
+func getNodesMatchingFilter(root *TreeNode, input string) []list.Item {
+	if input == "" {
+		return flattenTree(root) // Return the full tree if no filter
+	}
+	
+	// First, collect all titles for fuzzy searching
+	var nodeInfos []struct {
+		title string
+		node  *TreeNode
+	}
+	
+	// Collect all nodes
+	var collectNodes func(node *TreeNode)
+	collectNodes = func(node *TreeNode) {
+		if node == nil {
+			return
+		}
+		
+		// Add this node
+		nodeInfos = append(nodeInfos, struct {
+			title string
+			node  *TreeNode
+		}{title: node.Title, node: node})
+		
+		// Process children
+		for _, child := range node.Children {
+			collectNodes(child)
+		}
+	}
+	collectNodes(root)
+	
+	// Extract just the titles for fuzzy search
+	titles := make([]string, len(nodeInfos))
+	for i, info := range nodeInfos {
+		titles[i] = info.title
+	}
+	
+	// Perform fuzzy search
+	matches := fuzzy.Find(input, titles)
+	
+	// Track matching nodes and their ancestors
+	matchingNodes := make(map[*TreeNode]bool)
+	
+	// Add matching nodes
+	for _, match := range matches {
+		node := nodeInfos[match.Index].node
+		matchingNodes[node] = true
+		
+		// Also include all ancestors to maintain path
+		curr := node.Parent
+		for curr != nil {
+			matchingNodes[curr] = true
+			curr = curr.Parent
+		}
+		
+		// If a folder matches, include all its children
+		if len(node.Children) > 0 {
+			var addAllDescendants func(n *TreeNode)
+			addAllDescendants = func(n *TreeNode) {
+				for _, child := range n.Children {
+					matchingNodes[child] = true
+					addAllDescendants(child)
+				}
+			}
+			addAllDescendants(node)
+		}
+	}
+	
+	// Now flatten the tree but only include matching nodes
+	var filteredItems []list.Item
+	
+	var walkFiltered func(node *TreeNode, level int)
+	walkFiltered = func(node *TreeNode, level int) {
+		if node == nil {
+			return
+		}
+		
+		// Only include this node if it or any descendant matched
+		if matchingNodes[node] {
+			filteredItems = append(filteredItems, treeItem{node})
+			
+			// Only walk children if this node is expanded
+			if node.Expanded {
+				for _, child := range node.Children {
+					// Only recurse if the child or its descendants matched
+					if matchingNodes[child] {
+						walkFiltered(child, level+1)
+					}
+				}
+			}
+		}
+	}
+	
+	walkFiltered(root, 0)
+	
+	return filteredItems
 }
 
 // fuzzyFilterTreeItems returns only those treeItems whose Title fuzzy-matches the input
