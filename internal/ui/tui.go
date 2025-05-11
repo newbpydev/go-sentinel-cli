@@ -256,6 +256,21 @@ func (m *TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Height = ws.Height
 		return m, nil
 	}
+	
+	// Handle coverage generation messages
+	if coverageMsg, ok := msg.(CoverageGeneratedMsg); ok {
+		// Coverage generation completed successfully
+		m.ShowCoverageView = true // Automatically show coverage view
+		m.MainPaneContent = fmt.Sprintf("Coverage report generated at %s", coverageMsg.CoverageFile)
+		return m, nil
+	}
+	
+	// Handle error messages
+	if errMsg, ok := msg.(ErrorMsg); ok {
+		// Show the error
+		m.MainPaneContent = fmt.Sprintf("Error: %v", errMsg.Error)
+		return m, nil
+	}
 
 	// Help modal open: only handle modal keys
 	if m.ShowHelpModal {
@@ -472,6 +487,19 @@ func (m *TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Toggle coverage view
 			m.ShowCoverageView = !m.ShowCoverageView
 			return m, nil
+		case "C":
+			// Run tests with coverage
+			packagePath := "./..."
+			// If a specific package is selected, run coverage for that package
+			if m.SelectedIndex >= 0 && m.SelectedIndex < len(m.Items) {
+				selectedItem, ok := m.Items[m.SelectedIndex].(treeItem)
+				if ok && selectedItem.node != nil {
+					// Find package path for selected item
+					// This would need to be adapted to your package path extraction logic
+					packagePath = "./..." // Default to all packages
+				}
+			}
+			return m, m.RunTestsWithCoverage(packagePath)
 		case "L":
 			// Toggle low coverage filter when in coverage view
 			if m.ShowCoverageView {

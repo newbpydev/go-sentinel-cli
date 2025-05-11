@@ -1,6 +1,13 @@
 package ui
 
 import (
+	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/newbpydev/go-sentinel/internal/coverage"
 )
 
@@ -104,4 +111,57 @@ func (m *TUITestExplorerModel) RenderCoverageView(width, height int) string {
 // ToggleLowCoverageFilter toggles showing only low coverage files
 func (m *TUITestExplorerModel) ToggleLowCoverageFilter() {
 	m.CoverageState.ShowLowCoverageOnly = !m.CoverageState.ShowLowCoverageOnly
+}
+
+// RunTestsWithCoverage runs tests with coverage and loads the results
+func (m *TUITestExplorerModel) RunTestsWithCoverage(packagePath string) tea.Cmd {
+	return func() tea.Msg {
+		// Set default package path if empty
+		if packagePath == "" {
+			packagePath = "./..."
+		}
+		
+		// Create temporary directory for coverage output
+		tempDir, err := os.MkdirTemp("", "go-sentinel-coverage")
+		if err != nil {
+			return ErrorMsg{Error: fmt.Errorf("failed to create temp dir: %w", err)}
+		}
+		
+		// Define coverage options
+		coverageFile := filepath.Join(tempDir, "coverage.out")
+		options := coverage.TestRunnerOptions{
+			PackagePaths: []string{packagePath},
+			OutputPath:   coverageFile,
+			Timeout:      30 * time.Second,
+		}
+		
+		// Create a context with cancellation
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		
+		// Run tests with coverage
+		err = coverage.RunTestsWithCoverage(ctx, options)
+		if err != nil {
+			return ErrorMsg{Error: fmt.Errorf("failed to run tests with coverage: %w", err)}
+		}
+		
+		// Load the coverage data
+		err = m.LoadCoverageData(coverageFile)
+		if err != nil {
+			return ErrorMsg{Error: fmt.Errorf("failed to load coverage data: %w", err)}
+		}
+		
+		// Return success message
+		return CoverageGeneratedMsg{CoverageFile: coverageFile}
+	}
+}
+
+// ErrorMsg represents an error message
+type ErrorMsg struct {
+	Error error
+}
+
+// CoverageGeneratedMsg indicates coverage data was generated
+type CoverageGeneratedMsg struct {
+	CoverageFile string
 }

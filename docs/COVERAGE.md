@@ -1,224 +1,83 @@
-Coverage Reporting Implementation Plan for Go-Sentinel
-I've studied the Jest coverage reporting system and can now outline a detailed plan to implement similar functionality in Go-Sentinel. This will enhance the existing testing capabilities by providing clear coverage metrics.
+# Go-Sentinel Code Coverage
 
-Understanding Required Coverage Metrics
-Based on the Jest coverage approach, we'll implement four key coverage metrics:
+## Overview
 
-Statement Coverage: Percentage of executable statements executed during tests
-Branch Coverage: Percentage of code branches (if/else/switch) that were tested
-Function Coverage: Percentage of functions executed during testing
-Line Coverage: Percentage of code lines executed during tests
-Implementation Plan
-Phase 1: Leverage Go's Native Coverage Tools
-go
-CopyInsert
-// Phase 1: Using Go's built-in coverage tools
-Research and Integration:
-Go already provides built-in coverage analysis with go test -cover
-We'll leverage the -coverprofile flag to generate coverage data files
-Integrate with the existing Go-Sentinel test execution flow
-Coverage Data Collection:
-Execute tests with: go test -coverprofile=coverage.out ./...
-Parse the generated coverage profile using Go's cover package
-Store parsed coverage data for visualization
-Phase 2: Coverage Data Analysis
-go
-CopyInsert
-// Phase 2: Process and analyze coverage data
-Coverage Metrics Calculation:
-Calculate statement coverage from Go's native coverage data
-For branch coverage, we'll need to analyze AST (Abstract Syntax Tree)
-Function coverage can be determined by tracking function entries
-Line coverage is directly available from Go's coverage profile
-Create Coverage Processor:
-Build a CoverageProcessor struct to parse Go coverage output
-Extract file-specific coverage information
-Implement metrics calculations for each coverage type
-Phase 3: UI Integration
-go
-CopyInsert
-// Phase 3: Integrate with Go-Sentinel's TUI
-Coverage Visualization:
-Add a new coverage view to Go-Sentinel's TUI
-Implement color-coding similar to Jest (yellow for partial, red for uncovered)
-Display execution counts (1x, 2x) next to code lines
-Interactive Coverage Explorer:
-Allow users to navigate through files and view coverage details
-Implement filtering for uncovered or partially covered code
-Enable drilling down into specific functions or branches
-Phase 4: Commands and User Experience
-go
-CopyInsert
-// Phase 4: Add user commands and improve UX
-User Commands:
-Add a [v] key to toggle coverage visualization
-Implement [f] to focus on files with low coverage
-Create [b] command to highlight uncovered branches
-Coverage Reports:
-Generate HTML reports similar to Jest's lcov output
-Implement coverage summary in terminal view
-Add options to export coverage data
-Detailed Technical Implementation
-Coverage Data Collection
-go
-CopyInsert
-// coverage/collector.go
-package coverage
+Go-Sentinel includes a comprehensive code coverage analysis feature that helps you understand how thoroughly your tests exercise your codebase. Similar to Jest's coverage reporting for JavaScript, Go-Sentinel's coverage feature provides detailed metrics and visualizations to identify untested code.
 
-import (
-    "go/ast"
-    "go/parser"
-    "go/token"
-    "golang.org/x/tools/cover"
-    "io/ioutil"
-)
+## Coverage Metrics
 
-// CoverageCollector handles the collection of coverage data
-type CoverageCollector struct {
-    CoverageFile string
-    Profiles     []*cover.Profile
-}
+Go-Sentinel tracks four key coverage metrics:
 
-// NewCollector creates a new coverage collector
-func NewCollector(coverageFile string) (*CoverageCollector, error) {
-    profiles, err := cover.ParseProfiles(coverageFile)
-    if err != nil {
-        return nil, err
-    }
-    
-    return &CoverageCollector{
-        CoverageFile: coverageFile,
-        Profiles:     profiles,
-    }, nil
-}
+1. **Statement Coverage**: The percentage of executable statements that were executed during tests.
+2. **Branch Coverage**: The percentage of code branches (if/else/switch statements) that were tested.
+3. **Function Coverage**: The percentage of functions or methods that were called during tests.
+4. **Line Coverage**: The percentage of code lines that were executed during tests.
 
-// CalculateMetrics processes coverage data and returns metrics
-func (c *CoverageCollector) CalculateMetrics() (*CoverageMetrics, error) {
-    // Implementation for calculating coverage metrics
-    // ...
-}
-Coverage Metrics
-go
-CopyInsert
-// coverage/metrics.go
-package coverage
+## Using Coverage in Go-Sentinel
 
-// CoverageMetrics holds the coverage information
-type CoverageMetrics struct {
-    StatementCoverage float64
-    BranchCoverage    float64
-    FunctionCoverage  float64
-    LineCoverage      float64
-    
-    FileMetrics map[string]*FileMetrics
-}
+### Keyboard Shortcuts
 
-// FileMetrics holds per-file coverage information
-type FileMetrics struct {
-    StatementCoverage float64
-    BranchCoverage    float64
-    FunctionCoverage  float64
-    LineCoverage      float64
-    
-    LineExecutionCounts map[int]int
-    UncoveredLines      []int
-    PartialBranches     []BranchInfo
-}
+| Key | Function |
+|-----|----------|
+| `c` | Toggle coverage view on/off |
+| `C` | Run tests with coverage for current package or all packages |
+| `L` | Toggle filter to show only low-coverage files |
+| Arrow keys | Navigate through files in coverage view |
+| Enter | View detailed coverage for selected file |
 
-// BranchInfo holds information about a branch
-type BranchInfo struct {
-    Line       int
-    Condition  string
-    Covered    bool
-    Executions int
-}
-UI Integration
-go
-CopyInsert
-// ui/coverage_view.go
-package ui
+### Running Tests with Coverage
 
-import (
-    "github.com/newbpydev/go-sentinel/coverage"
-    "github.com/charmbracelet/lipgloss"
-)
+1. Press `C` from anywhere in Go-Sentinel to run tests with coverage
+2. Wait for the tests to complete and the coverage data to be processed
+3. The coverage view will automatically appear showing overall metrics
 
-// CoverageView represents the TUI component for displaying coverage
-type CoverageView struct {
-    metrics *coverage.CoverageMetrics
-    // Other fields for UI state
-}
+### Understanding the Coverage Display
 
-// NewCoverageView creates a new coverage view
-func NewCoverageView(metrics *coverage.CoverageMetrics) *CoverageView {
-    return &CoverageView{
-        metrics: metrics,
-    }
-}
+#### Color Coding
 
-// Render renders the coverage view
-func (cv *CoverageView) Render() string {
-    // Implementation for rendering coverage information
-    // ...
-}
-Command Line Integration
-go
-CopyInsert
-// cmd/coverage.go
-package cmd
+- **Green**: High coverage (≥80%)
+- **Yellow**: Medium coverage (50%-79%)
+- **Red**: Low coverage (<50%)
 
-import (
-    "github.com/newbpydev/go-sentinel/coverage"
-    "github.com/spf13/cobra"
-)
+#### Execution Counts
 
-// AddCoverageCommands adds coverage-related commands to the root command
-func AddCoverageCommands(rootCmd *cobra.Command) {
-    coverageCmd := &cobra.Command{
-        Use:   "coverage",
-        Short: "Manage and view test coverage",
-        Run:   runCoverage,
-    }
-    
-    // Add subcommands
-    // ...
-    
-    rootCmd.AddCommand(coverageCmd)
-}
+Next to each line of code, you may see annotations like `1x`, `2x`, etc. These indicate how many times that line was executed during testing.
 
-// runCoverage runs coverage analysis
-func runCoverage(cmd *cobra.Command, args []string) {
-    // Implementation for coverage command
-    // ...
-}
-Integration with Existing Test Selection Mode
-We'll enhance the current interactive test selection mode by adding coverage information:
+#### Uncovered Lines
 
-Add coverage indicators next to failing tests
-Color code tests based on their coverage metrics
-Allow selecting tests with low coverage using the [l] key
-Implement coverage trend tracking to show improvement/regression
-Timeline and Milestones
-Research & Design (1-2 days)
-Study Go's coverage tools in depth
-Design data structures for coverage metrics
-Plan UI integration
-Core Implementation (3-5 days)
-Implement coverage data collection
-Build metrics calculation
-Create basic coverage visualization
-UI Enhancement (2-3 days)
-Add coverage view to TUI
-Implement color coding and indicators
-Add interactive navigation
-Testing & Documentation (2-3 days)
-Test the coverage functionality
-Document usage and implementation
-Write examples
-Next Steps
-To begin implementation, we should:
+Uncovered lines are highlighted in red, making it easy to identify code that needs additional test coverage.
 
-Set up a development branch for the coverage feature
-Add the necessary dependencies for AST parsing and coverage analysis
-Create the initial structure for the coverage package
-Implement basic coverage data collection as a proof of
+## Examples
+
+### Example 1: Running Coverage for All Tests
+
+1. Press `C` from the main view
+2. Coverage data will be generated and displayed
+3. Press `c` to toggle between normal and coverage views
+
+### Example 2: Focusing on Low Coverage Files
+
+1. Run tests with coverage by pressing `C`
+2. In the coverage view, press `L` to show only files with low coverage
+3. Navigate to a file and press Enter to see detailed line-by-line coverage
+
+## Technical Implementation
+
+Go-Sentinel's coverage feature leverages Go's built-in coverage tools and enhances them with:
+
+1. **Analysis**: Parses Go coverage profiles using the `golang.org/x/tools/cover` package
+2. **Visualization**: Renders coverage data with color-coding in the TUI
+3. **Integration**: Seamlessly connects with Go-Sentinel's test running capabilities
+
+## Best Practices
+
+1. **Regular Coverage Checks**: Run coverage analysis regularly to track testing progress
+2. **Focus on Critical Areas**: Prioritize coverage for error handling and edge cases
+3. **Set Coverage Goals**: Aim for specific coverage percentages for different parts of your codebase
+4. **Don't Chase 100%**: Instead of targeting perfect coverage, focus on meaningful tests
+
+## Troubleshooting
+
+- If coverage data doesn't appear, ensure tests are passing or the coverage file was generated
+- For large codebases, coverage generation might take some time
+- If colors aren't displaying correctly, check your terminal's color support
