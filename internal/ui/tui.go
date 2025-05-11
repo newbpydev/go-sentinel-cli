@@ -398,6 +398,21 @@ func (m *TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
+
+	// Allow clearing filtered mode (locked filter) with Esc
+	if m.FilteredMode || len(m.FilteredItems) > 0 {
+		if msg.Type == tea.KeyEsc || msg.String() == "esc" {
+			m.FilteredMode = false
+			m.AcceptedFilter = ""
+			m.FilteredItems = nil
+			m.Items = flattenTree(m.Tree)
+			m.Sidebar.SetItems(m.Items)
+			m.SelectedIndex = 0
+			m.Sidebar.Select(0)
+			return m, nil
+		}
+	}
+
 		switch msg.String() {
 		case "j":
 			if m.SelectedIndex < len(m.Items)-1 {
