@@ -13,7 +13,12 @@ type AnimatedCoverageBar struct {
 }
 
 func NewAnimatedCoverageBar() AnimatedCoverageBar {
-	p := progress.New(progress.WithDefaultGradient())
+	p := progress.New(
+		progress.WithGradient(
+			"#ff2b2b", // red
+			"#00ff00", // green
+		),
+	)
 	return AnimatedCoverageBar{
 		Progress: p,
 		Value:    0,
