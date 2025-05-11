@@ -32,12 +32,11 @@ func TestSidebarVisualSnapshot(t *testing.T) {
 	model := NewTUITestExplorerModel(root)
 	output := model.Sidebar.View()
 	output = stripSidebarHeader(output)
-	expected := `  📦 root
-    📁 pkg/foo
-      TestAlpha
-      TestBeta
-    📁 pkg/bar
-      TestGamma`
+	expected := `➤ ▼ root
+  ▼ pkg/foo
+    TestAlpha
+    TestBeta
+  ▶ pkg/bar`
 	actualClean := trimBlankLines(output)
 	expectedClean := trimBlankLines(expected)
 	if actualClean != expectedClean {

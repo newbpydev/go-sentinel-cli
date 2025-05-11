@@ -28,7 +28,7 @@ func main() {
 		}
 	}
 	model := ui.NewTUITestExplorerModel(root)
-	p := tea.NewProgram(model, tea.WithAltScreen())
+	p := tea.NewProgram(&model, tea.WithAltScreen())
 	if err := p.Start(); err != nil {
 		log.Fatalf("Error running TUI: %v", err)
 	}

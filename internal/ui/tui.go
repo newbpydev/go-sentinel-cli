@@ -56,26 +56,19 @@ type treeItem struct {
 }
 
 func (ti treeItem) Title() string {
-	icon := ""
-	switch {
-	case ti.node.Level == 0:
-		icon = "📦"
-	case ti.node.Error == "skip":
-		icon = "📁"
-	case len(ti.node.Children) > 0:
-		icon = "📁"
-	default:
-		icon = ""
-	}
 	indent := ""
 	for i := 0; i < ti.node.Level; i++ {
 		indent += "  "
 	}
-	// For test nodes (leaf), only show name, no icon
 	if len(ti.node.Children) == 0 {
+		// Test node (leaf)
 		return fmt.Sprintf("%s%s", indent, ti.node.Title)
 	}
-	return fmt.Sprintf("%s%s %s", indent, icon, ti.node.Title)
+	triangle := "▶"
+	if ti.node.Expanded {
+		triangle = "▼"
+	}
+	return fmt.Sprintf("%s%s %s", indent, triangle, ti.node.Title)
 }
 func (ti treeItem) Description() string { return "" }
 func (ti treeItem) FilterValue() string { return ti.node.Title }
@@ -125,8 +118,17 @@ func (d treeItemDelegate) Render(w io.Writer, m list.Model, index int, item list
 }
 
 func NewTUITestExplorerModel(root *TreeNode) TUITestExplorerModel {
-	items := flattenTree(root)
+	setExpansionByFailures(root)
+	return newTUITestExplorerModelCore(root)
+}
 
+// NewTUITestExplorerModelWithNoExpansion skips setExpansionByFailures for precise test control
+func NewTUITestExplorerModelWithNoExpansion(root *TreeNode) TUITestExplorerModel {
+	return newTUITestExplorerModelCore(root)
+}
+
+func newTUITestExplorerModelCore(root *TreeNode) TUITestExplorerModel {
+	items := flattenTree(root)
 	dlgt := treeItemDelegate{}
 	l := list.New(items, dlgt, 50, 20) // wider list for test names
 	l.Title = "Test Explorer"
@@ -151,7 +153,26 @@ func NewTUITestExplorerModel(root *TreeNode) TUITestExplorerModel {
 		Height:          24, // default, will be set on first WindowSizeMsg
 		CoverageBar:     NewAnimatedCoverageBar(),
 	}
-} // Default size, updated on resize
+}
+
+// setExpansionByFailures recursively sets .Expanded for all folders:
+// expanded if any descendant test failed, collapsed otherwise
+func setExpansionByFailures(node *TreeNode) bool {
+	if node == nil {
+		return false
+	}
+	if len(node.Children) == 0 {
+		return node.Passed != nil && !*node.Passed
+	}
+	hasFailure := false
+	for _, child := range node.Children {
+		if setExpansionByFailures(child) {
+			hasFailure = true
+		}
+	}
+	node.Expanded = hasFailure
+	return hasFailure
+}
 
 // flattenTree returns a flat slice of treeItems for visible nodes
 func flattenTree(root *TreeNode) []list.Item {
@@ -163,6 +184,8 @@ func flattenTree(root *TreeNode) []list.Item {
 		}
 		node.Level = level
 		node.Parent = parent
+		// DEBUG: Print pointer address for test
+		// fmt.Printf("flattenTree: node %s at %p\n", node.Title, node)
 		items = append(items, treeItem{node})
 		if node.Expanded {
 			for _, child := range node.Children {
@@ -175,11 +198,11 @@ func flattenTree(root *TreeNode) []list.Item {
 }
 
 // Bubble Tea Model interface
-func (m TUITestExplorerModel) Init() tea.Cmd {
+func (m *TUITestExplorerModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle window resize
 	if ws, ok := msg.(tea.WindowSizeMsg); ok {
 		m.Width = ws.Width
@@ -236,6 +259,26 @@ func (m TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if msg.String() == "?" {
 			m.ShowHelpModal = true
+			return m, nil
+		}
+		// Handle spacebar toggle for folder expansion
+		if msg.String() == " " || msg.Type == tea.KeySpace {
+			if len(m.Items) > 0 && m.SelectedIndex < len(m.Items) {
+				item := m.Items[m.SelectedIndex].(treeItem)
+				if len(item.node.Children) > 0 {
+					item.node.Expanded = !item.node.Expanded
+					m.Items = flattenTree(m.Tree)
+					// Clamp selection to valid range
+					if m.SelectedIndex >= len(m.Items) {
+						m.SelectedIndex = len(m.Items) - 1
+					}
+					if m.SelectedIndex < 0 && len(m.Items) > 0 {
+						m.SelectedIndex = 0
+					}
+					m.Sidebar.SetItems(m.Items)
+					m.Sidebar.Select(m.SelectedIndex)
+				}
+			}
 			return m, nil
 		}
 		switch msg.String() {
@@ -439,11 +482,30 @@ func (m TUITestExplorerModel) MainPaneShowsTestDetails() bool {
 	return true // Expand for detail logic later
 }
 
+// flattenAllTree returns a flat slice of treeItems for all nodes, ignoring expansion
+func flattenAllTree(root *TreeNode) []list.Item {
+	var items []list.Item
+	var walk func(node *TreeNode, level int, parent *TreeNode)
+	walk = func(node *TreeNode, level int, parent *TreeNode) {
+		if node == nil {
+			return
+		}
+		node.Level = level
+		node.Parent = parent
+		items = append(items, treeItem{node})
+		for _, child := range node.Children {
+			walk(child, level+1, node)
+		}
+	}
+	walk(root, 0, nil)
+	return items
+}
+
 func (m TUITestExplorerModel) SidebarFiltered(term string) bool {
 	if term == "" {
 		return true
 	}
-	filtered := fuzzyFilterTreeItems(flattenTree(m.Tree), term)
+	filtered := fuzzyFilterTreeItems(flattenAllTree(m.Tree), term)
 	return len(filtered) > 0
 }
 
