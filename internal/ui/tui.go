@@ -271,6 +271,13 @@ func (m *TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.MainPaneContent = fmt.Sprintf("Error: %v", errMsg.Error)
 		return m, nil
 	}
+	
+	// Handle HTML report generation messages
+	if htmlMsg, ok := msg.(HTMLReportGeneratedMsg); ok {
+		// HTML report generation completed successfully
+		m.MainPaneContent = fmt.Sprintf("HTML coverage report generated at %s", htmlMsg.ReportPath)
+		return m, nil
+	}
 
 	// Help modal open: only handle modal keys
 	if m.ShowHelpModal {
@@ -286,6 +293,31 @@ func (m *TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// If in coverage view, check if the key should be handled by the coverage view first
+		if m.ShowCoverageView && m.CoverageState.Enabled && m.CoverageState.View != nil {
+			// Try to handle the key in the coverage view
+			key := msg.String()
+			handled := false
+			
+			// Forward navigation keys
+			switch key {
+			case "j", "k", "g", "G":
+				if m.CoverageState.View.HasKeyBinding([]rune(key)[0]) {
+					m.CoverageState.View.HandleKey([]rune(key)[0])
+					handled = true
+				}
+			case "\n", "enter":
+				// If a file is selected, show detailed view
+				if m.CoverageState.View.GetSelectedFile() != "" {
+					m.SelectFileForCoverage(m.CoverageState.View.GetSelectedFile())
+					handled = true
+				}
+			}
+			
+			if handled {
+				return m, nil
+			}
+		}
 		if m.SearchActive {
 			// Handle search input
 			switch msg.Type {
@@ -505,6 +537,20 @@ func (m *TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.ShowCoverageView {
 				m.ToggleLowCoverageFilter()
 				return m, nil
+			}
+		case "E":
+			// Export HTML coverage report when in coverage view
+			if m.ShowCoverageView && m.CoverageState.Enabled {
+				// Find the current coverage file
+				var coverageFile string
+				if m.CoverageState.LastCoverageFile != "" {
+					coverageFile = m.CoverageState.LastCoverageFile
+					return m, m.ExportCoverageHTMLReport(coverageFile)
+				} else {
+					// No coverage file available
+					m.MainPaneContent = "No coverage file available for export"
+					return m, nil
+				}
 			}
 		case "q":
 			return m, tea.Quit

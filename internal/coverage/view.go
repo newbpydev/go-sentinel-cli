@@ -36,29 +36,48 @@ var (
 
 // CoverageView represents the TUI component for displaying coverage
 type CoverageView struct {
-	metrics      *CoverageMetrics
-	selectedFile string
-	width        int
-	height       int
-	keyHandlers  map[rune]func()
-	visible      bool
-	collector    *CoverageCollector // Reference to the collector for source code access
+	metrics           *CoverageMetrics
+	selectedFile      string
+	selectedFileIndex int
+	sortedFiles       []string // Sorted list of file names for predictable navigation
+	width             int
+	height            int
+	keyHandlers       map[rune]func()
+	visible           bool
+	collector         *CoverageCollector // Reference to the collector for source code access
+	showLowCoverage   bool // Filter to show only files with low coverage
 }
 
 // NewCoverageView creates a new coverage view
 func NewCoverageView(metrics *CoverageMetrics) *CoverageView {
 	cv := &CoverageView{
-		metrics:     metrics,
-		width:       80,  // Default width
-		height:      20,  // Default height
-		keyHandlers: make(map[rune]func()),
-		visible:     true,
-		collector:   nil, // Will be set when a coverage file is loaded
+		metrics:           metrics,
+		width:             80,  // Default width
+		height:            20,  // Default height
+		keyHandlers:       make(map[rune]func()),
+		visible:           true,
+		collector:         nil, // Will be set when a coverage file is loaded
+		selectedFileIndex: 0,
+		showLowCoverage:   false,
+	}
+
+	// Initialize the sorted files list if we have metrics
+	if metrics != nil && metrics.FileMetrics != nil {
+		cv.updateSortedFiles()
+		
+		// Initialize selectedFile to first file if available
+		if len(cv.sortedFiles) > 0 {
+			cv.selectedFile = cv.sortedFiles[0]
+		}
 	}
 
 	// Set up key handlers
 	cv.keyHandlers['v'] = func() { cv.visible = !cv.visible }
-	cv.keyHandlers['f'] = cv.showOnlyLowCoverage
+	cv.keyHandlers['f'] = cv.ToggleLowCoverageFilter
+	cv.keyHandlers['j'] = cv.SelectNextFile
+	cv.keyHandlers['k'] = cv.SelectPreviousFile
+	cv.keyHandlers['g'] = cv.SelectFirstFile
+	cv.keyHandlers['G'] = cv.SelectLastFile
 
 	return cv
 }
@@ -82,6 +101,95 @@ func (cv *CoverageView) GetSourceCode(filePath string) (map[int]string, error) {
 func (cv *CoverageView) HasKeyBinding(key rune) bool {
 	_, exists := cv.keyHandlers[key]
 	return exists
+}
+
+// updateSortedFiles refreshes the sorted list of files from the metrics
+func (cv *CoverageView) updateSortedFiles() {
+	if cv.metrics == nil || cv.metrics.FileMetrics == nil {
+		cv.sortedFiles = nil
+		return
+	}
+	
+	// Get all file names
+	cv.sortedFiles = make([]string, 0, len(cv.metrics.FileMetrics))
+	for filename := range cv.metrics.FileMetrics {
+		// If we're showing only low coverage files, filter accordingly
+		if cv.showLowCoverage {
+			fileMetric := cv.metrics.FileMetrics[filename]
+			// Only include files with coverage less than 50%
+			if fileMetric.LineCoverage < 50.0 {
+				cv.sortedFiles = append(cv.sortedFiles, filename)
+			}
+		} else {
+			cv.sortedFiles = append(cv.sortedFiles, filename)
+		}
+	}
+	
+	// Sort the file names for consistent navigation
+	sort.Strings(cv.sortedFiles)
+}
+
+// ToggleLowCoverageFilter toggles the filter to show only low coverage files
+func (cv *CoverageView) ToggleLowCoverageFilter() {
+	cv.showLowCoverage = !cv.showLowCoverage
+	
+	// Update the file list based on the new filter
+	cv.updateSortedFiles()
+	
+	// Reset selection to first file
+	cv.selectedFileIndex = 0
+	if len(cv.sortedFiles) > 0 {
+		cv.selectedFile = cv.sortedFiles[0]
+	} else {
+		cv.selectedFile = ""
+	}
+}
+
+// SelectNextFile selects the next file in the list
+func (cv *CoverageView) SelectNextFile() {
+	if len(cv.sortedFiles) == 0 {
+		return
+	}
+	
+	// Move to next file, wrapping around if necessary
+	cv.selectedFileIndex = (cv.selectedFileIndex + 1) % len(cv.sortedFiles)
+	cv.selectedFile = cv.sortedFiles[cv.selectedFileIndex]
+}
+
+// SelectPreviousFile selects the previous file in the list
+func (cv *CoverageView) SelectPreviousFile() {
+	if len(cv.sortedFiles) == 0 {
+		return
+	}
+	
+	// Move to previous file, wrapping around if necessary
+	cv.selectedFileIndex = (cv.selectedFileIndex - 1 + len(cv.sortedFiles)) % len(cv.sortedFiles)
+	cv.selectedFile = cv.sortedFiles[cv.selectedFileIndex]
+}
+
+// SelectFirstFile selects the first file in the list
+func (cv *CoverageView) SelectFirstFile() {
+	if len(cv.sortedFiles) == 0 {
+		return
+	}
+	
+	cv.selectedFileIndex = 0
+	cv.selectedFile = cv.sortedFiles[0]
+}
+
+// SelectLastFile selects the last file in the list
+func (cv *CoverageView) SelectLastFile() {
+	if len(cv.sortedFiles) == 0 {
+		return
+	}
+	
+	cv.selectedFileIndex = len(cv.sortedFiles) - 1
+	cv.selectedFile = cv.sortedFiles[cv.selectedFileIndex]
+}
+
+// GetSelectedFile returns the currently selected file path
+func (cv *CoverageView) GetSelectedFile() string {
+	return cv.selectedFile
 }
 
 // HandleKey processes a key press
@@ -147,9 +255,30 @@ func (cv *CoverageView) Render() string {
 	for _, filename := range fileNames {
 		metrics := cv.metrics.FileMetrics[filename]
 		coverageStyle := getCoverageStyle(metrics.LineCoverage)
-		sb.WriteString(fmt.Sprintf("%s: %s\n", 
-			getShortFileName(filename),
-			coverageStyle.Render(fmt.Sprintf("%.1f%%", metrics.LineCoverage))))
+		shortFileName := getShortFileName(filename)
+		
+		// Highlight the currently selected file
+		isSelected := filename == cv.selectedFile
+		linePrefix := "  "
+		if isSelected {
+			linePrefix = "▶ "
+		}
+		
+		// Format line with index, selection marker, and coverage
+		fileDisplay := fmt.Sprintf("%s%s: %s", 
+			linePrefix,
+			shortFileName,
+			coverageStyle.Render(fmt.Sprintf("%.1f%%", metrics.LineCoverage)))
+		
+		// If selected, use a highlighted style
+		if isSelected {
+			fileDisplay = lipgloss.NewStyle().
+				Bold(true).
+				Background(lipgloss.Color("#f1f8ff")).
+				Render(fileDisplay)
+		}
+		
+		sb.WriteString(fileDisplay + "\n")
 
 		// If this is the selected file and we have detailed metrics, show them
 		if cv.selectedFile == filename {

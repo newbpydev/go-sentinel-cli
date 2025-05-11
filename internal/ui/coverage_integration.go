@@ -13,12 +13,13 @@ import (
 
 // CoverageState holds the state for coverage visualization
 type CoverageState struct {
-	Enabled           bool                    // Whether coverage view is enabled
-	Metrics           *coverage.CoverageMetrics // Coverage metrics
-	SelectedFile      string                    // Currently selected file for detailed view
-	View              *coverage.CoverageView    // Main coverage view
+	Enabled           bool                      // Whether coverage view is enabled
+	Metrics           *coverage.CoverageMetrics  // Coverage metrics
+	SelectedFile      string                     // Currently selected file for detailed view
+	View              *coverage.CoverageView     // Main coverage view
 	FileView          *coverage.FileCoverageView // Detailed file view
 	ShowLowCoverageOnly bool                     // Filter to show only low coverage
+	LastCoverageFile  string                     // Path to the last generated coverage file
 }
 
 // InitCoverage initializes the coverage state
@@ -144,6 +145,9 @@ func (m *TUITestExplorerModel) RunTestsWithCoverage(packagePath string) tea.Cmd 
 		if err != nil {
 			return ErrorMsg{Error: fmt.Errorf("failed to run tests with coverage: %w", err)}
 		}
+		
+		// Store the coverage file path
+		m.CoverageState.LastCoverageFile = coverageFile
 		
 		// Load the coverage data
 		err = m.LoadCoverageData(coverageFile)

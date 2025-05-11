@@ -22,7 +22,11 @@ Go-Sentinel tracks four key coverage metrics:
 | `c` | Toggle coverage view on/off |
 | `C` | Run tests with coverage for current package or all packages |
 | `L` | Toggle filter to show only low-coverage files |
-| Arrow keys | Navigate through files in coverage view |
+| `E` | Export HTML coverage report |
+| `j` | Navigate to next file in coverage view |
+| `k` | Navigate to previous file in coverage view |
+| `g` | Jump to first file in coverage view |
+| `G` | Jump to last file in coverage view |
 | Enter | View detailed coverage for selected file |
 
 ### Running Tests with Coverage
@@ -59,7 +63,22 @@ Uncovered lines are highlighted in red, making it easy to identify code that nee
 
 1. Run tests with coverage by pressing `C`
 2. In the coverage view, press `L` to show only files with low coverage
-3. Navigate to a file and press Enter to see detailed line-by-line coverage
+3. Navigate to a file with `j`/`k` keys and press Enter to see detailed line-by-line coverage
+
+### Example 3: Generating and Sharing HTML Reports
+
+1. Run tests with coverage by pressing `C`
+2. While in the coverage view, press `E` to export an HTML coverage report
+3. The report will be generated in the `coverage-reports` directory with a timestamped filename
+4. Open the HTML report in any browser to view an enhanced coverage visualization
+5. Share the HTML report with team members for documentation or review
+
+The HTML reports provide a visually appealing, interactive view of your coverage data that can be easily shared with your team or included in documentation. They include:
+
+- Color-coded source code highlighting for covered and uncovered lines
+- Summary statistics for the entire codebase
+- File-by-file breakdowns of coverage metrics
+- Time and date of report generation
 
 ## Technical Implementation
 
