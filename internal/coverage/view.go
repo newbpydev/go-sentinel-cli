@@ -42,6 +42,7 @@ type CoverageView struct {
 	height       int
 	keyHandlers  map[rune]func()
 	visible      bool
+	collector    *CoverageCollector // Reference to the collector for source code access
 }
 
 // NewCoverageView creates a new coverage view
@@ -52,6 +53,7 @@ func NewCoverageView(metrics *CoverageMetrics) *CoverageView {
 		height:      20,  // Default height
 		keyHandlers: make(map[rune]func()),
 		visible:     true,
+		collector:   nil, // Will be set when a coverage file is loaded
 	}
 
 	// Set up key handlers
@@ -59,6 +61,21 @@ func NewCoverageView(metrics *CoverageMetrics) *CoverageView {
 	cv.keyHandlers['f'] = cv.showOnlyLowCoverage
 
 	return cv
+}
+
+// SetCollector sets the coverage collector for accessing source code
+func (cv *CoverageView) SetCollector(collector *CoverageCollector) {
+	cv.collector = collector
+}
+
+// GetSourceCode retrieves the source code for a given file
+func (cv *CoverageView) GetSourceCode(filePath string) (map[int]string, error) {
+	if cv.collector == nil {
+		return make(map[int]string), nil
+	}
+	
+	// Use the collector to get the source code
+	return cv.collector.GetSourceCode(filePath)
 }
 
 // HasKeyBinding checks if the view has a specific key binding

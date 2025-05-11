@@ -37,6 +37,10 @@ type TUITestExplorerModel struct {
 	FilteredMode bool
 	// Store the accepted filter term for updating filtered results
 	AcceptedFilter string
+	// Coverage visualization state
+	CoverageState CoverageState
+	// Flag to indicate if in coverage view mode
+	ShowCoverageView bool
 } // Now tracks terminal width/height
 
 // saveExpansionState saves the expansion state of all folders in the tree.
@@ -464,6 +468,16 @@ func (m *TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.SearchInput = ""
 			m.FilteredItems = flattenTree(m.Tree)
 			return m, nil
+		case "c":
+			// Toggle coverage view
+			m.ShowCoverageView = !m.ShowCoverageView
+			return m, nil
+		case "L":
+			// Toggle low coverage filter when in coverage view
+			if m.ShowCoverageView {
+				m.ToggleLowCoverageFilter()
+				return m, nil
+			}
 		case "q":
 			return m, tea.Quit
 		case "\n":
@@ -532,9 +546,13 @@ func (m TUITestExplorerModel) View() string {
 	m.Sidebar.SetShowStatusBar(false)
 	m.Sidebar.SetShowPagination(true)
 
-	// Main pane content: show package details if a folder is selected
+	// Main pane content: show coverage view or package details
 	mainPaneContent := ""
-	if m.SelectedIndex >= 0 && m.SelectedIndex < len(m.Items) {
+	
+	// If coverage view is active, show that instead of normal details
+	if m.ShowCoverageView && m.CoverageState.Enabled {
+		mainPaneContent = m.RenderCoverageView(mainWidth, mainHeight)
+	} else if m.SelectedIndex >= 0 && m.SelectedIndex < len(m.Items) {
 		selectedItem, ok := m.Items[m.SelectedIndex].(treeItem)
 		if ok && selectedItem.node != nil && len(selectedItem.node.Children) > 0 {
 			pkg := selectedItem.node
