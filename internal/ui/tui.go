@@ -404,6 +404,7 @@ func (m *TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Type == tea.KeyEsc || msg.String() == "esc" {
 			m.FilteredMode = false
 			m.AcceptedFilter = ""
+			m.SearchInput = "" // Clear search input text so it doesn't show in the UI
 			m.FilteredItems = nil
 			m.Items = flattenTree(m.Tree)
 			m.Sidebar.SetItems(m.Items)
