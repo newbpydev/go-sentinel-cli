@@ -31,7 +31,46 @@ type TUITestExplorerModel struct {
 	Height int
 	// Animated coverage bar for details panel
 	CoverageBar AnimatedCoverageBar
+	// Track folder expansion state for search UX
+	prevExpansion map[string]bool
 } // Now tracks terminal width/height
+
+// saveExpansionState saves the expansion state of all folders in the tree.
+func (m *TUITestExplorerModel) saveExpansionState() {
+	m.prevExpansion = make(map[string]bool)
+	save := func(node *TreeNode, path string) {}
+	save = func(node *TreeNode, path string) {
+		if node == nil {
+			return
+		}
+		if len(node.Children) > 0 {
+			m.prevExpansion[path+"/"+node.Title] = node.Expanded
+			for _, child := range node.Children {
+				save(child, path+"/"+node.Title)
+			}
+		}
+	}
+	save(m.Tree, "")
+}
+
+// restoreExpansionState restores the expansion state of all folders from prevExpansion.
+func (m *TUITestExplorerModel) restoreExpansionState() {
+	restore := func(node *TreeNode, path string) {}
+	restore = func(node *TreeNode, path string) {
+		if node == nil {
+			return
+		}
+		if len(node.Children) > 0 {
+			if exp, ok := m.prevExpansion[path+"/"+node.Title]; ok {
+				node.Expanded = exp
+			}
+			for _, child := range node.Children {
+				restore(child, path+"/"+node.Title)
+			}
+		}
+	}
+	restore(m.Tree, "")
+}
 
 // TreeNode represents a node in the test tree (suite/file/test)
 type TreeNode struct {
@@ -231,29 +270,83 @@ func (m *TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.SearchActive = false
 				m.SearchInput = ""
 				m.FilteredItems = nil
+				m.restoreExpansionState()
 				m.Items = flattenTree(m.Tree)
 				m.Sidebar.SetItems(m.Items)
 				m.SelectedIndex = 0
 				m.Sidebar.Select(0)
 			case tea.KeyEnter:
+				// Accept filtered list: exit search mode, keep only filtered items
 				m.SearchActive = false
 				m.Items = m.FilteredItems
 				m.Sidebar.SetItems(m.Items)
+				// Clamp selection
+				if m.SelectedIndex >= len(m.Items) {
+					m.SelectedIndex = len(m.Items) - 1
+				}
+				if m.SelectedIndex < 0 && len(m.Items) > 0 {
+					m.SelectedIndex = 0
+				}
+				m.Sidebar.Select(m.SelectedIndex)
+				return m, nil
+			case tea.KeyRunes:
+				// Special handling for spacebar to expand/collapse folder and exit search mode
+				if msg.String() == " " && len(m.Items) > 0 && m.SelectedIndex < len(m.Items) {
+					item := m.Items[m.SelectedIndex].(treeItem)
+					if len(item.node.Children) > 0 {
+						// Update expansion state in prevExpansion before restoring
+						path := ""
+						n := item.node
+						for p := n; p != nil; p = p.Parent {
+							if p.Parent != nil {
+								path = "/" + p.Title + path
+							}
+						}
+						key := path
+						if key == "" {
+							key = "/" + n.Title
+						}
+						if m.prevExpansion == nil {
+							m.saveExpansionState()
+						}
+						m.prevExpansion[key] = !item.node.Expanded
+						item.node.Expanded = !item.node.Expanded
+						m.SearchActive = false
+						m.SearchInput = ""
+						m.FilteredItems = nil
+						m.restoreExpansionState()
+						m.Items = flattenTree(m.Tree)
+						// Clamp selection
+						if m.SelectedIndex >= len(m.Items) {
+							m.SelectedIndex = len(m.Items) - 1
+						}
+						if m.SelectedIndex < 0 && len(m.Items) > 0 {
+							m.SelectedIndex = 0
+						}
+						m.Sidebar.SetItems(m.Items)
+						m.Sidebar.Select(m.SelectedIndex)
+						return m, nil
+					}
+				}
+				// Otherwise, treat as normal input
+				m.SearchInput += msg.String()
+				m.FilteredItems = fuzzyFilterTreeItems(flattenTree(m.Tree), m.SearchInput)
+				m.Sidebar.SetItems(m.FilteredItems)
 				m.SelectedIndex = 0
 				m.Sidebar.Select(0)
+				return m, nil
 			default:
 				if msg.Type == tea.KeyBackspace || msg.Type == tea.KeyDelete {
 					if len(m.SearchInput) > 0 {
 						m.SearchInput = m.SearchInput[:len(m.SearchInput)-1]
 					}
-				} else if msg.Type == tea.KeyRunes {
-					m.SearchInput += msg.String()
+					// Fuzzy filter
+					m.FilteredItems = fuzzyFilterTreeItems(flattenTree(m.Tree), m.SearchInput)
+					m.Sidebar.SetItems(m.FilteredItems)
+					m.SelectedIndex = 0
+					m.Sidebar.Select(0)
 				}
-				// Fuzzy filter
-				m.FilteredItems = fuzzyFilterTreeItems(flattenTree(m.Tree), m.SearchInput)
-				m.Sidebar.SetItems(m.FilteredItems)
-				m.SelectedIndex = 0
-				m.Sidebar.Select(0)
+				return m, nil
 			}
 			return m, nil
 		}
@@ -262,7 +355,8 @@ func (m *TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		// Handle spacebar toggle for folder expansion
-		if msg.String() == " " || msg.Type == tea.KeySpace {
+		// Only allow expand/collapse with spacebar when NOT in search mode
+		if (msg.String() == " " || msg.Type == tea.KeySpace) && !m.SearchActive {
 			if len(m.Items) > 0 && m.SelectedIndex < len(m.Items) {
 				item := m.Items[m.SelectedIndex].(treeItem)
 				if len(item.node.Children) > 0 {
@@ -326,6 +420,7 @@ func (m *TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Sidebar.Select(m.SelectedIndex)
 		case "/":
 			// Activate search mode
+			m.saveExpansionState() // Save expansion state before filtering
 			m.SearchActive = true
 			m.SearchInput = ""
 			m.FilteredItems = flattenTree(m.Tree)

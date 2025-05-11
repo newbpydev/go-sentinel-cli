@@ -298,6 +298,67 @@ func TestSidebar_ToggleExpansionWithSpace(t *testing.T) {
 	}
 }
 
+func TestSidebar_ToggleFolderInSearchModeResetsFilter(t *testing.T) {
+	model := NewTUITestExplorerModelWithNoExpansion(mockTestTree())
+	// Activate search mode and filter for a folder
+	model.SearchActive = true
+	model.SearchInput = "pkg/foo"
+	model.FilteredItems = fuzzyFilterTreeItems(flattenTree(model.Tree), model.SearchInput)
+	model.Items = model.FilteredItems
+	model.Sidebar.SetItems(model.Items)
+	// Find the index of the "pkg/foo" folder in filtered items
+	findPkgFooIndex := func() int {
+		for i, item := range model.Items {
+			ti := item.(treeItem)
+			if ti.node.Title == "pkg/foo" {
+				return i
+			}
+		}
+		return -1
+	}
+	model.SelectedIndex = findPkgFooIndex()
+	if model.SelectedIndex == -1 {
+		t.Fatalf("'pkg/foo' not found in filtered sidebar items for search mode")
+	}
+	// Simulate pressing space to expand/collapse
+	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}}
+	_, _ = (&model).Update(msg)
+	// After toggle, search mode should be off, search input cleared, and all files visible
+	if model.SearchActive {
+		t.Errorf("Search mode should be deactivated after toggling folder in search mode")
+	}
+	if model.SearchInput != "" {
+		t.Errorf("Search input should be cleared after toggling folder in search mode")
+	}
+	allTitles := []string{}
+	for _, item := range model.Items {
+		ti := item.(treeItem)
+		allTitles = append(allTitles, ti.node.Title)
+	}
+	// After toggling, pkg/foo should be expanded, so its children should be visible
+	if !containsSlice(allTitles, "root") || !containsSlice(allTitles, "pkg/foo") || !containsSlice(allTitles, "pkg/bar") {
+		t.Errorf("Sidebar did not reset to show all top-level folders after toggling folder in search mode. Got: %v", allTitles)
+	}
+	if !containsSlice(allTitles, "TestAlpha") || !containsSlice(allTitles, "TestBeta") {
+		t.Errorf("Expanded folder's children should be visible after toggling. Got: %v", allTitles)
+	}
+	// pkg/bar's child should be visible if pkg/bar is expanded
+	if model.Tree.Children[1].Expanded {
+		if !containsSlice(allTitles, "TestGamma") {
+			t.Errorf("Expanded folder's child should be visible. Got: %v", allTitles)
+		}
+	}
+}
+
+func containsSlice(slice []string, val string) bool {
+	for _, s := range slice {
+		if s == val {
+			return true
+		}
+	}
+	return false
+}
+
 func TestSidebar_RendersTriangleIcons(t *testing.T) {
 	pass := true
 	fail := false
