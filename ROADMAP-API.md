@@ -140,12 +140,12 @@ This roadmap outlines the development plan for the Go Sentinel API server which 
 - [ ] **6.1. Security Measures**
   - [ ] 6.1.1. Write tests for API security features
     - [ ] Test: Authentication mechanisms
-    - [ ] Test: Rate limiting
-    - [ ] Test: Input validation and sanitization
-  - [ ] 6.1.2. Implement security features
+    - [x] Test: Rate limiting
+    - [x] Test: Input validation and sanitization
+  - [x] 6.1.2. Implement security features
     - [ ] Add basic authentication (if needed)
-    - [ ] Implement rate limiting for all endpoints
-    - [ ] Add comprehensive input validation
+    - [x] Implement rate limiting for all endpoints
+    - [x] Add comprehensive input validation
 
 - [ ] **6.2. Performance Optimizations**
   - [ ] 6.2.1. Write tests for API performance

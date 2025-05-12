@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	custommiddleware "github.com/newbpydev/go-sentinel/internal/api/middleware"
 )
 
 // Server wraps the HTTP server and its dependencies
@@ -33,7 +34,9 @@ func NewAPIServer(cfg api.Config) *APIServer {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
-	// TODO: Add CORS and security middleware here if needed
+	// Security middleware
+	r.Use(custommiddleware.RateLimit(60, time.Minute)) // 60 requests per minute per IP
+	r.Use(custommiddleware.ValidateJSON)
 
 	// Health endpoint
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
