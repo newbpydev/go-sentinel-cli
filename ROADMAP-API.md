@@ -62,24 +62,24 @@ This roadmap outlines the development plan for the Go Sentinel API server which 
     - [x] Add connection metadata tracking
 
 - [ ] **3.2. WebSocket Message Handling**
-  - [ ] 3.2.1. Write tests for WebSocket message types
-    - [ ] Test: Message encoding/decoding
-    - [ ] Test: Handle different message types (test results, commands)
-    - [ ] Test: Error handling for malformed messages
-  - [ ] 3.2.2. Implement WebSocket message handling
-    - [ ] Create message types and encoders/decoders
-    - [ ] Implement message routing system
-    - [ ] Add proper error handling for malformed messages
+  - [x] 3.2.1. Write tests for WebSocket message types
+    - [x] Test: Message encoding/decoding
+    - [x] Test: Handle different message types (test results, commands)
+    - [x] Test: Error handling for malformed messages
+  - [x] 3.2.2. Implement WebSocket message handling
+    - [x] Create message types and encoders/decoders
+    - [x] Implement message routing system
+    - [x] Add proper error handling for malformed messages
 
 - [ ] **3.3. Real-Time Test Updates Broadcasting**
-  - [ ] 3.3.1. Write tests for real-time broadcasting
-    - [ ] Test: New test results broadcast to all connections
-    - [ ] Test: Broadcast throttling for high volume updates
-    - [ ] Test: Message ordering and delivery guarantees
-  - [ ] 3.3.2. Implement real-time broadcasting system
-    - [ ] Create broadcast mechanism for new test results
-    - [ ] Implement throttling for high-frequency events
-    - [ ] Add ability to send targeted messages to specific clients
+  - [x] 3.3.1. Write tests for real-time broadcasting
+    - [x] Test: New test results broadcast to all connections
+    - [x] Test: Broadcast throttling for high volume updates
+    - [x] Test: Message ordering and delivery guarantees
+  - [x] 3.3.2. Implement real-time broadcasting system
+    - [x] Create broadcast mechanism for new test results
+    - [x] Implement throttling for high-frequency events
+    - [x] Add ability to send targeted messages to specific clients
 
 ## Phase 4: REST API Endpoints
 

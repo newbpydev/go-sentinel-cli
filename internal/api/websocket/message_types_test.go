@@ -5,20 +5,6 @@ import (
 	"testing"
 )
 
-type TestMessage struct {
-	Type string `json:"type"`
-	Payload json.RawMessage `json:"payload"`
-}
-
-type TestResultPayload struct {
-	TestID string `json:"test_id"`
-	Status string `json:"status"`
-}
-
-type CommandPayload struct {
-	Command string `json:"command"`
-	Args []string `json:"args"`
-}
 
 func TestMessageEncodingDecoding(t *testing.T) {
 	payload := TestResultPayload{TestID: "abc", Status: "pass"}
