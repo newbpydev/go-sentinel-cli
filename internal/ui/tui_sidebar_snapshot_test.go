@@ -8,9 +8,6 @@ import (
 	"github.com/newbpydev/go-sentinel/internal/ui"
 )
 
-
-
-
 func TestSidebarVisualSnapshot(t *testing.T) {
 	root := &ui.TreeNode{
 		Title:    "root",
@@ -51,4 +48,3 @@ func TestSidebarVisualSnapshot(t *testing.T) {
 		t.Errorf("Sidebar visual snapshot mismatch.\nExpected:\n%s\nGot:\n%s", expectedClean, actualClean)
 	}
 }
-

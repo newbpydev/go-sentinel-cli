@@ -50,8 +50,15 @@ var (
 		Foreground(lipgloss.Color("15")).         // White text
 		Background(lipgloss.Color("90"))          // Highlighted background
 
+	// Log panel style
+	LogPaneStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("252")).		 // Light gray text
+		Background(DarkerBackground).			 // Dark background
+		Padding(1, 2).						 // Same padding as main pane
+		Border(lipgloss.RoundedBorder()).		 // Rounded borders
+		BorderForeground(lipgloss.Color("237"))  // Dark border
+
 	BorderStyle = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).          // Rounded borders
 		BorderForeground(lipgloss.Color("237"))   // Dark subtle border
 )
-

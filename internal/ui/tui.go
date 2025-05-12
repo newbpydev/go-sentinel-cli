@@ -14,6 +14,12 @@ import (
 
 // The styles and colors are defined in theme.go within the same package
 
+// Layout modes
+const (
+	NormalLayoutMode = iota
+	SplitWithLogMode
+)
+
 // TUITestExplorerModel is the Bubble Tea model for the tree-based test explorer.
 type TUITestExplorerModel struct {
 	Sidebar         list.Model
@@ -43,10 +49,21 @@ type TUITestExplorerModel struct {
 	// Flag to indicate if in coverage view mode
 	ShowCoverageView bool
 	// Test runner state
-	TestsRunning    bool
-	RunningPackage  string
-	LastRunSuccess  bool
-	LastChangedFile string
+	TestsRunning     bool
+	RunningPackage   string
+	LastRunSuccess   bool
+	LastChangedFile  string
+	WatchModeEnabled bool
+	// Log view
+	LogBuffer        []string
+	ShowLogView      bool
+	LayoutMode       int
+	// Callback for watch mode changes
+	watchModeCallback func(bool)
+	// CRITICAL FIX: Fields for pending test runs
+	pendingTestPackage string
+	pendingTestName    string
+	hasPendingTest     bool
 } // Now tracks terminal width/height
 
 // saveExpansionState saves the expansion state of all folders in the tree.
@@ -180,6 +197,26 @@ func NewTUITestExplorerModelWithNoExpansion(root *TreeNode) TUITestExplorerModel
 	return newTUITestExplorerModelCore(root)
 }
 
+// AddLogLine adds a line to the log buffer
+func (m *TUITestExplorerModel) AddLogLine(line string) {
+	// Cap the buffer at 500 lines to prevent excessive memory usage
+	if len(m.LogBuffer) > 500 {
+		// Remove oldest lines when buffer gets too large
+		m.LogBuffer = m.LogBuffer[len(m.LogBuffer)-500:]
+	}
+	m.LogBuffer = append(m.LogBuffer, line)
+}
+
+// ClearLog clears the log buffer
+func (m *TUITestExplorerModel) ClearLog() {
+	m.LogBuffer = []string{}
+}
+
+// ToggleLogView toggles the log view on/off
+func (m *TUITestExplorerModel) ToggleLogView() {
+	m.ShowLogView = !m.ShowLogView
+}
+
 func newTUITestExplorerModelCore(root *TreeNode) TUITestExplorerModel {
 	items := flattenTree(root)
 	dlgt := treeItemDelegate{}
@@ -205,6 +242,10 @@ func newTUITestExplorerModelCore(root *TreeNode) TUITestExplorerModel {
 		Width:           100, // wider default
 		Height:          24, // default, will be set on first WindowSizeMsg
 		CoverageBar:     NewAnimatedCoverageBar(),
+		LogBuffer:        []string{},
+		ShowLogView:      false,
+		LayoutMode:       0,
+		WatchModeEnabled: false,
 	}
 }
 
@@ -250,9 +291,26 @@ func flattenTree(root *TreeNode) []list.Item {
 	return items
 }
 
-// Init initializes the TUI model
 func (m *TUITestExplorerModel) Init() tea.Cmd {
 	return nil
+}
+
+// HasPendingTestRun checks if there is a pending test run
+func (m *TUITestExplorerModel) HasPendingTestRun() bool {
+	return m.hasPendingTest
+}
+
+// GetAndClearPendingTestRun returns the details of a pending test run and clears the pending state
+func (m *TUITestExplorerModel) GetAndClearPendingTestRun() (string, string) {
+	pkg := m.pendingTestPackage
+	test := m.pendingTestName
+	
+	// Clear the pending state
+	m.pendingTestPackage = ""
+	m.pendingTestName = ""
+	m.hasPendingTest = false
+	
+	return pkg, test
 }
 
 // Update processes a message and returns an updated model and optional command
@@ -266,10 +324,25 @@ func (m *TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Sidebar.SetItems(m.Items)
 		return m, nil
 		
+	case RunTestsMsg:
+		// Set pending test run flags - the message polling loop will pick this up
+		m.pendingTestPackage = msg.Package
+		m.pendingTestName = msg.Test
+		m.hasPendingTest = true
+		
+		// Show running status
+		m.TestsRunning = true
+		m.RunningPackage = msg.Package
+		
+		// CRITICAL FIX: Show the log panel automatically when running tests
+		m.ShowLogView = true
+		return m, nil
+		
 	case TestsStartedMsg:
 		// Show running status
 		m.TestsRunning = true
 		m.RunningPackage = msg.Package
+		m.ShowLogView = true  // Also show log view
 		return m, nil
 		
 	case TestsCompletedMsg:
@@ -278,9 +351,46 @@ func (m *TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.LastRunSuccess = msg.Success
 		return m, nil
 		
-	case RunTestsMsg:
-		// Return command to run tests
-		return m, runTestsCmd(msg.Package, msg.Test)
+	case ToggleWatchModeMsg:
+		// Toggle the watch mode and send the command to notify the app controller
+		return m, func() tea.Msg {
+			return WatchStatusChangedMsg{Enabled: !m.WatchModeEnabled}
+		}
+
+	case WatchStatusChangedMsg:
+		// Update the UI state with the new watch mode status
+		m.WatchModeEnabled = msg.Enabled
+		
+		// IMPORTANT: Don't call the callback directly from Update() as this creates
+		// a synchronous loop. Instead, return a command that will be executed
+		// asynchronously by the Bubble Tea runtime.
+		return m, func() tea.Msg {
+			// Only if we have a callback, notify the controller about the change
+			if m.watchModeCallback != nil {
+				m.watchModeCallback(msg.Enabled)
+			}
+			// Return a no-op message that won't trigger more updates
+			return nil
+		}
+
+	case LogEntryMsg:
+		// Add the log entry to our buffer
+		m.AddLogLine(msg.Content)
+		// Don't automatically show the log view - respect user's preference
+		return m, nil
+		
+	case ClearLogMsg:
+		// Clear the log buffer
+		m.LogBuffer = []string{}
+		return m, nil
+		
+	case ShowLogViewMsg:
+		// Explicitly show or hide the log view based on the message
+		m.ShowLogView = msg.Show
+		return m, nil
+		
+	// NOTE: RunTestsMsg case handler was here but removed to prevent duplication
+	// The first handler now sets the pending test flags that will be picked up by the controller
 		
 	case FileChangedMsg:
 		// Record changed file and trigger tests
@@ -305,7 +415,7 @@ func (m *TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle error messages
 	if errMsg, ok := msg.(event.ErrorEvent); ok {
 		// Show the error
-		m.MainPaneContent = fmt.Sprintf("Error: %v", errMsg.Error)
+		m.MainPaneContent = fmt.Sprintf("Error: %v", errMsg.Error())
 		return m, nil
 	}
 	
@@ -592,7 +702,56 @@ func (m *TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q":
 			return m, tea.Quit
 		case "\n":
-			// Enter logic stub
+			// Run selected test if a test is selected
+			if m.SelectedIndex >= 0 && m.SelectedIndex < len(m.Items) {
+				selectedItem, ok := m.Items[m.SelectedIndex].(treeItem)
+				if ok && selectedItem.node != nil {
+					// If it's a leaf node (test), run that specific test
+					if len(selectedItem.node.Children) == 0 {
+						// Find the package path by walking up the tree
+						pkg := ""
+						parent := selectedItem.node.Parent
+						if parent != nil {
+							pkg = parent.Title
+						}
+						return m, runTestsCmd(pkg, selectedItem.node.Title)
+					} else {
+						// If it's a package/folder, run all tests in that package
+						return m, runTestsCmd(selectedItem.node.Title, "")
+					}
+				}
+			}
+		case "a":
+			// Run all tests
+			return m, runTestsCmd("./...", "")
+		case "p":
+			// Run package tests (current or selected package)
+			packagePath := "./..."
+			if m.SelectedIndex >= 0 && m.SelectedIndex < len(m.Items) {
+				selectedItem, ok := m.Items[m.SelectedIndex].(treeItem)
+				if ok && selectedItem.node != nil {
+					// Find the package by navigating up to the first parent that's a package
+					node := selectedItem.node
+					for node != nil {
+						if len(node.Children) > 0 {
+							packagePath = node.Title
+							break
+						}
+						node = node.Parent
+					}
+				}
+			}
+			return m, runTestsCmd(packagePath, "")
+		case "w":
+			// Toggle watch mode
+			// Send a message to toggle watch mode
+			return m, func() tea.Msg {
+				return ToggleWatchModeMsg{}
+			}
+		case "o":
+			// Toggle log view (output)
+			m.ToggleLogView()
+			return m, nil
 		}
 	}
 	return m, nil
@@ -705,7 +864,37 @@ func (m TUITestExplorerModel) View() string {
 		}
 	}
 	if mainPaneContent == "" {
-		mainPaneContent = "details placeholder!"
+		// Show file watcher details if no package is selected
+		if m.LastChangedFile != "" {
+			status := "Active"
+			statusColor := AccentGreen
+			if m.TestsRunning {
+				status = "Running Tests"
+				statusColor = AccentYellow
+			}
+			statusText := lipgloss.NewStyle().Foreground(statusColor).Bold(true).Render(status)
+			
+			mainPaneContent = fmt.Sprintf("File Watcher: %s\n\n", statusText)
+			mainPaneContent += fmt.Sprintf("Last Changed File:\n%s\n\n", m.LastChangedFile)
+			
+			if m.RunningPackage != "" {
+				mainPaneContent += fmt.Sprintf("Testing Package:\n%s\n\n", m.RunningPackage)
+			}
+			
+			// Show run status
+			if !m.TestsRunning && m.RunningPackage != "" {
+				runStatus := "Failed"
+				runColor := AccentRed
+				if m.LastRunSuccess {
+					runStatus = "Passed"
+					runColor = AccentGreen
+				}
+				runText := lipgloss.NewStyle().Foreground(runColor).Bold(true).Render(runStatus)
+				mainPaneContent += fmt.Sprintf("Last Run: %s\n", runText)
+			}
+		} else {
+			mainPaneContent = "Welcome to Go-Sentinel!\n\nSelect a package from the sidebar to view details.\nFile changes will be displayed here when detected.\n\nPress '/' to filter tests\nPress 'q' to quit"
+		}
 	}
 	mainPane := MainPaneStyle.Width(mainWidth).Height(mainHeight).Render(mainPaneContent)
 
@@ -717,8 +906,74 @@ func (m TUITestExplorerModel) View() string {
 	// Join horizontally
 	row := lipgloss.JoinHorizontal(lipgloss.Top, sidebar, mainPane)
 
-	// Footer - now centered
-	footerContent := "↑/k up • ↓/j down • / filter • q quit • ? help"
+	// Add log panel if log view is enabled
+	if m.ShowLogView {
+		// Calculate log panel height - use 1/3 of available height
+		logHeight := height / 3
+		if logHeight < 5 {
+			logHeight = 5 // Minimum log height
+		}
+		if logHeight > height / 2 {
+			logHeight = height / 2 // Maximum log height (half of screen)
+		}
+
+		// Adjust the main row height
+		rowHeight := height - logHeight - headerHeight - footerHeight
+		if rowHeight < 8 {
+			rowHeight = 8 // Ensure minimum row height
+			logHeight = height - rowHeight - headerHeight - footerHeight
+		}
+
+		// Create a styled log content with most recent logs
+		logContent := "Terminal Output"
+		if len(m.LogBuffer) > 0 {
+			// Calculate how many lines to show based on available height
+			maxLines := logHeight - 2 // Account for borders and title
+			startLine := 0
+			if len(m.LogBuffer) > maxLines {
+				startLine = len(m.LogBuffer) - maxLines
+			}
+
+			// Join the visible log lines
+			visibleLines := m.LogBuffer[startLine:]
+			logContent = "Terminal Output (press 'o' to hide)\n\n" + strings.Join(visibleLines, "\n")
+		} else {
+			logContent = "Terminal Output (press 'o' to hide)\n\nNo output available yet."
+		}
+
+		// Render log panel with proper styling
+		logPane := LogPaneStyle.Width(width).Height(logHeight).Render(logContent)
+
+		// Add the log panel below the main content
+		row = lipgloss.JoinVertical(lipgloss.Left, row, logPane)
+	}
+
+	// Footer - now with status indicators and key help
+	watchStatus := "[w] Watch: OFF"
+	if m.WatchModeEnabled {
+		watchStatus = lipgloss.NewStyle().Foreground(AccentGreen).Render("[W] Watch: ON")
+	}
+	
+	runStatus := ""
+	if m.TestsRunning {
+		runStatus = lipgloss.NewStyle().Foreground(AccentYellow).Render(" [Running Tests]")
+	} else if m.LastChangedFile != "" {
+		if m.LastRunSuccess {
+			runStatus = lipgloss.NewStyle().Foreground(AccentGreen).Render(" [Tests Passed]")
+		} else {
+			runStatus = lipgloss.NewStyle().Foreground(AccentRed).Render(" [Tests Failed]")
+		}
+	}
+	
+	// Log view toggle status
+	logViewStatus := "[o] Output: OFF"
+	if m.ShowLogView {
+		logViewStatus = lipgloss.NewStyle().Foreground(AccentBlue).Render("[O] Output: ON")
+	}
+
+	// Help text showing available commands
+	footerContent := fmt.Sprintf("%s%s • %s • a all tests • p pkg tests • ↵ run test • w watch • q quit", 
+		watchStatus, runStatus, logViewStatus)
 	footer := FooterStyle.
 		Width(width).
 		Align(lipgloss.Center). // Center the text
@@ -743,6 +998,11 @@ func (m TUITestExplorerModel) VIMNavigationWorked() bool {
 func (m TUITestExplorerModel) MainPaneShowsTestDetails() bool {
 	// For now, just check that main pane content can change
 	return true // Expand for detail logic later
+}
+
+// SetWatchModeCallback sets the callback function that gets called when watch mode changes
+func (m *TUITestExplorerModel) SetWatchModeCallback(callback func(bool)) {
+	m.watchModeCallback = callback
 }
 
 // flattenAllTree returns a flat slice of treeItems for all nodes, ignoring expansion

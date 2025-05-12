@@ -2,14 +2,15 @@ package runner
 
 import (
 	"bytes"
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
-	"bufio"
 )
 
 type Runner struct{
@@ -58,7 +59,8 @@ func (r *Runner) SetInactivityThreshold(threshold time.Duration) {
 
 // buildTestArgs creates the argument slice for the go test command
 func (r *Runner) buildTestArgs(pkg string, testName string, timeout time.Duration) []string {
-	args := []string{"test", "-json"}
+	// CRITICAL FIX: Use both -json for machine parsing AND -v for human-readable verbose output
+	args := []string{"test", "-json", "-v"}
 
 	// Add timeout flag
 	if timeout > 0 {
@@ -101,6 +103,11 @@ func (r *Runner) RunWithContext(ctx context.Context, pkg string, testName string
 	args := r.buildTestArgs(pkg, testName, cmdTimeout)
 	cmd := exec.CommandContext(ctx, "go", args...)
 	cmd.Dir = findProjectRoot()
+	
+	// Log the exact command being executed - this helps in debugging
+	cmdString := "go " + strings.Join(args, " ")
+	out <- []byte(fmt.Sprintf("\n[COMMAND] %s\n", cmdString))
+	
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
