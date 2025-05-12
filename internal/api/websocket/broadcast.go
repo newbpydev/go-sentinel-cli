@@ -42,6 +42,12 @@ func (b *Broadcaster) Remove(id string) {
 	}
 }
 
+var msgBufPool = sync.Pool{
+	New: func() interface{} {
+		return make([]byte, 0, 4096)
+	},
+}
+
 func (b *Broadcaster) Broadcast(msg []byte) {
 	b.mu.RLock()
 	conns := make([]broadcastConn, 0, len(b.conns))
@@ -51,9 +57,21 @@ func (b *Broadcaster) Broadcast(msg []byte) {
 	throttle := b.throttle
 	b.mu.RUnlock()
 
+	sem := make(chan struct{}, 16) // Limit concurrency to 16
+	var wg sync.WaitGroup
 	for _, c := range conns {
-		c.Send(msg)
+		sem <- struct{}{}
+		wg.Add(1)
+		go func(conn broadcastConn) {
+			defer wg.Done()
+			// Allocate a new buffer for each message to avoid data races
+			buf := make([]byte, len(msg))
+			copy(buf, msg)
+			conn.Send(buf)
+			<-sem
+		}(c)
 	}
+	wg.Wait()
 	if throttle > 0 {
 		time.Sleep(throttle)
 	}

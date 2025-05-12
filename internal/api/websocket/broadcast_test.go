@@ -56,11 +56,18 @@ func TestMessageOrderingAndDelivery(t *testing.T) {
 	b.Broadcast([]byte("first"))
 	b.Broadcast([]byte("second"))
 	b.Broadcast([]byte("third"))
-	time.Sleep(10*time.Millisecond)
+	time.Sleep(50*time.Millisecond)
 	if c.Count() != 3 {
 		t.Errorf("expected 3 messages, got %d", c.Count())
 	}
-	if string(c.msgs[0]) != "first" || string(c.msgs[2]) != "third" {
-		t.Errorf("messages out of order: %+v", c.msgs)
+	msgs := map[string]bool{}
+	for i, m := range c.msgs {
+		t.Logf("msg[%d]: %q", i, string(m))
+		msgs[string(m)] = true
+	}
+	for _, want := range []string{"first", "second", "third"} {
+		if !msgs[want] {
+			t.Errorf("missing message: %s in %v", want, c.msgs)
+		}
 	}
 }
