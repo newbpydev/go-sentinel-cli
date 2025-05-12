@@ -18,14 +18,14 @@ This roadmap outlines the development plan for the Go Sentinel API server which 
   - [x] 1.1.3. Create configuration struct for API settings
 
 - [ ] **1.2. Base HTTP Server**
-  - [ ] 1.2.1. Write tests for HTTP server setup and configuration
-    - [ ] Test: Server initializes with proper routes
-    - [ ] Test: Server handles graceful shutdown
-    - [ ] Test: Server applies correct middleware chain
-  - [ ] 1.2.2. Implement core HTTP server with proper middleware and routing
-    - [ ] Implement graceful startup/shutdown
-    - [ ] Configure CORS, logging, and security middleware
-    - [ ] Set up basic health endpoint for monitoring
+  - [x] 1.2.1. Write tests for HTTP server setup and configuration
+    - [x] Test: Server initializes with proper routes
+    - [x] Test: Server handles graceful shutdown
+    - [x] Test: Server applies correct middleware chain
+  - [x] 1.2.2. Implement core HTTP server with proper middleware and routing
+    - [x] Implement graceful startup/shutdown
+    - [x] Configure CORS, logging, and security middleware
+    - [x] Set up basic health endpoint for monitoring
 
 ## Phase 2: Test Result Data Models
 
