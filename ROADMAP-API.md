@@ -52,14 +52,14 @@ This roadmap outlines the development plan for the Go Sentinel API server which 
 ## Phase 3: WebSocket Implementation
 
 - [ ] **3.1. WebSocket Connection Manager**
-  - [ ] 3.1.1. Write tests for WebSocket connection manager
-    - [ ] Test: Connection creation and tracking
-    - [ ] Test: Connection cleanup on disconnect
-    - [ ] Test: Proper goroutine management
-  - [ ] 3.1.2. Implement WebSocket connection manager
-    - [ ] Create connection pool with thread-safe access
-    - [ ] Implement proper cleanup on disconnects
-    - [ ] Add connection metadata tracking
+  - [x] 3.1.1. Write tests for WebSocket connection manager
+    - [x] Test: Connection creation and tracking
+    - [x] Test: Connection cleanup on disconnect
+    - [x] Test: Proper goroutine management
+  - [x] 3.1.2. Implement WebSocket connection manager
+    - [x] Create connection pool with thread-safe access
+    - [x] Implement proper cleanup on disconnects
+    - [x] Add connection metadata tracking
 
 - [ ] **3.2. WebSocket Message Handling**
   - [ ] 3.2.1. Write tests for WebSocket message types
