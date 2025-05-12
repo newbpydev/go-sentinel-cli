@@ -148,10 +148,10 @@ This roadmap outlines the development plan for the Go Sentinel API server which 
     - [x] Add comprehensive input validation
 
 - [ ] **6.2. Performance Optimizations**
-  - [ ] 6.2.1. Write tests for API performance
-    - [ ] Test: Response time under load
-    - [ ] Test: Memory usage during high activity
-    - [ ] Test: Connection handling under stress
+  - [x] 6.2.1. Write tests for API performance
+    - [x] Test: Response time under load
+    - [x] Test: Memory usage during high activity
+    - [x] Test: Connection handling under stress
   - [ ] 6.2.2. Implement performance optimizations
     - [ ] Add response caching where appropriate
     - [ ] Optimize WebSocket message handling

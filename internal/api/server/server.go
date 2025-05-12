@@ -13,11 +13,13 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	custommiddleware "github.com/newbpydev/go-sentinel/internal/api/middleware"
+
+	"github.com/newbpydev/go-sentinel/internal/api"
 )
 
-// Server wraps the HTTP server and its dependencies
-// Config is imported from the parent api package
-import api "github.com/newbpydev/go-sentinel/internal/api"
+// Response cache for frequently requested endpoints
+var healthCache = api.NewResultCache(1)
+var healthCacheExpiry time.Time
 
 type APIServer struct {
 	Config api.Config
@@ -40,8 +42,21 @@ func NewAPIServer(cfg api.Config) *APIServer {
 
 	// Health endpoint
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		cacheKey := "health_ok"
+		var resp []byte
+		var ok bool
+		if time.Now().Before(healthCacheExpiry) {
+			if val, found := healthCache.Get(cacheKey); found {
+				resp, ok = val.([]byte)
+			}
+		}
+		if !ok || resp == nil {
+			resp = []byte("ok")
+			healthCache.Set(cacheKey, resp)
+			healthCacheExpiry = time.Now().Add(10 * time.Second)
+		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
+		w.Write(resp)
 	})
 
 	httpSrv := &http.Server{
