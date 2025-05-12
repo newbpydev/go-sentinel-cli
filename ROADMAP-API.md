@@ -30,24 +30,24 @@ This roadmap outlines the development plan for the Go Sentinel API server which 
 ## Phase 2: Test Result Data Models
 
 - [ ] **2.1. Event Model Serialization**
-  - [ ] 2.1.1. Write tests for event serialization/deserialization
-    - [ ] Test: Convert internal test events to API models
-    - [ ] Test: Handle all test event types (pass, fail, run, output)
-    - [ ] Test: Properly serialize nested test structures
-  - [ ] 2.1.2. Implement API data models matching internal structures
-    - [ ] Create JSON-serializable test result models
-    - [ ] Implement conversion from internal models
-    - [ ] Add proper validation and error handling
+  - [x] 2.1.1. Write tests for event serialization/deserialization
+    - [x] Test: Convert internal test events to API models
+    - [x] Test: Handle all test event types (pass, fail, run, output)
+    - [x] Test: Properly serialize nested test structures
+  - [x] 2.1.2. Implement API data models matching internal structures
+    - [x] Create JSON-serializable test result models
+    - [x] Implement conversion from internal models
+    - [x] Add proper validation and error handling
 
 - [ ] **2.2. Test Result Aggregation**
-  - [ ] 2.2.1. Write tests for test result aggregation
-    - [ ] Test: Aggregate individual test results into summary format
-    - [ ] Test: Calculate proper statistics (pass/fail counts, durations)
-    - [ ] Test: Handle edge cases (empty results, errors)
-  - [ ] 2.2.2. Implement test result aggregation
-    - [ ] Create aggregator service
-    - [ ] Implement statistics calculation
-    - [ ] Add filtering capabilities
+  - [x] 2.2.1. Write tests for test result aggregation
+    - [x] Test: Aggregate individual test results into summary format
+    - [x] Test: Calculate proper statistics (pass/fail counts, durations)
+    - [x] Test: Handle edge cases (empty results, errors)
+  - [x] 2.2.2. Implement test result aggregation
+    - [x] Create aggregator service
+    - [x] Implement statistics calculation
+    - [x] Add filtering capabilities
 
 ## Phase 3: WebSocket Implementation
 
