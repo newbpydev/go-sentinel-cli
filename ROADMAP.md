@@ -224,21 +224,59 @@ This roadmap is the single source of truth for Go Sentinel's development. All wo
 
 ---
 
-## Phase 5: Concurrency & Resilience (TDD)
+## Phase 5: Coverage Enhancements (TDD)
 
-- [ ] **5.1. Write Pipeline/Recovery Tests**
-  - [ ] 5.1.1. Test: Watcher, Debouncer, Runner, Parser, UI as goroutines with channels
-  - [ ] 5.1.2. Test: Pipeline pattern (input/output channels)
-  - [ ] 5.1.3. Test: Each goroutine recovers from panic and logs error
-  - [ ] 5.1.4. Test: Program never crashes on test/compile errors
-- [ ] **5.2. Implement Concurrency Pipeline**
-  - [ ] 5.2.1. Implement each stage as a goroutine with channel communication
-  - [ ] 5.2.2. Add panic recovery and error logging to each goroutine
-  - [ ] 5.2.3. Ensure resilience: watcher stays alive on errors
+- [ ] **5.1. Coverage Visualization Improvements**
+  - [ ] 5.1.1. User Testing & Feedback
+    - [ ] Test: Gather data on coverage view usability with different codebase sizes
+    - [ ] Test: Evaluate navigation patterns and key binding efficiency
+  - [ ] 5.1.2. Performance Optimization
+    - [ ] Test: Profile and benchmark coverage rendering with large codebases
+    - [ ] Test: Validate memory usage optimization for large coverage files
+    - [ ] Test: Validate incremental parsing and display of large coverage reports
+
+- [ ] **5.2. Coverage Trends & History**
+  - [ ] 5.2.1. Historical Comparison
+    - [ ] Test: Store and retrieve historical coverage data
+    - [ ] Test: Visualize coverage trends over time
+    - [ ] Test: Generate comparative reports between runs
+  - [ ] 5.2.2. Threshold Alerts
+    - [ ] Test: Configure coverage threshold settings
+    - [ ] Test: Alert on coverage regression below thresholds
+    - [ ] Test: Export regression reports
+
+- [ ] **5.3. CI/CD Integration**
+  - [ ] 5.3.1. Export Formats
+    - [ ] Test: Generate XML coverage reports for CI integration
+    - [ ] Test: Generate JSON coverage data for dashboard consumption
+    - [ ] Test: Support multiple export formats with configurable options
+  - [ ] 5.3.2. Coverage Badge Generation
+    - [ ] Test: Generate coverage badges for inclusion in README
+    - [ ] Test: Update badges based on latest coverage data
+    - [ ] Test: Support different badge styles and formats
 
 ---
 
-## Phase 6: Configuration & Validation (TDD)
+## Phase 6: Concurrency & Resilience (TDD)
+
+- [ ] **6.1. Write Pipeline/Recovery Tests**
+  - [ ] 6.1.1. Test: Watcher, Debouncer, Runner, Parser, UI as goroutines with channels
+  - [ ] 6.1.2. Test: Pipeline pattern (input/output channels)
+  - [ ] 6.1.3. Test: Each goroutine recovers from panic and logs error
+  - [ ] 6.1.4. Test: Program never crashes on test/compile errors
+- [ ] **6.2. Implement Concurrency Pipeline**
+  - [ ] 6.2.1. Implement each stage as a goroutine with channel communication
+  - [ ] 6.2.2. Use buffered and unbuffered channels as appropriate
+  - [ ] 6.2.3. Implement context passing for graceful shutdown
+  - [ ] 6.2.4. Implement error handling and recovery using `recover()`
+- [ ] **6.3. Error Handling & Recovery**
+  - [ ] 6.3.1. Design error channel architecture
+  - [ ] 6.3.2. Add recovery handlers for each goroutine
+  - [ ] 6.3.3. Implement graceful shutdown and restart for individual components
+  - [ ] 6.3.4. Add detailed logging for errors and recovery
+  - [ ] 6.3.5. Unit test panic recovery system
+
+{{ ... }}
 
 - [ ] **6.1. Write Config Tests**
   - [ ] 6.1.1. Test: Parse CLI flags and YAML/JSON config file
@@ -248,8 +286,6 @@ This roadmap is the single source of truth for Go Sentinel's development. All wo
   - [ ] 6.2.1. Implement CLI flags and watcher.yaml support
   - [ ] 6.2.2. Validate config at startup, error on invalid
   - [ ] 6.2.3. Mirror CLI flags in config file (viper/cobra)
-
----
 
 ## Phase 7: Extensibility & Integrations (TDD)
 
@@ -309,36 +345,3 @@ This roadmap is the single source of truth for Go Sentinel's development. All wo
 ---
 
 This roadmap is your guide. Stick to it, improve it, and let it drive Go Sentinel toward a robust, error-free, and community-friendly release.
-
----
-
-## Phase 6: Coverage Enhancements (TDD)
-
-- [ ] **6.1. Coverage Visualization Improvements**
-  - [ ] 6.1.1. User Testing & Feedback
-    - [ ] Test: Gather data on coverage view usability with different codebase sizes
-    - [ ] Test: Evaluate navigation patterns and key binding efficiency
-  - [ ] 6.1.2. Performance Optimization
-    - [ ] Test: Profile and benchmark coverage rendering with large codebases
-    - [ ] Test: Validate memory usage optimization for large coverage files
-    - [ ] Test: Validate incremental parsing and display of large coverage reports
-
-- [ ] **6.2. Coverage Trends & History**
-  - [ ] 6.2.1. Historical Comparison
-    - [ ] Test: Store and retrieve historical coverage data
-    - [ ] Test: Visualize coverage trends over time
-    - [ ] Test: Generate comparative reports between runs
-  - [ ] 6.2.2. Threshold Alerts
-    - [ ] Test: Configure coverage threshold settings
-    - [ ] Test: Alert on coverage regression below thresholds
-    - [ ] Test: Export regression reports
-
-- [ ] **6.3. CI/CD Integration**
-  - [ ] 6.3.1. Export Formats
-    - [ ] Test: Generate XML coverage reports for CI integration
-    - [ ] Test: Generate JSON coverage data for dashboard consumption
-    - [ ] Test: Support multiple export formats with configurable options
-  - [ ] 6.3.2. Coverage Badge Generation
-    - [ ] Test: Generate coverage badges for inclusion in README
-    - [ ] Test: Update badges based on latest coverage data
-    - [ ] Test: Support different badge styles and formats
