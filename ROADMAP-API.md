@@ -110,30 +110,30 @@ This roadmap outlines the development plan for the Go Sentinel API server which 
     - [x] Test: Validate configuration changes
   - [x] 4.3.2. Implement configuration endpoints
     - [x] Create endpoints for config retrieval/updates
-    - [ ] Add validation for configuration changes
-    - [ ] Implement configuration persistence
+    - [x] Add validation for configuration changes
+    - [x] Implement configuration persistence
 
 ## Phase 5: Integration With Core Engine
 
 - [ ] **5.1. Core Engine Integration Tests**
-  - [ ] 5.1.1. Write tests for integration with core Go Sentinel
-    - [ ] Test: API receives updates from core test runner
-    - [ ] Test: Commands from API propagate to core engine
-    - [ ] Test: Proper error handling between components
-  - [ ] 5.1.2. Implement core engine integration
-    - [ ] Create adapter between core engine and API
-    - [ ] Set up event channels between components
-    - [ ] Implement error handling and recovery mechanisms
+  - [x] 5.1.1. Write tests for integration with core Go Sentinel
+    - [x] Test: API receives updates from core test runner
+    - [x] Test: Commands from API propagate to core engine
+    - [x] Test: Proper error handling between components
+  - [x] 5.1.2. Implement core engine integration
+    - [x] Create adapter between core engine and API
+    - [x] Set up event channels between components
+    - [x] Implement error handling and recovery mechanisms
 
 - [ ] **5.2. In-Memory Cache for Recent Results**
-  - [ ] 5.2.1. Write tests for result caching
-    - [ ] Test: Cache recent test results
-    - [ ] Test: Cache eviction policies
-    - [ ] Test: Thread-safety of cache access
-  - [ ] 5.2.2. Implement result caching system
-    - [ ] Create thread-safe cache for recent results
-    - [ ] Implement eviction policies
-    - [ ] Add performance metrics for cache operations
+  - [x] 5.2.1. Write tests for result caching
+    - [x] Test: Cache recent test results
+    - [x] Test: Cache eviction policies
+    - [x] Test: Thread-safety of cache access
+  - [x] 5.2.2. Implement result caching system
+    - [x] Create thread-safe cache for recent results
+    - [x] Implement eviction policies
+    - [x] Add performance metrics for cache operations
 
 ## Phase 6: API Security & Performance
 
