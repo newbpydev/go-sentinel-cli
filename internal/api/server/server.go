@@ -15,6 +15,7 @@ import (
 	custommiddleware "github.com/newbpydev/go-sentinel/internal/api/middleware"
 
 	"github.com/newbpydev/go-sentinel/internal/api"
+	"github.com/newbpydev/go-sentinel/internal/api/metrics"
 )
 
 // Response cache for frequently requested endpoints
@@ -25,6 +26,16 @@ type APIServer struct {
 	Config api.Config
 	Router *chi.Mux
 	HTTP   *http.Server
+}
+
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (r *statusRecorder) WriteHeader(code int) {
+	r.status = code
+	r.ResponseWriter.WriteHeader(code)
 }
 
 func NewAPIServer(cfg api.Config) *APIServer {
@@ -39,6 +50,9 @@ func NewAPIServer(cfg api.Config) *APIServer {
 	// Security middleware
 	r.Use(custommiddleware.RateLimit(60, time.Minute)) // 60 requests per minute per IP
 	r.Use(custommiddleware.ValidateJSON)
+
+	// Metrics endpoint
+	r.Get("/metrics", metrics.Handler)
 
 	// Health endpoint
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -59,6 +73,15 @@ func NewAPIServer(cfg api.Config) *APIServer {
 		w.Write(resp)
 	})
 
+	// Middleware to track request status
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			rw := &statusRecorder{ResponseWriter: w, status: 200}
+			next.ServeHTTP(rw, r)
+			metrics.Track(rw.status)
+		})
+	})
+
 	httpSrv := &http.Server{
 		Addr:         ":" + cfg.Port,
 		Handler:      r,
@@ -72,6 +95,7 @@ func NewAPIServer(cfg api.Config) *APIServer {
 		HTTP:   httpSrv,
 	}
 }
+
 
 func (s *APIServer) Start() error {
 	// Graceful shutdown
