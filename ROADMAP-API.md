@@ -84,32 +84,32 @@ This roadmap outlines the development plan for the Go Sentinel API server which 
 ## Phase 4: REST API Endpoints
 
 - [ ] **4.1. Test Result History Endpoints**
-  - [ ] 4.1.1. Write tests for test history endpoints
-    - [ ] Test: Retrieve recent test runs
-    - [ ] Test: Pagination and filtering
-    - [ ] Test: Proper error responses
-  - [ ] 4.1.2. Implement test history endpoints
-    - [ ] Create endpoint for retrieving test history
-    - [ ] Add pagination and filtering support
-    - [ ] Implement proper error handling
+  - [x] 4.1.1. Write tests for test history endpoints
+    - [x] Test: Retrieve recent test runs
+    - [x] Test: Pagination and filtering
+    - [x] Test: Proper error responses
+  - [x] 4.1.2. Implement test history endpoints
+    - [x] Create endpoint for retrieving test history
+    - [x] Add pagination and filtering support
+    - [x] Implement proper error handling
 
 - [ ] **4.2. Test Control Endpoints**
-  - [ ] 4.2.1. Write tests for test control endpoints
-    - [ ] Test: Trigger new test runs
-    - [ ] Test: Filter tests to run
-    - [ ] Test: Cancel running tests
-  - [ ] 4.2.2. Implement test control endpoints
-    - [ ] Create endpoints for triggering test runs
-    - [ ] Add test filtering capabilities
-    - [ ] Implement test run cancellation
+  - [x] 4.2.1. Write tests for test control endpoints
+    - [x] Test: Trigger new test runs
+    - [x] Test: Filter tests to run
+    - [x] Test: Cancel running tests
+  - [x] 4.2.2. Implement test control endpoints
+    - [x] Create endpoints for triggering test runs
+    - [x] Add test filtering capabilities
+    - [x] Implement test run cancellation
 
 - [ ] **4.3. Configuration Endpoints**
-  - [ ] 4.3.1. Write tests for configuration endpoints
-    - [ ] Test: Retrieve current configuration
-    - [ ] Test: Update configuration
-    - [ ] Test: Validate configuration changes
-  - [ ] 4.3.2. Implement configuration endpoints
-    - [ ] Create endpoints for config retrieval/updates
+  - [x] 4.3.1. Write tests for configuration endpoints
+    - [x] Test: Retrieve current configuration
+    - [x] Test: Update configuration
+    - [x] Test: Validate configuration changes
+  - [x] 4.3.2. Implement configuration endpoints
+    - [x] Create endpoints for config retrieval/updates
     - [ ] Add validation for configuration changes
     - [ ] Implement configuration persistence
 

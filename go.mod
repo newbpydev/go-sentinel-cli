@@ -11,7 +11,6 @@ require (
 	github.com/lithammer/fuzzysearch v1.1.8
 	github.com/sahilm/fuzzy v0.1.1
 	github.com/go-chi/chi/v5 v5.0.10
-	github.com/gorilla/websocket v1.5.1
 )
 
 require (
