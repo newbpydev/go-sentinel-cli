@@ -16,3 +16,15 @@ Thumbs.db
 
 # Dependency directories
 vendor/
+
+# Swagger UI build artifacts
+internal/api/server/swagger-ui/
+internal/api/server/swagger-ui-tmp/
+internal/api/server/swagger-ui.zip
+
+# Log files
+*.log
+
+# Ignore OpenAPI YAML if generated
+/api-docs.yaml
+!internal/api/server/api-docs.yaml # allow checked-in version for tests

@@ -160,6 +160,13 @@ This roadmap outlines the development plan for the Go Sentinel API server which 
 
 ## Phase 7: API Documentation & Developer Experience
 
+- [x] Add OpenAPI/Swagger endpoint for API documentation (`/docs` serves OpenAPI YAML)
+- [x] Add documentation comments to all handlers and exported types (GoDoc)
+- [x] Generate and test interactive API docs (Swagger UI at `/docs/ui`)
+  - Swagger UI is served from `internal/api/server/swagger-ui` and loads `/docs` as the spec
+- [x] All endpoints are now documented and interactive docs are live
+
+
 - [ ] **7.1. OpenAPI/Swagger Documentation**
   - [ ] 7.1.1. Write tests for API documentation
     - [ ] Test: Documentation generation

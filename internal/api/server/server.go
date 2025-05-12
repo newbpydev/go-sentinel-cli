@@ -22,22 +22,31 @@ import (
 var healthCache = api.NewResultCache(1)
 var healthCacheExpiry time.Time
 
+// APIServer wraps the HTTP server and configuration for the Go-Sentinel API.
 type APIServer struct {
+	// Config holds the API server configuration.
 	Config api.Config
+	// Router is the Chi router instance.
 	Router *chi.Mux
-	HTTP   *http.Server
+	// HTTP is the HTTP server instance.
+	HTTP *http.Server
+	status int
 }
 
+// statusRecorder wraps http.ResponseWriter to record the status code for metrics tracking.
 type statusRecorder struct {
 	http.ResponseWriter
 	status int
 }
 
+// WriteHeader records the status code and delegates to the underlying ResponseWriter.
+// WriteHeader records the status code and delegates to the underlying ResponseWriter.
 func (r *statusRecorder) WriteHeader(code int) {
 	r.status = code
 	r.ResponseWriter.WriteHeader(code)
 }
 
+// NewAPIServer creates and configures a new Go-Sentinel API server.
 func NewAPIServer(cfg api.Config) *APIServer {
 	r := chi.NewRouter()
 
@@ -52,9 +61,34 @@ func NewAPIServer(cfg api.Config) *APIServer {
 	r.Use(custommiddleware.ValidateJSON)
 
 	// Metrics endpoint
+	//
+	// Exposes Prometheus-style metrics about the process and API usage.
 	r.Get("/metrics", metrics.Handler)
 
+	// Docs endpoint: serve static OpenAPI YAML
+	//
+	// Serves the OpenAPI 3.0 YAML for the API at /docs.
+	r.Get("/docs", func(w http.ResponseWriter, r *http.Request) {
+		data, err := os.ReadFile("internal/api/server/api-docs.yaml")
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Failed to load OpenAPI documentation"))
+			return
+		}
+		w.Header().Set("Content-Type", "application/yaml")
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+	})
+
+	// Docs UI endpoint: serve Swagger UI static files at /docs/ui
+	fileServer := http.StripPrefix("/docs/ui/", http.FileServer(http.Dir("internal/api/server/swagger-ui")))
+	r.Get("/docs/ui/*", func(w http.ResponseWriter, r *http.Request) {
+		fileServer.ServeHTTP(w, r)
+	})
+
 	// Health endpoint
+	//
+	// Returns a simple 'ok' if the service is healthy, with response caching.
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		cacheKey := "health_ok"
 		var resp []byte
@@ -97,6 +131,7 @@ func NewAPIServer(cfg api.Config) *APIServer {
 }
 
 
+// Start launches the API server and handles graceful shutdown.
 func (s *APIServer) Start() error {
 	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
