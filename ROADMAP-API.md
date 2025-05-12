@@ -4,8 +4,8 @@ This roadmap outlines the development plan for the Go Sentinel API server which 
 
 ## Phase 1: API Foundations & Core Structure
 
-- [ ] **1.1. API Project Structure Setup**
-  - [ ] 1.1.1. Create `api` package directory structure
+- [x] **1.1. API Project Structure Setup**
+  - [x] 1.1.1. Create `api` package directory structure
     ```
     internal/api/            # Main API package
     ├── server/              # HTTP server implementation
@@ -14,8 +14,8 @@ This roadmap outlines the development plan for the Go Sentinel API server which 
     ├── websocket/           # WebSocket implementation
     └── models/              # Data models for API
     ```
-  - [ ] 1.1.2. Set up Go module dependencies for API (`gorilla/websocket`, `chi` router, etc.)
-  - [ ] 1.1.3. Create configuration struct for API settings
+  - [x] 1.1.2. Set up Go module dependencies for API (`gorilla/websocket`, `chi` router, etc.)
+  - [x] 1.1.3. Create configuration struct for API settings
 
 - [ ] **1.2. Base HTTP Server**
   - [ ] 1.2.1. Write tests for HTTP server setup and configuration
