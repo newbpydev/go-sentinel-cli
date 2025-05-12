@@ -20,6 +20,14 @@ import (
 	"github.com/newbpydev/go-sentinel/internal/watcher"
 )
 
+// programSender is an interface for the tea.Program methods we use
+// This allows us to mock the tea.Program for testing
+type programSender interface {
+	Send(tea.Msg)
+	Start() error
+	Quit()
+}
+
 // App is the main TUI application controller
 type App struct {
 	// Components
@@ -34,7 +42,7 @@ type App struct {
 	
 	// State
 	rootPath       string
-	program        *tea.Program
+	program        programSender // Changed from *tea.Program to interface
 	model          *ui.TUITestExplorerModel
 	watchModeEnabled bool
 	

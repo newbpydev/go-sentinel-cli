@@ -407,8 +407,10 @@ func (m *TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	
 	case CoverageGeneratedMsg:
 		// Coverage generation completed successfully
-		m.ShowCoverageView = true // Automatically show coverage view
-		m.MainPaneContent = fmt.Sprintf("Coverage report generated at %s", msg.CoverageFile)
+		// FIXED: Don't automatically show coverage view - keep the test explorer active
+		// Only store coverage data for when user explicitly wants to view it
+		m.CoverageState.Enabled = true // Mark that coverage data is available
+		m.MainPaneContent = fmt.Sprintf("Coverage report generated. Press 'c' to view coverage details.")
 		return m, nil
 	}
 	
@@ -723,7 +725,8 @@ func (m *TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "a":
 			// Run all tests
-			return m, runTestsCmd("./...", "")
+			// CRITICAL FIX: Use RunTestsWithCoverage for real-time updates just like 'p' does
+			return m, m.RunTestsWithCoverage("./...")
 		case "p":
 			// Run package tests (current or selected package)
 			packagePath := "./..."
