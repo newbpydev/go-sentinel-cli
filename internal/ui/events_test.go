@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/bubbles/list"
 	"github.com/newbpydev/go-sentinel/internal/event"
 	"github.com/newbpydev/go-sentinel/internal/ui"
 )
@@ -63,8 +62,7 @@ func TestResultsMsgHandling(t *testing.T) {
 	// Verify tree was updated
 	foundNewTest := false
 	for _, item := range updatedTuiModel.Items {
-		treeItem, ok := item.(list.Item)
-		if ok && strings.Contains(treeItem.FilterValue(), "TestB") {
+		if strings.Contains(item.FilterValue(), "TestB") {
 			foundNewTest = true
 			break
 		}
