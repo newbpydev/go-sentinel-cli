@@ -34,9 +34,11 @@ Manual test execution slows down TDD and feedback loops. Existing tools are ofte
 /go-sentinel
 │
 ├── cmd/
-│   └── go-sentinel/         # CLI entrypoint (flag parsing, setup)
+│   ├── go-sentinel/         # CLI entrypoint (flag parsing, setup)
+│   └── go-sentinel-api/     # API server entrypoint (for web/frontend integration)
 │
 ├── internal/
+│   ├── api/                 # API server, OpenAPI config, handlers
 │   ├── watcher/             # fsnotify logic, recursive directory watching
 │   ├── debouncer/           # Event debouncing to coalesce rapid changes
 │   ├── runner/              # Executes go test -json, streams output
@@ -55,6 +57,32 @@ Manual test execution slows down TDD and feedback loops. Existing tools are ofte
 ```
 
 > **Note:** The package structure follows Go best practices with clear separation of concerns.
+
+## API Server & Frontend Integration
+
+Go Sentinel provides a RESTful API and WebSocket server for frontend dashboards and automation. The API server is a separate executable with its own entrypoint.
+
+### Running the API Server
+
+From your project root:
+
+```sh
+# Start the API server (default port 8080)
+go run ./cmd/go-sentinel-api/main.go
+```
+
+- The server will listen on `http://localhost:8080` by default. Set `API_PORT` to override.
+- OpenAPI documentation is available at `http://localhost:8080/docs`.
+- Interactive Swagger UI is available at `http://localhost:8080/docs/ui`.
+- WebSocket endpoint: `ws://localhost:8080/ws`
+
+### Connecting a Frontend
+
+- Point your frontend HTTP and WebSocket requests to the API server URL (default: `http://localhost:8080`).
+- Supports CORS for local development (customize as needed).
+- See `ROADMAP-FRONTEND.md` for frontend project structure and integration steps.
+
+---
 
 ## TUI Sidebar Conventions
 
