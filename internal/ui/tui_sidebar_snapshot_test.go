@@ -1,44 +1,52 @@
-package ui
+package ui_test
 
 import (
+	"strings"
 	"testing"
+
+	"github.com/newbpydev/go-sentinel/internal/event"
+	"github.com/newbpydev/go-sentinel/internal/ui"
 )
 
 
 
 
 func TestSidebarVisualSnapshot(t *testing.T) {
-	root := &TreeNode{
+	root := &ui.TreeNode{
 		Title:    "root",
 		Expanded: true,
-		Children: []*TreeNode{
+		Children: []*ui.TreeNode{
 			{
 				Title:    "pkg/foo",
 				Expanded: true,
-				Children: []*TreeNode{
-					{Title: "TestAlpha", Passed: boolPtr(true)},
-					{Title: "TestBeta", Passed: boolPtr(false)},
+				Children: []*ui.TreeNode{
+					{Title: "TestAlpha", Passed: event.BoolPtr(true)},
+					{Title: "TestBeta", Passed: event.BoolPtr(false)},
 				},
 			},
 			{
 				Title:    "pkg/bar",
 				Expanded: true,
-				Children: []*TreeNode{
-					{Title: "TestGamma", Passed: boolPtr(true)},
+				Children: []*ui.TreeNode{
+					{Title: "TestGamma", Passed: event.BoolPtr(true)},
 				},
 			},
 		},
 	}
-	model := NewTUITestExplorerModel(root)
+	model := ui.NewTUITestExplorerModel(root)
 	output := model.Sidebar.View()
-	output = stripSidebarHeader(output)
+	// Strip search bar from sidebar header
+	lines := strings.Split(output, "\n")
+	if len(lines) > 0 {
+		output = strings.Join(lines[1:], "\n")
+	}
 	expected := `➤ ▼ root
   ▼ pkg/foo
     TestAlpha
     TestBeta
   ▶ pkg/bar`
-	actualClean := trimBlankLines(output)
-	expectedClean := trimBlankLines(expected)
+	actualClean := strings.TrimSpace(output)
+	expectedClean := strings.TrimSpace(expected)
 	if actualClean != expectedClean {
 		t.Errorf("Sidebar visual snapshot mismatch.\nExpected:\n%s\nGot:\n%s", expectedClean, actualClean)
 	}

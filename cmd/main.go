@@ -1,35 +1,64 @@
 package main
 
 import (
+	"flag"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/newbpydev/go-sentinel/internal/ui"
-	"github.com/newbpydev/go-sentinel/internal/parser"
+	"github.com/newbpydev/go-sentinel/internal/tui"
 )
 
 func main() {
-	// Load real test results from JSON file
-	var root *ui.TreeNode
+	// Parse command line flags
+	rootPath := flag.String("path", ".", "Root path to watch for changes")
+	verbose := flag.Bool("verbose", false, "Enable verbose logging")
+	flag.Parse()
 
-	// Try to load real test data
-	if results, err := parser.LoadTestResultsFromJSON("internal/testdata/json-output.json"); err == nil && len(results) > 0 {
-		root = parser.ConvertTestResultsToTree(results)
+	// Get absolute path for the root directory
+	absPath, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("Failed to get current directory: %v", err)
+	}
+	
+	// If root path was specified, use it instead of current directory
+	if *rootPath != "." {
+		absPath = *rootPath
+	}
+
+	// Configure logger
+	if *verbose {
+		log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 	} else {
-		log.Printf("[WARN] Could not load real test results: %v. Using stub data.", err)
-		// Fallback: Minimal stub
-		root = &ui.TreeNode{
-			Title:    "root",
-			Expanded: true,
-			Children: []*ui.TreeNode{
-				{Title: "pkg/foo", Expanded: true, Children: []*ui.TreeNode{{Title: "TestAlpha"}, {Title: "TestBeta"}}},
-				{Title: "pkg/bar", Expanded: true, Children: []*ui.TreeNode{{Title: "TestGamma"}}},
-			},
+		// Minimal logging in normal mode
+		log.SetFlags(log.Ltime)
+	}
+
+	log.Printf("Starting Go-Sentinel in directory: %s", absPath)
+
+	// Create and start the TUI application
+	app, err := tui.NewApp(absPath)
+	if err != nil {
+		log.Fatalf("Failed to initialize application: %v", err)
+	}
+
+	// Set up signal handling for graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	// Start the application in a goroutine
+	go func() {
+		if err := app.Start(); err != nil {
+			log.Fatalf("Error running application: %v", err)
 		}
-	}
-	model := ui.NewTUITestExplorerModel(root)
-	p := tea.NewProgram(&model, tea.WithAltScreen())
-	if err := p.Start(); err != nil {
-		log.Fatalf("Error running TUI: %v", err)
-	}
+	}()
+
+	// Wait for termination signal
+	sig := <-sigChan
+	log.Printf("Received signal %v, shutting down...", sig)
+
+	// Perform graceful shutdown
+	app.Stop()
+	log.Println("Shutdown complete")
 }

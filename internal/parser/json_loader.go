@@ -5,7 +5,7 @@ import (
 	"os"
 	"fmt"
 	"strings"
-	"github.com/newbpydev/go-sentinel/internal/ui"
+	"github.com/newbpydev/go-sentinel/internal/event"
 )
 
 type TestResult struct {
@@ -39,15 +39,17 @@ func LoadTestResultsFromJSON(path string) ([]TestResult, error) {
 // ConvertTestResultsToTree converts flat results to a TreeNode hierarchy
 // looksLikeTestName returns true if the summary or test field looks like a test name
 func looksLikeTestName(s string) bool {
-	return strings.HasPrefix(s, "Test")
+	return strings.HasPrefix(s, "Test") || 
+		strings.HasPrefix(s, "Example") ||
+		strings.HasPrefix(s, "Benchmark")
 }
 
 // ConvertTestResultsToTree converts flat results to a TreeNode hierarchy (no root node)
-func ConvertTestResultsToTree(results []TestResult) *ui.TreeNode {
+func ConvertTestResultsToTree(results []TestResult) *event.TreeNode {
 	modulePrefix := getModulePrefix()
 
 	// Map of package path to directory node
-	dirNodes := map[string]*ui.TreeNode{}
+	dirNodes := map[string]*event.TreeNode{}
 	// Map of package path to total elapsed seconds
 	packageElapsed := map[string]float64{}
 	// Map of package path to whether it has tests
@@ -80,10 +82,10 @@ func ConvertTestResultsToTree(results []TestResult) *ui.TreeNode {
 
 
 	// Build tree, include packages with tests or skipped
-	topNodes := []*ui.TreeNode{}
+	topNodes := []*event.TreeNode{}
 	for pkgPath := range packageHasTests {
 		segments := splitPath(pkgPath)
-		var parent *ui.TreeNode
+		var parent *event.TreeNode
 		var pathSoFar string
 		for i, seg := range segments {
 			if i > 0 {
@@ -92,7 +94,7 @@ func ConvertTestResultsToTree(results []TestResult) *ui.TreeNode {
 			pathSoFar += seg
 			node, ok := dirNodes[pathSoFar]
 			if !ok {
-				node = &ui.TreeNode{Title: seg, Expanded: true, Level: i}
+				node = &event.TreeNode{Title: seg, Expanded: true, Level: i}
 				dirNodes[pathSoFar] = node
 				if parent != nil {
 					parent.Children = append(parent.Children, node)
@@ -114,7 +116,7 @@ func ConvertTestResultsToTree(results []TestResult) *ui.TreeNode {
 			continue
 		}
 		segments := splitPath(pkgPath)
-		var parent *ui.TreeNode
+		var parent *event.TreeNode
 		var pathSoFar string
 		for i, seg := range segments {
 			if i > 0 {
@@ -124,7 +126,7 @@ func ConvertTestResultsToTree(results []TestResult) *ui.TreeNode {
 			node, ok := dirNodes[pathSoFar]
 			if !ok {
 				label := seg + " [skip]"
-				node = &ui.TreeNode{Title: label, Expanded: true, Level: i, Error: "skip"}
+				node = &event.TreeNode{Title: label, Expanded: true, Level: i, Error: "skip"}
 				dirNodes[pathSoFar] = node
 				if parent != nil {
 					parent.Children = append(parent.Children, node)
@@ -165,9 +167,9 @@ func ConvertTestResultsToTree(results []TestResult) *ui.TreeNode {
 		if !ok {
 			continue
 		}
-		testNode := &ui.TreeNode{
+		testNode := &event.TreeNode{
 			Title:    r.Test,
-			Passed:   boolPtr(r.Action == "pass"),
+			Passed:   event.BoolPtr(r.Action == "pass"),
 			Level:    len(segments),
 			Duration: r.Elapsed,
 			Parent:   parent,
@@ -176,8 +178,8 @@ func ConvertTestResultsToTree(results []TestResult) *ui.TreeNode {
 	}
 
 	// --- Coverage Calculation ---
-	var calcCoverage func(node *ui.TreeNode) (passed, total int)
-	calcCoverage = func(node *ui.TreeNode) (passed, total int) {
+	var calcCoverage func(node *event.TreeNode) (passed, total int)
+	calcCoverage = func(node *event.TreeNode) (passed, total int) {
 		if len(node.Children) == 0 {
 			if node.Passed != nil {
 				total = 1
@@ -204,12 +206,13 @@ func ConvertTestResultsToTree(results []TestResult) *ui.TreeNode {
 		calcCoverage(node)
 	}
 	// Wrap all top-level nodes in a dummy parent for TUI compatibility
-	return &ui.TreeNode{Title: "", Children: topNodes, Expanded: true}
+	return &event.TreeNode{Title: "", Children: topNodes, Expanded: true}
 }
 
-func boolPtr(b bool) *bool {
-	return &b
-}
+// Use event.BoolPtr now
+// func boolPtr(b bool) *bool {
+// 	return &b
+// }
 
 // getModulePrefix reads go.mod and returns the module name prefix, or "" if not found
 func getModulePrefix() string {

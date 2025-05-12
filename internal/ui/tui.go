@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/sahilm/fuzzy"
+	"github.com/newbpydev/go-sentinel/internal/event"
 ) // progressbar.go is part of the same package; no import needed
 
 // The styles and colors are defined in theme.go within the same package
@@ -41,6 +42,11 @@ type TUITestExplorerModel struct {
 	CoverageState CoverageState
 	// Flag to indicate if in coverage view mode
 	ShowCoverageView bool
+	// Test runner state
+	TestsRunning    bool
+	RunningPackage  string
+	LastRunSuccess  bool
+	LastChangedFile string
 } // Now tracks terminal width/height
 
 // saveExpansionState saves the expansion state of all folders in the tree.
@@ -244,29 +250,60 @@ func flattenTree(root *TreeNode) []list.Item {
 	return items
 }
 
-// Bubble Tea Model interface
+// Init initializes the TUI model
 func (m *TUITestExplorerModel) Init() tea.Cmd {
 	return nil
 }
 
+// Update processes a message and returns an updated model and optional command
 func (m *TUITestExplorerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// Handle window resize
-	if ws, ok := msg.(tea.WindowSizeMsg); ok {
-		m.Width = ws.Width
-		m.Height = ws.Height
+
+	switch msg := msg.(type) {
+	case TestResultsMsg:
+		// Update tree with new results
+		m.Tree = msg.Tree
+		m.Items = flattenTree(m.Tree)
+		m.Sidebar.SetItems(m.Items)
 		return m, nil
-	}
+		
+	case TestsStartedMsg:
+		// Show running status
+		m.TestsRunning = true
+		m.RunningPackage = msg.Package
+		return m, nil
+		
+	case TestsCompletedMsg:
+		// Update status
+		m.TestsRunning = false
+		m.LastRunSuccess = msg.Success
+		return m, nil
+		
+	case RunTestsMsg:
+		// Return command to run tests
+		return m, runTestsCmd(msg.Package, msg.Test)
+		
+	case FileChangedMsg:
+		// Record changed file and trigger tests
+		m.LastChangedFile = msg.Path
+		// Automatically trigger test run for the package
+		pkg := "./..." // Default to all packages
+		// TODO: Extract package from file path more intelligently
+		return m, runTestsCmd(pkg, "")
+
+	case tea.WindowSizeMsg:
+		m.Width = msg.Width
+		m.Height = msg.Height
+		return m, nil
 	
-	// Handle coverage generation messages
-	if coverageMsg, ok := msg.(CoverageGeneratedMsg); ok {
+	case CoverageGeneratedMsg:
 		// Coverage generation completed successfully
 		m.ShowCoverageView = true // Automatically show coverage view
-		m.MainPaneContent = fmt.Sprintf("Coverage report generated at %s", coverageMsg.CoverageFile)
+		m.MainPaneContent = fmt.Sprintf("Coverage report generated at %s", msg.CoverageFile)
 		return m, nil
 	}
 	
 	// Handle error messages
-	if errMsg, ok := msg.(ErrorMsg); ok {
+	if errMsg, ok := msg.(event.ErrorEvent); ok {
 		// Show the error
 		m.MainPaneContent = fmt.Sprintf("Error: %v", errMsg.Error)
 		return m, nil

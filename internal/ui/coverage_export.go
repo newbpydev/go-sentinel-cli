@@ -7,6 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/newbpydev/go-sentinel/internal/coverage"
+	"github.com/newbpydev/go-sentinel/internal/event"
 )
 
 // ExportCoverageHTMLReport exports the coverage data as an HTML report
@@ -14,7 +15,7 @@ func (m *TUITestExplorerModel) ExportCoverageHTMLReport(coverageFile string) tea
 	return func() tea.Msg {
 		// Ensure we have valid coverage data
 		if m.CoverageState.Metrics == nil {
-			return ErrorMsg{Error: fmt.Errorf("no coverage data available to export")}
+			return event.ErrorEvent{Err: fmt.Errorf("no coverage data available to export")}
 		}
 
 		// Generate timestamp for the filename
@@ -32,7 +33,7 @@ func (m *TUITestExplorerModel) ExportCoverageHTMLReport(coverageFile string) tea
 		// Generate the enhanced HTML report
 		err := coverage.GenerateEnhancedCoverageReport(options)
 		if err != nil {
-			return ErrorMsg{Error: fmt.Errorf("failed to generate HTML report: %w", err)}
+			return event.ErrorEvent{Err: fmt.Errorf("failed to generate HTML report: %w", err)}
 		}
 
 		// Return success message

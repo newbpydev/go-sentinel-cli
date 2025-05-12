@@ -9,6 +9,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/newbpydev/go-sentinel/internal/coverage"
+	"github.com/newbpydev/go-sentinel/internal/event"
 )
 
 // CoverageState holds the state for coverage visualization
@@ -125,7 +126,7 @@ func (m *TUITestExplorerModel) RunTestsWithCoverage(packagePath string) tea.Cmd 
 		// Create temporary directory for coverage output
 		tempDir, err := os.MkdirTemp("", "go-sentinel-coverage")
 		if err != nil {
-			return ErrorMsg{Error: fmt.Errorf("failed to create temp dir: %w", err)}
+			return event.ErrorEvent{Err: fmt.Errorf("failed to create temp dir: %w", err)}
 		}
 		
 		// Define coverage options
@@ -143,7 +144,7 @@ func (m *TUITestExplorerModel) RunTestsWithCoverage(packagePath string) tea.Cmd 
 		// Run tests with coverage
 		err = coverage.RunTestsWithCoverage(ctx, options)
 		if err != nil {
-			return ErrorMsg{Error: fmt.Errorf("failed to run tests with coverage: %w", err)}
+			return event.ErrorEvent{Err: fmt.Errorf("failed to run tests with coverage: %w", err)}
 		}
 		
 		// Store the coverage file path
@@ -152,7 +153,7 @@ func (m *TUITestExplorerModel) RunTestsWithCoverage(packagePath string) tea.Cmd 
 		// Load the coverage data
 		err = m.LoadCoverageData(coverageFile)
 		if err != nil {
-			return ErrorMsg{Error: fmt.Errorf("failed to load coverage data: %w", err)}
+			return event.ErrorEvent{Err: fmt.Errorf("failed to load coverage data: %w", err)}
 		}
 		
 		// Return success message
@@ -160,10 +161,7 @@ func (m *TUITestExplorerModel) RunTestsWithCoverage(packagePath string) tea.Cmd 
 	}
 }
 
-// ErrorMsg represents an error message
-type ErrorMsg struct {
-	Error error
-}
+// Using event.ErrorEvent for error messages
 
 // CoverageGeneratedMsg indicates coverage data was generated
 type CoverageGeneratedMsg struct {
