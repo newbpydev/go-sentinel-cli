@@ -31,12 +31,12 @@ Missing connections:
   - [ ] 1.1.4 Test: User-triggered test runs
   - [ ] 1.1.5 Test: Graceful shutdown and cleanup
 
-- [ ] **1.2 Create UI Event Tests**
-  - [ ] 1.2.1 Test: TestResultsMsg handling
-  - [ ] 1.2.2 Test: TestsStartedMsg handling
-  - [ ] 1.2.3 Test: TestsCompletedMsg handling
-  - [ ] 1.2.4 Test: RunTestsMsg handling
-  - [ ] 1.2.5 Test: FileChangedMsg handling
+- [x] **1.2 Create UI Event Tests**
+  - [x] 1.2.1 Test: TestResultsMsg handling
+  - [x] 1.2.2 Test: TestsStartedMsg handling
+  - [x] 1.2.3 Test: TestsCompletedMsg handling
+  - [x] 1.2.4 Test: RunTestsMsg handling
+  - [x] 1.2.5 Test: FileChangedMsg handling
 
 ### Phase 2: Define Event Types and Messages
 
@@ -83,16 +83,16 @@ Missing connections:
 
 ### Phase 5: Command Handling
 
-- [ ] **5.1 Implement User Commands**
-  - [ ] 5.1.1 Add "run all tests" command
-  - [ ] 5.1.2 Add "run selected test" command
-  - [ ] 5.1.3 Add "run package tests" command
-  - [ ] 5.1.4 Add "toggle watch mode" command
+- [x] **5.1 Implement User Commands**
+  - [x] 5.1.1 Add "run all tests" command
+  - [x] 5.1.2 Add "run selected test" command
+  - [x] 5.1.3 Add "run package tests" command
+  - [x] 5.1.4 Add "toggle watch mode" command
 
-- [ ] **5.2 Implement Status Feedback**
-  - [ ] 5.2.1 Add test running indicator
-  - [ ] 5.2.2 Add file watch status indicator
-  - [ ] 5.2.3 Implement error notification display
+- [x] **5.2 Implement Status Feedback**
+  - [x] 5.2.1 Add test running indicator
+  - [x] 5.2.2 Add file watch status indicator
+  - [x] 5.2.3 Implement error notification display
 
 ### Phase 6: Integration Tests
 
