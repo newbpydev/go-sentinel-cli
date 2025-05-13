@@ -2,22 +2,84 @@
 
 ---
 **Frontend Tech Stack Reference**
-- **Styling:** TailwindCSS (installed via npm, built with PostCSS)
-- **Dynamic UI:** HTMX (included via CDN in base layout)
-- **Testing:**
-  - Unit/Integration: Jest
-  - End-to-End (E2E): Playwright (recommended for modern HTMX apps)
+- **Server:** Go standard library (net/http package)
+- **Styling:** Standard CSS with utility classes
+- **Dynamic UI:** HTMX (included via CDN)
+- **Testing:** Jest for logic testing
 
 **Best Practices:**
-- Use Tailwind's CLI to scan HTML templates for class usage and build pruned CSS to static/css/tailwind.build.css
-- Use HTMX attributes in HTML for dynamic interactivity
-- Write E2E tests for HTMX-driven UI using Playwright (simulate user actions, assert DOM updates)
+- Utilize Go's templating system for server-side rendering
+- Use HTMX attributes for dynamic interactions without heavy client-side JavaScript
+- Keep CSS lightweight and modular
+- Follow TDD approach for all backend logic
 ---
 
+This roadmap outlines the development plan for the Go Sentinel web interface using a Go server with HTMX for dynamic content updates. Our approach prioritizes simplicity, performance, and maintainability by leveraging Go's built-in capabilities for server-side rendering combined with HTMX for frontend interactivity.
 
-This roadmap outlines the development plan for the Go Sentinel web interface using HTMX and WebSockets for real-time updates. Following our TDD approach, each implementation task is preceded by its corresponding test task.
+## Phase 1: Foundation Setup
 
-![dashboard-sample](docs/assets/image-1.png)
+1. [ ] Setup base Go HTTP server
+   - [ ] Create basic handler structure
+   - [ ] Configure static file serving
+   - [ ] Setup template rendering system
+
+2. [ ] Create base HTML templates
+   - [ ] Implement layout template with HTMX inclusion
+   - [ ] Create reusable partial templates for common components
+   - [ ] Define consistent CSS structure
+
+## Phase 2: Core Functionality
+
+1. [ ] Implement test results display
+   - [ ] Create handler for serving test results as HTML
+   - [ ] Design test result components (pass/fail indicators, timing)
+   - [ ] Implement filtering mechanism for test results
+
+2. [ ] Real-time updates with WebSockets
+   - [ ] Set up WebSocket handler in Go
+   - [ ] Create client-side HTMX-WebSocket integration
+   - [ ] Implement real-time test result updates
+
+3. [ ] Test statistics dashboard
+   - [ ] Create metrics aggregation in Go backend
+   - [ ] Design dashboard layout with key metrics
+   - [ ] Implement refresh functionality with HTMX
+
+## Phase 3: User Experience Enhancements
+
+1. [ ] Interactive test selection
+   - [ ] Implement click-to-select functionality for tests
+   - [ ] Create copy-to-clipboard feature for selected tests
+   - [ ] Add keyboard shortcuts for common actions
+
+2. [ ] Test history tracking
+   - [ ] Implement backend storage for test run history
+   - [ ] Create timeline visualization component
+   - [ ] Add comparison views between test runs
+
+3. [ ] Notifications system
+   - [ ] Design toast notification component
+   - [ ] Implement trigger points for notifications
+   - [ ] Add notification preferences
+
+## Phase 4: Advanced Features
+
+1. [ ] Coverage visualization
+   - [ ] Create handler for serving coverage data
+   - [ ] Implement visual representation of test coverage
+   - [ ] Add drill-down capability to file level
+
+2. [ ] Configuration interface
+   - [ ] Design settings page with form controls
+   - [ ] Implement save/load configuration functionality
+   - [ ] Add validation and feedback for settings
+
+3. [ ] Performance optimizations
+   - [ ] Implement response caching where appropriate
+   - [ ] Add pagination for large result sets
+   - [ ] Optimize template rendering
+
+The focus will be on implementing the core functionality described in the RESEARCH.md document, specifically the efficient file watching, test running, and terminal UI components, with a web interface that makes these features accessible through a browser.
 
 ## Phase 1: Frontend Foundation & Structure
 
