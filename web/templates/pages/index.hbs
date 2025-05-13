@@ -1,12 +1,17 @@
-<header class="header">
-  <div>
-    <h1>Test Dashboard</h1>
-    <p class="text-secondary">Monitor your Go test results in real-time</p>
-  </div>
-  <div>
-    <button class="btn btn-primary">Run All Tests</button>
-  </div>
-</header>
+<div id="dashboard-container" hx-ws="connect:ws://localhost:5174/ws">
+  <header class="header">
+    <div>
+      <h1>Test Dashboard</h1>
+      <p class="text-secondary">Monitor your Go test results in real-time</p>
+      <div class="connection-status connecting">
+        <span class="status-indicator connecting"></span>
+        <span class="status-text">Connecting...</span>
+      </div>
+    </div>
+    <div>
+      <button class="btn btn-primary" hx-ws="send:{action:'run-all-tests'}">Run All Tests</button>
+    </div>
+  </header>
 
 <div class="stats-grid">
   <div class="metric-card">
@@ -53,28 +58,28 @@
           <td><span class="badge badge-success">Passed</span></td>
           <td>0.8s</td>
           <td>2 min ago</td>
-          <td><button class="btn btn-secondary">Run</button></td>
+          <td><button class="btn btn-secondary" hx-ws="send:{action:'run-test',testName:'TestParseConfig'}">Run</button></td>
         </tr>
         <tr>
           <td>TestValidateInput</td>
           <td><span class="badge badge-success">Passed</span></td>
           <td>1.2s</td>
           <td>2 min ago</td>
-          <td><button class="btn btn-secondary">Run</button></td>
+          <td><button class="btn btn-secondary" hx-ws="send:{action:'run-test',testName:'TestValidateInput'}">Run</button></td>
         </tr>
         <tr>
           <td>TestProcessResults</td>
           <td><span class="badge badge-error">Failed</span></td>
           <td>2.1s</td>
           <td>2 min ago</td>
-          <td><button class="btn btn-secondary">Run</button></td>
+          <td><button class="btn btn-secondary" hx-ws="send:{action:'run-test',testName:'TestProcessResults'}">Run</button></td>
         </tr>
         <tr>
           <td>TestExportReport</td>
           <td><span class="badge badge-success">Passed</span></td>
           <td>0.9s</td>
           <td>2 min ago</td>
-          <td><button class="btn btn-secondary">Run</button></td>
+          <td><button class="btn btn-secondary" hx-ws="send:{action:'run-test',testName:'TestExportReport'}">Run</button></td>
         </tr>
       </tbody>
     </table>

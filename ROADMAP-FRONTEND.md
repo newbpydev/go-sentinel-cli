@@ -54,15 +54,15 @@ This roadmap outlines the development plan for the Go Sentinel web interface usi
 
 ## Phase 2: Real-Time Data Connection with HTMX & WebSockets
 
-- [ ] **2.1. HTMX WebSocket Integration**
-  - [ ] 2.1.1. Write tests for HTMX WebSocket connection
-    - [ ] Test: Establish WebSocket connection on page load
-    - [ ] Test: Reconnect mechanism for dropped connections
-    - [ ] Test: Proper event binding to DOM updates
-  - [ ] 2.1.2. Implement HTMX WebSocket wrapper
-    - [ ] Set up WebSocket connection with HTMX extensions
-    - [ ] Create automatic reconnection logic
-    - [ ] Implement message type routing
+- [x] **2.1. HTMX WebSocket Integration**
+  - [x] 2.1.1. Write tests for HTMX WebSocket connection
+    - [x] Test: Establish WebSocket connection on page load
+    - [x] Test: Reconnect mechanism for dropped connections
+    - [x] Test: Proper event binding to DOM updates
+  - [x] 2.1.2. Implement HTMX WebSocket wrapper
+    - [x] Set up WebSocket connection with HTMX extensions
+    - [x] Create automatic reconnection logic
+    - [x] Implement message type routing
 
 - [ ] **2.2. Server-Sent Event Fallback**
   - [ ] 2.2.1. Write tests for SSE fallback
