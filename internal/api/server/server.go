@@ -16,6 +16,7 @@ import (
 
 	"github.com/newbpydev/go-sentinel/internal/api"
 	"github.com/newbpydev/go-sentinel/internal/api/metrics"
+	"github.com/newbpydev/go-sentinel/internal/api/websocket"
 )
 
 // Response cache for frequently requested endpoints
@@ -51,7 +52,6 @@ func NewAPIServer(cfg api.Config) *APIServer {
 	r.Use(custommiddleware.RateLimit(60, time.Minute)) // 60 requests per minute per IP
 	r.Use(custommiddleware.ValidateJSON)
 
-
 	// Metrics endpoint
 	r.Get("/metrics", metrics.Handler)
 
@@ -80,34 +80,17 @@ func NewAPIServer(cfg api.Config) *APIServer {
 		w.Write(resp)
 	})
 
+	// WebSocket endpoint
+	// Create WebSocket connection manager
+	connManager := websocket.NewConnectionManager()
 
-	// Metrics endpoint
-	r.Get("/metrics", metrics.Handler)
-
-	// Docs endpoint (stub for now)
-	r.Get("/docs", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotImplemented)
-		w.Write([]byte("OpenAPI documentation coming soon"))
+	// Register WebSocket endpoint
+	r.Get("/ws", func(w http.ResponseWriter, r *http.Request) {
+		// Use the connection handler from the websocket package
+		HandleWebSocketConnection(w, r, connManager)
 	})
 
-	// Health endpoint
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		cacheKey := "health_ok"
-		var resp []byte
-		var ok bool
-		if time.Now().Before(healthCacheExpiry) {
-			if val, found := healthCache.Get(cacheKey); found {
-				resp, ok = val.([]byte)
-			}
-		}
-		if !ok || resp == nil {
-			resp = []byte("ok")
-			healthCache.Set(cacheKey, resp)
-			healthCacheExpiry = time.Now().Add(10 * time.Second)
-		}
-		w.WriteHeader(http.StatusOK)
-		w.Write(resp)
-	})
+	log.Println("WebSocket handler registered at /ws endpoint")
 
 	httpSrv := &http.Server{
 		Addr:         ":" + cfg.Port,

@@ -8,9 +8,11 @@ require (
 	github.com/charmbracelet/bubbles v0.21.0
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/fsnotify/fsnotify v1.9.0
+	github.com/go-chi/chi/v5 v5.0.10
+	github.com/gorilla/mux v1.8.1
+	github.com/gorilla/websocket v1.5.3
 	github.com/lithammer/fuzzysearch v1.1.8
 	github.com/sahilm/fuzzy v0.1.1
-	github.com/go-chi/chi/v5 v5.0.10
 )
 
 require (
