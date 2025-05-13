@@ -1,7 +1,119 @@
-{{> navbar}}
-  <main class="flex-1">
-    <div class="dashboard-card bg-white rounded shadow p-4 m-4">
-      <h1 class="text-2xl font-bold mb-2">Welcome to Go Sentinel Dashboard</h1>
-      <p>Start building your real-time test dashboard here.</p>
-    </div>
-  </main>
+<header class="header">
+  <div>
+    <h1>Test Dashboard</h1>
+    <p class="text-secondary">Monitor your Go test results in real-time</p>
+  </div>
+  <div>
+    <button class="btn btn-primary">Run All Tests</button>
+  </div>
+</header>
+
+<div class="stats-grid">
+  <div class="metric-card">
+    <span class="text-muted">Total Tests</span>
+    <div class="metric-value">128</div>
+    <div class="text-secondary">+3 since yesterday</div>
+  </div>
+  
+  <div class="metric-card">
+    <span class="text-muted">Passing</span>
+    <div class="metric-value text-success">119</div>
+    <div class="text-secondary">93% success rate</div>
+  </div>
+  
+  <div class="metric-card">
+    <span class="text-muted">Failing</span>
+    <div class="metric-value text-error">9</div>
+    <div class="text-secondary">-2 since yesterday</div>
+  </div>
+  
+  <div class="metric-card">
+    <span class="text-muted">Avg. Duration</span>
+    <div class="metric-value">1.2s</div>
+    <div class="text-secondary">-0.3s from last run</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Recent Test Runs</h2>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Test Name</th>
+          <th>Status</th>
+          <th>Duration</th>
+          <th>Last Run</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>TestParseConfig</td>
+          <td><span class="badge badge-success">Passed</span></td>
+          <td>0.8s</td>
+          <td>2 min ago</td>
+          <td><button class="btn btn-secondary">Run</button></td>
+        </tr>
+        <tr>
+          <td>TestValidateInput</td>
+          <td><span class="badge badge-success">Passed</span></td>
+          <td>1.2s</td>
+          <td>2 min ago</td>
+          <td><button class="btn btn-secondary">Run</button></td>
+        </tr>
+        <tr>
+          <td>TestProcessResults</td>
+          <td><span class="badge badge-error">Failed</span></td>
+          <td>2.1s</td>
+          <td>2 min ago</td>
+          <td><button class="btn btn-secondary">Run</button></td>
+        </tr>
+        <tr>
+          <td>TestExportReport</td>
+          <td><span class="badge badge-success">Passed</span></td>
+          <td>0.9s</td>
+          <td>2 min ago</td>
+          <td><button class="btn btn-secondary">Run</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="dashboard-card">
+  <h2>Failing Tests</h2>
+  <p>These tests require attention:</p>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Test Name</th>
+          <th>Error Message</th>
+          <th>Failed Since</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>TestProcessResults</td>
+          <td>Expected 3 items, got 2</td>
+          <td>Today</td>
+          <td>
+            <button class="btn btn-secondary">Debug</button>
+            <button class="btn btn-primary">Fix</button>
+          </td>
+        </tr>
+        <tr>
+          <td>TestIntegrationAPI</td>
+          <td>Connection timeout</td>
+          <td>Yesterday</td>
+          <td>
+            <button class="btn btn-secondary">Debug</button>
+            <button class="btn btn-primary">Fix</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

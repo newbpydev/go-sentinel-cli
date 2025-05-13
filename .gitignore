@@ -28,3 +28,10 @@ internal/api/server/swagger-ui.zip
 # Ignore OpenAPI YAML if generated
 /api-docs.yaml
 !internal/api/server/api-docs.yaml # allow checked-in version for tests
+
+# Playwright
+**/playwright-report/
+**/test-results/
+**/*.trace.zip
+**/trace.zip
+**/screenshots/

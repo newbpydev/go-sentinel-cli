@@ -46,11 +46,11 @@ This roadmap outlines the development plan for the Go Sentinel web interface usi
     - [x] Test: Layout renders correctly at different viewport sizes
     - [x] Test: Components maintain proper spacing and alignment
     - [x] Test: Dashboard accurately reflects provided design image
-  - [ ] 1.2.2. Implement base templates and design system
-    - [ ] Create master layout with CSS framework integration
-    - [ ] Implement responsive grid system matching dashboard design
-    - [ ] Set up typography, color palette, and spacing system
-    - [ ] Add common UI components (buttons, cards, icons)
+  - [x] 1.2.2. Implement base templates and design system
+    - [x] Create master layout with CSS framework integration
+    - [x] Implement responsive grid system matching dashboard design
+    - [x] Set up typography, color palette, and spacing system
+    - [x] Add common UI components (buttons, cards, icons)
 
 ## Phase 2: Real-Time Data Connection with HTMX & WebSockets
 
