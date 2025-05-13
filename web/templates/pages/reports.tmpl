@@ -18,17 +18,20 @@
         </nav>
         <main id="main-content" class="main-content">
             <header class="dashboard-header">
-                <h1>Reports</h1>
+                <h1>{{.Title}}</h1>
                 <p>View and analyze your Go Sentinel reports</p>
             </header>
-            <div class="dashboard-container" style="gap:2rem;">
+            <div class="dashboard-container">
                 <section class="recent-tests">
                     <div class="section-header">
                         <h2>Reports</h2>
+                        <button class="run-all-button" aria-label="Generate Report">
+                            Generate Report
+                        </button>
                     </div>
-                    <div class="test-table-container" style="padding: 0 1.5rem 1.5rem 1.5rem;">
-                        <div class="p-4 pt-6">
-                            <p style="padding-top:1.5rem;">Report features will be added in a future update.</p>
+                    <div class="test-table-container">
+                        <div class="p-4">
+                            <p>Report features will be added in a future update.</p>
                         </div>
                     </div>
                 </section>

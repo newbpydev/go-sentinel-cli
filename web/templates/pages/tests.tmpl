@@ -18,17 +18,20 @@
         </nav>
         <main id="main-content" class="main-content">
             <header class="dashboard-header">
-                <h1>Tests</h1>
+                <h1>{{.Title}}</h1>
                 <p>Manage and run your Go Sentinel tests</p>
             </header>
-            <div class="dashboard-container" style="gap:2rem;">
+            <div class="dashboard-container">
                 <section class="recent-tests">
                     <div class="section-header">
                         <h2>Test Management</h2>
+                        <button class="run-all-button" aria-label="Configure Tests">
+                            Configure Tests
+                        </button>
                     </div>
-                    <div class="test-table-container" style="padding: 0 1.5rem 1.5rem 1.5rem;">
-                        <div class="p-4 pt-6">
-                            <p style="padding-top:1.5rem;">Test management features will be added in a future update.</p>
+                    <div class="test-table-container">
+                        <div class="p-4">
+                            <p>Test management features will be added in a future update.</p>
                         </div>
                     </div>
                 </section>
