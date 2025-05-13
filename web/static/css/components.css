@@ -201,6 +201,82 @@
   border-collapse: collapse;
 }
 
+/* ===== UTILITY CLASSES ===== */
+
+/* Container Padding Classes */
+.content-padding {
+  padding: 1.5rem;
+}
+
+.content-padding-x {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+.content-padding-y {
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+}
+
+/* Section Container Classes */
+.section-container {
+  background-color: var(--bg-card);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Card Content Classes */
+.card-content {
+  padding: 1.5rem;
+  background-color: var(--bg-card);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Test Table Container with proper padding */
+.test-table-container {
+  padding: 1.5rem;
+}
+
+/* Test Details Container with proper padding */
+.test-details-container {
+  padding: 1.5rem;
+}
+
+/* History Item Styles */
+.history-item {
+  background-color: var(--bg-card);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  border-left: 3px solid var(--primary);
+}
+
+.history-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.history-item-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.history-item-stats {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.history-item-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
 .data-table thead th {
   text-align: left;
   padding: 1rem 1.5rem;

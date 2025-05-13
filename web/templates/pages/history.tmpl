@@ -43,9 +43,45 @@
                             Refresh
                         </button>
                     </div>
-                    <div id="history-container" class="test-table-container">
+                    <div id="history-container" class="test-table-container content-padding">
+                        <!-- This will be replaced by HTMX with actual history data -->
                         <div class="flex justify-center items-center h-32">
                             <div class="loading-spinner"></div>
+                        </div>
+                        
+                        <!-- Example of styled history items (will be replaced by actual data) -->
+                        <div class="history-item">
+                            <div class="history-item-header">
+                                <div class="history-item-title">Run #5 - May 13, 15:53</div>
+                                <span class="status-badge passed">92%</span>
+                            </div>
+                            <div class="history-item-stats">
+                                <div>Total: 128</div>
+                                <div>Passed: 119</div>
+                                <div>Failed: 9</div>
+                                <div>Time: 1.2s</div>
+                            </div>
+                            <div class="history-item-actions">
+                                <button class="btn btn-info">Details</button>
+                                <button class="btn btn-warning">Compare</button>
+                            </div>
+                        </div>
+                        
+                        <div class="history-item">
+                            <div class="history-item-header">
+                                <div class="history-item-title">Run #4 - May 13, 05:53</div>
+                                <span class="status-badge passed">96%</span>
+                            </div>
+                            <div class="history-item-stats">
+                                <div>Total: 125</div>
+                                <div>Passed: 120</div>
+                                <div>Failed: 5</div>
+                                <div>Time: 1.3s</div>
+                            </div>
+                            <div class="history-item-actions">
+                                <button class="btn btn-info">Details</button>
+                                <button class="btn btn-warning">Compare</button>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -55,7 +91,7 @@
                     <div class="section-header">
                         <h2>Test Run Details</h2>
                     </div>
-                    <div id="run-details" class="test-details-container">
+                    <div id="run-details" class="test-details-container content-padding">
                         <div class="flex justify-center items-center h-32">
                             <p class="text-slate-500">Select a test run to view details</p>
                         </div>
@@ -67,7 +103,7 @@
                     <div class="section-header">
                         <h2>Comparison Results</h2>
                     </div>
-                    <div id="comparison-container" class="test-details-container">
+                    <div id="comparison-container" class="test-details-container content-padding">
                         <div class="flex justify-center items-center h-32">
                             <p class="text-slate-500">Select two test runs to compare</p>
                         </div>
