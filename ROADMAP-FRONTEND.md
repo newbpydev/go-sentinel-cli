@@ -47,10 +47,10 @@ This roadmap outlines the development plan for the Go Sentinel web interface usi
 
 ## Phase 3: User Experience Enhancements
 
-1. [ ] Interactive test selection
-   - [ ] Implement click-to-select functionality for tests
-   - [ ] Create copy-to-clipboard feature for selected tests
-   - [ ] Add keyboard shortcuts for common actions
+1. [x] Interactive test selection
+   - [x] Implement click-to-select functionality for tests
+   - [x] Create copy-to-clipboard feature for selected tests
+   - [x] Add keyboard shortcuts for common actions
 
 2. [ ] Test history tracking
    - [ ] Implement backend storage for test run history

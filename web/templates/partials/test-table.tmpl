@@ -1,40 +1,76 @@
 {{define "partials/test-table"}}
-<div class="test-table">
-    <table aria-label="Test Results">
-        <thead>
-            <tr>
-                <th scope="col">Test Name</th>
-                <th scope="col">Status</th>
-                <th scope="col">Duration</th>
-                <th scope="col">Last Run</th>
-                <th scope="col">Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {{range $index, $test := .Tests}}
-            <tr class="test-row {{if eq $test.Status "failed"}}failed{{else}}passed{{end}}"
-                data-test-id="{{$index}}" 
-                tabindex="0">
-                <td class="test-name">{{$test.Name}}</td>
-                <td class="test-status">
-                    <span class="status-badge {{$test.Status}}" aria-label="Test {{$test.Status}}">
-                        {{if eq $test.Status "passed"}}Passed{{else}}Failed{{end}}
-                    </span>
-                </td>
-                <td class="test-duration">{{$test.Duration}}</td>
-                <td class="test-last-run">2 min ago</td>
-                <td class="test-actions">
-                    <button class="run-button"
-                            hx-post="/api/run-test/{{$test.Name}}"
-                            hx-target="closest tr"
-                            hx-swap="outerHTML"
-                            aria-label="Run {{$test.Name}}">
-                        Run
-                    </button>
-                </td>
-            </tr>
-            {{end}}
-        </tbody>
-    </table>
+<div class="test-table-container">
+    <div class="test-selection-controls" aria-live="polite">
+        <div class="selection-info" id="selection-info" aria-live="polite">
+            <span class="selection-count">0 tests selected</span>
+        </div>
+        <div class="selection-actions">
+            <button type="button" class="selection-action-btn" id="select-all-btn" aria-label="Select all tests" title="Select all tests (Ctrl+A)">
+                <span class="action-icon">☑️</span> Select All
+            </button>
+            <button type="button" class="selection-action-btn" id="copy-selected-btn" aria-label="Copy selected tests" title="Copy selected tests (Ctrl+C)" disabled>
+                <span class="action-icon">📋</span> Copy Selected
+            </button>
+            <button type="button" class="selection-action-btn" id="run-selected-btn" aria-label="Run selected tests" title="Run selected tests (Ctrl+R)" disabled>
+                <span class="action-icon">▶️</span> Run Selected
+            </button>
+        </div>
+    </div>
+
+    <div class="selection-mode-hint">
+        <kbd>Shift+Click</kbd> for range selection | <kbd>Ctrl+Click</kbd> for individual tests | <kbd>Esc</kbd> to clear selection
+    </div>
+
+    <div class="test-table">
+        <table aria-label="Test Results">
+            <thead>
+                <tr>
+                    <th scope="col" class="col-select">
+                        <span class="sr-only">Select</span>
+                        <input type="checkbox" id="select-all-checkbox" aria-label="Select all tests" title="Select all tests">
+                    </th>
+                    <th scope="col">Test Name</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Duration</th>
+                    <th scope="col">Last Run</th>
+                    <th scope="col">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range $index, $test := .Tests}}
+                <tr class="test-row {{if eq $test.Status "failed"}}failed{{else}}passed{{end}}"
+                    data-test-id="{{$index}}"
+                    data-test-name="{{$test.Name}}"
+                    data-test-status="{{$test.Status}}"
+                    tabindex="0"
+                    aria-selected="false">
+                    <td class="col-select">
+                        <input type="checkbox" class="test-checkbox" aria-label="Select {{$test.Name}}">
+                    </td>
+                    <td class="test-name">{{$test.Name}}</td>
+                    <td class="test-status">
+                        <span class="status-badge {{$test.Status}}" aria-label="Test {{$test.Status}}">
+                            {{if eq $test.Status "passed"}}Passed{{else}}Failed{{end}}
+                        </span>
+                    </td>
+                    <td class="test-duration">{{$test.Duration}}</td>
+                    <td class="test-last-run">2 min ago</td>
+                    <td class="test-actions">
+                        <button class="run-button"
+                                hx-post="/api/run-test/{{$test.Name}}"
+                                hx-target="closest tr"
+                                hx-swap="outerHTML"
+                                aria-label="Run {{$test.Name}}">
+                            Run
+                        </button>
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Hidden textarea for copying to clipboard -->
+    <textarea id="copy-area" class="sr-only" aria-hidden="true"></textarea>
 </div>
 {{end}}

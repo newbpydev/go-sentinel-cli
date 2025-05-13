@@ -7,8 +7,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Mobile menu toggle functionality
     setupMobileMenu();
     
-    // Test selection functionality
-    setupTestSelection();
+    // Test selection functionality with enhanced features
+    setupEnhancedTestSelection();
     
     // Mock WebSocket connection for demo
     setupMockWebSocket();
@@ -49,53 +49,210 @@ function setupMobileMenu() {
 }
 
 /**
- * Sets up test row selection with keyboard accessibility
+ * Sets up enhanced test selection with clipboard and keyboard shortcuts
  */
-function setupTestSelection() {
-    // Get all test rows
+function setupEnhancedTestSelection() {
+    // Cache DOM elements
     const testRows = document.querySelectorAll('.test-row');
+    const testCheckboxes = document.querySelectorAll('.test-checkbox');
+    const selectAllCheckbox = document.getElementById('select-all-checkbox');
+    const selectAllBtn = document.getElementById('select-all-btn');
+    const copySelectedBtn = document.getElementById('copy-selected-btn');
+    const runSelectedBtn = document.getElementById('run-selected-btn');
+    const selectionInfoEl = document.getElementById('selection-info');
+    const copyAreaEl = document.getElementById('copy-area');
     
-    testRows.forEach(row => {
-        // Handle click selection
-        row.addEventListener('click', function() {
-            // Toggle selection state
-            row.classList.toggle('selected');
+    // Track selection state
+    let selectedTests = new Set();
+    let lastSelectedIndex = -1;
+    
+    // Update selection count UI
+    function updateSelectionInfo() {
+        const count = selectedTests.size;
+        selectionInfoEl.querySelector('.selection-count').textContent = 
+            count === 0 ? 'No tests selected' : 
+            count === 1 ? '1 test selected' : 
+            `${count} tests selected`;
             
-            // Update ARIA selected state
-            const isSelected = row.classList.contains('selected');
-            row.setAttribute('aria-selected', isSelected);
+        // Update action button states
+        copySelectedBtn.disabled = count === 0;
+        runSelectedBtn.disabled = count === 0;
+        
+        // Update master checkbox state
+        if (count === 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        } else if (count === testRows.length) {
+            selectAllCheckbox.checked = true;
+            selectAllCheckbox.indeterminate = false;
+        } else {
+            selectAllCheckbox.indeterminate = true;
+        }
+    }
+    
+    // Select/deselect a test row
+    function toggleTestSelection(row, selected, updateCheckbox = true) {
+        const testId = row.dataset.testId;
+        
+        if (selected) {
+            selectedTests.add(testId);
+            row.classList.add('selected');
+            row.setAttribute('aria-selected', 'true');
+            if (updateCheckbox) {
+                row.querySelector('.test-checkbox').checked = true;
+            }
+        } else {
+            selectedTests.delete(testId);
+            row.classList.remove('selected');
+            row.setAttribute('aria-selected', 'false');
+            if (updateCheckbox) {
+                row.querySelector('.test-checkbox').checked = false;
+            }
+        }
+        
+        updateSelectionInfo();
+    }
+    
+    // Select/deselect all test rows
+    function toggleAllTests(selected) {
+        testRows.forEach(row => toggleTestSelection(row, selected));
+    }
+    
+    // Handle click on individual checkboxes
+    testCheckboxes.forEach((checkbox, index) => {
+        checkbox.addEventListener('change', function(e) {
+            e.stopPropagation(); // Prevent row click handler from firing
+            const row = this.closest('.test-row');
+            toggleTestSelection(row, this.checked, false);
+            lastSelectedIndex = index;
+        });
+    });
+    
+    // Handle click on test rows
+    testRows.forEach((row, index) => {
+        row.addEventListener('click', function(e) {
+            // Ignore clicks on checkbox and buttons
+            if (e.target.type === 'checkbox' || e.target.tagName === 'BUTTON') return;
+            
+            const checkbox = row.querySelector('.test-checkbox');
+            
+            // Handle shift+click for range selection
+            if (e.shiftKey && lastSelectedIndex !== -1) {
+                const start = Math.min(lastSelectedIndex, index);
+                const end = Math.max(lastSelectedIndex, index);
+                
+                for (let i = start; i <= end; i++) {
+                    toggleTestSelection(testRows[i], true);
+                }
+            } 
+            // Handle ctrl/cmd+click for toggling individual items
+            else if (e.ctrlKey || e.metaKey) {
+                toggleTestSelection(row, !checkbox.checked);
+                lastSelectedIndex = index;
+            } 
+            // Normal click - deselect others and select this one
+            else {
+                toggleAllTests(false);
+                toggleTestSelection(row, true);
+                lastSelectedIndex = index;
+            }
         });
         
-        // Keyboard support (Enter/Space to select)
+        // Keyboard navigation for rows
         row.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                row.click(); // Trigger click event
+                row.click();
             }
         });
     });
     
-    // Add keyboard shortcut ('a' to select all, 'c' to copy)
-    document.addEventListener('keydown', function(e) {
-        // Only handle if we're focused within the test table
-        const testTable = document.querySelector('.test-table');
-        if (!testTable.contains(document.activeElement)) return;
+    // Handle select all checkbox
+    selectAllCheckbox.addEventListener('change', function() {
+        toggleAllTests(this.checked);
+    });
+    
+    // Handle select all button
+    selectAllBtn.addEventListener('click', function() {
+        const allSelected = selectedTests.size === testRows.length;
+        toggleAllTests(!allSelected);
+    });
+    
+    // Handle copy selected button
+    copySelectedBtn.addEventListener('click', function() {
+        copySelectedTests();
+    });
+    
+    // Handle run selected button
+    runSelectedBtn.addEventListener('click', function() {
+        // In a real implementation, this would trigger test runs
+        alert(`Running ${selectedTests.size} selected tests...`);
+    });
+    
+    // Copy selected tests to clipboard
+    function copySelectedTests() {
+        // Get test names from selected rows
+        const selectedTestNames = [];
+        testRows.forEach(row => {
+            if (selectedTests.has(row.dataset.testId)) {
+                selectedTestNames.push(row.dataset.testName);
+            }
+        });
         
+        // Copy to clipboard
+        if (selectedTestNames.length > 0) {
+            copyAreaEl.value = selectedTestNames.join('\n');
+            copyAreaEl.select();
+            document.execCommand('copy');
+            
+            // Show success feedback
+            const prevCount = selectionInfoEl.querySelector('.selection-count').textContent;
+            selectionInfoEl.querySelector('.selection-count').textContent = 
+                `✓ Copied ${selectedTests.size} tests to clipboard!`;
+            
+            // Reset after 2 seconds
+            setTimeout(() => {
+                selectionInfoEl.querySelector('.selection-count').textContent = prevCount;
+            }, 2000);
+        }
+    }
+    
+    // Global keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Only if we're within the test table container
+        const testTableContainer = document.querySelector('.test-table-container');
+        if (!testTableContainer.contains(document.activeElement) && 
+            document.activeElement !== document.body) return;
+        
+        // Ctrl/Cmd+A to select all
         if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();
-            
-            // Check if all are selected
-            const allRows = document.querySelectorAll('.test-row');
-            const selectedRows = document.querySelectorAll('.test-row.selected');
-            const allSelected = allRows.length === selectedRows.length;
-            
-            // Toggle selection for all
-            allRows.forEach(row => {
-                row.classList.toggle('selected', !allSelected);
-                row.setAttribute('aria-selected', !allSelected);
-            });
+            toggleAllTests(selectedTests.size !== testRows.length);
+        }
+        
+        // Ctrl/Cmd+C to copy selected
+        if (e.key === 'c' && (e.ctrlKey || e.metaKey) && selectedTests.size > 0) {
+            if (window.getSelection().toString() === '') { // Only if no text is selected
+                e.preventDefault();
+                copySelectedTests();
+            }
+        }
+        
+        // Ctrl/Cmd+R to run selected
+        if (e.key === 'r' && (e.ctrlKey || e.metaKey) && selectedTests.size > 0) {
+            e.preventDefault();
+            runSelectedBtn.click();
+        }
+        
+        // Escape to clear selection
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            toggleAllTests(false);
         }
     });
+    
+    // Initialize selection info
+    updateSelectionInfo();
 }
 
 /**
