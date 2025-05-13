@@ -19,87 +19,96 @@
     <div class="app-container">
         <!-- Sidebar navigation -->
         <nav class="sidebar" role="navigation" aria-label="Main Navigation">
-            <button class="mobile-menu-toggle" aria-label="Toggle navigation menu">
-                <span class="hamburger-icon"></span>
-            </button>
             {{template "partials/sidebar" .}}
         </nav>
         
-        <!-- Main content area -->
-        <main id="main-content" class="main-content" role="main">
-<div class="container mx-auto px-4 py-8">
-  <div class="flex flex-col md:flex-row gap-6">
-    <!-- Left column for timeline -->
-    <div class="w-full md:w-2/5">
-      <div id="history-container" class="bg-slate-800 rounded-lg shadow-lg p-4 h-full">
-        <!-- Timeline will be loaded here -->
-        <div class="flex justify-center items-center h-32">
-          <div class="loading-spinner"></div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Right column for details -->
-    <div class="w-full md:w-3/5">
-      <div class="space-y-6">
-        <!-- Run details section -->
-        <div id="run-details" class="bg-slate-800 rounded-lg shadow-lg p-4 min-h-[300px]">
-          <div class="flex justify-center items-center h-32">
-            <p class="text-slate-500">Select a test run to view details</p>
-          </div>
-        </div>
-        
-        <!-- Comparison section -->
-        <div id="comparison-container" class="bg-slate-800 rounded-lg shadow-lg p-4 min-h-[300px] hidden">
-          <div class="flex justify-center items-center h-32">
-            <p class="text-slate-500">Select two test runs to compare</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // Load history on page load
-    htmx.ajax('GET', '/api/history', {target: '#history-container'});
-    
-    // Toggle comparison container visibility
-    document.addEventListener('click', function(event) {
-      if (event.target.matches('.compare') || event.target.closest('.compare')) {
-        document.getElementById('comparison-container').classList.remove('hidden');
-      }
-    });
-    
-    // Filter test results
-    document.addEventListener('click', function(event) {
-      if (event.target.matches('.filter-button')) {
-        const filter = event.target.getAttribute('data-filter');
-        const buttons = document.querySelectorAll('.filter-button');
-        const testItems = document.querySelectorAll('.test-result-item');
-        
-        // Update active filter
-        buttons.forEach(btn => btn.classList.remove('active'));
-        event.target.classList.add('active');
-        
-        // Apply filter
-        testItems.forEach(item => {
-          if (filter === 'all' || item.classList.contains(filter)) {
-            item.style.display = '';
-          } else {
-            item.style.display = 'none';
-          }
-        });
-      }
-    });
-  });
-</script>
+        <!-- Main content -->
+        <main id="main-content" class="main-content">
+            <header class="dashboard-header">
+                <h1>Test History</h1>
+                <p>View and compare your test run history</p>
+            </header>
+            
+            <!-- History content -->
+            <div class="dashboard-container">
+                <!-- Test run history section -->
+                <section class="recent-tests">
+                    <div class="section-header">
+                        <h2>Test Run History</h2>
+                    </div>
+                    
+                    <div id="history-container" class="test-table-container">
+                        <!-- Timeline will be loaded here -->
+                        <div class="flex justify-center items-center h-32">
+                            <div class="loading-spinner"></div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Details section -->
+                <section class="recent-tests mt-6">
+                    <div class="section-header">
+                        <h2>Test Run Details</h2>
+                    </div>
+                    <div id="run-details" class="test-details-container">
+                        <div class="flex justify-center items-center h-32">
+                            <p class="text-slate-500">Select a test run to view details</p>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Comparison section -->
+                <section class="recent-tests mt-6 hidden" id="comparison-section">
+                    <div class="section-header">
+                        <h2>Comparison Results</h2>
+                    </div>
+                    <div id="comparison-container" class="test-details-container">
+                        <div class="flex justify-center items-center h-32">
+                            <p class="text-slate-500">Select two test runs to compare</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
         </main>
     </div>
-    
+
     <!-- JavaScript for client-side functionality -->
     <script src="/static/js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load history on page load
+            htmx.ajax('GET', '/api/history', {target: '#history-container'});
+            
+            // Toggle comparison container visibility
+            document.addEventListener('click', function(event) {
+                if (event.target.matches('.compare') || event.target.closest('.compare')) {
+                    document.getElementById('comparison-section').classList.remove('hidden');
+                }
+            });
+            
+            // Filter test results
+            document.addEventListener('click', function(event) {
+                if (event.target.matches('.filter-button')) {
+                    const filter = event.target.getAttribute('data-filter');
+                    const buttons = document.querySelectorAll('.filter-button');
+                    const testItems = document.querySelectorAll('.test-result-item');
+                    
+                    // Update active filter
+                    buttons.forEach(btn => btn.classList.remove('active'));
+                    event.target.classList.add('active');
+                    
+                    // Apply filter
+                    testItems.forEach(item => {
+                        if (filter === 'all' || item.classList.contains(filter)) {
+                            item.style.display = '';
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    });
+                }
+            });
+        });
+    </script>
 </body>
 </html>
 {{end}}
