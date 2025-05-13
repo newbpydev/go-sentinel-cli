@@ -125,6 +125,9 @@ func (s *Server) registerRoutes() {
 		
 		// Metrics routes
 		r.Get("/metrics", s.metricsHandler.GetMetrics)
+
+		// Notification test route
+		r.Post("/notifications/test", handlers.HandleTestNotification)
 		
 		// History routes
 		r.Get("/history", s.historyHandler.GetTestRunHistory)
