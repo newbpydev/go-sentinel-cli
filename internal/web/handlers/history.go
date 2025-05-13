@@ -218,22 +218,14 @@ func (h *HistoryHandler) CompareTestRuns(w http.ResponseWriter, r *http.Request)
 func (h *HistoryHandler) renderHistoryHTML(w http.ResponseWriter, runs []TestRun) {
 	w.Header().Set("Content-Type", "text/html")
 	
-	html := `<div class="history-list">
-		<div class="history-header">
-			<h3>Test Run History</h3>
-			<div class="history-actions">
-				<button class="refresh-button" hx-get="/api/history" hx-target="#history-container">
-					<span class="icon">🔄</span> Refresh
-				</button>
-			</div>
-		</div>
-		
-		<div class="history-timeline">`
+	// Start with empty content to replace the loading spinner
+	html := ""
 	
-	// Generate timeline entries
+	// Generate history items using the new card-based styling
 	for i, run := range runs {
 		// Format timestamp
 		timestamp := run.Timestamp.Format("Jan 02, 15:04")
+		runNumber := i + 1
 		
 		// Calculate success rate
 		successRate := 0
@@ -241,55 +233,37 @@ func (h *HistoryHandler) renderHistoryHTML(w http.ResponseWriter, runs []TestRun
 			successRate = (run.PassedTests * 100) / run.TotalTests
 		}
 		
-		// Determine status class
-		statusClass := "success"
-		if run.FailedTests > 0 {
-			statusClass = "warning"
-			if successRate < 80 {
-				statusClass = "error"
-			}
+		// Generate compare button if not the most recent run
+		compareButton := ""
+		if i > 0 && len(runs) > 0 {
+			compareButton = fmt.Sprintf(`<button class="btn btn-warning" hx-get="/api/history/compare?baseRunID=%s&compareRunID=%s" hx-target="#comparison-container">Compare</button>`, runs[0].ID, run.ID)
 		}
 		
+		// Create a history item card with the new styling
 		html += fmt.Sprintf(`
-			<div class="timeline-entry %s" data-run-id="%s">
-				<div class="timeline-marker"></div>
-				<div class="timeline-content" hx-get="/api/history/%s" hx-target="#run-details">
-					<div class="timeline-header">
-						<span class="timeline-date">%s</span>
-						<span class="timeline-id">#%s</span>
-					</div>
-					<div class="timeline-summary">
-						<div class="timeline-stats">
-							<span class="stat-item">Total: %d</span>
-							<span class="stat-item success">Passed: %d</span>
-							<span class="stat-item error">Failed: %d</span>
-							<span class="stat-item">Time: %s</span>
-						</div>
-						<div class="timeline-progress">
-							<div class="progress-bar">
-								<div class="progress-value" style="width: %d%%"></div>
-							</div>
-							<span class="progress-label">%d%%</span>
-						</div>
-					</div>
-					<div class="timeline-actions">
-						<button class="mini-button" aria-label="View details">Details</button>
-						%s
-					</div>
-				</div>
+		<div class="history-item">
+			<div class="history-item-header">
+				<div class="history-item-title">Run #%d - %s</div>
+				<span class="status-badge passed">%d%%</span>
 			</div>
-		`, statusClass, run.ID, run.ID, timestamp, getShortID(run.ID),
-		   run.TotalTests, run.PassedTests, run.FailedTests, run.TotalTime,
-		   successRate, successRate,
-		   func() string {
-			   if i > 0 && len(runs) > 0 {
-				   return fmt.Sprintf(`<button class="mini-button compare" hx-get="/api/history/compare?baseRunID=%s&compareRunID=%s" hx-target="#comparison-container">Compare</button>`, runs[0].ID, run.ID)
-			   }
-			   return ""
-		   }())
+			<div class="history-item-stats">
+				<div>Total: %d</div>
+				<div>Passed: %d</div>
+				<div>Failed: %d</div>
+				<div>Time: %s</div>
+			</div>
+			<div class="history-item-actions">
+				<button class="btn btn-info" hx-get="/api/history/%s" hx-target="#run-details">Details</button>
+				%s
+			</div>
+		</div>
+		`, runNumber, timestamp, successRate, run.TotalTests, run.PassedTests, run.FailedTests, run.TotalTime, run.ID, compareButton)
 	}
 	
-	html += `</div></div>`
+	// If no runs, show a message
+	if len(runs) == 0 {
+		html = `<div class="content-padding"><p class="text-center">No test runs available yet.</p></div>`
+	}
 	
 	w.Write([]byte(html))
 }
@@ -298,18 +272,31 @@ func (h *HistoryHandler) renderHistoryHTML(w http.ResponseWriter, runs []TestRun
 func (h *HistoryHandler) renderTestRunDetailsHTML(w http.ResponseWriter, run TestRun) {
 	w.Header().Set("Content-Type", "text/html")
 	
+	// Calculate success rate
+	successRate := 0
+	if run.TotalTests > 0 {
+		successRate = (run.PassedTests * 100) / run.TotalTests
+	}
+	
 	// Format timestamp
 	timestamp := run.Timestamp.Format("Jan 02, 2006 15:04:05")
 	
+	// Generate build info
+	buildInfo := renderBuildInfo(run)
+	
 	html := fmt.Sprintf(`
-		<div class="run-details-container">
-			<div class="run-details-header">
-				<h3>Test Run Details</h3>
-				<span class="run-timestamp">%s</span>
+		<div class="card-content">
+			<div class="history-item-header">
+				<div class="history-item-title">Test Run Details: %s</div>
+				<span class="status-badge passed">%d%%</span>
 			</div>
 			
-			<div class="run-details-summary">
-				<div class="detail-section">
+			<div class="content-padding">
+				<div class="detail-grid">
+					<div class="detail-item">
+						<span class="detail-label">Run Date:</span>
+						<span class="detail-value">%s</span>
+					</div>
 					<div class="detail-item">
 						<span class="detail-label">ID:</span>
 						<span class="detail-value">%s</span>
@@ -332,48 +319,52 @@ func (h *HistoryHandler) renderTestRunDetailsHTML(w http.ResponseWriter, run Tes
 					</div>
 				</div>
 				
-				<div class="detail-section">
+				<div class="detail-section content-padding-y">
 					%s
 				</div>
 			</div>
 			
-			<div class="run-details-tests">
-				<h4>Test Results</h4>
-				<div class="test-filter-controls">
-					<button class="filter-button active" data-filter="all">All (%d)</button>
-					<button class="filter-button" data-filter="passed">Passed (%d)</button>
-					<button class="filter-button" data-filter="failed">Failed (%d)</button>
+			<div class="content-padding">
+				<h4 class="section-title">Test Results</h4>
+				<div class="filter-controls">
+					<button class="btn btn-info active" data-filter="all">All (%d)</button>
+					<button class="btn btn-success" data-filter="passed">Passed (%d)</button>
+					<button class="btn btn-error" data-filter="failed">Failed (%d)</button>
 				</div>
 				
-				<div class="test-results-list">`,
-		timestamp, run.ID, run.TotalTests, run.PassedTests, run.FailedTests, run.TotalTime,
-		renderBuildInfo(run),
+				<div class="test-results-list content-padding-y">`,
+		getShortID(run.ID), successRate, timestamp, run.ID, run.TotalTests, run.PassedTests, run.FailedTests, run.TotalTime,
+		buildInfo,
 		run.TotalTests, run.PassedTests, run.FailedTests)
 	
 	// Generate test result rows
 	for _, test := range run.TestResults {
-		// Determine status text
+		// Determine status class
+		statusClass := "error"
 		statusText := "Failed"
 		if test.Status == "passed" {
+			statusClass = "success"
 			statusText = "Passed"
 		}
 		
 		// Determine if output should be shown
 		outputHTML := ""
 		if test.Status == "failed" && test.Output != "" {
-			outputHTML = fmt.Sprintf(`<div class="test-output"><pre>%s</pre></div>`, test.Output)
+			outputHTML = fmt.Sprintf(`<div class="test-output content-padding"><pre>%s</pre></div>`, test.Output)
 		}
 		
 		html += fmt.Sprintf(`
-			<div class="test-result-item %s">
+			<div class="test-result-item card-content-sm">
 				<div class="test-result-header">
-					<span class="test-name">%s</span>
-					<span class="test-badge %s">%s</span>
-					<span class="test-duration">%s</span>
+					<span class="test-name font-medium">%s</span>
+					<div class="test-meta">
+						<span class="status-badge %s">%s</span>
+						<span class="test-duration">%s</span>
+					</div>
 				</div>
 				%s
 			</div>
-		`, test.Status, test.Name, test.Status, statusText, test.Duration, outputHTML)
+		`, test.Name, statusClass, statusText, test.Duration, outputHTML)
 	}
 	
 	html += `</div></div></div>`
@@ -437,9 +428,12 @@ func (h *HistoryHandler) renderComparisonHTML(w http.ResponseWriter, baseRun, co
 	}
 	
 	html := fmt.Sprintf(`
-		<div class="comparison-container">
-			<div class="comparison-header">
-				<h3>Test Run Comparison</h3>
+		<div class="card-content">
+			<div class="history-item-header">
+				<div class="history-item-title">Test Run Comparison</div>
+			</div>
+			
+			<div class="content-padding">
 				<div class="comparison-runs">
 					<div class="comparison-run base">
 						<span class="comparison-label">Base:</span>
@@ -452,9 +446,10 @@ func (h *HistoryHandler) renderComparisonHTML(w http.ResponseWriter, baseRun, co
 				</div>
 			</div>
 			
-			<div class="comparison-summary">
-				<div class="metric-comparison">
-					<div class="metric-group">
+			<div class="content-padding">
+				<div class="card-content-sm">
+					<h4 class="section-title">Metrics Comparison</h4>
+					<div class="metric-group content-padding">
 						<div class="metric">
 							<div class="metric-name">Total Tests</div>
 							<div class="metric-values">
@@ -494,9 +489,10 @@ func (h *HistoryHandler) renderComparisonHTML(w http.ResponseWriter, baseRun, co
 				</div>
 			</div>
 			
-			<div class="comparison-details">
-				<h4>Test Status Changes</h4>
-				<div class="status-changes">`,
+			<div class="content-padding">
+				<div class="card-content-sm">
+					<h4 class="section-title">Test Status Changes</h4>
+					<div class="status-changes content-padding">`,
 		getShortID(baseRun.ID), baseRun.Timestamp.Format("Jan 02, 15:04"),
 		getShortID(compareRun.ID), compareRun.Timestamp.Format("Jan 02, 15:04"),
 		baseRun.TotalTests, 
@@ -518,12 +514,12 @@ func (h *HistoryHandler) renderComparisonHTML(w http.ResponseWriter, baseRun, co
 	
 	// Show fixed tests
 	if len(comparison.Fixed) > 0 {
-		html += `<div class="change-group positive">
-			<h5>Fixed Tests</h5>
+		html += `<div class="change-group success content-padding-y">
+			<h5 class="text-md font-medium">Fixed Tests</h5>
 			<ul class="change-list">`
 		
 		for _, test := range comparison.Fixed {
-			html += fmt.Sprintf(`<li>%s</li>`, test)
+			html += fmt.Sprintf(`<li class="py-1">%s</li>`, test)
 		}
 		
 		html += `</ul></div>`
@@ -531,12 +527,12 @@ func (h *HistoryHandler) renderComparisonHTML(w http.ResponseWriter, baseRun, co
 	
 	// Show newly failed tests
 	if len(comparison.NewlyFailed) > 0 {
-		html += `<div class="change-group negative">
-			<h5>Newly Failed Tests</h5>
+		html += `<div class="change-group error content-padding-y">
+			<h5 class="text-md font-medium">Newly Failed Tests</h5>
 			<ul class="change-list">`
 		
 		for _, test := range comparison.NewlyFailed {
-			html += fmt.Sprintf(`<li>%s</li>`, test)
+			html += fmt.Sprintf(`<li class="py-1">%s</li>`, test)
 		}
 		
 		html += `</ul></div>`
@@ -544,12 +540,12 @@ func (h *HistoryHandler) renderComparisonHTML(w http.ResponseWriter, baseRun, co
 	
 	// Show new tests
 	if len(comparison.New) > 0 {
-		html += `<div class="change-group neutral">
-			<h5>New Tests</h5>
+		html += `<div class="change-group info content-padding-y">
+			<h5 class="text-md font-medium">New Tests</h5>
 			<ul class="change-list">`
 		
 		for _, test := range comparison.New {
-			html += fmt.Sprintf(`<li>%s</li>`, test)
+			html += fmt.Sprintf(`<li class="py-1">%s</li>`, test)
 		}
 		
 		html += `</ul></div>`
@@ -557,12 +553,12 @@ func (h *HistoryHandler) renderComparisonHTML(w http.ResponseWriter, baseRun, co
 	
 	// Show removed tests
 	if len(comparison.Removed) > 0 {
-		html += `<div class="change-group neutral">
-			<h5>Removed Tests</h5>
+		html += `<div class="change-group warning content-padding-y">
+			<h5 class="text-md font-medium">Removed Tests</h5>
 			<ul class="change-list">`
 		
 		for _, test := range comparison.Removed {
-			html += fmt.Sprintf(`<li>%s</li>`, test)
+			html += fmt.Sprintf(`<li class="py-1">%s</li>`, test)
 		}
 		
 		html += `</ul></div>`
@@ -580,7 +576,8 @@ func renderBuildInfo(run TestRun) string {
 		return ""
 	}
 	
-	html := `<div class="build-info">`
+	html := `<div class="build-info card-content-sm">
+		<h5 class="text-md font-medium mb-2">Build Information</h5>`
 	
 	if run.Branch != "" {
 		html += fmt.Sprintf(`

@@ -112,6 +112,8 @@ func (s *Server) registerRoutes() {
 
 	// Page routes
 	s.router.Get("/", s.handleDashboard)
+	s.router.Get("/tests", s.handleTests)
+	s.router.Get("/reports", s.handleReports)
 	s.router.Get("/history", s.handleHistory)
 	s.router.Get("/settings", s.handleSettings)
 
@@ -179,6 +181,31 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	s.render(w, "pages/settings", data)
+}
+
+// handleTests renders the tests page
+func (s *Server) handleTests(w http.ResponseWriter, r *http.Request) {
+	// Get test data for the page
+	tests := handlers.GetMockTestResults()
+	
+	data := map[string]interface{}{
+		"Title": "Tests",
+		"ActivePage": "tests",
+		"Tests": tests,
+	}
+	
+	s.render(w, "pages/tests", data)
+}
+
+// handleReports renders the reports page
+func (s *Server) handleReports(w http.ResponseWriter, r *http.Request) {
+	data := map[string]interface{}{
+		"Title": "Reports",
+		"ActivePage": "reports",
+		"Subtitle": "View and analyze your Go Sentinel reports",
+	}
+	
+	s.render(w, "pages/reports", data)
 }
 
 // render executes the named template with the given data
