@@ -11,7 +11,7 @@
     "watch:css": "npx @tailwindcss/cli -i ./static/css/tailwind.css -o ./static/css/tailwind.build.css --watch",
     "test": "jest",
     "test:e2e": "playwright test",
-    "dev": "live-server --port=5173 --watch=static,templates --open=static/index.html --no-browser=chrome"
+    "dev": "node dev.server.js"
   },
   "keywords": [],
   "author": "",
@@ -24,5 +24,9 @@
     "live-server": "^1.2.2",
     "postcss": "^8.5.3",
     "tailwindcss": "^4.1.6"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "express-handlebars": "^8.0.1"
   }
 }

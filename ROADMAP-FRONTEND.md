@@ -38,7 +38,8 @@ This roadmap outlines the development plan for the Go Sentinel web interface usi
   - [x] 1.1.2. Set up essential dependencies (HTMX, CSS framework)
   - [x] 1.1.3. Create basic template structure with layouts and partials
   - [x] 1.1.4. Add .env or config for API base URL
-  - [ ] 1.1.5. Write test: API health check (frontend can reach /health)
+  - [x] 1.1.5. Write test: API health check (frontend can reach /health)  
+    - E2E health check passing, backend/frontend integration verified
 
 - [ ] **1.2. Base Template & Design System**
   - [ ] 1.2.1. Write tests for responsive layout
