@@ -21,6 +21,7 @@ type Server struct {
 	testHandler     *handlers.TestResultsHandler
 	metricsHandler  *handlers.MetricsHandler
 	websocketHandler *handlers.WebSocketHandler
+	historyHandler   *handlers.HistoryHandler
 }
 
 // NewServer creates a new web server instance
@@ -79,9 +80,10 @@ func NewServer(templatePath, staticPath string) (*Server, error) {
 	r.Use(customMiddleware.Logger)
 
 	// Initialize handlers
-	testHandler := handlers.NewTestResultsHandler(nil) // We'll inject the real TestRunner later
+	testHandler := handlers.NewTestResultsHandler(tmpl)
 	metricsHandler := handlers.NewMetricsHandler()
 	websocketHandler := handlers.NewWebSocketHandler()
+	historyHandler := handlers.NewHistoryHandler()
 
 	server := &Server{
 		router:          r,
@@ -90,6 +92,7 @@ func NewServer(templatePath, staticPath string) (*Server, error) {
 		testHandler:     testHandler,
 		metricsHandler:  metricsHandler,
 		websocketHandler: websocketHandler,
+		historyHandler:   historyHandler,
 	}
 
 	// Register routes
@@ -107,8 +110,9 @@ func (s *Server) registerRoutes() {
 	fileServer := http.FileServer(http.Dir(s.staticPath))
 	s.router.Handle("/static/*", http.StripPrefix("/static", fileServer))
 
-	// Dashboard route
+	// Page routes
 	s.router.Get("/", s.handleDashboard)
+	s.router.Get("/history", s.handleHistory)
 
 	// API routes
 	s.router.Route("/api", func(r chi.Router) {
@@ -120,6 +124,11 @@ func (s *Server) registerRoutes() {
 		
 		// Metrics routes
 		r.Get("/metrics", s.metricsHandler.GetMetrics)
+		
+		// History routes
+		r.Get("/history", s.historyHandler.GetTestRunHistory)
+		r.Get("/history/compare", s.historyHandler.CompareTestRuns)
+		r.Get("/history/{runID}", s.historyHandler.GetTestRunDetails)
 	})
 
 	// WebSocket route
@@ -145,6 +154,15 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	s.render(w, "pages/dashboard", data)
+}
+
+// handleHistory renders the test history page
+func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
+	data := map[string]interface{}{
+		"Title": "Test History",
+	}
+	
+	s.render(w, "pages/history", data)
 }
 
 // render executes the named template with the given data

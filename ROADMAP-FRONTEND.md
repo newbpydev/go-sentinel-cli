@@ -52,10 +52,10 @@ This roadmap outlines the development plan for the Go Sentinel web interface usi
    - [x] Create copy-to-clipboard feature for selected tests
    - [x] Add keyboard shortcuts for common actions
 
-2. [ ] Test history tracking
-   - [ ] Implement backend storage for test run history
-   - [ ] Create timeline visualization component
-   - [ ] Add comparison views between test runs
+2. [x] Test history tracking
+   - [x] Implement backend storage for test run history
+   - [x] Create timeline visualization
+   - [x] Add comparison between runs
 
 3. [ ] Notifications system
    - [ ] Design toast notification component
