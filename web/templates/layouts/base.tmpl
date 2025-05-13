@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Go Sentinel Test Dashboard - Monitor your Go test results in real-time">
+    <title>{{if .Title}}{{.Title}} | {{end}}Go Sentinel</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <!-- HTMX for dynamic interactions -->
+    <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+    <!-- Add WebSocket extension for HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.2/dist/ext/ws.js"></script>
+</head>
+<body class="dark-theme">
+    <!-- Skip link for accessibility -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    
+    <div class="app-container">
+        <!-- Sidebar navigation -->
+        <nav class="sidebar" role="navigation" aria-label="Main Navigation">
+            {{template "partials/sidebar" .}}
+        </nav>
+        
+        <!-- Main content -->
+        <main id="main-content" class="main-content">
+            <header class="dashboard-header">
+                <h1>{{.Title}}</h1>
+                <p>Monitor your Go test results in real-time</p>
+                <div class="connection-status" aria-live="polite">
+                    <span class="status-indicator connecting" aria-label="Connection status">Connecting...</span>
+                </div>
+            </header>
+            
+            <!-- Page-specific content -->
+            {{template "content" .}}
+        </main>
+    </div>
+    
+    <script src="/static/js/main.js"></script>
+</body>
+</html>

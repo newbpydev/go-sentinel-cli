@@ -1,0 +1,40 @@
+{{define "partials/test-table"}}
+<div class="test-table">
+    <table aria-label="Test Results">
+        <thead>
+            <tr>
+                <th scope="col">Test Name</th>
+                <th scope="col">Status</th>
+                <th scope="col">Duration</th>
+                <th scope="col">Last Run</th>
+                <th scope="col">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range $index, $test := .Tests}}
+            <tr class="test-row {{if eq $test.Status "failed"}}failed{{else}}passed{{end}}"
+                data-test-id="{{$index}}" 
+                tabindex="0">
+                <td class="test-name">{{$test.Name}}</td>
+                <td class="test-status">
+                    <span class="status-badge {{$test.Status}}" aria-label="Test {{$test.Status}}">
+                        {{if eq $test.Status "passed"}}Passed{{else}}Failed{{end}}
+                    </span>
+                </td>
+                <td class="test-duration">{{$test.Duration}}</td>
+                <td class="test-last-run">{{$test.LastRun}}</td>
+                <td class="test-actions">
+                    <button class="run-button"
+                            hx-post="/api/run-test/{{$test.Name}}"
+                            hx-target="closest tr"
+                            hx-swap="outerHTML"
+                            aria-label="Run {{$test.Name}}">
+                        Run
+                    </button>
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+{{end}}

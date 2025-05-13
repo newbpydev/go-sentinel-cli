@@ -1,0 +1,34 @@
+{{define "partials/sidebar"}}
+<div class="sidebar-content">
+    <div class="logo">
+        <h2>Go Sentinel</h2>
+    </div>
+    
+    <ul class="nav-links">
+        <li class="nav-item active">
+            <a href="/" aria-current="page">
+                <span class="icon">📊</span>
+                <span class="link-text">Dashboard</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="/tests">
+                <span class="icon">🧪</span>
+                <span class="link-text">Tests</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="/reports">
+                <span class="icon">📝</span>
+                <span class="link-text">Reports</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="/settings">
+                <span class="icon">⚙️</span>
+                <span class="link-text">Settings</span>
+            </a>
+        </li>
+    </ul>
+</div>
+{{end}}

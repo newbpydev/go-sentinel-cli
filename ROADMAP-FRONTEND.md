@@ -18,32 +18,32 @@ This roadmap outlines the development plan for the Go Sentinel web interface usi
 
 ## Phase 1: Foundation Setup
 
-1. [ ] Setup base Go HTTP server
-   - [ ] Create basic handler structure
-   - [ ] Configure static file serving
-   - [ ] Setup template rendering system
+1. [x] Setup base Go HTTP server
+   - [x] Create basic handler structure
+   - [x] Configure static file serving
+   - [x] Setup template rendering system
 
-2. [ ] Create base HTML templates
-   - [ ] Implement layout template with HTMX inclusion
-   - [ ] Create reusable partial templates for common components
-   - [ ] Define consistent CSS structure
+2. [x] Create base HTML templates
+   - [x] Implement layout template with HTMX inclusion
+   - [x] Create reusable partial templates for common components
+   - [x] Define consistent CSS structure
 
 ## Phase 2: Core Functionality
 
-1. [ ] Implement test results display
-   - [ ] Create handler for serving test results as HTML
-   - [ ] Design test result components (pass/fail indicators, timing)
-   - [ ] Implement filtering mechanism for test results
+1. [x] Implement test results display
+   - [x] Create handler for serving test results as HTML
+   - [x] Design test result components (pass/fail indicators, timing)
+   - [x] Implement filtering mechanism for test results
 
-2. [ ] Real-time updates with WebSockets
-   - [ ] Set up WebSocket handler in Go
-   - [ ] Create client-side HTMX-WebSocket integration
-   - [ ] Implement real-time test result updates
+2. [x] Real-time updates with WebSockets
+   - [x] Set up WebSocket handler in Go
+   - [x] Create client-side HTMX-WebSocket integration
+   - [x] Implement real-time test result updates
 
-3. [ ] Test statistics dashboard
-   - [ ] Create metrics aggregation in Go backend
-   - [ ] Design dashboard layout with key metrics
-   - [ ] Implement refresh functionality with HTMX
+3. [x] Test statistics dashboard
+   - [x] Create metrics aggregation in Go backend
+   - [x] Design dashboard layout with key metrics
+   - [x] Implement refresh functionality with HTMX
 
 ## Phase 3: User Experience Enhancements
 
