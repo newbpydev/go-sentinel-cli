@@ -593,3 +593,71 @@ input[type="checkbox"]:focus {
     animation: none !important;
   }
 }
+
+/* Modern Button Styles (2024 best practices) */
+.btn {
+  display: inline-block;
+  padding: 0.6em 1.4em;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  color: var(--text);
+  background: var(--primary);
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  outline: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  margin: 0.2em 0.5em 0.2em 0;
+}
+.btn:focus {
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.35);
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.btn:hover:not(:disabled), .btn:active:not(:disabled) {
+  background: #2563eb;
+  color: #fff;
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btn-success {
+  background: var(--success);
+  color: #fff;
+}
+.btn-success:hover, .btn-success:focus {
+  background: #059669;
+}
+.btn-error {
+  background: var(--error);
+  color: #fff;
+}
+.btn-error:hover, .btn-error:focus {
+  background: #b91c1c;
+}
+.btn-warning {
+  background: var(--warning);
+  color: #222;
+}
+.btn-warning:hover, .btn-warning:focus {
+  background: #d97706;
+  color: #fff;
+}
+.btn-info {
+  background: var(--secondary);
+  color: #fff;
+}
+.btn-info:hover, .btn-info:focus {
+  background: #3730a3;
+}
+
+@media (max-width: 600px) {
+  .btn {
+    width: 100%;
+    margin-bottom: 0.5em;
+    font-size: 1.1rem;
+    padding: 1em 0;
+  }
+}
