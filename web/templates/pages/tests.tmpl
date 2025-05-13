@@ -7,6 +7,7 @@
     <meta name="description" content="Go Sentinel Tests - Manage and run your tests">
     <title>{{if .Title}}{{.Title}} | {{end}}Go Sentinel</title>
     <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/components.css">
     <script src="https://unpkg.com/htmx.org@1.9.2"></script>
     <script src="https://unpkg.com/htmx.org@1.9.2/dist/ext/ws.js"></script>
 </head>
@@ -22,16 +23,64 @@
                 <p>Manage and run your Go Sentinel tests</p>
             </header>
             <div class="dashboard-container">
+                <!-- Test management section -->
                 <section class="recent-tests">
                     <div class="section-header">
                         <h2>Test Management</h2>
-                        <button class="run-all-button" aria-label="Configure Tests">
-                            Configure Tests
+                        <button class="run-all-button" aria-label="Run All Tests"
+                                hx-post="/api/run-tests"
+                                hx-target="#test-results">
+                            Run All Tests
                         </button>
+                    </div>
+                    <div id="test-results" class="test-table-container">
+                        <table class="test-table">
+                            <thead>
+                                <tr>
+                                    <th>Test Name</th>
+                                    <th>Status</th>
+                                    <th>Duration</th>
+                                    <th>Last Run</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{range .Tests}}
+                                <tr>
+                                    <td>{{.Name}}</td>
+                                    <td>
+                                        <span class="status-badge {{.Status}}">{{.Status}}</span>
+                                    </td>
+                                    <td>{{.Duration}}</td>
+                                    <td>{{.LastRun.Format "Jan 02, 15:04"}}</td>
+                                    <td>
+                                        <button class="run-button" 
+                                                hx-post="/api/run-test/{{.Name}}"
+                                                hx-target="#test-results">
+                                            Run
+                                        </button>
+                                    </td>
+                                </tr>
+                                {{end}}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                
+                <!-- Test configuration section -->
+                <section class="recent-tests">
+                    <div class="section-header">
+                        <h2>Test Configuration</h2>
                     </div>
                     <div class="test-table-container">
                         <div class="p-4">
-                            <p>Test management features will be added in a future update.</p>
+                            <p>Configure test settings, patterns, and exclusions here.</p>
+                            <div class="mt-4">
+                                <h3 class="text-lg font-medium mb-4">Test Patterns</h3>
+                                <div class="flex flex-wrap gap-3">
+                                    <button class="btn btn-info">Add Pattern</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>

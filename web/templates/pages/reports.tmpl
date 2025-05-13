@@ -7,6 +7,7 @@
     <meta name="description" content="Go Sentinel Reports - View and analyze your reports">
     <title>{{if .Title}}{{.Title}} | {{end}}Go Sentinel</title>
     <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/components.css">
     <script src="https://unpkg.com/htmx.org@1.9.2"></script>
     <script src="https://unpkg.com/htmx.org@1.9.2/dist/ext/ws.js"></script>
 </head>
@@ -19,19 +20,80 @@
         <main id="main-content" class="main-content">
             <header class="dashboard-header">
                 <h1>{{.Title}}</h1>
-                <p>View and analyze your Go Sentinel reports</p>
+                <p>{{if .Subtitle}}{{.Subtitle}}{{else}}View and analyze your Go Sentinel reports{{end}}</p>
             </header>
             <div class="dashboard-container">
+                <!-- Available Reports Section -->
                 <section class="recent-tests">
                     <div class="section-header">
-                        <h2>Reports</h2>
+                        <h2>Available Reports</h2>
                         <button class="run-all-button" aria-label="Generate Report">
                             Generate Report
                         </button>
                     </div>
                     <div class="test-table-container">
+                        <table class="test-table">
+                            <thead>
+                                <tr>
+                                    <th>Report Name</th>
+                                    <th>Type</th>
+                                    <th>Generated</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Weekly Test Summary</td>
+                                    <td>Summary</td>
+                                    <td>May 10, 2025</td>
+                                    <td><span class="status-badge passed">Complete</span></td>
+                                    <td>
+                                        <button class="run-button">View</button>
+                                        <button class="run-button">Download</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Performance Trends</td>
+                                    <td>Analysis</td>
+                                    <td>May 8, 2025</td>
+                                    <td><span class="status-badge passed">Complete</span></td>
+                                    <td>
+                                        <button class="run-button">View</button>
+                                        <button class="run-button">Download</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Failure Analysis</td>
+                                    <td>Analysis</td>
+                                    <td>May 5, 2025</td>
+                                    <td><span class="status-badge passed">Complete</span></td>
+                                    <td>
+                                        <button class="run-button">View</button>
+                                        <button class="run-button">Download</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                
+                <!-- Report Configuration Section -->
+                <section class="recent-tests">
+                    <div class="section-header">
+                        <h2>Report Configuration</h2>
+                    </div>
+                    <div class="test-table-container">
                         <div class="p-4">
-                            <p>Report features will be added in a future update.</p>
+                            <p>Configure report generation settings and schedules.</p>
+                            <div class="mt-4">
+                                <h3 class="text-lg font-medium mb-4">Report Types</h3>
+                                <div class="flex flex-wrap gap-3">
+                                    <button class="btn btn-success">Summary</button>
+                                    <button class="btn btn-info">Analysis</button>
+                                    <button class="btn btn-warning">Comparison</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>
