@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -160,6 +161,43 @@ func (h *WebSocketHandler) BroadcastMetricsUpdate(metrics map[string]interface{}
 	h.broadcast <- WebSocketMessage{
 		Type:    "metrics-update",
 		Payload: metrics,
+	}
+}
+
+// BroadcastTestResults sends test results to all connected clients
+func (h *WebSocketHandler) BroadcastTestResults(testResults []TestResult) {
+	payload := map[string]interface{}{
+		"data": testResults,
+		"notification": map[string]interface{}{
+			"type": "success",
+			"title": "Test Results Updated",
+			"message": fmt.Sprintf("Received %d updated test results", len(testResults)),
+			"duration": 3000,
+		},
+	}
+	
+	message := WebSocketMessage{
+		Type:    "test-results",
+		Payload: payload,
+	}
+	
+	h.broadcast <- message
+}
+
+// SendNotification broadcasts a notification to all connected clients
+func (h *WebSocketHandler) SendNotification(notificationType, title, message string, duration int) {
+	payload := map[string]interface{}{
+		"notification": map[string]interface{}{
+			"type": notificationType,
+			"title": title,
+			"message": message,
+			"duration": duration,
+		},
+	}
+	
+	h.broadcast <- WebSocketMessage{
+		Type:    "notification",
+		Payload: payload,
 	}
 }
 

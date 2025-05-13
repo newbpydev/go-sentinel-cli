@@ -113,6 +113,7 @@ func (s *Server) registerRoutes() {
 	// Page routes
 	s.router.Get("/", s.handleDashboard)
 	s.router.Get("/history", s.handleHistory)
+	s.router.Get("/settings", s.handleSettings)
 
 	// API routes
 	s.router.Route("/api", func(r chi.Router) {
@@ -163,6 +164,15 @@ func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	s.render(w, "pages/history", data)
+}
+
+// handleSettings renders the settings page
+func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
+	data := map[string]interface{}{
+		"Title": "Settings",
+	}
+	
+	s.render(w, "pages/settings", data)
 }
 
 // render executes the named template with the given data

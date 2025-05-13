@@ -57,10 +57,10 @@ This roadmap outlines the development plan for the Go Sentinel web interface usi
    - [x] Create timeline visualization
    - [x] Add comparison between runs
 
-3. [ ] Notifications system
-   - [ ] Design toast notification component
-   - [ ] Implement trigger points for notifications
-   - [ ] Add notification preferences
+3. [x] Notifications system
+   - [x] Design toast notification component
+   - [x] Implement trigger points for notifications
+   - [x] Add notification preferences
 
 ## Phase 4: Advanced Features
 

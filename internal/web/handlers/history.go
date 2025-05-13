@@ -278,11 +278,11 @@ func (h *HistoryHandler) renderHistoryHTML(w http.ResponseWriter, runs []TestRun
 					</div>
 				</div>
 			</div>
-		`, statusClass, run.ID, run.ID, timestamp, run.ID[:8],
+		`, statusClass, run.ID, run.ID, timestamp, getShortID(run.ID),
 		   run.TotalTests, run.PassedTests, run.FailedTests, run.TotalTime,
 		   successRate, successRate,
 		   func() string {
-			   if i > 0 {
+			   if i > 0 && len(runs) > 0 {
 				   return fmt.Sprintf(`<button class="mini-button compare" hx-get="/api/history/compare?baseRunID=%s&compareRunID=%s" hx-target="#comparison-container">Compare</button>`, runs[0].ID, run.ID)
 			   }
 			   return ""
@@ -497,8 +497,8 @@ func (h *HistoryHandler) renderComparisonHTML(w http.ResponseWriter, baseRun, co
 			<div class="comparison-details">
 				<h4>Test Status Changes</h4>
 				<div class="status-changes">`,
-		baseRun.ID[:8], baseRun.Timestamp.Format("Jan 02, 15:04"),
-		compareRun.ID[:8], compareRun.Timestamp.Format("Jan 02, 15:04"),
+		getShortID(baseRun.ID), baseRun.Timestamp.Format("Jan 02, 15:04"),
+		getShortID(compareRun.ID), compareRun.Timestamp.Format("Jan 02, 15:04"),
 		baseRun.TotalTests, 
 		totalTestsClass,
 		totalTestsDiffStr,
@@ -776,6 +776,14 @@ func createMockTestRuns() []TestRun {
 	}
 	
 	return runs
+}
+
+// getShortID safely truncates an ID to 8 characters or returns the full ID if shorter
+func getShortID(id string) string {
+	if len(id) <= 8 {
+		return id
+	}
+	return id[:8]
 }
 
 // createMockTestResults generates mock test results

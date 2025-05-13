@@ -1,0 +1,178 @@
+{{define "pages/settings"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Go Sentinel Settings - Customize your testing experience">
+    <title>{{if .Title}}{{.Title}} | {{end}}Go Sentinel</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <!-- HTMX for dynamic interactions -->
+    <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+    <!-- Add WebSocket extension for HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.2/dist/ext/ws.js"></script>
+</head>
+<body class="dark-theme">
+    <!-- Skip link for accessibility -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    
+    <div class="app-container">
+        <!-- Sidebar navigation -->
+        <nav class="sidebar" role="navigation" aria-label="Main Navigation">
+            <button class="mobile-menu-toggle" aria-label="Toggle navigation menu">
+                <span class="hamburger-icon"></span>
+            </button>
+            {{template "partials/sidebar" .}}
+        </nav>
+        
+        <!-- Main content area -->
+        <main id="main-content" class="main-content" role="main">
+            <div class="container mx-auto px-4 py-8">
+                <div class="pb-6 border-b border-slate-700 mb-8">
+                    <h1 class="text-2xl font-bold text-slate-200">Settings</h1>
+                    <p class="text-slate-400 mt-2">Customize your Go Sentinel experience</p>
+                </div>
+                
+                <!-- Settings sections -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <!-- Sidebar navigation -->
+                    <div class="md:col-span-1">
+                        <div class="bg-slate-800 rounded-lg p-4 sticky top-4">
+                            <nav class="settings-nav">
+                                <ul class="space-y-2">
+                                    <li>
+                                        <a href="#notifications" class="block p-2 rounded hover:bg-slate-700 text-slate-300 hover:text-white">
+                                            Notifications
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="#appearance" class="block p-2 rounded hover:bg-slate-700 text-slate-300 hover:text-white">
+                                            Appearance
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="#behavior" class="block p-2 rounded hover:bg-slate-700 text-slate-300 hover:text-white">
+                                            Behavior
+                                        </a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                    
+                    <!-- Settings content -->
+                    <div class="md:col-span-2">
+                        <!-- Notification section -->
+                        <section id="notifications" class="mb-12">
+                            <h2 class="text-xl font-semibold text-slate-200 mb-4">Notification Settings</h2>
+                            <div id="notification-preferences">
+                                <!-- Preferences panel will be inserted here via JavaScript -->
+                            </div>
+                            
+                            <div class="mt-6">
+                                <h3 class="text-lg font-medium text-slate-300 mb-3">Test Your Notifications</h3>
+                                <div class="flex flex-wrap gap-3">
+                                    <button class="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 test-notification" data-type="success">
+                                        Success
+                                    </button>
+                                    <button class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 test-notification" data-type="error">
+                                        Error
+                                    </button>
+                                    <button class="px-4 py-2 bg-amber-500 text-white rounded hover:bg-amber-600 test-notification" data-type="warning">
+                                        Warning
+                                    </button>
+                                    <button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 test-notification" data-type="info">
+                                        Info
+                                    </button>
+                                </div>
+                            </div>
+                        </section>
+                        
+                        <!-- Appearance section (placeholder for future expansion) -->
+                        <section id="appearance" class="mb-12">
+                            <h2 class="text-xl font-semibold text-slate-200 mb-4">Appearance</h2>
+                            <div class="bg-slate-800 rounded-lg p-6">
+                                <p class="text-slate-400">Appearance settings will be added in a future update.</p>
+                            </div>
+                        </section>
+                        
+                        <!-- Behavior section (placeholder for future expansion) -->
+                        <section id="behavior" class="mb-12">
+                            <h2 class="text-xl font-semibold text-slate-200 mb-4">Behavior</h2>
+                            <div class="bg-slate-800 rounded-lg p-6">
+                                <p class="text-slate-400">Behavior settings will be added in a future update.</p>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- JavaScript for client-side functionality -->
+    <script src="/static/js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Create notification preferences panel
+            GoSentinel.Notifications.createPreferencesPanel('notification-preferences');
+            
+            // Setup test notification buttons
+            const testButtons = document.querySelectorAll('.test-notification');
+            testButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const type = this.dataset.type;
+                    GoSentinel.Notifications.show({
+                        type: type,
+                        title: `${type.charAt(0).toUpperCase() + type.slice(1)} Notification`,
+                        message: `This is a test ${type} notification.`,
+                        duration: 5000
+                    });
+                });
+            });
+            
+            // Highlight active setting in sidebar
+            const settingsLinks = document.querySelectorAll('.settings-nav a');
+            
+            function highlightCurrentSection() {
+                const scrollPosition = window.scrollY;
+                
+                document.querySelectorAll('section[id]').forEach(section => {
+                    const sectionTop = section.offsetTop - 100;
+                    const sectionHeight = section.offsetHeight;
+                    const sectionId = section.getAttribute('id');
+                    
+                    if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
+                        settingsLinks.forEach(link => {
+                            link.classList.remove('bg-slate-700', 'text-white');
+                            if (link.getAttribute('href') === `#${sectionId}`) {
+                                link.classList.add('bg-slate-700', 'text-white');
+                            }
+                        });
+                    }
+                });
+            }
+            
+            // Initial highlight
+            highlightCurrentSection();
+            
+            // Update on scroll
+            window.addEventListener('scroll', highlightCurrentSection);
+            
+            // Smooth scroll to sections
+            settingsLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href').substring(1);
+                    const targetElement = document.getElementById(targetId);
+                    
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 80,
+                        behavior: 'smooth'
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+</html>
+{{end}}
