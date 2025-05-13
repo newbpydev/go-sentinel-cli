@@ -125,8 +125,11 @@ nav ul, ul.settings-nav, .sidebar ul, .settings-nav ul {
 }
 
 .nav-item.active a {
-  background-color: rgba(59, 130, 246, 0.1);
+  background-color: rgba(59, 130, 246, 0.18);
   color: var(--primary);
+  border-left: 3px solid var(--primary);
+  font-weight: 600;
+  box-shadow: 0 2px 8px 0 rgba(59,130,246,0.06);
 }
 
 .nav-item .icon {

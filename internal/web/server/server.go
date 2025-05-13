@@ -155,6 +155,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		"Title": "Test Dashboard",
 		"Stats": metrics,
 		"Tests": tests,
+		"ActivePage": "dashboard",
 	}
 	
 	s.render(w, "pages/dashboard", data)
@@ -164,6 +165,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
 	data := map[string]interface{}{
 		"Title": "Test History",
+		"ActivePage": "history",
 	}
 	
 	s.render(w, "pages/history", data)
@@ -173,6 +175,7 @@ func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	data := map[string]interface{}{
 		"Title": "Settings",
+		"ActivePage": "settings",
 	}
 	
 	s.render(w, "pages/settings", data)

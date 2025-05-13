@@ -1,0 +1,41 @@
+{{define "pages/tests"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Go Sentinel Tests - Manage and run your tests">
+    <title>{{if .Title}}{{.Title}} | {{end}}Go Sentinel</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.2/dist/ext/ws.js"></script>
+</head>
+<body class="dark-theme">
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    <div class="app-container">
+        <nav class="sidebar" role="navigation" aria-label="Main Navigation">
+            {{template "partials/sidebar" .}}
+        </nav>
+        <main id="main-content" class="main-content">
+            <header class="dashboard-header">
+                <h1>Tests</h1>
+                <p>Manage and run your Go Sentinel tests</p>
+            </header>
+            <div class="dashboard-container" style="gap:2rem;">
+                <section class="recent-tests">
+                    <div class="section-header">
+                        <h2>Test Management</h2>
+                    </div>
+                    <div class="test-table-container" style="padding: 0 1.5rem 1.5rem 1.5rem;">
+                        <div class="p-4 pt-6">
+                            <p style="padding-top:1.5rem;">Test management features will be added in a future update.</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
+{{end}}

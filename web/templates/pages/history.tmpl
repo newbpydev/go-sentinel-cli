@@ -35,18 +35,22 @@
                 <section class="recent-tests">
                     <div class="section-header">
                         <h2>Test Run History</h2>
+                        <button class="refresh-button" 
+                                aria-label="Refresh history"
+                                hx-get="/api/history" 
+                                hx-target="#history-container">
+                            Refresh
+                        </button>
                     </div>
-                    
                     <div id="history-container" class="test-table-container">
-                        <!-- Timeline will be loaded here -->
                         <div class="flex justify-center items-center h-32">
                             <div class="loading-spinner"></div>
                         </div>
                     </div>
                 </section>
-                
+
                 <!-- Details section -->
-                <section class="recent-tests mt-6">
+                <section class="recent-tests">
                     <div class="section-header">
                         <h2>Test Run Details</h2>
                     </div>
@@ -58,7 +62,7 @@
                 </section>
                 
                 <!-- Comparison section -->
-                <section class="recent-tests mt-6 hidden" id="comparison-section">
+                <section class="recent-tests hidden" id="comparison-section">
                     <div class="section-header">
                         <h2>Comparison Results</h2>
                     </div>
