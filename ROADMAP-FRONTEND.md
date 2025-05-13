@@ -1,5 +1,20 @@
 # Go Sentinel Web Frontend Roadmap
 
+---
+**Frontend Tech Stack Reference**
+- **Styling:** TailwindCSS (installed via npm, built with PostCSS)
+- **Dynamic UI:** HTMX (included via CDN in base layout)
+- **Testing:**
+  - Unit/Integration: Jest
+  - End-to-End (E2E): Playwright (recommended for modern HTMX apps)
+
+**Best Practices:**
+- Use Tailwind's CLI to scan HTML templates for class usage and build pruned CSS to static/css/tailwind.css
+- Use HTMX attributes in HTML for dynamic interactivity
+- Write E2E tests for HTMX-driven UI using Playwright (simulate user actions, assert DOM updates)
+---
+
+
 This roadmap outlines the development plan for the Go Sentinel web interface using HTMX and WebSockets for real-time updates. Following our TDD approach, each implementation task is preceded by its corresponding test task.
 
 ![dashboard-sample](docs/assets/image-1.png)

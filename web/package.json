@@ -1,0 +1,24 @@
+{
+  "name": "web",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "build:css": "npx @tailwindcss/cli -i ./static/css/tailwind.css -o ./static/css/tailwind.build.css --minify",
+    "watch:css": "npx @tailwindcss/cli -i ./static/css/tailwind.css -o ./static/css/tailwind.build.css --watch",
+    "test": "jest",
+    "test:e2e": "playwright test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.1.6"
+  }
+}
