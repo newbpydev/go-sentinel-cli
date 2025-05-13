@@ -284,57 +284,90 @@ func (h *HistoryHandler) renderTestRunDetailsHTML(w http.ResponseWriter, run Tes
 	// Generate build info
 	buildInfo := renderBuildInfo(run)
 	
+	// Start building the HTML
 	html := fmt.Sprintf(`
-		<div class="card-content">
-			<div class="history-item-header">
-				<div class="history-item-title">Test Run Details: %s</div>
-				<span class="status-badge passed">%d%%</span>
-			</div>
-			
-			<div class="content-padding">
-				<div class="detail-grid">
-					<div class="detail-item">
-						<span class="detail-label">Run Date:</span>
-						<span class="detail-value">%s</span>
-					</div>
-					<div class="detail-item">
-						<span class="detail-label">ID:</span>
-						<span class="detail-value">%s</span>
-					</div>
-					<div class="detail-item">
-						<span class="detail-label">Total Tests:</span>
-						<span class="detail-value">%d</span>
-					</div>
-					<div class="detail-item">
-						<span class="detail-label">Passed:</span>
-						<span class="detail-value success">%d</span>
-					</div>
-					<div class="detail-item">
-						<span class="detail-label">Failed:</span>
-						<span class="detail-value error">%d</span>
-					</div>
-					<div class="detail-item">
-						<span class="detail-label">Duration:</span>
-						<span class="detail-value">%s</span>
-					</div>
-				</div>
-				
-				<div class="detail-section content-padding-y">
-					%s
+	<div class="card-content">
+		<div class="history-item-header">
+			<div class="history-item-title">Test Run Details: %s</div>
+			<span class="status-badge passed">%d%%</span>
+		</div>
+		
+		<!-- Stats Cards for Quick Metrics -->
+		<div class="stats-cards content-padding-y">
+			<!-- Total Tests Card -->
+			<div class="stat-card" role="region" aria-label="Total Tests">
+				<div class="stat-card-content">
+					<div class="stat-title">Total Tests</div>
+					<div class="stat-value">%d</div>
 				</div>
 			</div>
 			
-			<div class="content-padding">
+			<!-- Passing Tests Card -->
+			<div class="stat-card success" role="region" aria-label="Passing Tests">
+				<div class="stat-card-content">
+					<div class="stat-title">Passing</div>
+					<div class="stat-value">%d</div>
+					<div class="stat-change">%d%% success rate</div>
+				</div>
+			</div>
+			
+			<!-- Failing Tests Card -->
+			<div class="stat-card error" role="region" aria-label="Failing Tests">
+				<div class="stat-card-content">
+					<div class="stat-title">Failing</div>
+					<div class="stat-value">%d</div>
+				</div>
+			</div>
+			
+			<!-- Average Duration Card -->
+			<div class="stat-card" role="region" aria-label="Test Duration">
+				<div class="stat-card-content">
+					<div class="stat-title">Duration</div>
+					<div class="stat-value">%s</div>
+				</div>
+			</div>
+		</div>
+		
+		<!-- Build Information Section -->
+		<div class="content-padding">
+			<div class="detail-grid">
+				<div class="detail-item">
+					<span class="detail-label">Run Date:</span>
+					<span class="detail-value">%s</span>
+				</div>
+				<div class="detail-item">
+					<span class="detail-label">ID:</span>
+					<span class="detail-value">%s</span>
+				</div>
+			</div>
+			%s
+		</div>
+		
+		<!-- Test Results Table Section -->
+		<div class="content-padding">
+			<div class="section-header">
 				<h4 class="section-title">Test Results</h4>
 				<div class="filter-controls">
 					<button class="btn btn-info active" data-filter="all">All (%d)</button>
 					<button class="btn btn-success" data-filter="passed">Passed (%d)</button>
 					<button class="btn btn-error" data-filter="failed">Failed (%d)</button>
 				</div>
-				
-				<div class="test-results-list content-padding-y">`,
-		getShortID(run.ID), successRate, timestamp, run.ID, run.TotalTests, run.PassedTests, run.FailedTests, run.TotalTime,
-		buildInfo,
+			</div>
+			
+			<div class="test-table-container content-padding-y">
+				<table aria-label="Test Results" class="test-table">
+					<thead>
+						<tr>
+							<th scope="col">Test Name</th>
+							<th scope="col">Status</th>
+							<th scope="col">Duration</th>
+							<th scope="col">Actions</th>
+						</tr>
+					</thead>
+					<tbody>`,
+		getShortID(run.ID), successRate, 
+		run.TotalTests, run.PassedTests, successRate, run.FailedTests, run.TotalTime,
+		timestamp, run.ID, buildInfo,
 		run.TotalTests, run.PassedTests, run.FailedTests)
 	
 	// Generate test result rows
@@ -350,24 +383,35 @@ func (h *HistoryHandler) renderTestRunDetailsHTML(w http.ResponseWriter, run Tes
 		// Determine if output should be shown
 		outputHTML := ""
 		if test.Status == "failed" && test.Output != "" {
-			outputHTML = fmt.Sprintf(`<div class="test-output content-padding"><pre>%s</pre></div>`, test.Output)
+			outputHTML = fmt.Sprintf(`<tr class="test-output-row">
+				<td colspan="4" class="test-output">
+					<pre>%s</pre>
+				</td>
+			</tr>`, test.Output)
 		}
 		
 		html += fmt.Sprintf(`
-			<div class="test-result-item card-content-sm">
-				<div class="test-result-header">
-					<span class="test-name font-medium">%s</span>
-					<div class="test-meta">
-						<span class="status-badge %s">%s</span>
-						<span class="test-duration">%s</span>
-					</div>
-				</div>
-				%s
-			</div>
-		`, test.Name, statusClass, statusText, test.Duration, outputHTML)
+						<tr class="test-row %s" data-test-name="%s" data-test-status="%s">
+							<td class="test-name">%s</td>
+							<td class="test-status">
+								<span class="status-badge %s">%s</span>
+							</td>
+							<td class="test-duration">%s</td>
+							<td class="test-actions">
+								<button class="btn btn-sm btn-info">View</button>
+							</td>
+						</tr>
+						%s`,
+			test.Status, test.Name, test.Status, test.Name, statusClass, statusText, test.Duration, outputHTML)
 	}
 	
-	html += `</div></div></div>`
+	// Close all HTML tags properly
+	html += `
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>`
 	
 	w.Write([]byte(html))
 }
@@ -428,143 +472,122 @@ func (h *HistoryHandler) renderComparisonHTML(w http.ResponseWriter, baseRun, co
 	}
 	
 	html := fmt.Sprintf(`
-		<div class="card-content">
-			<div class="history-item-header">
-				<div class="history-item-title">Test Run Comparison</div>
+	<div class="card-content">
+		<div class="history-item-header">
+			<div class="history-item-title">Test Run Comparison</div>
+		</div>
+		
+		<div class="content-padding">
+			<div class="comparison-runs">
+				<div class="comparison-run base">
+					<span class="comparison-label">Base:</span>
+					<span class="comparison-value">%s (%s)</span>
+				</div>
+				<div class="comparison-run compare">
+					<span class="comparison-label">Compare:</span>
+					<span class="comparison-value">%s (%s)</span>
+				</div>
 			</div>
-			
-			<div class="content-padding">
-				<div class="comparison-runs">
-					<div class="comparison-run base">
-						<span class="comparison-label">Base:</span>
-						<span class="comparison-value">%s (%s)</span>
-					</div>
-					<div class="comparison-run compare">
-						<span class="comparison-label">Compare:</span>
-						<span class="comparison-value">%s (%s)</span>
-					</div>
+		</div>
+		
+		<!-- Stats Cards for Metrics Comparison -->
+		<div class="stats-cards content-padding-y">
+			<!-- Total Tests Card -->
+			<div class="stat-card" role="region" aria-label="Total Tests">
+				<div class="stat-card-content">
+					<div class="stat-title">Total Tests</div>
+					<div class="stat-value">%d → %d</div>
+					<div class="stat-change %s">%s</div>
 				</div>
 			</div>
 			
-			<div class="content-padding">
-				<div class="card-content-sm">
-					<h4 class="section-title">Metrics Comparison</h4>
-					<div class="metric-group content-padding">
-						<div class="metric">
-							<div class="metric-name">Total Tests</div>
-							<div class="metric-values">
-								<div class="value base">%d</div>
-								<div class="value change %s">%s</div>
-								<div class="value compare">%d</div>
-							</div>
-						</div>
-						
-						<div class="metric">
-							<div class="metric-name">Passed Tests</div>
-							<div class="metric-values">
-								<div class="value base">%d</div>
-								<div class="value change %s">%s</div>
-								<div class="value compare">%d</div>
-							</div>
-						</div>
-						
-						<div class="metric">
-							<div class="metric-name">Failed Tests</div>
-							<div class="metric-values">
-								<div class="value base">%d</div>
-								<div class="value change %s">%s</div>
-								<div class="value compare">%d</div>
-							</div>
-						</div>
-						
-						<div class="metric">
-							<div class="metric-name">Success Rate</div>
-							<div class="metric-values">
-								<div class="value base">%d%%</div>
-								<div class="value change %s">%s</div>
-								<div class="value compare">%d%%</div>
-							</div>
-						</div>
-					</div>
+			<!-- Passing Tests Card -->
+			<div class="stat-card success" role="region" aria-label="Passing Tests">
+				<div class="stat-card-content">
+					<div class="stat-title">Passing</div>
+					<div class="stat-value">%d → %d</div>
+					<div class="stat-change %s">%s</div>
 				</div>
 			</div>
 			
-			<div class="content-padding">
-				<div class="card-content-sm">
-					<h4 class="section-title">Test Status Changes</h4>
-					<div class="status-changes content-padding">`,
+			<!-- Failing Tests Card -->
+			<div class="stat-card error" role="region" aria-label="Failing Tests">
+				<div class="stat-card-content">
+					<div class="stat-title">Failing</div>
+					<div class="stat-value">%d → %d</div>
+					<div class="stat-change %s">%s</div>
+				</div>
+			</div>
+			
+			<!-- Success Rate Card -->
+			<div class="stat-card" role="region" aria-label="Success Rate">
+				<div class="stat-card-content">
+					<div class="stat-title">Success Rate</div>
+					<div class="stat-value">%d%% → %d%%</div>
+					<div class="stat-change %s">%s</div>
+				</div>
+			</div>
+		</div>
+		
+		<!-- Test Changes Table -->
+		<div class="test-table-container">
+			<table class="test-table w-full">
+				<thead>
+					<tr>
+						<th>Test Name</th>
+						<th>Status</th>
+					</tr>
+				</thead>
+				<tbody>`,
 		getShortID(baseRun.ID), baseRun.Timestamp.Format("Jan 02, 15:04"),
 		getShortID(compareRun.ID), compareRun.Timestamp.Format("Jan 02, 15:04"),
-		baseRun.TotalTests, 
-		totalTestsClass,
-		totalTestsDiffStr,
-		compareRun.TotalTests,
-		baseRun.PassedTests,
-		passedTestsClass,
-		passedTestsDiffStr,
-		compareRun.PassedTests,
-		baseRun.FailedTests,
-		failedTestsClass,
-		failedTestsDiffStr,
-		compareRun.FailedTests,
-		comparison.BaseSuccessRate,
-		successRateClass,
-		successRateDiffStr,
-		comparison.CompareSuccessRate)
-	
-	// Show fixed tests
-	if len(comparison.Fixed) > 0 {
-		html += `<div class="change-group success content-padding-y">
-			<h5 class="text-md font-medium">Fixed Tests</h5>
-			<ul class="change-list">`
-		
-		for _, test := range comparison.Fixed {
-			html += fmt.Sprintf(`<li class="py-1">%s</li>`, test)
-		}
-		
-		html += `</ul></div>`
+		baseRun.TotalTests, compareRun.TotalTests, totalTestsClass, totalTestsDiffStr,
+		baseRun.PassedTests, compareRun.PassedTests, passedTestsClass, passedTestsDiffStr,
+		baseRun.FailedTests, compareRun.FailedTests, failedTestsClass, failedTestsDiffStr,
+		comparison.BaseSuccessRate, comparison.CompareSuccessRate, successRateClass, successRateDiffStr)
+
+	// Add fixed tests
+	for _, test := range comparison.Fixed {
+		html += fmt.Sprintf(`
+					<tr class="test-row success">
+						<td>%s</td>
+						<td><span class="badge success">Fixed</span></td>
+					</tr>`, test)
 	}
-	
-	// Show newly failed tests
-	if len(comparison.NewlyFailed) > 0 {
-		html += `<div class="change-group error content-padding-y">
-			<h5 class="text-md font-medium">Newly Failed Tests</h5>
-			<ul class="change-list">`
-		
-		for _, test := range comparison.NewlyFailed {
-			html += fmt.Sprintf(`<li class="py-1">%s</li>`, test)
-		}
-		
-		html += `</ul></div>`
+
+	// Add newly failed tests
+	for _, test := range comparison.NewlyFailed {
+		html += fmt.Sprintf(`
+					<tr class="test-row error">
+						<td>%s</td>
+						<td><span class="badge error">Newly Failed</span></td>
+					</tr>`, test)
 	}
-	
-	// Show new tests
-	if len(comparison.New) > 0 {
-		html += `<div class="change-group info content-padding-y">
-			<h5 class="text-md font-medium">New Tests</h5>
-			<ul class="change-list">`
-		
-		for _, test := range comparison.New {
-			html += fmt.Sprintf(`<li class="py-1">%s</li>`, test)
-		}
-		
-		html += `</ul></div>`
+
+	// Add new tests
+	for _, test := range comparison.New {
+		html += fmt.Sprintf(`
+					<tr class="test-row info">
+						<td>%s</td>
+						<td><span class="badge info">New</span></td>
+					</tr>`, test)
 	}
-	
-	// Show removed tests
-	if len(comparison.Removed) > 0 {
-		html += `<div class="change-group warning content-padding-y">
-			<h5 class="text-md font-medium">Removed Tests</h5>
-			<ul class="change-list">`
-		
-		for _, test := range comparison.Removed {
-			html += fmt.Sprintf(`<li class="py-1">%s</li>`, test)
-		}
-		
-		html += `</ul></div>`
+
+	// Add removed tests
+	for _, test := range comparison.Removed {
+		html += fmt.Sprintf(`
+					<tr class="test-row warning">
+						<td>%s</td>
+						<td><span class="badge warning">Removed</span></td>
+					</tr>`, test)
 	}
-	
-	html += `</div></div></div>`
+
+	html += `
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>`
 	
 	w.Write([]byte(html))
 }
