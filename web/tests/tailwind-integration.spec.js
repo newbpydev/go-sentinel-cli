@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 
 test.describe('Tailwind CSS Integration', () => {
   test('tailwind.build.css is loaded and utility classes are applied', async ({ page }) => {
-    await page.goto('http://localhost:5173/index.html');
+    await page.goto('http://localhost:5173/');
 
     // Check that the CSS file is loaded
     const cssHrefs = await page.$$eval('link[rel="stylesheet"]', links => links.map(l => l.getAttribute('href')));
@@ -15,6 +15,9 @@ test.describe('Tailwind CSS Integration', () => {
     // bg-white should yield a white background
     const bgColor = await card.evaluate(el => getComputedStyle(el).backgroundColor);
     // Accept both rgb(255,255,255) and #fff
+    if (!["rgb(255, 255, 255)", "#fff", "#ffffff"].includes(bgColor.toLowerCase())) {
+      console.error('Unexpected background color:', bgColor);
+    }
     expect(["rgb(255, 255, 255)", "#fff", "#ffffff"]).toContain(bgColor.toLowerCase());
     // rounded should yield a border radius
     const borderRadius = await card.evaluate(el => getComputedStyle(el).borderRadius);

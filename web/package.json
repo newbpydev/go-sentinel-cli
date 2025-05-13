@@ -11,7 +11,10 @@
     "watch:css": "npx @tailwindcss/cli -i ./static/css/tailwind.css -o ./static/css/tailwind.build.css --watch",
     "test": "jest",
     "test:e2e": "playwright test",
-    "dev": "node dev.server.js"
+    "dev": "node dev.server.js",
+    "dev:watch": "concurrently \"npx tailwindcss -i static/css/tailwind.css -o static/css/tailwind.build.css --watch\" \"node dev.server.js\"",
+    "test:watch": "npx playwright test --ui",
+    "dev:fullwatch": "concurrently \"npx tailwindcss -i static/css/tailwind.css -o static/css/tailwind.build.css --watch\" \"node dev.server.js\" \"npx playwright test --ui\""
   },
   "keywords": [],
   "author": "",
@@ -21,6 +24,7 @@
     "@playwright/test": "^1.52.0",
     "@tailwindcss/cli": "^4.1.6",
     "autoprefixer": "^10.4.21",
+    "concurrently": "^9.1.2",
     "dotenv": "^16.5.0",
     "live-server": "^1.2.2",
     "postcss": "^8.5.3",

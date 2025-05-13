@@ -42,10 +42,10 @@ This roadmap outlines the development plan for the Go Sentinel web interface usi
     - E2E health check passing, backend/frontend integration verified
 
 - [ ] **1.2. Base Template & Design System**
-  - [ ] 1.2.1. Write tests for responsive layout
-    - [ ] Test: Layout renders correctly at different viewport sizes
-    - [ ] Test: Components maintain proper spacing and alignment
-    - [ ] Test: Dashboard accurately reflects provided design image
+  - [x] 1.2.1. Write tests for responsive layout
+    - [x] Test: Layout renders correctly at different viewport sizes
+    - [x] Test: Components maintain proper spacing and alignment
+    - [x] Test: Dashboard accurately reflects provided design image
   - [ ] 1.2.2. Implement base templates and design system
     - [ ] Create master layout with CSS framework integration
     - [ ] Implement responsive grid system matching dashboard design

@@ -19,6 +19,21 @@ app.set('views', path.join(__dirname, 'templates', 'pages'));
 // Serve static files
 app.use('/static', express.static(path.join(__dirname, 'static')));
 
+// Add middleware to log template rendering for debugging
+app.use((req, res, next) => {
+  const originalRender = res.render;
+  res.render = function(view, options, callback) {
+    console.log(`Rendering template: ${view} with Handlebars`);
+    originalRender.call(this, view, options, callback);
+  };
+  next();
+});
+
+// Static test page for direct Tailwind testing
+app.get('/test', (req, res) => {
+  res.sendFile(path.join(__dirname, 'templates', 'test.html'));
+});
+
 // Index route (dashboard)
 app.get(['/', '/index.html'], (req, res) => {
   res.render('index', {});
