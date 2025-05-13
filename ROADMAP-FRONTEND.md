@@ -7,7 +7,7 @@ This roadmap outlines the development plan for the Go Sentinel web interface usi
 ## Phase 1: Frontend Foundation & Structure
 
 - [ ] **1.1. Web Project Structure Setup**
-  - [ ] 1.1.1. Create web-specific directory structure
+  - [x] 1.1.1. Create web-specific directory structure
     ```
     web/                  # Web frontend root
     ├── static/           # Static assets (CSS, JS, images)
@@ -21,7 +21,9 @@ This roadmap outlines the development plan for the Go Sentinel web interface usi
     └── tests/            # Frontend tests
     ```
   - [ ] 1.1.2. Set up essential dependencies (HTMX, CSS framework)
-  - [ ] 1.1.3. Create basic template structure with layouts and partials
+  - [x] 1.1.3. Create basic template structure with layouts and partials
+  - [ ] 1.1.4. Add .env or config for API base URL
+  - [ ] 1.1.5. Write test: API health check (frontend can reach /health)
 
 - [ ] **1.2. Base Template & Design System**
   - [ ] 1.2.1. Write tests for responsive layout
