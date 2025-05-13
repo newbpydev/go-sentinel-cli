@@ -4,9 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
-
-	"github.com/newbpydev/go-sentinel/internal/parser"
-	"github.com/newbpydev/go-sentinel/internal/runner"
 )
 
 // TestResult represents a single test result for the UI
@@ -20,11 +17,11 @@ type TestResult struct {
 
 // TestResultsHandler handles requests for test results
 type TestResultsHandler struct {
-	testRunner *runner.TestRunner
+	testRunner interface{} // This would be the actual test runner in a real implementation
 }
 
 // NewTestResultsHandler creates a new test results handler
-func NewTestResultsHandler(testRunner *runner.TestRunner) *TestResultsHandler {
+func NewTestResultsHandler(testRunner interface{}) *TestResultsHandler {
 	return &TestResultsHandler{
 		testRunner: testRunner,
 	}

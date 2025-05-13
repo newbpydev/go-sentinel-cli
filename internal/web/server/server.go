@@ -26,10 +26,50 @@ type Server struct {
 // NewServer creates a new web server instance
 func NewServer(templatePath, staticPath string) (*Server, error) {
 	// Parse templates
-	tmpl, err := template.ParseGlob(filepath.Join(templatePath, "**/*.tmpl"))
+	// First try the .tmpl extension
+	tmpl := template.New("")
+
+	// Parse layout templates first
+	layoutFiles, err := filepath.Glob(filepath.Join(templatePath, "layouts/*.tmpl"))
 	if err != nil {
 		return nil, err
 	}
+	
+	if len(layoutFiles) > 0 {
+		tmpl, err = tmpl.ParseFiles(layoutFiles...)
+		if err != nil {
+			return nil, err
+		}
+	}
+	
+	// Parse page templates
+	pageFiles, err := filepath.Glob(filepath.Join(templatePath, "pages/*.tmpl"))
+	if err != nil {
+		return nil, err
+	}
+	
+	if len(pageFiles) > 0 {
+		tmpl, err = tmpl.ParseFiles(pageFiles...)
+		if err != nil {
+			return nil, err
+		}
+	}
+	
+	// Parse partial templates
+	partialFiles, err := filepath.Glob(filepath.Join(templatePath, "partials/*.tmpl"))
+	if err != nil {
+		return nil, err
+	}
+	
+	if len(partialFiles) > 0 {
+		tmpl, err = tmpl.ParseFiles(partialFiles...)
+		if err != nil {
+			return nil, err
+		}
+	}
+	
+	log.Printf("Loaded templates: layouts=%d, pages=%d, partials=%d", 
+		len(layoutFiles), len(pageFiles), len(partialFiles))
 
 	// Create router with middleware
 	r := chi.NewRouter()
