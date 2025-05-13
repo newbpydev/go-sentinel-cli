@@ -10,14 +10,18 @@
     "build:css": "npx @tailwindcss/cli -i ./static/css/tailwind.css -o ./static/css/tailwind.build.css --minify",
     "watch:css": "npx @tailwindcss/cli -i ./static/css/tailwind.css -o ./static/css/tailwind.build.css --watch",
     "test": "jest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "dev": "live-server --port=5173 --watch=static,templates --open=static/index.html --no-browser=chrome"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
+    "@playwright/test": "^1.52.0",
     "autoprefixer": "^10.4.21",
+    "dotenv": "^16.5.0",
+    "live-server": "^1.2.2",
     "postcss": "^8.5.3",
     "tailwindcss": "^4.1.6"
   }

@@ -9,7 +9,7 @@
   - End-to-End (E2E): Playwright (recommended for modern HTMX apps)
 
 **Best Practices:**
-- Use Tailwind's CLI to scan HTML templates for class usage and build pruned CSS to static/css/tailwind.css
+- Use Tailwind's CLI to scan HTML templates for class usage and build pruned CSS to static/css/tailwind.build.css
 - Use HTMX attributes in HTML for dynamic interactivity
 - Write E2E tests for HTMX-driven UI using Playwright (simulate user actions, assert DOM updates)
 ---
@@ -35,9 +35,9 @@ This roadmap outlines the development plan for the Go Sentinel web interface usi
     │   └── pages/        # Full page templates
     └── tests/            # Frontend tests
     ```
-  - [ ] 1.1.2. Set up essential dependencies (HTMX, CSS framework)
+  - [x] 1.1.2. Set up essential dependencies (HTMX, CSS framework)
   - [x] 1.1.3. Create basic template structure with layouts and partials
-  - [ ] 1.1.4. Add .env or config for API base URL
+  - [x] 1.1.4. Add .env or config for API base URL
   - [ ] 1.1.5. Write test: API health check (frontend can reach /health)
 
 - [ ] **1.2. Base Template & Design System**
