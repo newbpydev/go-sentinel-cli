@@ -49,9 +49,7 @@
                     </td>
                     <td class="test-name">{{$test.Name}}</td>
                     <td class="test-status">
-                        <span class="status-badge {{$test.Status}}" aria-label="Test {{$test.Status}}">
-                            {{if eq $test.Status "passed"}}Passed{{else}}Failed{{end}}
-                        </span>
+                        {{template "partials/status-badge" $test.Status}}
                     </td>
                     <td class="test-duration">{{$test.Duration}}</td>
                     <td class="test-last-run">2 min ago</td>

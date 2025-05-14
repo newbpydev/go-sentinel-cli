@@ -121,12 +121,14 @@
   text-transform: uppercase;
 }
 
-.status-badge.passed {
+.status-badge.passed,
+.status-badge.success {
   background-color: rgba(16, 185, 129, 0.1);
   color: var(--success);
 }
 
-.status-badge.failed {
+.status-badge.failed,
+.status-badge.error {
   background-color: rgba(239, 68, 68, 0.1);
   color: var(--error);
 }
