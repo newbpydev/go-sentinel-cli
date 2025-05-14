@@ -48,15 +48,15 @@
 
 {{define "scripts"}}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         // Test notification buttons
         const testButtons = document.querySelectorAll('.btn');
         testButtons.forEach(button => {
-            button.addEventListener('click', function() {
+            button.addEventListener('click', function () {
                 const type = this.classList.contains('btn-success') ? 'success' :
-                            this.classList.contains('btn-error') ? 'error' :
-                            this.classList.contains('btn-warning') ? 'warning' : 'info';
-                
+                    this.classList.contains('btn-error') ? 'error' :
+                        this.classList.contains('btn-warning') ? 'warning' : 'info';
+
                 // Show notification through WebSocket handler
                 fetch(`/api/notifications/test?type=${type}`, {
                     method: 'POST'
