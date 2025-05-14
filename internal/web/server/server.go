@@ -164,6 +164,8 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		"Stats": metrics,
 		"Tests": tests,
 		"ActivePage": "dashboard",
+		"ShowTestManagement": false,
+		"ShowTestConfiguration": false,
 	}
 	
 	s.render(w, "pages/dashboard", data)
@@ -174,6 +176,8 @@ func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
 	data := map[string]interface{}{
 		"Title": "Test History",
 		"ActivePage": "history",
+		"ShowTestManagement": false,
+		"ShowTestConfiguration": false,
 	}
 	
 	s.render(w, "pages/history", data)
@@ -184,6 +188,8 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	data := map[string]interface{}{
 		"Title": "Settings",
 		"ActivePage": "settings",
+		"ShowTestManagement": false,
+		"ShowTestConfiguration": false,
 	}
 	
 	s.render(w, "pages/settings", data)
@@ -198,6 +204,8 @@ func (s *Server) handleTests(w http.ResponseWriter, r *http.Request) {
 		"Title": "Tests",
 		"ActivePage": "tests",
 		"Tests": tests,
+		"ShowTestManagement": true,
+		"ShowTestConfiguration": true,
 	}
 	
 	s.render(w, "pages/tests", data)
@@ -209,6 +217,8 @@ func (s *Server) handleReports(w http.ResponseWriter, r *http.Request) {
 		"Title": "Reports",
 		"ActivePage": "reports",
 		"Subtitle": "View and analyze your Go Sentinel reports",
+		"ShowTestManagement": false,
+		"ShowTestConfiguration": false,
 	}
 	
 	s.render(w, "pages/reports", data)

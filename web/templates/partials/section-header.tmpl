@@ -1,0 +1,13 @@
+{{define "partials/section-header"}}
+<div class="section-header">
+    <h2>{{.Title}}</h2>
+    {{if .ShowButton}}
+    <button class="run-all-button" 
+            aria-label="{{.ButtonLabel}}"
+            hx-post="{{.ButtonAction}}" 
+            hx-target="{{.ButtonTarget}}">
+        {{.ButtonText}}
+    </button>
+    {{end}}
+</div>
+{{end}}
