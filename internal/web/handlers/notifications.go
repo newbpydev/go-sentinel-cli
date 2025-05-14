@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	
+	"github.com/newbpydev/go-sentinel/internal/web/toast"
 )
 
 // NotificationResponse is a standard API response for notification test endpoint
@@ -49,7 +51,24 @@ func HandleTestNotification(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
+	
+	// Create toast notification based on type
+	var t toast.Toast
+	switch typeParam {
+	case "success":
+		t = toast.NewSuccess("Success! The operation was completed successfully.")
+	case "error":
+		t = toast.NewError("Error: Something went wrong with the operation.")
+	case "warning":
+		t = toast.NewWarning("Warning: This action may have consequences.")
+	case "info":
+		t = toast.NewInfo("Info: This is an informational notification.")
+	}
+	
+	// Add the toast notification to the response headers
+	t.AddHeader(w)
+	
+	// Return a JSON response as well (for API compatibility)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(NotificationResponse{
