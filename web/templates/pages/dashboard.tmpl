@@ -25,14 +25,4 @@
         {{template "partials/test-table" .}}
     </div>
 </section>
-
-{{if .ShowTestManagement}}
-<!-- Test management section -->
-{{template "partials/test-management" .}}
-{{end}}
-
-{{if .ShowTestConfiguration}}
-<!-- Test configuration section -->
-{{template "partials/test-configuration" .}}
-{{end}}
 {{end}}
