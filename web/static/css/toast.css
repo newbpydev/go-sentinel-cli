@@ -1,5 +1,10 @@
 /* Toast Notification Styles for Go Sentinel */
 
+/* Prevent scrollbars during toast animations */
+body {
+  overflow-x: hidden;
+}
+
 /* Container for all toast notifications */
 #toast-container {
   position: fixed;
@@ -11,7 +16,7 @@
   gap: 10px;
   max-width: 350px;
   max-height: 80vh;
-  overflow-y: auto;
+  overflow: visible; /* Allow toasts to extend outside container */
   pointer-events: none; /* Let clicks pass through container */
 }
 
@@ -25,9 +30,12 @@
   color: #fff;
   font-size: 0.875rem;
   transform: translateX(110%);
-  transition: transform 0.3s ease-out;
+  transition: transform 0.3s ease-out, opacity 0.3s ease;
   opacity: 0.95;
   pointer-events: auto; /* Make individual toasts clickable */
+  position: relative; /* Ensure toast stays within container */
+  width: 100%; /* Control width to prevent overflow */
+  box-sizing: border-box;
 }
 
 /* Toast visibility */
