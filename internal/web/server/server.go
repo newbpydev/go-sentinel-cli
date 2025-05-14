@@ -119,6 +119,9 @@ func (s *Server) registerRoutes() {
 
 	// API routes
 	s.router.Route("/api", func(r chi.Router) {
+		// Apply toast error handler middleware to all API routes
+		r.Use(customMiddleware.ToastErrorHandler)
+
 		// Test routes
 		r.Get("/tests", s.testHandler.GetTestResults)
 		r.Post("/run-test/{testName}", s.testHandler.RunTest)
@@ -135,6 +138,9 @@ func (s *Server) registerRoutes() {
 		r.Get("/history", s.historyHandler.GetTestRunHistory)
 		r.Get("/history/compare", s.historyHandler.CompareTestRuns)
 		r.Get("/history/{runID}", s.historyHandler.GetTestRunDetails)
+
+		// Toast test route - for demonstrating toast notifications
+		r.Get("/toast/test/{type}", s.handleToastTest)
 	})
 
 	// WebSocket route
