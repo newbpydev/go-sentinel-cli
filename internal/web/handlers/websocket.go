@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -13,8 +12,23 @@ import (
 
 // WebSocketMessage represents a message sent over WebSocket
 type WebSocketMessage struct {
-	Type    string      `json:"type"`
-	Payload interface{} `json:"payload"`
+	Type    string          `json:"type"`
+	Payload json.RawMessage `json:"payload,omitempty"`
+}
+
+// WSTestResult represents the result of a single test over WebSocket
+type WSTestResult struct {
+	Name     string    `json:"name"`
+	Status   string    `json:"status"`
+	Duration string    `json:"duration"`
+	LastRun  time.Time `json:"lastRun"`
+	Output   string    `json:"output,omitempty"`
+}
+
+// StatusUpdate represents a status update message
+type StatusUpdate struct {
+	Status string    `json:"status"`
+	Time   time.Time `json:"time"`
 }
 
 // WebSocketHandler handles WebSocket connections
@@ -40,11 +54,12 @@ func NewWebSocketHandler() *WebSocketHandler {
 			WriteBufferSize: 1024,
 			// Allow all origins for development
 			CheckOrigin: func(r *http.Request) bool {
+				// In production, you should validate the origin
 				return true
 			},
 		},
 		clients:   make(map[*websocket.Conn]bool),
-		broadcast: make(chan WebSocketMessage),
+		broadcast: make(chan WebSocketMessage, 256), // Buffered channel to prevent blocking
 	}
 }
 
@@ -88,12 +103,13 @@ func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Reques
 	h.clientsMu.Unlock()
 	
 	// Send initial data
+	initialPayload, _ := json.Marshal(map[string]interface{}{
+		"connectedAt": time.Now(),
+		"clientCount": len(h.clients),
+	})
 	initialMsg := WebSocketMessage{
-		Type: "connected",
-		Payload: map[string]interface{}{
-			"connectedAt": time.Now(),
-			"clientCount": len(h.clients),
-		},
+		Type:    "connected",
+		Payload: initialPayload,
 	}
 	conn.WriteJSON(initialMsg)
 	
@@ -111,88 +127,135 @@ func (h *WebSocketHandler) readPump(conn *websocket.Conn) {
 	}()
 	
 	// Configure the connection
-	conn.SetReadLimit(512) // Max message size
+	conn.SetReadLimit(1024 * 1024) // 1MB max message size
 	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-	conn.SetPongHandler(func(string) error {
+	conn.SetPongHandler(func(string) error { 
 		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-		return nil
+		return nil 
 	})
-	
-	// Read messages in a loop
+
 	for {
-		_, message, err := conn.ReadMessage()
+		var msg WebSocketMessage
+		err := conn.ReadJSON(&msg)
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, 
-				websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("WebSocket error: %v", err)
 			}
 			break
 		}
-		
-		// Parse the message
-		var msg WebSocketMessage
-		if err := json.Unmarshal(message, &msg); err != nil {
-			log.Printf("Failed to parse WebSocket message: %v", err)
-			continue
-		}
-		
-		// Handle the message based on type
+
+		// Handle different message types
 		switch msg.Type {
 		case "ping":
 			// Respond to ping with pong
-			conn.WriteJSON(WebSocketMessage{
-				Type:    "pong",
-				Payload: time.Now(),
-			})
+			pongMsg := WebSocketMessage{
+				Type: "pong",
+			}
+			if err := conn.WriteJSON(pongMsg); err != nil {
+				log.Printf("Error sending pong: %v", err)
+				return
+			}
+		case "test_result":
+			// Handle test result message
+			var result WSTestResult
+			if err := json.Unmarshal(msg.Payload, &result); err != nil {
+				h.sendError(conn, "invalid_test_result", "Invalid test result format: "+err.Error())
+				continue
+			}
+			log.Printf("Received test result: %+v", result)
+			
+			// Echo back with ack
+			ackMsg := WebSocketMessage{
+				Type: "test_result_ack",
+			}
+			if err := conn.WriteJSON(ackMsg); err != nil {
+				log.Printf("Error sending ack: %v", err)
+			}
+		case "status_update":
+			// Handle status update
+			var status StatusUpdate
+			if err := json.Unmarshal(msg.Payload, &status); err != nil {
+				h.sendError(conn, "invalid_status_update", "Invalid status update format")
+				continue
+			}
+			log.Printf("Status update: %+v", status)
+		default:
+			h.sendError(conn, "unknown_message_type", "Unhandled message type: "+msg.Type)
 		}
 	}
 }
 
+// sendError sends an error message to the client
+func (h *WebSocketHandler) sendError(conn *websocket.Conn, code, message string) {
+	errMsg := map[string]interface{}{
+		"error":   code,
+		"message": message,
+	}
+	payload, _ := json.Marshal(errMsg)
+	err := conn.WriteJSON(WebSocketMessage{
+		Type:    "error",
+		Payload: payload,
+	})
+	if err != nil {
+		log.Printf("Error sending error message: %v", err)
+	}
+}
+
 // BroadcastTestUpdate broadcasts a test result update to all clients
-func (h *WebSocketHandler) BroadcastTestUpdate(test TestResult) {
+func (h *WebSocketHandler) BroadcastTestUpdate(test WSTestResult) {
+	payload, err := json.Marshal(test)
+	if err != nil {
+		log.Printf("Error marshaling test update: %v", err)
+		return
+	}
 	h.broadcast <- WebSocketMessage{
 		Type:    "test-update",
-		Payload: test,
+		Payload: payload,
 	}
 }
 
 // BroadcastMetricsUpdate broadcasts metrics updates to all clients
 func (h *WebSocketHandler) BroadcastMetricsUpdate(metrics map[string]interface{}) {
+	payload, err := json.Marshal(metrics)
+	if err != nil {
+		log.Printf("Error marshaling metrics: %v", err)
+		return
+	}
 	h.broadcast <- WebSocketMessage{
 		Type:    "metrics-update",
-		Payload: metrics,
+		Payload: payload,
 	}
 }
 
 // BroadcastTestResults sends test results to all connected clients
-func (h *WebSocketHandler) BroadcastTestResults(testResults []TestResult) {
-	payload := map[string]interface{}{
-		"data": testResults,
-		"notification": map[string]interface{}{
-			"type": "success",
-			"title": "Test Results Updated",
-			"message": fmt.Sprintf("Received %d updated test results", len(testResults)),
-			"duration": 3000,
-		},
+func (h *WebSocketHandler) BroadcastTestResults(testResults []WSTestResult) {
+	// Convert test results to JSON
+	payload, err := json.Marshal(testResults)
+	if err != nil {
+		log.Printf("Error marshaling test results: %v", err)
+		return
 	}
-	
-	message := WebSocketMessage{
-		Type:    "test-results",
+
+	msg := WebSocketMessage{
+		Type:    "test_results",
 		Payload: payload,
 	}
 	
-	h.broadcast <- message
+	h.broadcast <- msg
 }
 
 // SendNotification broadcasts a notification to all connected clients
 func (h *WebSocketHandler) SendNotification(notificationType, title, message string, duration int) {
-	payload := map[string]interface{}{
-		"notification": map[string]interface{}{
-			"type": notificationType,
-			"title": title,
-			"message": message,
-			"duration": duration,
-		},
+	notification := map[string]interface{}{
+		"type":    notificationType,
+		"title":   title,
+		"message": message,
+		"duration": duration,
+	}
+	payload, err := json.Marshal(notification)
+	if err != nil {
+		log.Printf("Error marshaling notification: %v", err)
+		return
 	}
 	
 	h.broadcast <- WebSocketMessage{
@@ -215,7 +278,7 @@ func (h *WebSocketHandler) sendDemoUpdates() {
 		h.clientsMu.Unlock()
 		
 		// Send a test update
-		h.BroadcastTestUpdate(TestResult{
+		h.BroadcastTestUpdate(WSTestResult{
 			Name:     "TestRandomFunction",
 			Status:   randomStatus(),
 			Duration: randomDuration(),
@@ -223,12 +286,16 @@ func (h *WebSocketHandler) sendDemoUpdates() {
 		})
 		
 		// Send a metrics update
-		h.BroadcastMetricsUpdate(map[string]interface{}{
+		metricsPayload, _ := json.Marshal(map[string]interface{}{
 			"TotalTests": 128,
 			"Passing":    119,
 			"Failing":    9,
 			"Duration":   "1.3s",
 		})
+		h.broadcast <- WebSocketMessage{
+			Type:    "metrics-update",
+			Payload: metricsPayload,
+		}
 	}
 }
 
