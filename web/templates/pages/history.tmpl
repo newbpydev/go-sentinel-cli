@@ -1,5 +1,8 @@
-{{define "pages/history"}}
-{{template "layouts/base" .}}
+{{define "title"}}History | Go Sentinel{{end}}
+{{define "description"}}View your Go test history{{end}}
+
+{{define "header-extras"}}
+{{template "partials/connection-status" .}}
 {{end}}
 
 {{define "content"}}

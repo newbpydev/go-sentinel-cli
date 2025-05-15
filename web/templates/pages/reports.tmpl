@@ -1,5 +1,8 @@
-{{define "pages/reports"}}
-{{template "layouts/base" .}}
+{{define "title"}}Reports | Go Sentinel{{end}}
+{{define "description"}}View and manage your Go reports{{end}}
+
+{{define "header-extras"}}
+{{template "partials/connection-status" .}}
 {{end}}
 
 {{define "content"}}
