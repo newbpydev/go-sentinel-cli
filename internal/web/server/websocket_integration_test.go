@@ -4,7 +4,6 @@
 package server
 
 import (
-	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
@@ -14,13 +13,21 @@ import (
 
 // TestWebSocketConnection verifies the WebSocket endpoint upgrades and accepts connections
 func TestWebSocketConnection(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Upgrade") == "websocket" {
-			w.WriteHeader(http.StatusSwitchingProtocols)
+	echoHandler := func(ws *websocket.Conn) {
+		var msg = make([]byte, 512)
+		n, err := ws.Read(msg)
+		if err != nil {
+			t.Errorf("Server failed to read: %v", err)
 			return
 		}
-		w.WriteHeader(http.StatusOK)
-	}))
+		// Echo back
+		_, err = ws.Write(msg[:n])
+		if err != nil {
+			t.Errorf("Server failed to write: %v", err)
+		}
+	}
+
+	ts := httptest.NewServer(websocket.Handler(echoHandler))
 	defer ts.Close()
 
 	u, _ := url.Parse(ts.URL)
@@ -30,5 +37,20 @@ func TestWebSocketConnection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect to WebSocket endpoint: %v", err)
 	}
-	ws.Close()
+	defer ws.Close()
+
+	msg := []byte("hello")
+	_, err = ws.Write(msg)
+	if err != nil {
+		t.Fatalf("Failed to write to WebSocket: %v", err)
+	}
+
+	reply := make([]byte, 512)
+	n, err := ws.Read(reply)
+	if err != nil {
+		t.Fatalf("Failed to read from WebSocket: %v", err)
+	}
+	if string(reply[:n]) != "hello" {
+		t.Fatalf("Expected echo 'hello', got '%s'", string(reply[:n]))
+	}
 }
