@@ -10,11 +10,16 @@ Go Sentinel Backend-Frontend Integration Roadmap
         [x] Map API endpoints to corresponding frontend components
             - Mapped all major API endpoints to frontend dashboard, test list, history, coverage, and settings.
     [ ] 1.2. Development Environment Setup
-        [ ] Configure Air for hot reloading
-        [ ] Create .air.toml configuration
-        [ ] Test auto-restart functionality
-        [ ] Set up consistent testing environment for backend-frontend integration
-        [ ] Create test fixtures for WebSocket communication tests
+        [x] Configure Air for hot reloading
+            - Air is already configured and working; no changes made.
+        [x] Create .air.toml configuration
+            - .air.toml is present and correctly set up for the project.
+        [x] Test auto-restart functionality
+            - Verified Air triggers rebuilds and restarts on code/template changes.
+        [x] Set up consistent testing environment for backend-frontend integration
+            - Added integration_test.go for HTTP server and dashboard route.
+        [x] Create test fixtures for WebSocket communication tests
+            - Added websocket_integration_test.go for WebSocket connection checks.
 
 [ ] Phase 2: Core WebSocket Integration
     [ ] 2.1. WebSocket Handler Enhancement
