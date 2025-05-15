@@ -169,3 +169,5 @@ Detailed list of completed items with checkmarks:
 - Deeply nesting templates without proper data passing
 - Duplicating code across multiple templates
 - Mixing display logic and business logic in templates
+
+Do not break my server, the render is working as expected, don't modify it, adapt to my configurations and work with it. 

@@ -1,0 +1,402 @@
+/* Coverage Visualization Styles */
+
+/* Main layout */
+.coverage-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Header controls */
+.coverage-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+}
+
+.filter-controls, .search-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.search-controls input {
+    min-width: 250px;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+}
+
+/* Coverage summary section */
+.coverage-summary {
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.coverage-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.coverage-metric {
+    padding: 1rem;
+    border-radius: 6px;
+    background-color: var(--card-bg-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.metric-title {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.metric-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.metric-bar {
+    height: 8px;
+    background-color: var(--progress-bg);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.metric-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease-in-out;
+}
+
+/* Set width based on data-percentage attribute using JavaScript */
+.metric-fill[data-percentage] {
+    /* CSS attr() doesn't support units yet in most browsers */
+    /* Width will be set via JavaScript */
+    width: 0%; /* Default width before JavaScript runs */
+}
+
+/* Fallback for browsers that don't support attr() with units */
+.metric-fill[data-percentage="0"] { width: 0%; }
+.metric-fill[data-percentage="5"] { width: 5%; }
+.metric-fill[data-percentage="10"] { width: 10%; }
+.metric-fill[data-percentage="15"] { width: 15%; }
+.metric-fill[data-percentage="20"] { width: 20%; }
+.metric-fill[data-percentage="25"] { width: 25%; }
+.metric-fill[data-percentage="30"] { width: 30%; }
+.metric-fill[data-percentage="35"] { width: 35%; }
+.metric-fill[data-percentage="40"] { width: 40%; }
+.metric-fill[data-percentage="45"] { width: 45%; }
+.metric-fill[data-percentage="50"] { width: 50%; }
+.metric-fill[data-percentage="55"] { width: 55%; }
+.metric-fill[data-percentage="60"] { width: 60%; }
+.metric-fill[data-percentage="65"] { width: 65%; }
+.metric-fill[data-percentage="70"] { width: 70%; }
+.metric-fill[data-percentage="75"] { width: 75%; }
+.metric-fill[data-percentage="80"] { width: 80%; }
+.metric-fill[data-percentage="85"] { width: 85%; }
+.metric-fill[data-percentage="90"] { width: 90%; }
+.metric-fill[data-percentage="95"] { width: 95%; }
+.metric-fill[data-percentage="100"] { width: 100%; }
+
+.high-coverage .metric-value, .high-coverage .metric-fill {
+    color: var(--success-color);
+    background-color: var(--success-color);
+}
+
+.medium-coverage .metric-value, .medium-coverage .metric-fill {
+    color: var(--warning-color);
+    background-color: var(--warning-color);
+}
+
+.low-coverage .metric-value, .low-coverage .metric-fill {
+    color: var(--error-color);
+    background-color: var(--error-color);
+}
+
+.coverage-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.stat-value {
+    font-weight: 600;
+}
+
+/* File list section */
+.coverage-files {
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.coverage-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.coverage-table th {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.coverage-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color-light);
+}
+
+.coverage-file-row {
+    transition: background-color 0.2s;
+}
+
+.coverage-file-row:hover {
+    background-color: var(--hover-bg);
+}
+
+.file-name {
+    font-family: monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px;
+}
+
+.coverage-bar {
+    width: 100%;
+    height: 8px;
+    background-color: var(--progress-bg);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.coverage-fill {
+    height: 100%;
+    border-radius: 4px;
+}
+
+.file-actions {
+    text-align: right;
+}
+
+/* Pagination */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.pagination-btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--button-bg);
+    color: var(--text-color);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.pagination-btn:hover:not(.disabled) {
+    background-color: var(--button-hover-bg);
+}
+
+.pagination-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination-info {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+/* File details section */
+.file-coverage-details {
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    display: none;
+}
+
+.file-coverage-details.active {
+    display: block;
+}
+
+.file-coverage-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.file-path {
+    font-family: monospace;
+    margin: 0;
+    word-break: break-all;
+}
+
+.file-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.file-metric {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    background-color: var(--card-bg-secondary);
+}
+
+.metric-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.file-content-container {
+    margin-top: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    overflow: auto;
+    max-height: 500px;
+    background-color: var(--code-bg);
+}
+
+.file-content {
+    margin: 0;
+    padding: 0.5rem 0;
+    font-family: monospace;
+    line-height: 1.5;
+    counter-reset: line;
+}
+
+.line-number {
+    display: inline-block;
+    width: 3rem;
+    text-align: right;
+    padding-right: 1rem;
+    color: var(--text-muted);
+    user-select: none;
+}
+
+.line-content {
+    white-space: pre;
+}
+
+.covered {
+    background-color: rgba(40, 167, 69, 0.1);
+}
+
+.uncovered {
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+.partial {
+    background-color: rgba(255, 193, 7, 0.1);
+}
+
+.not-executable {
+    color: var(--text-muted);
+}
+
+/* Coverage legend */
+.coverage-legend {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+}
+
+.legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 2px;
+}
+
+.legend-color.covered {
+    background-color: rgba(40, 167, 69, 0.3);
+}
+
+.legend-color.uncovered {
+    background-color: rgba(220, 53, 69, 0.3);
+}
+
+.legend-color.partial {
+    background-color: rgba(255, 193, 7, 0.3);
+}
+
+.legend-color.not-executable {
+    background-color: rgba(150, 150, 150, 0.2);
+}
+
+/* Loading state */
+.coverage-loader {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+/* No files message */
+.no-files-message {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .coverage-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+    
+    .coverage-metrics-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .file-column {
+        max-width: 150px;
+    }
+    
+    .branches-column, .functions-column {
+        display: none;
+    }
+}
