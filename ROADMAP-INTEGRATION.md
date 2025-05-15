@@ -1,10 +1,14 @@
 Go Sentinel Backend-Frontend Integration Roadmap
 [ ] Phase 1: Assessment & Setup
-    [ ] 1.1. Project Structure Analysis
-        [ ] Review existing Go server implementation in internal/web/server/server.go
-        [ ] Document current template rendering system (layouts → partials → pages)
-        [ ] Analyze WebSocket implementation in frontend
-        [ ] Map API endpoints to corresponding frontend components
+    [x] 1.1. Project Structure Analysis
+        [x] Review existing Go server implementation in internal/web/server/server.go
+            - Server uses chi, robust template rendering, static and API routes, minimal changes needed to rendering system.
+        [x] Document current template rendering system (layouts → partials → pages)
+            - Three-tier hierarchy, explicit block definitions, strict load order.
+        [x] Analyze WebSocket implementation in frontend
+            - HTMX WebSocket extension, reconnection, real-time updates, selection mode, connection status indicator.
+        [x] Map API endpoints to corresponding frontend components
+            - Mapped all major API endpoints to frontend dashboard, test list, history, coverage, and settings.
     [ ] 1.2. Development Environment Setup
         [ ] Configure Air for hot reloading
         [ ] Create .air.toml configuration
