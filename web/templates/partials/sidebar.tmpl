@@ -17,6 +17,12 @@
                 <span class="link-text">Tests</span>
             </a>
         </li>
+        <li class="nav-item {{if eq .ActivePage "coverage"}}active{{end}}">
+            <a href="/coverage" {{if eq .ActivePage "coverage"}}aria-current="page"{{end}}>
+                <span class="icon">📈</span>
+                <span class="link-text">Coverage</span>
+            </a>
+        </li>
         <li class="nav-item {{if eq .ActivePage "reports"}}active{{end}}">
             <a href="/reports" {{if eq .ActivePage "reports"}}aria-current="page"{{end}}>
                 <span class="icon">📝</span>

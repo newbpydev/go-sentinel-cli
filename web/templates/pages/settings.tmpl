@@ -1,71 +1,265 @@
+{{define "pages/settings"}}{{template "base" .}}{{end}}
+
 {{define "title"}}Settings | Go Sentinel{{end}}
 {{define "description"}}Manage your Go Sentinel settings{{end}}
 
+{{define "head"}}
+<link rel="stylesheet" href="/static/css/settings.css">
+{{end}}
+
 {{define "header-extras"}}
 {{template "partials/connection-status" .}}
+<div class="settings-actions">
+    <button id="save-all-settings" class="btn btn-primary" hx-post="/api/settings/save" hx-include="form"
+        hx-target="#settings-feedback">
+        Save All Settings
+    </button>
+    <button id="reset-defaults" class="btn btn-secondary" hx-get="/api/settings/reset"
+        hx-confirm="Reset all settings to default values?" hx-target="body">
+        Reset to Defaults
+    </button>
+</div>
+<div id="settings-feedback" class="settings-feedback"></div>
 {{end}}
 
 {{define "content"}}
-<!-- Notification Settings -->
-<section class="recent-tests">
-    <div class="section-header">
-        <h2>Notification Settings</h2>
-    </div>
-    <div class="test-table-container content-padding">
-        <div class="card-content">
-            <h3 class="text-lg font-medium mb-4">Test Your Notifications</h3>
-            <div class="flex flex-wrap gap-3">
-                <button class="btn btn-success" hx-post="/api/notifications/test?type=success">Success</button>
-                <button class="btn btn-error" hx-post="/api/notifications/test?type=error">Error</button>
-                <button class="btn btn-warning" hx-post="/api/notifications/test?type=warning">Warning</button>
-                <button class="btn btn-info" hx-post="/api/notifications/test?type=info">Info</button>
+<form id="settings-form" class="settings-form" hx-post="/api/settings/validate" hx-trigger="change"
+    hx-target="#settings-feedback">
+    <!-- Test Runner Settings -->
+    <section class="settings-section" id="test-runner-settings">
+        <div class="section-header">
+            <h2>Test Runner</h2>
+        </div>
+        <div class="content-padding">
+            <div class="settings-grid">
+                <div class="form-group">
+                    <label for="test-timeout">Test Timeout (seconds)</label>
+                    <input type="number" id="test-timeout" name="testTimeout" value="{{.Settings.TestTimeout}}" min="1"
+                        max="300" required>
+                    <span class="form-hint">Maximum time allowed for tests to complete</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="parallel-tests">Parallel Tests</label>
+                    <input type="number" id="parallel-tests" name="parallelTests" value="{{.Settings.ParallelTests}}"
+                        min="1" max="32" required>
+                    <span class="form-hint">Number of tests to run in parallel</span>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="verbose-output" name="verboseOutput" {{if
+                            .Settings.VerboseOutput}}checked{{end}}>
+                        <span>Verbose Output</span>
+                    </label>
+                    <span class="form-hint">Show detailed test output</span>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="auto-run" name="autoRun" {{if .Settings.AutoRun}}checked{{end}}>
+                        <span>Auto-Run Tests</span>
+                    </label>
+                    <span class="form-hint">Automatically run tests when files change</span>
+                </div>
             </div>
         </div>
-    </div>
-</section>
+    </section>
 
-<!-- Appearance section -->
-<section class="recent-tests">
-    <div class="section-header">
-        <h2>Appearance</h2>
-    </div>
-    <div class="test-table-container content-padding">
-        <div class="card-content">
-            <p>Appearance settings will be added in a future update.</p>
+    <!-- Notification Settings -->
+    <section class="settings-section" id="notification-settings">
+        <div class="section-header">
+            <h2>Notifications</h2>
         </div>
-    </div>
-</section>
+        <div class="content-padding">
+            <div class="settings-grid">
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="notify-success" name="notifySuccess" {{if
+                            .Settings.NotifySuccess}}checked{{end}}>
+                        <span>Notify on Success</span>
+                    </label>
+                    <span class="form-hint">Show notifications when tests pass</span>
+                </div>
 
-<!-- Behavior section -->
-<section class="recent-tests">
-    <div class="section-header">
-        <h2>Behavior</h2>
-    </div>
-    <div class="test-table-container content-padding">
-        <div class="card-content">
-            <p>Behavior settings will be added in a future update.</p>
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="notify-failure" name="notifyFailure" {{if
+                            .Settings.NotifyFailure}}checked{{end}}>
+                        <span>Notify on Failure</span>
+                    </label>
+                    <span class="form-hint">Show notifications when tests fail</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="notification-duration">Notification Duration (seconds)</label>
+                    <input type="number" id="notification-duration" name="notificationDuration"
+                        value="{{.Settings.NotificationDuration}}" min="1" max="30" required>
+                    <span class="form-hint">How long notifications remain visible</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="notification-position">Notification Position</label>
+                    <select id="notification-position" name="notificationPosition">
+                        <option value="top-right" {{if eq .Settings.NotificationPosition "top-right" }}selected{{end}}>
+                            Top Right</option>
+                        <option value="top-left" {{if eq .Settings.NotificationPosition "top-left" }}selected{{end}}>Top
+                            Left</option>
+                        <option value="bottom-right" {{if eq .Settings.NotificationPosition "bottom-right"
+                            }}selected{{end}}>Bottom Right</option>
+                        <option value="bottom-left" {{if eq .Settings.NotificationPosition "bottom-left"
+                            }}selected{{end}}>Bottom Left</option>
+                    </select>
+                    <span class="form-hint">Where notifications appear on screen</span>
+                </div>
+            </div>
+
+            <div class="notification-test-panel">
+                <h3>Test Notifications</h3>
+                <div class="notification-test-buttons">
+                    <button type="button" class="btn btn-success"
+                        hx-post="/api/notifications/test?type=success">Success</button>
+                    <button type="button" class="btn btn-error"
+                        hx-post="/api/notifications/test?type=error">Error</button>
+                    <button type="button" class="btn btn-warning"
+                        hx-post="/api/notifications/test?type=warning">Warning</button>
+                    <button type="button" class="btn btn-info" hx-post="/api/notifications/test?type=info">Info</button>
+                </div>
+            </div>
         </div>
-    </div>
-</section>
+    </section>
+
+    <!-- Coverage Settings -->
+    <section class="settings-section" id="coverage-settings">
+        <div class="section-header">
+            <h2>Coverage</h2>
+        </div>
+        <div class="content-padding">
+            <div class="settings-grid">
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="collect-coverage" name="collectCoverage" {{if
+                            .Settings.CollectCoverage}}checked{{end}}>
+                        <span>Collect Coverage</span>
+                    </label>
+                    <span class="form-hint">Generate coverage reports when running tests</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="coverage-threshold">Coverage Threshold (%)</label>
+                    <input type="number" id="coverage-threshold" name="coverageThreshold"
+                        value="{{.Settings.CoverageThreshold}}" min="0" max="100" required>
+                    <span class="form-hint">Minimum acceptable coverage percentage</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="coverage-exclude">Exclude Patterns</label>
+                    <textarea id="coverage-exclude" name="coverageExclude"
+                        rows="3">{{.Settings.CoverageExclude}}</textarea>
+                    <span class="form-hint">Patterns to exclude from coverage (one per line)</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Appearance Settings -->
+    <section class="settings-section" id="appearance-settings">
+        <div class="section-header">
+            <h2>Appearance</h2>
+        </div>
+        <div class="content-padding">
+            <div class="settings-grid">
+                <div class="form-group">
+                    <label for="theme-select">Theme</label>
+                    <select id="theme-select" name="theme">
+                        <option value="dark" {{if eq .Settings.Theme "dark" }}selected{{end}}>Dark</option>
+                        <option value="light" {{if eq .Settings.Theme "light" }}selected{{end}}>Light</option>
+                        <option value="system" {{if eq .Settings.Theme "system" }}selected{{end}}>System</option>
+                    </select>
+                    <span class="form-hint">Application color theme</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="font-size">Font Size</label>
+                    <select id="font-size" name="fontSize">
+                        <option value="small" {{if eq .Settings.FontSize "small" }}selected{{end}}>Small</option>
+                        <option value="medium" {{if eq .Settings.FontSize "medium" }}selected{{end}}>Medium</option>
+                        <option value="large" {{if eq .Settings.FontSize "large" }}selected{{end}}>Large</option>
+                    </select>
+                    <span class="form-hint">Text size throughout the application</span>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="animations-enabled" name="animationsEnabled" {{if
+                            .Settings.AnimationsEnabled}}checked{{end}}>
+                        <span>Enable Animations</span>
+                    </label>
+                    <span class="form-hint">Toggle UI animations</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Advanced Settings -->
+    <section class="settings-section" id="advanced-settings">
+        <div class="section-header">
+            <h2>Advanced</h2>
+        </div>
+        <div class="content-padding">
+            <div class="settings-grid">
+                <div class="form-group">
+                    <label for="log-level">Log Level</label>
+                    <select id="log-level" name="logLevel">
+                        <option value="debug" {{if eq .Settings.LogLevel "debug" }}selected{{end}}>Debug</option>
+                        <option value="info" {{if eq .Settings.LogLevel "info" }}selected{{end}}>Info</option>
+                        <option value="warn" {{if eq .Settings.LogLevel "warn" }}selected{{end}}>Warning</option>
+                        <option value="error" {{if eq .Settings.LogLevel "error" }}selected{{end}}>Error</option>
+                    </select>
+                    <span class="form-hint">Verbosity of application logs</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="cache-duration">Cache Duration (minutes)</label>
+                    <input type="number" id="cache-duration" name="cacheDuration" value="{{.Settings.CacheDuration}}"
+                        min="0" max="1440" required>
+                    <span class="form-hint">How long to cache test results (0 = no caching)</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="data-directory">Data Directory</label>
+                    <input type="text" id="data-directory" name="dataDirectory" value="{{.Settings.DataDirectory}}">
+                    <span class="form-hint">Where to store application data</span>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="debug-mode" name="debugMode" {{if
+                            .Settings.DebugMode}}checked{{end}}>
+                        <span>Debug Mode</span>
+                    </label>
+                    <span class="form-hint">Enable additional debugging features</span>
+                </div>
+            </div>
+
+            <div class="danger-zone">
+                <h3>Danger Zone</h3>
+                <div class="danger-actions">
+                    <button type="button" class="btn btn-danger" hx-delete="/api/settings/clear-cache"
+                        hx-confirm="This will clear all cached data. Continue?" hx-target="#settings-feedback">
+                        Clear Cache
+                    </button>
+                    <button type="button" class="btn btn-danger" hx-delete="/api/settings/clear-history"
+                        hx-confirm="This will delete all test history. Continue?" hx-target="#settings-feedback">
+                        Clear History
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+</form>
 {{end}}
 
 {{define "scripts"}}
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // Test notification buttons
-        const testButtons = document.querySelectorAll('.btn');
-        testButtons.forEach(button => {
-            button.addEventListener('click', function () {
-                const type = this.classList.contains('btn-success') ? 'success' :
-                    this.classList.contains('btn-error') ? 'error' :
-                        this.classList.contains('btn-warning') ? 'warning' : 'info';
-
-                // Show notification through WebSocket handler
-                fetch(`/api/notifications/test?type=${type}`, {
-                    method: 'POST'
-                });
-            });
-        });
-    });
-</script>
+<script src="/static/js/settings.js"></script>
 {{end}}
