@@ -11,7 +11,7 @@ tmp_dir = "tmp"
 
 [watch]
   delay = 1000
-  includes = ["**/*.go", "**/*_test.go", "**/*.html", "**/*.tmpl", "**/*.css", "**/*.js"]
+  includes = ["**/*.go", "**/*.html", "**/*.tmpl", "**/*.css", "**/*.js"]
   excludes = ["tmp/**", ".git/**", "vendor/**"]
 
 [log]

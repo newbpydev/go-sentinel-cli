@@ -73,7 +73,7 @@ func NewServer(templatePath, staticPath string) (*Server, error) {
 	log.Printf("Master template loaded: layouts=%d, partials=%d",
 		len(layouts), len(partials))
 	// Debug: list all defined templates/blocks
-	log.Println("Defined templates:", tmpl.DefinedTemplates())
+	// log.Println("Defined templates:", tmpl.DefinedTemplates())
 
 	// 3) Chi router + middleware
 	r := chi.NewRouter()
