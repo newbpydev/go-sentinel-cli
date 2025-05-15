@@ -34,11 +34,11 @@ Go Sentinel Backend-Frontend Integration Roadmap
     [ ] 2.2. Real-Time Test Result Broadcasting
         [x] Write tests for test result broadcasting
         [x] Test: Verify new test results are broadcast to all connections
-        [ ] Test: Test proper client message routing
+        [x] Test: Test proper client message routing
         [x] Test: Verify message delivery during connection hiccups
         [x] Implement test result broadcasting
         [x] Create broadcaster service in Go backend
-        [ ] Implement message routing by type
+        [x] Implement message routing by type
         [ ] Add connection tracking and cleanup
     [ ] 2.3. Frontend Message Handling
         [ ] Write tests for frontend message processing

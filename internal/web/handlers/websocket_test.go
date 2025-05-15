@@ -211,6 +211,109 @@ func TestBroadcastTestResults(t *testing.T) {
 	}
 }
 
+func TestMessageRoutingByType(t *testing.T) {
+	h := NewWebSocketHandler()
+	h.StartBroadcaster()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h.HandleWebSocket(w, r)
+	}))
+	defer server.Close()
+
+	// Connect client
+	url := "ws" + server.URL[4:] + "/ws"
+	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
+	if err != nil {
+		t.Fatalf("Failed to connect to WebSocket: %v", err)
+	}
+	defer conn.Close()
+
+	// Read the initial connected message
+	var msg WebSocketMessage
+	err = conn.ReadJSON(&msg)
+	if err != nil {
+		t.Fatalf("Failed to read connected message: %v", err)
+	}
+	if msg.Type != "connected" {
+		t.Fatalf("Expected initial message type 'connected', got %q", msg.Type)
+	}
+
+	// Test different message types and their routing
+	tests := []struct {
+		name        string
+		messageType string
+		sendFunc    func()
+		expectData  bool
+	}{
+		{
+			name:        "test results message",
+			messageType: "test_results",
+			sendFunc: func() {
+				h.BroadcastTestResults([]WSTestResult{{
+					Name:     "TestExample",
+					Status:   "passed",
+					Duration: "100ms",
+					LastRun:  time.Now(),
+				}})
+			},
+			expectData: true,
+		},
+		{
+			name:        "metrics update message",
+			messageType: "metrics-update",
+			sendFunc: func() {
+				h.BroadcastMetricsUpdate(map[string]interface{}{
+					"testsRun":   5,
+					"testsPassed": 5,
+					"coverage":   85.5,
+				})
+			},
+			expectData: true,
+		},
+		{
+			name:        "notification message",
+			messageType: "notification",
+			sendFunc: func() {
+				h.SendNotification("info", "Test", "This is a test notification", 3000)
+			},
+			expectData: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Send the test message
+			tt.sendFunc()
+
+			// Read the message from the WebSocket
+			err = conn.ReadJSON(&msg)
+			if err != nil {
+				t.Fatalf("Failed to read %s: %v", tt.messageType, err)
+			}
+
+			// Verify the message type
+			if msg.Type != tt.messageType {
+				t.Errorf("Expected message type %q, got %q", tt.messageType, msg.Type)
+			}
+
+			// Verify the payload is not empty if expected
+			if tt.expectData && len(msg.Payload) == 0 {
+				t.Error("Expected non-empty payload")
+			}
+
+			// For test results, verify the structure
+			if tt.messageType == "test_results" {
+				var results []WSTestResult
+				if err := json.Unmarshal(msg.Payload, &results); err != nil {
+					t.Fatalf("Failed to unmarshal test results: %v", err)
+				}
+				if len(results) == 0 {
+					t.Error("Expected at least one test result")
+				}
+			}
+		})
+	}
+}
+
 func TestHandleMalformedMessages(t *testing.T) {
 	h := NewWebSocketHandler()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
