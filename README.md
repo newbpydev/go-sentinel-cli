@@ -58,6 +58,56 @@ Manual test execution slows down TDD and feedback loops. Existing tools are ofte
 
 > **Note:** The package structure follows Go best practices with clear separation of concerns.
 
+## Automatic Server Restart with air
+
+For a smoother, test-driven development experience, Go Sentinel supports automatic server restarts and test execution on file changes using [`air`](https://github.com/cosmtrek/air).
+
+### Setup
+
+1. **Install air**
+   ```bash
+   go install github.com/cosmtrek/air@latest
+   ```
+   Ensure your Go bin directory (e.g., `$GOPATH/bin` or `$HOME/go/bin`) is in your system PATH.
+
+2. **Verify `.air.toml`**
+   The project root contains a preconfigured `.air.toml`:
+   ```toml
+   [build]
+     cmd = "go run ./cmd/go-sentinel-web/main.go"
+     bin = "tmp/main"
+     full_bin = "false"
+     # Run tests before rebuilding
+     before_build = "go test ./..."
+
+   [watch]
+     dirs = ["./cmd", "./internal"]
+     include_ext = ["go", "tmpl", "html", "css", "js"]
+
+   [log]
+     color = "true"
+     time = "true"
+   ```
+
+### Usage
+
+- From the project root, run:
+  ```bash
+  air
+  ```
+- The development server will automatically restart whenever Go code, templates, or static files change.
+- All Go tests (`go test ./...`) are run before each rebuild. If any test fails, the server will not restart until tests pass.
+
+### Customization
+- Edit `.air.toml` to watch additional directories or file types as needed.
+- See [air documentation](https://github.com/cosmtrek/air) for advanced configuration.
+
+### Troubleshooting
+- If `air` is not found, verify your Go bin directory is in your PATH and restart your terminal.
+- For Windows, you may need to restart your shell or log out/in after installing `air`.
+
+> This workflow is aligned with Go Sentinel's systematic, TDD-first, and roadmap-driven approach. For more, see `.windsurf/workflows/dev-auto-restart.md`.
+
 ## API Server & Frontend Integration
 
 Go Sentinel provides a RESTful API and WebSocket server for frontend dashboards and automation. The API server is a separate executable with its own entrypoint.

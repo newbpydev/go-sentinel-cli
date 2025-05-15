@@ -1,0 +1,19 @@
+# .air.toml for Go Sentinel
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -o ./tmp/main.exe ./cmd/go-sentinel-web"
+  bin = "./tmp/main.exe"
+
+[run]
+  cmd = "./tmp/main.exe"
+
+[watch]
+  delay = 1000
+  includes = ["**/*.go", "**/*.html", "**/*.tmpl", "**/*.css", "**/*.js"]
+  excludes = ["tmp/**", ".git/**", "vendor/**"]
+
+[log]
+  color = true
+  time = true
