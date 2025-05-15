@@ -89,13 +89,25 @@ body {
 }
 
 .logo h2 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 1.5rem;
   font-weight: 600;
   color: var(--text);
 }
 
+.logo img {
+  width: 3rem;
+  height: 3rem;
+  margin-right: 0.5rem;
+}
+
 /* Global navigation styles */
-nav ul, ul.settings-nav, .sidebar ul, .settings-nav ul {
+nav ul,
+ul.settings-nav,
+.sidebar ul,
+.settings-nav ul {
   list-style-type: none;
   padding-left: 0;
   margin-left: 0;
@@ -119,7 +131,8 @@ nav ul, ul.settings-nav, .sidebar ul, .settings-nav ul {
   transition: background-color 0.2s, color 0.2s;
 }
 
-.nav-item a:hover, .nav-item a:focus {
+.nav-item a:hover,
+.nav-item a:focus {
   background-color: rgba(255, 255, 255, 0.05);
   color: var(--text);
 }
@@ -129,7 +142,7 @@ nav ul, ul.settings-nav, .sidebar ul, .settings-nav ul {
   color: var(--primary);
   border-left: 3px solid var(--primary);
   font-weight: 600;
-  box-shadow: 0 2px 8px 0 rgba(59,130,246,0.06);
+  box-shadow: 0 2px 8px 0 rgba(59, 130, 246, 0.06);
 }
 
 .nav-item .icon {
@@ -296,7 +309,8 @@ nav ul, ul.settings-nav, .sidebar ul, .settings-nav ul {
   transition: background-color 0.2s;
 }
 
-.run-all-button:hover, .run-all-button:focus {
+.run-all-button:hover,
+.run-all-button:focus {
   background-color: #2563eb;
 }
 
@@ -403,7 +417,8 @@ tbody tr {
   transition: background-color 0.2s;
 }
 
-tbody tr:hover, tbody tr:focus {
+tbody tr:hover,
+tbody tr:focus {
   background-color: rgba(255, 255, 255, 0.02);
 }
 
@@ -503,7 +518,8 @@ input[type="checkbox"]:focus {
   transition: background-color 0.2s;
 }
 
-.run-button:hover, .run-button:focus {
+.run-button:hover,
+.run-button:focus {
   background-color: rgba(255, 255, 255, 0.15);
 }
 
@@ -512,9 +528,11 @@ input[type="checkbox"]:focus {
   0% {
     opacity: 0.6;
   }
+
   50% {
     opacity: 1;
   }
+
   100% {
     opacity: 0.6;
   }
@@ -525,29 +543,29 @@ input[type="checkbox"]:focus {
   .sidebar {
     transform: translateX(-100%);
   }
-  
+
   .sidebar.open {
     transform: translateX(0);
   }
-  
+
   .main-content {
     margin-left: 0;
   }
-  
+
   .stat-cards {
     grid-template-columns: 1fr;
   }
-  
+
   .section-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
   }
-  
+
   .test-table {
     overflow-x: auto;
   }
-  
+
   /* Add mobile menu toggle */
   .mobile-menu-toggle {
     position: fixed;
@@ -567,8 +585,9 @@ input[type="checkbox"]:focus {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     transition: background-color 0.2s;
   }
-  
-  .mobile-menu-toggle:hover, .mobile-menu-toggle:focus {
+
+  .mobile-menu-toggle:hover,
+  .mobile-menu-toggle:focus {
     background: var(--secondary);
   }
 }
@@ -583,8 +602,9 @@ input[type="checkbox"]:focus {
     --text-dim: #ddd;
     --border: #444;
   }
-  
-  .status-badge, .status-indicator {
+
+  .status-badge,
+  .status-indicator {
     border: 1px solid currentColor;
   }
 }
@@ -610,49 +630,65 @@ input[type="checkbox"]:focus {
   background: var(--primary);
   transition: background 0.2s, color 0.2s, box-shadow 0.2s;
   outline: none;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
   margin: 0.2em 0.5em 0.2em 0;
 }
+
 .btn:focus {
-  box-shadow: 0 0 0 3px rgba(59,130,246,0.35);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.35);
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
-.btn:hover:not(:disabled), .btn:active:not(:disabled) {
+
+.btn:hover:not(:disabled),
+.btn:active:not(:disabled) {
   background: #2563eb;
   color: #fff;
 }
+
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
 .btn-success {
   background: var(--success);
   color: #fff;
 }
-.btn-success:hover, .btn-success:focus {
+
+.btn-success:hover,
+.btn-success:focus {
   background: #059669;
 }
+
 .btn-error {
   background: var(--error);
   color: #fff;
 }
-.btn-error:hover, .btn-error:focus {
+
+.btn-error:hover,
+.btn-error:focus {
   background: #b91c1c;
 }
+
 .btn-warning {
   background: var(--warning);
   color: #222;
 }
-.btn-warning:hover, .btn-warning:focus {
+
+.btn-warning:hover,
+.btn-warning:focus {
   background: #d97706;
   color: #fff;
 }
+
 .btn-info {
   background: var(--secondary);
   color: #fff;
 }
-.btn-info:hover, .btn-info:focus {
+
+.btn-info:hover,
+.btn-info:focus {
   background: #3730a3;
 }
 

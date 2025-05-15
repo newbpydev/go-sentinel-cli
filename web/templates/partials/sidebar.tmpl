@@ -1,42 +1,42 @@
 {{define "partials/sidebar"}}
 <div class="sidebar-content">
     <div class="logo">
-        <h2>Go Sentinel</h2>
+        <h2><img src="/static/images/icon128x128.png" alt="Go Sentinel Logo"> Go Sentinel</h2>
     </div>
-    
+
     <ul class="nav-links">
-        <li class="nav-item {{if eq .ActivePage "dashboard"}}active{{end}}">
-            <a href="/" {{if eq .ActivePage "dashboard"}}aria-current="page"{{end}}>
+        <li class="nav-item {{if eq .ActivePage " dashboard"}}active{{end}}">
+            <a href="/" {{if eq .ActivePage "dashboard" }}aria-current="page" {{end}}>
                 <span class="icon">📊</span>
                 <span class="link-text">Dashboard</span>
             </a>
         </li>
-        <li class="nav-item {{if eq .ActivePage "tests"}}active{{end}}">
-            <a href="/tests" {{if eq .ActivePage "tests"}}aria-current="page"{{end}}>
+        <li class="nav-item {{if eq .ActivePage " tests"}}active{{end}}">
+            <a href="/tests" {{if eq .ActivePage "tests" }}aria-current="page" {{end}}>
                 <span class="icon">🧪</span>
                 <span class="link-text">Tests</span>
             </a>
         </li>
-        <li class="nav-item {{if eq .ActivePage "coverage"}}active{{end}}">
-            <a href="/coverage" {{if eq .ActivePage "coverage"}}aria-current="page"{{end}}>
+        <li class="nav-item {{if eq .ActivePage " coverage"}}active{{end}}">
+            <a href="/coverage" {{if eq .ActivePage "coverage" }}aria-current="page" {{end}}>
                 <span class="icon">📈</span>
                 <span class="link-text">Coverage</span>
             </a>
         </li>
-        <li class="nav-item {{if eq .ActivePage "reports"}}active{{end}}">
-            <a href="/reports" {{if eq .ActivePage "reports"}}aria-current="page"{{end}}>
+        <li class="nav-item {{if eq .ActivePage " reports"}}active{{end}}">
+            <a href="/reports" {{if eq .ActivePage "reports" }}aria-current="page" {{end}}>
                 <span class="icon">📝</span>
                 <span class="link-text">Reports</span>
             </a>
         </li>
-        <li class="nav-item {{if eq .ActivePage "history"}}active{{end}}">
-            <a href="/history" {{if eq .ActivePage "history"}}aria-current="page"{{end}}>
+        <li class="nav-item {{if eq .ActivePage " history"}}active{{end}}">
+            <a href="/history" {{if eq .ActivePage "history" }}aria-current="page" {{end}}>
                 <span class="icon">📅</span>
                 <span class="link-text">History</span>
             </a>
         </li>
-        <li class="nav-item {{if eq .ActivePage "settings"}}active{{end}}">
-            <a href="/settings" {{if eq .ActivePage "settings"}}aria-current="page"{{end}}>
+        <li class="nav-item {{if eq .ActivePage " settings"}}active{{end}}">
+            <a href="/settings" {{if eq .ActivePage "settings" }}aria-current="page" {{end}}>
                 <span class="icon">⚙️</span>
                 <span class="link-text">Settings</span>
             </a>
