@@ -22,22 +22,22 @@ Go Sentinel Backend-Frontend Integration Roadmap
             - Added websocket_integration_test.go for WebSocket connection checks.
 
 [ ] Phase 2: Core WebSocket Integration
-    [ ] 2.1. WebSocket Handler Enhancement
-        [ ] Write tests for WebSocket message encoding/decoding
-        [ ] Test: Verify test event serialization to WebSocket messages
-        [ ] Test: Handle different message types (test results, status updates)
-        [ ] Test: Test reconnection logic
-        [ ] Implement WebSocket message serialization
-        [ ] Create standardized message format for test events
-        [ ] Implement JSON marshaling/unmarshaling for WebSocket messages
-        [ ] Add proper error handling for malformed messages
+    [x] 2.1. WebSocket Handler Enhancement
+        [x] Write tests for WebSocket message encoding/decoding
+        [x] Test: Verify test event serialization to WebSocket messages
+        [x] Test: Handle different message types (test results, status updates)
+        [x] Test: Test reconnection logic
+        [x] Implement WebSocket message serialization
+        [x] Create standardized message format for test events
+        [x] Implement JSON marshaling/unmarshaling for WebSocket messages
+        [x] Add proper error handling for malformed messages
     [ ] 2.2. Real-Time Test Result Broadcasting
-        [ ] Write tests for test result broadcasting
-        [ ] Test: Verify new test results are broadcast to all connections
+        [x] Write tests for test result broadcasting
+        [x] Test: Verify new test results are broadcast to all connections
         [ ] Test: Test proper client message routing
-        [ ] Test: Verify message delivery during connection hiccups
-        [ ] Implement test result broadcasting
-        [ ] Create broadcaster service in Go backend
+        [x] Test: Verify message delivery during connection hiccups
+        [x] Implement test result broadcasting
+        [x] Create broadcaster service in Go backend
         [ ] Implement message routing by type
         [ ] Add connection tracking and cleanup
     [ ] 2.3. Frontend Message Handling
