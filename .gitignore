@@ -35,3 +35,4 @@ internal/api/server/swagger-ui.zip
 **/*.trace.zip
 **/trace.zip
 **/screenshots/
+tmp/main.exe~
