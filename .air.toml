@@ -3,17 +3,27 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-  cmd = "go test -tags=integration ./... && go build -o ./tmp/main.exe ./cmd/go-sentinel-web"
+  # run tests and build the binary
+  pre_cmd = ["go test -tags=integration ./..."]
+  cmd = "go build -o ./tmp/main.exe ./cmd/go-sentinel-web"
   bin = "./tmp/main.exe"
 
 [run]
+# run the binary
   cmd = "./tmp/main.exe"
 
 [watch]
-  delay = 1000
-  includes = ["**/*.go", "**/*.html", "**/*.tmpl", "**/*.css", "**/*.js"]
+delay = 1000
+includes = ["**/*.go", "**/*.html", "**/*.tmpl", "**/*.css", "**/*.js"]
   excludes = ["tmp/**", ".git/**", "vendor/**"]
 
 [log]
   color = true
   time = true
+
+[misc]
+  # clean the tmp directory on exit
+  clean_on_exit = true
+
+
+
