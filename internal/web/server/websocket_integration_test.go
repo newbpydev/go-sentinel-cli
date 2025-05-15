@@ -1,12 +1,14 @@
+//go:build integration
 // +build integration
 
 package server
 
 import (
-	"net/http/httptest"
-	"testing"
-	"net/url"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"testing"
+
 	"golang.org/x/net/websocket"
 )
 

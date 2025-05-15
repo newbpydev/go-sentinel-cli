@@ -3,7 +3,7 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-  cmd = "go build -o ./tmp/main.exe ./cmd/go-sentinel-web"
+  cmd = "go test -tags=integration ./... && go build -o ./tmp/main.exe ./cmd/go-sentinel-web"
   bin = "./tmp/main.exe"
 
 [run]
@@ -11,7 +11,7 @@ tmp_dir = "tmp"
 
 [watch]
   delay = 1000
-  includes = ["**/*.go", "**/*.html", "**/*.tmpl", "**/*.css", "**/*.js"]
+  includes = ["**/*.go", "**/*_test.go", "**/*.html", "**/*.tmpl", "**/*.css", "**/*.js"]
   excludes = ["tmp/**", ".git/**", "vendor/**"]
 
 [log]
