@@ -1,0 +1,50 @@
+{{define "partials/coverage-summary"}}
+<div class="coverage-metrics-grid">
+    <div class="coverage-metric {{if ge .TotalCoverage 80.0}}high-coverage{{else if ge .TotalCoverage 50.0}}medium-coverage{{else}}low-coverage{{end}}">
+        <div class="metric-title">Total Coverage</div>
+        <div class="metric-value">{{printf "%.1f" .TotalCoverage}}%</div>
+        <div class="metric-bar">
+            <div class="metric-fill" data-percentage="{{printf "%.1f" .TotalCoverage}}"></div>
+        </div>
+    </div>
+    
+    <div class="coverage-metric {{if ge .LineCoverage 80.0}}high-coverage{{else if ge .LineCoverage 50.0}}medium-coverage{{else}}low-coverage{{end}}">
+        <div class="metric-title">Line Coverage</div>
+        <div class="metric-value">{{printf "%.1f" .LineCoverage}}%</div>
+        <div class="metric-bar">
+            <div class="metric-fill" data-percentage="{{printf "%.1f" .LineCoverage}}"></div>
+        </div>
+    </div>
+    
+    <div class="coverage-metric {{if ge .FunctionCoverage 80.0}}high-coverage{{else if ge .FunctionCoverage 50.0}}medium-coverage{{else}}low-coverage{{end}}">
+        <div class="metric-title">Function Coverage</div>
+        <div class="metric-value">{{printf "%.1f" .FunctionCoverage}}%</div>
+        <div class="metric-bar">
+            <div class="metric-fill" data-percentage="{{printf "%.1f" .FunctionCoverage}}"></div>
+        </div>
+    </div>
+    
+    <div class="coverage-metric {{if ge .BranchCoverage 80.0}}high-coverage{{else if ge .BranchCoverage 50.0}}medium-coverage{{else}}low-coverage{{end}}">
+        <div class="metric-title">Branch Coverage</div>
+        <div class="metric-value">{{printf "%.1f" .BranchCoverage}}%</div>
+        <div class="metric-bar">
+            <div class="metric-fill" data-percentage="{{printf "%.1f" .BranchCoverage}}"></div>
+        </div>
+    </div>
+</div>
+
+<div class="coverage-stats">
+    <div class="stat-item">
+        <span class="stat-label">Total Files:</span>
+        <span class="stat-value">{{.TotalFiles}}</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-label">Files with Low Coverage:</span>
+        <span class="stat-value">{{.LowCoverageFiles}}</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-label">Last Updated:</span>
+        <span class="stat-value">{{.LastUpdated}}</span>
+    </div>
+</div>
+{{end}}

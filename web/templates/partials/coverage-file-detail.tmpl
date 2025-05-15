@@ -1,0 +1,47 @@
+{{define "partials/coverage-file-detail"}}
+<div class="file-coverage-header">
+    <h3 class="file-path">{{.FilePath}}</h3>
+    <div class="file-metrics">
+        <div class="file-metric {{if ge .LineCoverage 80.0}}high-coverage{{else if ge .LineCoverage 50.0}}medium-coverage{{else}}low-coverage{{end}}">
+            <span class="metric-label">Coverage:</span>
+            <span class="metric-value">{{printf "%.1f" .LineCoverage}}%</span>
+        </div>
+        <div class="file-metric">
+            <span class="metric-label">Lines:</span>
+            <span class="metric-value">{{.CoveredLines}}/{{.TotalLines}}</span>
+        </div>
+        <div class="file-metric">
+            <span class="metric-label">Functions:</span>
+            <span class="metric-value">{{.CoveredFunctions}}/{{.TotalFunctions}}</span>
+        </div>
+        <div class="file-metric">
+            <span class="metric-label">Branches:</span>
+            <span class="metric-value">{{.CoveredBranches}}/{{.TotalBranches}}</span>
+        </div>
+    </div>
+</div>
+
+<div class="file-content-container">
+    <pre class="file-content"><code>{{range $lineNum, $line := .SourceLines}}
+<span class="line-number">{{$lineNum}}</span><span class="line-content {{if index $.LineStatuses $lineNum}}{{index $.LineStatuses $lineNum}}{{else}}not-executable{{end}}">{{$line}}</span>{{end}}</code></pre>
+</div>
+
+<div class="coverage-legend">
+    <div class="legend-item">
+        <span class="legend-color covered"></span>
+        <span class="legend-label">Covered</span>
+    </div>
+    <div class="legend-item">
+        <span class="legend-color uncovered"></span>
+        <span class="legend-label">Uncovered</span>
+    </div>
+    <div class="legend-item">
+        <span class="legend-color partial"></span>
+        <span class="legend-label">Partially Covered</span>
+    </div>
+    <div class="legend-item">
+        <span class="legend-color not-executable"></span>
+        <span class="legend-label">Not Executable</span>
+    </div>
+</div>
+{{end}}

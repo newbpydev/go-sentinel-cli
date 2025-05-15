@@ -32,6 +32,15 @@ func NewServer(templatePath, staticPath string) (*Server, error) {
 	// 1) Create a root Template with any custom funcs
 	funcMap := template.FuncMap{
 		"year": func() int { return time.Now().Year() },
+		"add":  func(a, b int) int { return a + b },
+		"sub":  func(a, b int) int { return a - b },
+		"mul":  func(a, b int) int { return a * b },
+		"div": func(a, b int) int {
+			if b == 0 {
+				return 0
+			}
+			return a / b
+		},
 	}
 	tmpl := template.New("").Funcs(funcMap)
 
@@ -138,7 +147,7 @@ func (s *Server) registerRoutes() {
 		"ShowTestConfiguration": false,
 		"Settings":              handlers.GetDefaultSettings(),
 	}))
-	s.router.Get("/coverage", s.render("pages/coverage", map[string]interface{}{
+	s.router.Get("/coverage", s.render("coverage", map[string]interface{}{
 		"Title":                 "Coverage",
 		"ActivePage":            "coverage",
 		"Subtitle":              "Visualize your test coverage",
