@@ -1,13 +1,12 @@
-{{define "layouts/base"}}
+{{define "base"}}
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description"
-        content="{{if .Description}}{{.Description}}{{else}}Go Sentinel - Monitor and manage your Go tests{{end}}">
-    <title>{{if .Title}}{{.Title}} | {{end}}Go Sentinel</title>
+    <meta name="description" content='{{block "description" .}}Go Sentinel - Monitor and manage your Go tests{{end}}'>
+    <title>{{block "title" .}}Go Sentinel{{end}}</title>
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/components.css">
     <link rel="stylesheet" href="/static/css/toast.css">
@@ -27,7 +26,9 @@
     <div class="app-container">
         <!-- Sidebar navigation -->
         <nav class="sidebar" role="navigation" aria-label="Main Navigation">
+            {{block "sidebar" .}}
             {{template "partials/sidebar" .}}
+            {{end}}
         </nav>
 
         <!-- Main content -->
@@ -40,14 +41,19 @@
 
             <!-- Main content container -->
             <div class="dashboard-container">
-                {{template "content" .}}
+                {{block "content" .}}
+                <p>No content available</p>
+                {{end}}
             </div>
         </main>
     </div>
 
     <script src="/static/js/main.js"></script>
     {{block "scripts" .}}{{end}}
+
+    {{block "toast-container" .}}
     {{template "partials/toast-container" .}}
+    {{end}}
 </body>
 
 </html>

@@ -5,10 +5,227 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	
+
+	"github.com/newbpydev/go-sentinel/internal/web/handlers"
+	customMiddleware "github.com/newbpydev/go-sentinel/internal/web/middleware"
+)
+
+// Server represents the web server for Go Sentinel
+type Server struct {
+	router           *chi.Mux
+	templates        *template.Template
+	staticPath       string
+	testHandler      *handlers.TestResultsHandler
+	metricsHandler   *handlers.MetricsHandler
+	websocketHandler *handlers.WebSocketHandler
+	historyHandler   *handlers.HistoryHandler
+}
+
+// NewServer creates a new web server instance
+func NewServer(templatePath, staticPath string) (*Server, error) {
+	// 1) Create a root Template with any custom funcs
+	funcMap := template.FuncMap{
+		"year": func() int { return time.Now().Year() },
+	}
+	tmpl := template.New("").Funcs(funcMap)
+
+	// 2) Parse in order: layouts → partials → pages
+	layouts, err := filepath.Glob(filepath.Join(templatePath, "layouts", "*.tmpl"))
+	if err != nil {
+		return nil, err
+	}
+	if len(layouts) > 0 {
+		tmpl = template.Must(tmpl.ParseFiles(layouts...))
+	}
+
+	partials, err := filepath.Glob(filepath.Join(templatePath, "partials", "*.tmpl"))
+	if err != nil {
+		return nil, err
+	}
+	if len(partials) > 0 {
+		tmpl = template.Must(tmpl.ParseFiles(partials...))
+	}
+
+	pages, err := filepath.Glob(filepath.Join(templatePath, "pages", "*.tmpl"))
+	if err != nil {
+		return nil, err
+	}
+	if len(pages) > 0 {
+		tmpl = template.Must(tmpl.ParseFiles(pages...))
+	}
+
+	log.Printf("Loaded templates: layouts=%d, partials=%d, pages=%d",
+		len(layouts), len(partials), len(pages))
+	// Debug: list all defined templates/blocks
+	log.Println("Defined templates:", tmpl.DefinedTemplates())
+
+	// 3) Chi router + middleware
+	r := chi.NewRouter()
+	r.Use(middleware.Logger, middleware.Recoverer, middleware.RealIP, customMiddleware.Logger)
+
+	// 4) Initialize your handlers
+	testHandler := handlers.NewTestResultsHandler(tmpl)
+	metricsHandler := handlers.NewMetricsHandler()
+	websocketHandler := handlers.NewWebSocketHandler()
+	historyHandler := handlers.NewHistoryHandler()
+
+	server := &Server{
+		router:           r,
+		templates:        tmpl,
+		staticPath:       staticPath,
+		testHandler:      testHandler,
+		metricsHandler:   metricsHandler,
+		websocketHandler: websocketHandler,
+		historyHandler:   historyHandler,
+	}
+
+	// 5) Register routes
+	server.registerRoutes()
+
+	// 6) Start WebSocket broadcaster
+	websocketHandler.StartBroadcaster()
+
+	return server, nil
+}
+
+// registerRoutes sets up all the HTTP routes
+func (s *Server) registerRoutes() {
+	// Static files
+	fileServer := http.FileServer(http.Dir(s.staticPath))
+	s.router.Handle("/static/*", http.StripPrefix("/static/", fileServer))
+
+	// Page routes: all use block overrides in the page templates
+	s.router.Get("/", s.render("dashboard", map[string]interface{}{
+		"Title":                 "Dashboard",
+		"ActivePage":            "dashboard",
+		"ShowTestManagement":    false,
+		"ShowTestConfiguration": false,
+	}))
+	s.router.Get("/tests", s.render("tests", map[string]interface{}{
+		"Title":                 "Tests",
+		"Tests":                 handlers.GetMockTestResults(),
+		"ActivePage":            "tests",
+		"ShowTestManagement":    true,
+		"ShowTestConfiguration": true,
+	}))
+	s.router.Get("/reports", s.render("reports", map[string]interface{}{
+		"Title":                 "Reports",
+		"ActivePage":            "reports",
+		"Subtitle":              "View and analyze your Go Sentinel reports",
+		"ShowTestManagement":    false,
+		"ShowTestConfiguration": false,
+	}))
+	s.router.Get("/history", s.render("history", map[string]interface{}{
+		"Title":                 "Test History",
+		"ActivePage":            "history",
+		"ShowTestManagement":    false,
+		"ShowTestConfiguration": false,
+	}))
+	s.router.Get("/settings", s.render("settings", map[string]interface{}{
+		"Title":                 "Settings",
+		"ActivePage":            "settings",
+		"ShowTestManagement":    false,
+		"ShowTestConfiguration": false,
+	}))
+
+	// API routes
+	s.router.Route("/api", func(r chi.Router) {
+		r.Use(customMiddleware.ToastErrorHandler)
+
+		// Test routes
+		r.Get("/tests", s.testHandler.GetTestResults)
+		r.Post("/run-test/{testName}", s.testHandler.RunTest)
+		r.Post("/run-tests", s.testHandler.RunAllTests)
+		r.Get("/tests/filter", s.testHandler.FilterTestResults)
+
+		// Metrics
+		r.Get("/metrics", s.metricsHandler.GetMetrics)
+
+		// Notifications
+		r.Post("/notifications/test", handlers.HandleTestNotification)
+
+		// History
+		r.Get("/history", s.historyHandler.GetTestRunHistory)
+		r.Get("/history/compare", s.historyHandler.CompareTestRuns)
+		r.Get("/history/{runID}", s.historyHandler.GetTestRunDetails)
+
+		// Toast demo
+		r.Get("/toast/test/{type}", s.handleToastTest)
+	})
+
+	// WebSocket
+	s.router.Get("/ws", s.websocketHandler.HandleWebSocket)
+}
+
+// render returns a handler that injects base-template blocks
+func (s *Server) render(pageName string, baseData map[string]interface{}) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// 1) Clone the "base+partials" template
+		t, err := s.templates.Clone()
+		if err != nil {
+			http.Error(w, "Template clone error", http.StatusInternalServerError)
+			log.Printf("Template clone error: %v", err)
+			return
+		}
+
+		// 2) Parse only the single page file into the clone
+		pageFile := filepath.Join(s.staticPath, "../templates/pages", pageName+".tmpl")
+		if _, err := t.ParseFiles(pageFile); err != nil {
+			http.Error(w, "Template parse error", http.StatusInternalServerError)
+			log.Printf("Template parse error: %v", err)
+			return
+		}
+
+		// 3) Inject year & headers (always make sure the Content-Type is set)
+		baseData["Year"] = time.Now().Year()
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+		// 4 ) Execute the base layout, which will picl the correct blocks
+		if err := t.ExecuteTemplate(w, "base", baseData); err != nil {
+			http.Error(w, "Template execution error", http.StatusInternalServerError)
+			log.Printf("Template execution error: %v", err)
+		}
+	}
+}
+
+/*
+// render returns a handler that injects base-template blocks
+func (s *Server) render(baseData map[string]interface{}) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Always ensure Year and Content-Type are set
+		baseData["Year"] = time.Now().Year()
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+		if err := s.templates.ExecuteTemplate(w, "base", baseData); err != nil {
+			http.Error(w, "Template error", http.StatusInternalServerError)
+			log.Printf("Template exec error: %v", err)
+		}
+	}
+}
+*/
+
+// Start begins listening on the given address
+func (s *Server) Start(addr string) error {
+	log.Printf("Starting web server on %s", addr)
+	return http.ListenAndServe(addr, s.router)
+}
+
+/*
+package server
+
+import (
+	"html/template"
+	"log"
+	"net/http"
+	"path/filepath"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+
 	"github.com/newbpydev/go-sentinel/internal/web/handlers"
 	customMiddleware "github.com/newbpydev/go-sentinel/internal/web/middleware"
 )
@@ -35,41 +252,41 @@ func NewServer(templatePath, staticPath string) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if len(layoutFiles) > 0 {
 		tmpl, err = tmpl.ParseFiles(layoutFiles...)
 		if err != nil {
 			return nil, err
 		}
 	}
-	
+
 	// Parse page templates
 	pageFiles, err := filepath.Glob(filepath.Join(templatePath, "pages/*.tmpl"))
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if len(pageFiles) > 0 {
 		tmpl, err = tmpl.ParseFiles(pageFiles...)
 		if err != nil {
 			return nil, err
 		}
 	}
-	
+
 	// Parse partial templates
 	partialFiles, err := filepath.Glob(filepath.Join(templatePath, "partials/*.tmpl"))
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if len(partialFiles) > 0 {
 		tmpl, err = tmpl.ParseFiles(partialFiles...)
 		if err != nil {
 			return nil, err
 		}
 	}
-	
-	log.Printf("Loaded templates: layouts=%d, pages=%d, partials=%d", 
+
+	log.Printf("Loaded templates: layouts=%d, pages=%d, partials=%d",
 		len(layoutFiles), len(pageFiles), len(partialFiles))
 
 	// Create router with middleware
@@ -127,13 +344,13 @@ func (s *Server) registerRoutes() {
 		r.Post("/run-test/{testName}", s.testHandler.RunTest)
 		r.Post("/run-tests", s.testHandler.RunAllTests)
 		r.Get("/tests/filter", s.testHandler.FilterTestResults)
-		
+
 		// Metrics routes
 		r.Get("/metrics", s.metricsHandler.GetMetrics)
 
 		// Notification test route
 		r.Post("/notifications/test", handlers.HandleTestNotification)
-		
+
 		// History routes
 		r.Get("/history", s.historyHandler.GetTestRunHistory)
 		r.Get("/history/compare", s.historyHandler.CompareTestRuns)
@@ -158,7 +375,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	// Get initial data for the dashboard
 	metrics := handlers.GetMetricsData()
 	tests := handlers.GetMockTestResults()
-	
+
 	data := map[string]interface{}{
 		"Title": "Test Dashboard",
 		"Stats": metrics,
@@ -167,7 +384,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		"ShowTestManagement": false,
 		"ShowTestConfiguration": false,
 	}
-	
+
 	s.render(w, "pages/dashboard", data)
 }
 
@@ -179,7 +396,7 @@ func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
 		"ShowTestManagement": false,
 		"ShowTestConfiguration": false,
 	}
-	
+
 	s.render(w, "pages/history", data)
 }
 
@@ -191,7 +408,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		"ShowTestManagement": false,
 		"ShowTestConfiguration": false,
 	}
-	
+
 	s.render(w, "pages/settings", data)
 }
 
@@ -199,7 +416,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleTests(w http.ResponseWriter, r *http.Request) {
 	// Get test data for the page
 	tests := handlers.GetMockTestResults()
-	
+
 	data := map[string]interface{}{
 		"Title": "Tests",
 		"ActivePage": "tests",
@@ -207,7 +424,7 @@ func (s *Server) handleTests(w http.ResponseWriter, r *http.Request) {
 		"ShowTestManagement": true,
 		"ShowTestConfiguration": true,
 	}
-	
+
 	s.render(w, "pages/tests", data)
 }
 
@@ -220,7 +437,7 @@ func (s *Server) handleReports(w http.ResponseWriter, r *http.Request) {
 		"ShowTestManagement": false,
 		"ShowTestConfiguration": false,
 	}
-	
+
 	s.render(w, "pages/reports", data)
 }
 
@@ -232,3 +449,4 @@ func (s *Server) render(w http.ResponseWriter, name string, data interface{}) {
 		log.Printf("Template error: %v", err)
 	}
 }
+*/
