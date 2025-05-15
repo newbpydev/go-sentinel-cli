@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -39,15 +41,24 @@ type WebSocketHandler struct {
 	// Connected clients
 	clients map[*websocket.Conn]bool
 	
+	// Connection counter
+	connectionCount int32
+	
 	// Mutex for thread safety
-	clientsMu sync.Mutex
+	clientsMu sync.RWMutex
 	
 	// Broadcast channel for sending messages to all clients
 	broadcast chan WebSocketMessage
+	
+	// Context for cleanup
+	ctx        context.Context
+	cancelFunc context.CancelFunc
+	wg         sync.WaitGroup
 }
 
 // NewWebSocketHandler creates a new WebSocket handler
 func NewWebSocketHandler() *WebSocketHandler {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &WebSocketHandler{
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
@@ -58,34 +69,81 @@ func NewWebSocketHandler() *WebSocketHandler {
 				return true
 			},
 		},
-		clients:   make(map[*websocket.Conn]bool),
-		broadcast: make(chan WebSocketMessage, 256), // Buffered channel to prevent blocking
+		clients:    make(map[*websocket.Conn]bool),
+		broadcast:  make(chan WebSocketMessage, 256), // Buffered channel to prevent blocking
+		ctx:        ctx,
+		cancelFunc: cancel,
 	}
 }
 
 // StartBroadcaster starts the WebSocket broadcaster goroutine
 func (h *WebSocketHandler) StartBroadcaster() {
+	h.wg.Add(1)
 	go func() {
+		defer h.wg.Done()
 		for {
-			// Get the next message from the broadcast channel
-			msg := <-h.broadcast
-			
-			// Send to all clients
-			h.clientsMu.Lock()
-			for client := range h.clients {
-				err := client.WriteJSON(msg)
-				if err != nil {
-					log.Printf("Error sending WebSocket message: %v", err)
-					client.Close()
-					delete(h.clients, client)
+			select {
+			case msg, ok := <-h.broadcast:
+				if !ok {
+					// Channel closed
+					return
 				}
+				h.broadcastMessage(msg)
+			case <-h.ctx.Done():
+				// Shutdown requested
+				h.closeAllConnections()
+				return
 			}
-			h.clientsMu.Unlock()
 		}
 	}()
 	
 	// Start a demo goroutine that sends updates periodically
-	go h.sendDemoUpdates()
+	h.wg.Add(1)
+	go func() {
+		defer h.wg.Done()
+		h.sendDemoUpdates()
+	}()
+}
+
+// broadcastMessage sends a message to all connected clients
+func (h *WebSocketHandler) broadcastMessage(msg WebSocketMessage) {
+	h.clientsMu.RLock()
+	defer h.clientsMu.RUnlock()
+
+	for client := range h.clients {
+		err := client.WriteJSON(msg)
+		if err != nil {
+			log.Printf("Error sending WebSocket message: %v", err)
+			// Don't remove the client here, let readPump handle it
+		}
+	}
+}
+
+// closeAllConnections closes all active WebSocket connections
+func (h *WebSocketHandler) closeAllConnections() {
+	h.clientsMu.Lock()
+	defer h.clientsMu.Unlock()
+
+	for client := range h.clients {
+		client.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "Server shutting down"))
+		client.Close()
+	}
+
+	// Clear the clients map
+	h.clients = make(map[*websocket.Conn]bool)
+	atomic.StoreInt32(&h.connectionCount, 0)
+}
+
+// ConnectionCount returns the number of currently connected clients
+func (h *WebSocketHandler) ConnectionCount() int {
+	return int(atomic.LoadInt32(&h.connectionCount))
+}
+
+// Close gracefully shuts down the WebSocket handler
+func (h *WebSocketHandler) Close() {
+	h.cancelFunc()
+	h.wg.Wait()
+	close(h.broadcast)
 }
 
 // HandleWebSocket upgrades HTTP connections to WebSocket
@@ -102,59 +160,117 @@ func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Reques
 	h.clients[conn] = true
 	h.clientsMu.Unlock()
 	
-	// Send initial data
+	// Increment connection counter
+	atomic.AddInt32(&h.connectionCount, 1)
+
+	// Start reader goroutine
+	h.wg.Add(1)
+	go func() {
+		defer h.wg.Done()
+		h.readPump(conn)
+	}()
+
+	// Send welcome message
+	h.sendConnectedMessage(conn)
+}
+
+func (h *WebSocketHandler) sendConnectedMessage(conn *websocket.Conn) {
 	initialPayload, _ := json.Marshal(map[string]interface{}{
 		"connectedAt": time.Now(),
-		"clientCount": len(h.clients),
+		"clientCount": h.ConnectionCount(),
 	})
 	initialMsg := WebSocketMessage{
 		Type:    "connected",
 		Payload: initialPayload,
 	}
 	conn.WriteJSON(initialMsg)
-	
-	// Start the reader for this connection
-	go h.readPump(conn)
+}
+
+// sendPong sends a pong message in response to a ping
+func (h *WebSocketHandler) sendPong(conn *websocket.Conn) {
+	pongMsg := WebSocketMessage{
+		Type: "pong",
+	}
+	if err := conn.WriteJSON(pongMsg); err != nil {
+		log.Printf("Error sending pong: %v", err)
+	}
 }
 
 // readPump handles incoming WebSocket messages
 func (h *WebSocketHandler) readPump(conn *websocket.Conn) {
 	defer func() {
+		// Unregister client and decrement counter
 		h.clientsMu.Lock()
-		delete(h.clients, conn)
+		if _, ok := h.clients[conn]; ok {
+			delete(h.clients, conn)
+			atomic.AddInt32(&h.connectionCount, -1)
+		}
 		h.clientsMu.Unlock()
+
+		// Ensure connection is closed
+		conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 		conn.Close()
 	}()
-	
-	// Configure the connection
-	conn.SetReadLimit(1024 * 1024) // 1MB max message size
+
+	// Configure connection
+	conn.SetReadLimit(512) // 512 bytes max message size
 	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-	conn.SetPongHandler(func(string) error { 
+	conn.SetPongHandler(func(string) error {
 		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-		return nil 
+		return nil
 	})
 
+	// Start ping-pong keepalive
+	h.wg.Add(1)
+	go func() {
+		defer h.wg.Done()
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				if err := conn.WriteControl(
+					websocket.PingMessage,
+					[]byte{},
+					time.Now().Add(10*time.Second),
+				); err != nil {
+					return
+				}
+			case <-h.ctx.Done():
+				return
+			}
+		}
+	}()
+
+	// Message handling loop
 	for {
 		var msg WebSocketMessage
 		err := conn.ReadJSON(&msg)
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+			if websocket.IsUnexpectedCloseError(
+				err,
+				websocket.CloseGoingAway,
+				websocket.CloseAbnormalClosure,
+				websocket.CloseNormalClosure,
+			) {
 				log.Printf("WebSocket error: %v", err)
 			}
 			break
 		}
 
-		// Handle different message types
+		// Handle ping message
+		if msg.Type == "ping" {
+			h.sendPong(conn)
+			continue
+		}
+
+		// Handle other message types if needed
 		switch msg.Type {
-		case "ping":
-			// Respond to ping with pong
-			pongMsg := WebSocketMessage{
-				Type: "pong",
-			}
-			if err := conn.WriteJSON(pongMsg); err != nil {
-				log.Printf("Error sending pong: %v", err)
-				return
-			}
+		case "subscribe":
+			// Handle subscription requests
+		case "unsubscribe":
+			// Handle unsubscription requests
 		case "test_result":
 			// Handle test result message
 			var result WSTestResult
