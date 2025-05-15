@@ -1,4 +1,4 @@
-{{define "partials/coverage-file-list"}}
+{{define "coverage-file-list"}}
 {{if .Files}}
 <table class="coverage-table">
     <thead>
@@ -13,25 +13,23 @@
     </thead>
     <tbody>
         {{range .Files}}
-        <tr class="coverage-file-row {{if lt .LineCoverage 50.0}}low-coverage{{else if lt .LineCoverage 80.0}}medium-coverage{{else}}high-coverage{{end}}">
+        <tr
+            class="coverage-file-row {{if lt .LineCoverage 50.0}}low-coverage{{else if lt .LineCoverage 80.0}}medium-coverage{{else}}high-coverage{{end}}">
             <td class="file-name">
                 <span class="file-path">{{.FilePath}}</span>
             </td>
             <td class="coverage-value">
                 <div class="coverage-bar">
-                    <div class="coverage-fill" style="width: {{.LineCoverage}}%;"></div>
+                    <div class="coverage-fill" style=`width: {{printf "%.1f%%" .LineCoverage}}`></div>
                 </div>
                 <span class="coverage-percent">{{printf "%.1f" .LineCoverage}}%</span>
             </td>
-            <td class="lines-value">{{.CoveredLines}}/{{.TotalLines}}</td>
-            <td class="functions-value">{{.CoveredFunctions}}/{{.TotalFunctions}}</td>
-            <td class="branches-value">{{.CoveredBranches}}/{{.TotalBranches}}</td>
+            <td class="lines-value">{{printf "%d/%d" .CoveredLines .TotalLines}}</td>
+            <td class="functions-value">{{printf "%d/%d" .CoveredFunctions .TotalFunctions}}</td>
+            <td class="branches-value">{{printf "%d/%d" .CoveredBranches .TotalBranches}}</td>
             <td class="file-actions">
-                <button class="btn btn-small btn-primary" 
-                        hx-get="/api/coverage/file/{{.FileID}}" 
-                        hx-target="#file-coverage-content"
-                        hx-trigger="click"
-                        onclick="showFileDetails()">
+                <button class="btn btn-small btn-primary" hx-get="/api/coverage/file/{{.FileID}}"
+                    hx-target="#file-coverage-content" hx-trigger="click" onclick="showFileDetails()">
                     View
                 </button>
             </td>
@@ -42,23 +40,17 @@
 
 {{if gt .TotalPages 1}}
 <div class="pagination">
-    <button class="pagination-btn {{if eq .CurrentPage 1}}disabled{{end}}"
-            {{if gt .CurrentPage 1}}
-            hx-get="/api/coverage/files?page={{sub .CurrentPage 1}}&filter={{.Filter}}&search={{.Search}}"
-            hx-target="#coverage-list"
-            {{end}}
-            {{if eq .CurrentPage 1}}disabled{{end}}>
+    <button class="pagination-btn {{if eq .CurrentPage 1}}disabled{{end}}" {{if gt .CurrentPage 1}}
+        hx-get="/api/coverage/files?page={{sub .CurrentPage 1}}&filter={{.Filter}}&search={{.Search}}"
+        hx-target="#coverage-list" {{end}} {{if eq .CurrentPage 1}}disabled{{end}}>
         Previous
     </button>
-    
+
     <span class="pagination-info">Page {{.CurrentPage}} of {{.TotalPages}}</span>
-    
-    <button class="pagination-btn {{if eq .CurrentPage .TotalPages}}disabled{{end}}"
-            {{if lt .CurrentPage .TotalPages}}
-            hx-get="/api/coverage/files?page={{add .CurrentPage 1}}&filter={{.Filter}}&search={{.Search}}"
-            hx-target="#coverage-list"
-            {{end}}
-            {{if eq .CurrentPage .TotalPages}}disabled{{end}}>
+
+    <button class="pagination-btn {{if eq .CurrentPage .TotalPages}}disabled{{end}}" {{if lt .CurrentPage .TotalPages}}
+        hx-get="/api/coverage/files?page={{add .CurrentPage 1}}&filter={{.Filter}}&search={{.Search}}"
+        hx-target="#coverage-list" {{end}} {{if eq .CurrentPage .TotalPages}}disabled{{end}}>
         Next
     </button>
 </div>
@@ -67,9 +59,7 @@
 {{else}}
 <div class="no-files-message">
     <p>No files match your current filter criteria.</p>
-    <button class="btn btn-primary" 
-            hx-get="/api/coverage/files" 
-            hx-target="#coverage-list">
+    <button class="btn btn-primary" hx-get="/api/coverage/files" hx-target="#coverage-list">
         Reset Filters
     </button>
 </div>

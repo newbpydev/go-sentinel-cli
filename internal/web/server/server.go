@@ -17,8 +17,9 @@ import (
 // Server represents the web server for Go Sentinel
 type Server struct {
 	router           *chi.Mux
-	templates        *template.Template
-	staticPath       string
+	templates        *template.Template // master: only layouts+partials
+	templatePath     string             // store the root path for templates
+	staticPath       string             // store the root path for static files
 	testHandler      *handlers.TestResultsHandler
 	metricsHandler   *handlers.MetricsHandler
 	websocketHandler *handlers.WebSocketHandler
@@ -61,16 +62,16 @@ func NewServer(templatePath, staticPath string) (*Server, error) {
 		tmpl = template.Must(tmpl.ParseFiles(partials...))
 	}
 
-	pages, err := filepath.Glob(filepath.Join(templatePath, "pages", "*.tmpl"))
-	if err != nil {
-		return nil, err
-	}
-	if len(pages) > 0 {
-		tmpl = template.Must(tmpl.ParseFiles(pages...))
-	}
+	// pages, err := filepath.Glob(filepath.Join(templatePath, "pages", "*.tmpl"))
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// if len(pages) > 0 {
+	// 	tmpl = template.Must(tmpl.ParseFiles(pages...))
+	// }
 
-	log.Printf("Loaded templates: layouts=%d, partials=%d, pages=%d",
-		len(layouts), len(partials), len(pages))
+	log.Printf("Master template loaded: layouts=%d, partials=%d",
+		len(layouts), len(partials))
 	// Debug: list all defined templates/blocks
 	log.Println("Defined templates:", tmpl.DefinedTemplates())
 
@@ -89,6 +90,7 @@ func NewServer(templatePath, staticPath string) (*Server, error) {
 	server := &Server{
 		router:           r,
 		templates:        tmpl,
+		templatePath:     templatePath,
 		staticPath:       staticPath,
 		testHandler:      testHandler,
 		metricsHandler:   metricsHandler,
@@ -104,6 +106,18 @@ func NewServer(templatePath, staticPath string) (*Server, error) {
 	// 6) Start WebSocket broadcaster
 	websocketHandler.StartBroadcaster()
 
+	// return &Server{
+	// 	router:           r,
+	// 	templates:        tmpl,
+	// 	templatePath:     templatePath,
+	// 	staticPath:       staticPath,
+	// 	testHandler:      testHandler,
+	// 	metricsHandler:   metricsHandler,
+	// 	websocketHandler: websocketHandler,
+	// 	historyHandler:   historyHandler,
+	// 	coverageHandler:  coverageHandler,
+	// 	settingsHandler:  settingsHandler,
+	// }, nil
 	return server, nil
 }
 
@@ -197,24 +211,30 @@ func (s *Server) registerRoutes() {
 
 	// WebSocket
 	s.router.Get("/ws", s.websocketHandler.HandleWebSocket)
+
+	// Not found
+	s.router.NotFound(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "Not Found", http.StatusNotFound)
+	})
 }
 
 // render returns a handler that injects base-template blocks
 func (s *Server) render(pageName string, baseData map[string]interface{}) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// 1) Clone the "base+partials" template
+		// 1) Clone the **un-executed** master
 		t, err := s.templates.Clone()
 		if err != nil {
-			http.Error(w, "Template clone error", http.StatusInternalServerError)
 			log.Printf("Template clone error: %v", err)
+			http.Error(w, "Template clone error", http.StatusInternalServerError)
 			return
 		}
 
 		// 2) Parse only the single page file into the clone
-		pageFile := filepath.Join(s.staticPath, "../templates/pages", pageName+".tmpl")
+		pageFile := filepath.Join(s.templatePath, "pages", pageName+".tmpl")
+		log.Printf("Rendering page: %s", pageFile)
 		if _, err := t.ParseFiles(pageFile); err != nil {
-			http.Error(w, "Template parse error", http.StatusInternalServerError)
-			log.Printf("Template parse error: %v", err)
+			log.Printf("Template parse error (%s): %v", pageName, err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
@@ -222,10 +242,10 @@ func (s *Server) render(pageName string, baseData map[string]interface{}) http.H
 		baseData["Year"] = time.Now().Year()
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
-		// 4 ) Execute the base layout, which will picl the correct blocks
+		// 4 ) Execute the base layout on the clone, which will picl the correct blocks
 		if err := t.ExecuteTemplate(w, "base", baseData); err != nil {
-			http.Error(w, "Template execution error", http.StatusInternalServerError)
-			log.Printf("Template execution error: %v", err)
+			log.Printf("Template execution error (%s): %v", pageName, err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 		}
 	}
 }
