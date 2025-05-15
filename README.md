@@ -1,4 +1,4 @@
-# Go Sentinel
+# ![logo](web/static/images/logo-wh-md-trans.png)
 
 Go Sentinel is an open source, Go-native CLI utility that supercharges your test-driven development (TDD) workflow by automatically watching your Go source files, rerunning tests on changes, and presenting concise, actionable feedback in your terminal. Built with concurrency and resilience at its core, Go Sentinel helps you keep your TDD flow uninterrupted and productive.
 
