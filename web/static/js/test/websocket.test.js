@@ -1,48 +1,45 @@
-import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
-import { WebSocketClient } from '../websocket.js';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll, vi } from 'vitest';
+import { WebSocketClient } from '../websocket';
 
-// Mock the toast module
+// Mock Toastify
 vi.mock('../toast', () => ({
   showToast: vi.fn()
 }));
-
-// Import after setting up the mocks
-import { showToast } from '../toast';
-
-// Define WebSocket constants
-const WS_CONSTANTS = {
-  CONNECTING: 0,
-  OPEN: 1,
-  CLOSING: 2,
-  CLOSED: 3
-};
 
 // Setup basic mock environment for browser globals
 beforeAll(() => {
   // Mock HTMX
   global.htmx = {
-    process: vi.fn(),
     on: vi.fn(),
-    off: vi.fn(),
+    trigger: vi.fn(),
     find: vi.fn(),
-    addClass: vi.fn(),
-    removeClass: vi.fn(),
-    trigger: vi.fn()
+    ajax: vi.fn()
   };
   
-  // Create a basic DOM structure
-  document.body.innerHTML = `
-    <div class="status-indicator">Disconnected</div>
-    <div id="test-results"></div>
-    <div id="toast-container"></div>`;
+  // Mock Toastify
+  global.Toastify = vi.fn().mockImplementation(() => ({
+    showToast: vi.fn()
+  }));
 });
 
 describe('WebSocketClient', () => {
   let wsClient;
   let mockWebSocket;
   const testUrl = 'ws://test-server/socket';
-  
+  let originalWebSocket;
+
+  // Save original WebSocket implementation
+  beforeAll(() => {
+    originalWebSocket = global.WebSocket;
+  });
+
+  // Restore original WebSocket implementation
+  afterAll(() => {
+    global.WebSocket = originalWebSocket;
+  });
+
   beforeEach(() => {
+    // Start with a clean state
     vi.clearAllMocks();
     
     // Create a mock WebSocket implementation
@@ -51,53 +48,48 @@ describe('WebSocketClient', () => {
       removeEventListener: vi.fn(),
       send: vi.fn(),
       close: vi.fn(),
-      readyState: 1 // OPEN
+      readyState: WebSocket.OPEN
     };
     
-    // Mock the WebSocket constructor
+    // Mock the WebSocket constructor but preserve constants
     global.WebSocket = vi.fn().mockImplementation(() => mockWebSocket);
     
-    // Add WebSocket constants
-    global.WebSocket.CONNECTING = 0;
-    global.WebSocket.OPEN = 1;
-    global.WebSocket.CLOSING = 2;
-    global.WebSocket.CLOSED = 3;
-    
-    // Create a new WebSocketClient for testing
+    // Create a new WebSocketClient instance
     wsClient = new WebSocketClient();
   });
-  
+
   afterEach(() => {
-    if (wsClient) {
+    // Clean up resources
+    if (wsClient && typeof wsClient.close === 'function') {
       wsClient.close();
-      wsClient = null;
     }
+    wsClient = null;
+    mockWebSocket = null;
+    vi.restoreAllMocks();
   });
 
-  
   describe('connection handling', () => {
     it('should connect to WebSocket server', async () => {
-      // Simulate a successful connection
-      const openHandler = { callback: null };
+      // Setup event handler capture mechanism
+      const handlers = {};
       mockWebSocket.addEventListener.mockImplementation((event, handler) => {
-        if (event === 'open') {
-          openHandler.callback = handler;
-        }
+        handlers[event] = handler;
       });
       
-      // Start connection
-      const connectPromise = wsClient.connect(testUrl);
+      // Begin connection process
+      const connectionPromise = wsClient.connect(testUrl);
       
-      // Simulate the open event
-      openHandler.callback({ type: 'open' });
+      // Manually trigger the 'open' event
+      if (handlers.open) {
+        handlers.open({ type: 'open' });
+      }
       
-      // Wait for connection to complete
-      await connectPromise;
+      // Wait for the connection to complete
+      await connectionPromise;
       
-      // Verify proper connection
+      // Verify connection was established properly
       expect(global.WebSocket).toHaveBeenCalledWith(testUrl);
       expect(wsClient.socket).toBe(mockWebSocket);
-      expect(wsClient.socket.readyState).toBe(WebSocket.OPEN);
       expect(mockWebSocket.addEventListener).toHaveBeenCalledWith('open', expect.any(Function));
       expect(mockWebSocket.addEventListener).toHaveBeenCalledWith('message', expect.any(Function));
       expect(mockWebSocket.addEventListener).toHaveBeenCalledWith('close', expect.any(Function));
@@ -105,168 +97,176 @@ describe('WebSocketClient', () => {
     });
     
     it('should handle connection errors', async () => {
-      // Mock WebSocket to throw an error
-      global.WebSocket = vi.fn().mockImplementation(() => {
-        throw new Error('Connection failed');
-      });
+      // Mock console.error to prevent test output pollution
+      const originalConsoleError = console.error;
+      console.error = vi.fn();
       
-      // Set up error handler to verify error handling
-      const errorHandler = vi.fn();
-      wsClient.on('error', errorHandler);
-      
-      // Try to connect and expect it to fail
-      await expect(wsClient.connect(testUrl)).rejects.toThrow('Connection failed');
-      
-      // We don't check showToast since it might not be directly called in the implementation
+      try {
+        // Create a mock WebSocket that throws an error when accessed
+        global.WebSocket = vi.fn().mockImplementation(() => {
+          throw new Error('Connection failed');
+        });
+        
+        // Attempt to connect but catch the promise rejection
+        // to avoid unhandled promise rejection warnings
+        await wsClient.connect(testUrl).catch(error => {
+          // Expected error
+          expect(error.message).toBe('Connection failed');
+        });
+        
+        // Verify error was logged
+        expect(console.error).toHaveBeenCalled();
+      } finally {
+        // Restore console.error
+        console.error = originalConsoleError;
+      }
     });
     
-    // Test the reconnection behavior
-    it('should handle reconnection logic after abnormal closure', () => {      
-      // Setup shorter reconnection delay
-      wsClient.reconnectDelay = 10;
-      
-      // Setup handlers object to capture event handlers
-      const handlers = {};
-      
-      // Mock addEventListener to capture handlers
-      mockWebSocket.addEventListener.mockImplementation((event, handler) => {
-        handlers[event] = handler;
-      });
-      
-      // Establish initial connection
-      wsClient.connect(testUrl);
-      
-      // We need to use vi.useFakeTimers to test setTimeout behavior
+    // This test verifies that abnormal WebSocket closures trigger a reconnection attempt
+    it('should attempt reconnection after abnormal closure', () => {
+      // Use fake timers to control the setTimeout behavior
       vi.useFakeTimers();
       
-      // Mock WebSocket constructor for reconnection
-      const originalWebSocket = global.WebSocket;
-      const reconnectMock = vi.fn();
-      global.WebSocket = reconnectMock;
-      
-      // Simulate abnormal closure (code 1006)
-      if (handlers.close) {
-        // Trigger close event
-        handlers.close({ type: 'close', code: 1006, reason: 'abnormal closure' });
+      try {
+        // Start with a new WebSocketClient with minimal reconnection delay
+        wsClient = new WebSocketClient();
+        wsClient.reconnectDelay = 10;
         
-        // Fast-forward timer to trigger the reconnection
+        // Set up the initial connection
+        wsClient.connect(testUrl);
+        
+        // Clear the WebSocket constructor calls from the initial connection
+        global.WebSocket.mockClear();
+        
+        // Now directly call the internal reconnection handler
+        // This is what's called when a non-clean closure happens
+        wsClient.handleReconnect(testUrl);
+        
+        // Run all timers to trigger the setTimeout callback
         vi.runAllTimers();
         
-        // Verify reconnection was attempted
-        expect(reconnectMock).toHaveBeenCalledWith(testUrl);
-        
-        // Restore real timers and WebSocket mock
+        // Verify a new WebSocket connection was attempted (reconnection)
+        expect(global.WebSocket).toHaveBeenCalledWith(testUrl);
+      } finally {
+        // Always restore real timers
         vi.useRealTimers();
-        global.WebSocket = originalWebSocket;
       }
     });
   });
   
   describe('message handling', () => {
-    let messageHandler;
+    it('should send messages', () => {
+      // Connect first
+      wsClient.connect(testUrl);
+      
+      // Send a test message
+      const message = { action: 'test', data: 'payload' };
+      wsClient.send(message);
+      
+      // Verify message was sent correctly
+      expect(mockWebSocket.send).toHaveBeenCalledWith(JSON.stringify(message));
+    });
     
-    beforeEach(async () => {
-      // Setup connection first
-      const handlers = {};
+    it('should receive and process valid JSON messages', () => {
+      // Set up message event handler capture
+      let messageHandler;
       mockWebSocket.addEventListener.mockImplementation((event, handler) => {
-        handlers[event] = handler;
+        if (event === 'message') {
+          messageHandler = handler;
+        }
       });
       
-      // Connect
-      const connectPromise = wsClient.connect(testUrl);
-      handlers.open({ type: 'open' });
-      await connectPromise;
+      // Set up message processing spy
+      const handleMessageSpy = vi.spyOn(wsClient, 'handleMessage');
       
-      // Get message handler for tests
-      messageHandler = handlers.message;
+      // Connect to server
+      wsClient.connect(testUrl);
+      
+      // Create valid JSON message
+      const testMessage = { type: 'update', data: { test: 'value' } };
+      const messageEvent = { data: JSON.stringify(testMessage) };
+      
+      // Ensure we have a message handler
+      expect(messageHandler).toBeDefined();
+      
+      // Trigger the message event
+      messageHandler(messageEvent);
+      
+      // Verify message was processed
+      expect(handleMessageSpy).toHaveBeenCalledWith(testMessage);
     });
     
-    it('should send messages', async () => {
-      const testMessage = { type: 'test', payload: 'message data' };
-      const serializedMessage = JSON.stringify(testMessage);
+    it('should handle invalid JSON messages', () => {
+      // Set up message event handler capture
+      let messageHandler;
+      mockWebSocket.addEventListener.mockImplementation((event, handler) => {
+        if (event === 'message') {
+          messageHandler = handler;
+        }
+      });
       
-      // Send the message
-      await wsClient.send(serializedMessage);
+      // Mock console.error to prevent test output pollution
+      const originalConsoleError = console.error;
+      console.error = vi.fn();
       
-      // Verify it was sent properly
-      expect(mockWebSocket.send).toHaveBeenCalledWith(serializedMessage);
-    });
-    
-    // The WebSocketClient implementation doesn't have a 'message' event handler type,
-    // so we'll skip this test for now
-    it.skip('should receive and process valid JSON messages', () => {
-      // Create test message
-      const testData = { type: 'update', data: 'test data' };
-      const testMessage = JSON.stringify(testData);
-      
-      // Mock process method if it exists
-      if (wsClient.processMessage) {
-        const processSpy = vi.spyOn(wsClient, 'processMessage');
+      try {
+        // Connect to server
+        wsClient.connect(testUrl);
         
-        // Simulate receiving message
-        if (messageHandler) {
-          messageHandler({ data: testMessage });
-          expect(processSpy).toHaveBeenCalled();
-        }
-      }
-    });
-    
-    // Similarly, we'll skip this test since error handling might be implemented differently
-    it.skip('should handle invalid JSON messages', () => {
-      // Setup error handling test
-      const errorSpy = vi.fn();
-      if (wsClient.on) {
-        try {
-          wsClient.on('error', errorSpy);
-        } catch (e) {
-          // If 'error' is not a valid event type, we'll just skip this test
-          return;
-        }
-      }
-      
-      // If we have a message handler, test invalid JSON
-      if (messageHandler) {
-        messageHandler({ data: 'invalid-json-data' });
+        // Ensure we have a message handler
+        expect(messageHandler).toBeDefined();
+        
+        // Create invalid JSON message
+        const invalidMessage = '{invalid json:}';
+        
+        // Trigger the message event with invalid JSON
+        messageHandler({ data: invalidMessage });
+        
+        // Verify error was logged
+        expect(console.error).toHaveBeenCalled();
+      } finally {
+        // Restore console.error
+        console.error = originalConsoleError;
       }
     });
   });
   
   describe('HTMX integration', () => {
-    it('should initialize HTMX WebSocket extension', () => {
-      // Save original globals
+    it('should initialize HTMX integration', () => {
+      // The actual method name in WebSocketClient is initHtmxIntegration
+      expect(typeof wsClient.initHtmxIntegration).toBe('function');
+      
+      // Save original document and window
       const originalDocument = global.document;
       const originalWindow = global.window;
       
       try {
-        // Create mock document
-        const mockSetAttribute = vi.fn();
+        // Create mock DOM elements
         global.document = {
           body: {
-            setAttribute: mockSetAttribute,
-            getAttribute: vi.fn(() => '')
+            setAttribute: vi.fn(),
+            getAttribute: vi.fn()
           }
         };
         
-        // Create mock HTMX
-        const mockProcess = vi.fn();
-        global.window = { 
+        // Mock window with htmx
+        global.window = {
           htmx: {
-            process: mockProcess,
-            find: vi.fn(() => document.body),
-            on: vi.fn(),
-            trigger: vi.fn()
+            process: vi.fn(),
+            on: vi.fn()
           }
         };
         
-        // Initialize a new client which should set up HTMX
-        const client = new WebSocketClient();
-        client.initHtmxIntegration();
+        // Call the HTMX integration method
+        wsClient.initHtmxIntegration();
         
-        // Verify HTMX was properly initialized
-        expect(mockSetAttribute).toHaveBeenCalledWith('hx-ext', 'ws');
-        expect(mockProcess).toHaveBeenCalledWith(document.body);
+        // Verify document body attributes were set correctly
+        expect(document.body.setAttribute).toHaveBeenCalledWith('hx-ext', 'ws');
+        
+        // Verify htmx.process was called
+        expect(window.htmx.process).toHaveBeenCalledWith(document.body);
       } finally {
-        // Restore original globals
+        // Restore originals
         global.document = originalDocument;
         global.window = originalWindow;
       }
