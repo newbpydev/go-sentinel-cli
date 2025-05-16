@@ -1,18 +1,25 @@
-# Go Sentinel Frontend JavaScript
+# Go Sentinel Frontend
 
-This directory contains the JavaScript code for the Go Sentinel frontend, which provides a lightweight, progressive enhancement layer on top of server-rendered HTML. The JavaScript is primarily used for testing and enhancing the user interface with interactive features.
+This directory contains the TypeScript/JavaScript code for the Go Sentinel frontend, which provides a lightweight, progressive enhancement layer on top of server-rendered HTML. The application is built with TypeScript for type safety and better developer experience.
 
 ## 🚀 Development Setup
 
 ### Prerequisites
 - Node.js 18.0.0+ (as specified in package.json)
 - pnpm 8.6.0+
+- TypeScript 5.0.0+
 
 ### Installation
 
 ```bash
 # Install dependencies
 pnpm install
+
+# Build the project
+pnpm build
+
+# Start development server
+pnpm dev
 ```
 
 ## 🧪 Testing
@@ -31,13 +38,17 @@ pnpm test:coverage
 
 # Run tests with UI
 pnpm test:ui
+
+# Run type checking
+pnpm type-check
 ```
 
 ### Test Structure
 
 Tests are located in the `test/` directory:
-- `test/setup.js` - Test setup and global configurations
-- `test/example.test.js` - Example test file
+- `test/setup.ts` - Test setup and global configurations
+- `test/**/*.test.ts` - Test files
+- `test/utils/` - Test utilities and helpers
 
 ## 🛠 Code Quality
 
@@ -50,6 +61,12 @@ pnpm lint
 pnpm lint:fix
 ```
 
+### Type Checking
+```bash
+# Check types
+pnpm type-check
+```
+
 ### Formatting
 ```bash
 # Format code
@@ -60,29 +77,41 @@ pnpm format
 
 ```
 web/static/js/
+├── src/                     # Source files
+│   ├── types/              # TypeScript type definitions
+│   │   ├── env.d.ts        # Environment variable types
+│   │   └── global.d.ts     # Global type declarations
+│   ├── utils/              # Utility functions
+│   │   └── example.ts      # Example utility module
+│   ├── main.ts             # Main application entry point
+│   └── ...
 ├── test/                   # Test files
-│   ├── example.test.js     # Example test file
-│   └── setup.js            # Test setup and configurations
-├── main.js                 # Main JavaScript file with core functionality
-├── coverage.js             # Coverage report handling
-├── settings.js             # Settings page functionality
-├── toast.js                # Toast notification system
+│   ├── setup.ts            # Test setup and configurations
+│   ├── utils/              # Test utilities
+│   └── **/*.test.ts        # Test files
+├── .vscode/                # VSCode settings
+│   ├── extensions.json     # Recommended extensions
+│   └── settings.json       # Workspace settings
 ├── .eslintrc.cjs           # ESLint configuration
 ├── .prettierrc             # Prettier configuration
 ├── package.json            # Project manifest
-└── vitest.config.js        # Vitest test runner configuration
+├── tsconfig.json           # TypeScript configuration
+├── tsconfig.test.json      # TypeScript test configuration
+└── vitest.config.ts        # Vitest test runner configuration
 ```
 
 ## 🧩 Key Features
 
 ### Core Functionality
+- Type-safe code with TypeScript
 - Mobile-responsive navigation
 - Test selection and management
 - WebSocket integration for real-time updates
 - Toast notifications
 
 ### Implementation Details
-- Vanilla JavaScript with modern ES6+ features
+- TypeScript for type safety
+- Vite for fast development and building
 - HTMX for progressive enhancement
 - Vitest for testing
 - ESLint and Prettier for code quality
@@ -90,15 +119,61 @@ web/static/js/
 ## 📝 Writing Tests
 
 ### Example Test
-```javascript
-import { describe, it, expect, beforeEach } from 'vitest';
-import { setupMobileMenu } from '../main.js';
+```typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { greet } from '../../src/utils/example';
 
-describe('Mobile Menu', () => {
-  beforeEach(() => {
-    document.body.innerHTML = `
-      <button class="mobile-menu-toggle">☰</button>
-      <nav class="main-nav">
+describe('greet', () => {
+  it('should return a greeting with the provided name', () => {
+    const name = 'John';
+    const result = greet(name);
+    expect(result).toBe(`Hello, ${name}! Welcome to Go Sentinel!`);
+  });
+
+  it('should throw an error if name is not provided', () => {
+    expect(() => greet('')).toThrow('Name is required');
+  });
+});
+```
+
+## 🔧 Development Workflow
+
+1. **Start the development server**:
+   ```bash
+   pnpm dev
+   ```
+
+2. **Run tests in watch mode**:
+   ```bash
+   pnpm test:watch
+   ```
+
+3. **Run type checking**:
+   ```bash
+   pnpm type-check
+   ```
+
+4. **Build for production**:
+   ```bash
+   pnpm build
+   ```
+
+## 🛡 Type Safety
+
+This project uses TypeScript for type safety. All new code should be written in TypeScript with proper type annotations. Use the following guidelines:
+
+- Always define types for function parameters and return values
+- Use interfaces for object shapes
+- Leverage TypeScript's utility types when appropriate
+- Avoid using `any` - prefer `unknown` or proper type definitions
+- Use type guards for runtime type checking
+
+## 📚 Resources
+
+- [TypeScript Documentation](https://www.typescriptlang.org/docs/)
+- [Vite Documentation](https://vitejs.dev/guide/)
+- [Vitest Documentation](https://vitest.dev/guide/)
+- [HTMX Documentation](https://htmx.org/docs/)
         <a href="/">Home</a>
       </nav>
     `;
