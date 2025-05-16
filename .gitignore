@@ -36,3 +36,6 @@ internal/api/server/swagger-ui.zip
 **/trace.zip
 **/screenshots/
 tmp/main.exe~
+
+# Node dependencies
+node_modules/
