@@ -9,6 +9,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom', // Use jsdom for browser-like environment
     setupFiles: './test/setup.js',
+    testTimeout: 10000, // 10 seconds
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
@@ -17,9 +18,13 @@ export default defineConfig({
         '**/test/**',
         '**/*.config.js',
       ],
+      all: true,
+      include: ['**/*.{js,jsx,ts,tsx}'],
     },
     // Watch mode is on by default for 'npm test', off for 'npm run test:coverage'
     watch: !process.env.CI,
+    include: ['**/*.test.js'],
+    exclude: ['**/node_modules/**', '**/dist/**'],
   },
   resolve: {
     alias: {

@@ -4,17 +4,17 @@ module.exports = {
     browser: true,
     es2021: true,
     node: true,
-    'vitest-globals/env': true,
   },
   extends: [
     'eslint:recommended',
-    'plugin:vitest/recommended',
+    'plugin:@vitest/recommended',
     'prettier', // Must be last in the list
   ],
   parserOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module',
   },
+  plugins: ['@vitest'],
   rules: {
     // Add custom rules here
     'no-console': 'warn',
@@ -24,7 +24,7 @@ module.exports = {
     {
       files: ['**/*.test.js'],
       env: {
-        'vitest-globals/env': true,
+        'vitest-globals': true,
       },
     },
   ],
