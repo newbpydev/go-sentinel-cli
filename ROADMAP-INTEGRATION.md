@@ -31,7 +31,7 @@ Go Sentinel Backend-Frontend Integration Roadmap
         [x] Create standardized message format for test events
         [x] Implement JSON marshaling/unmarshaling for WebSocket messages
         [x] Add proper error handling for malformed messages
-    [ ] 2.2. Real-Time Test Result Broadcasting
+    [x] 2.2. Real-Time Test Result Broadcasting
         [x] Write tests for test result broadcasting
         [x] Test: Verify new test results are broadcast to all connections
         [x] Test: Test proper client message routing
@@ -39,7 +39,7 @@ Go Sentinel Backend-Frontend Integration Roadmap
         [x] Implement test result broadcasting
         [x] Create broadcaster service in Go backend
         [x] Implement message routing by type
-        [ ] Add connection tracking and cleanup
+        [x] Add connection tracking and cleanup
     [ ] 2.3. Frontend Message Handling
         [ ] Write tests for frontend message processing
         [ ] Test: Verify HTMX properly processes incoming WebSocket messages
