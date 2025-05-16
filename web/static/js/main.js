@@ -3,6 +3,9 @@
  * Main JavaScript file
  */
 
+import { initWebSocket, webSocketClient } from './websocket.js';
+import { showToast } from './toast.js';
+
 document.addEventListener('DOMContentLoaded', function() {
     // Mobile menu toggle functionality
     setupMobileMenu();
@@ -10,8 +13,37 @@ document.addEventListener('DOMContentLoaded', function() {
     // Test selection functionality with enhanced features
     setupEnhancedTestSelection();
     
-    // Mock WebSocket connection for demo
-    setupMockWebSocket();
+    // Initialize WebSocket connection
+    const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    const host = window.location.host;
+    const wsUrl = `${protocol}${host}/ws`;
+    
+    try {
+        initWebSocket(wsUrl);
+        
+        // Set up WebSocket connection status indicator
+        const statusIndicator = document.querySelector('.status-indicator');
+        if (statusIndicator) {
+            webSocketClient.on('open', () => {
+                statusIndicator.className = 'status-indicator connected';
+                statusIndicator.textContent = 'Connected';
+                showToast('Connected to WebSocket server', 'success');
+            });
+            
+            webSocketClient.on('close', () => {
+                statusIndicator.className = 'status-indicator disconnected';
+                statusIndicator.textContent = 'Disconnected';
+            });
+            
+            webSocketClient.on('error', (error) => {
+                console.error('WebSocket error:', error);
+                showToast('WebSocket connection error', 'error');
+            });
+        }
+    } catch (error) {
+        console.error('Failed to initialize WebSocket:', error);
+        showToast('Failed to connect to WebSocket server', 'error');
+    }
 });
 
 /**
@@ -257,46 +289,21 @@ function setupEnhancedTestSelection() {
 
 /**
  * Sets up a mock WebSocket connection for demonstration
+ * This is kept for backward compatibility and testing
  */
 function setupMockWebSocket() {
-    // Update connection status to simulate connecting
+    console.warn('setupMockWebSocket is deprecated. Use the WebSocket client from websocket.js instead.');
+    
     const statusIndicator = document.querySelector('.status-indicator');
+    if (!statusIndicator) return;
+    
+    // Set initial state
+    statusIndicator.className = 'status-indicator connecting';
+    statusIndicator.textContent = 'Connecting...';
     
     // Simulate connection after a delay
     setTimeout(() => {
-        statusIndicator.classList.remove('connecting');
-        statusIndicator.classList.add('connected');
-        statusIndicator.textContent = 'Connected';
-        
-        // Register HTMX extension for WebSocket
-        document.body.setAttribute('hx-ext', 'ws');
-        
-        // Enable WebSocket endpoint with re-connect on page
-        document.body.setAttribute('ws-connect', '/ws');
-    }, 2000);
-    
-    // Simulate occasional disconnections for testing
-    setInterval(() => {
-        const random = Math.random();
-        
-        if (random < 0.1) { // 10% chance of disconnect
-            statusIndicator.classList.remove('connected');
-            statusIndicator.classList.add('disconnected');
-            statusIndicator.textContent = 'Disconnected';
-            
-            // Simulate reconnection attempt
-            setTimeout(() => {
-                statusIndicator.classList.remove('disconnected');
-                statusIndicator.classList.add('connecting');
-                statusIndicator.textContent = 'Reconnecting...';
-                
-                // Simulate successful reconnection
-                setTimeout(() => {
-                    statusIndicator.classList.remove('connecting');
-                    statusIndicator.classList.add('connected');
-                    statusIndicator.textContent = 'Connected';
-                }, 1500);
-            }, 1000);
-        }
-    }, 30000); // Check every 30 seconds
+        statusIndicator.className = 'status-indicator connected';
+        statusIndicator.textContent = 'Connected (Mock)';
+    }, 1500);
 }

@@ -1,99 +1,127 @@
 // Toast notification system for Go Sentinel
-// This script listens for HTMX events and creates toast notifications
+// This script provides toast notifications for both HTMX events and direct JS calls
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Create toast container if it doesn't exist
-    let toastContainer = document.getElementById('toast-container');
+// Create toast container if it doesn't exist
+let toastContainer;
+
+/**
+ * Show a toast notification
+ * @param {string} message - The message to display
+ * @param {string} [type='info'] - The type of toast (success, error, warning, info)
+ * @param {number} [timeout=3000] - Time in milliseconds before the toast auto-dismisses
+ */
+export function showToast(message, type = 'info', timeout = 3000) {
+    ensureToastContainer();
+    createToast(type, message, timeout);
+}
+
+/**
+ * Remove a toast with animation
+ * @param {HTMLElement} toast - The toast element to remove
+ */
+function removeToast(toast) {
+    if (!toast) return;
+    
+    toast.classList.remove('visible');
+    
+    // Remove from DOM after animation completes
+    setTimeout(() => {
+        if (toast && toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 300); // Match this to your CSS transition time
+}
+
+/**
+ * Create and show a toast notification
+ * @private
+ */
+function createToast(level, message, timeout = 3000) {
+    // Ensure container exists
+    const container = ensureToastContainer();
+    
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${level} visible`;
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    toast.setAttribute('aria-atomic', 'true');
+
+    // Create icon based on level
+    const icon = document.createElement('span');
+    icon.className = 'toast-icon';
+    switch (level) {
+        case 'success':
+            icon.innerHTML = '✓';
+            break;
+        case 'error':
+            icon.innerHTML = '✕';
+            break;
+        case 'warning':
+            icon.innerHTML = '⚠';
+            break;
+        case 'info':
+        default:
+            icon.innerHTML = 'ℹ';
+            break;
+    }
+    toast.appendChild(icon);
+
+    // Create message element
+    const messageEl = document.createElement('span');
+    messageEl.className = 'toast-message';
+    messageEl.textContent = message;
+    toast.appendChild(messageEl);
+
+    // Create close button
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'toast-close';
+    closeBtn.innerHTML = '&times;';
+    closeBtn.setAttribute('aria-label', 'Close notification');
+    closeBtn.onclick = () => removeToast(toast);
+    toast.appendChild(closeBtn);
+
+    // Add to container
+    container.appendChild(toast);
+
+    // Auto-remove after timeout if specified
+    if (timeout > 0) {
+        setTimeout(() => removeToast(toast), timeout);
+    }
+}
+
+/**
+ * Ensures the toast container exists in the DOM
+ * @returns {HTMLElement} The toast container element
+ */
+function ensureToastContainer() {
     if (!toastContainer) {
-        toastContainer = document.createElement('div');
-        toastContainer.id = 'toast-container';
-        document.body.appendChild(toastContainer);
+        toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toast-container';
+            document.body.appendChild(toastContainer);
+        }
     }
+    return toastContainer;
+}
 
+// Initialize the toast system when the DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    ensureToastContainer();
+    
     // Listen for showToast events from HTMX
-    document.body.addEventListener('showToast', function(event) {
-        const toast = event.detail;
-        createToast(toast.level, toast.message, toast.timeout);
+    document.body.addEventListener('showToast', (event) => {
+        const { level, message, timeout } = event.detail;
+        createToast(level, message, timeout);
     });
-
-    // Create and show a toast notification
-    function createToast(level, message, timeout = 3000) {
-        // Create toast element
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${level}`;
-        toast.setAttribute('role', 'alert');
-        toast.setAttribute('aria-live', 'assertive');
-        toast.setAttribute('aria-atomic', 'true');
-
-        // Create icon based on level
-        const icon = document.createElement('span');
-        icon.className = 'toast-icon';
-        switch (level) {
-            case 'success':
-                icon.innerHTML = '✓';
-                break;
-            case 'error':
-                icon.innerHTML = '✕';
-                break;
-            case 'warning':
-                icon.innerHTML = '⚠';
-                break;
-            case 'info':
-            default:
-                icon.innerHTML = 'ℹ';
-                break;
-        }
-        toast.appendChild(icon);
-
-        // Create message element
-        const messageEl = document.createElement('span');
-        messageEl.className = 'toast-message';
-        messageEl.textContent = message;
-        toast.appendChild(messageEl);
-
-        // Create close button
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'toast-close';
-        closeBtn.innerHTML = '&times;';
-        closeBtn.setAttribute('aria-label', 'Close notification');
-        closeBtn.onclick = function() {
-            removeToast(toast);
-        };
-        toast.appendChild(closeBtn);
-
-        // Add to container
-        toastContainer.appendChild(toast);
-
-        // Add visible class after a small delay (for animation)
-        setTimeout(() => {
-            toast.classList.add('visible');
-        }, 10);
-
-        // Auto-remove after timeout
-        if (timeout > 0) {
-            setTimeout(() => {
-                removeToast(toast);
-            }, timeout);
-        }
-    }
-
-    // Remove a toast with animation
-    function removeToast(toast) {
-        toast.classList.remove('visible');
-        
-        // Remove from DOM after animation completes
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.parentNode.removeChild(toast);
-            }
-        }, 300); // Match this to your CSS transition time
-    }
-
-    // Helper functions that can be called from anywhere
-    window.toast = {
-        success: (message, timeout = 3000) => createToast('success', message, timeout),
-        error: (message, timeout = 5000) => createToast('error', message, timeout),
-        warning: (message, timeout = 4000) => createToast('warning', message, timeout),
-        info: (message, timeout = 3000) => createToast('info', message, timeout)
-    };
 });
+
+// Global toast functions for backward compatibility
+if (typeof window !== 'undefined') {
+    window.toast = window.toast || {};
+    window.toast.success = (message, timeout = 3000) => showToast(message, 'success', timeout);
+    window.toast.error = (message, timeout = 5000) => showToast(message, 'error', timeout);
+    window.toast.warning = (message, timeout = 4000) => showToast(message, 'warning', timeout);
+    window.toast.info = (message, timeout = 3000) => showToast(message, 'info', timeout);
+}
