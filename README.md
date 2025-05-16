@@ -1,62 +1,216 @@
-# ![logo](web/static/images/logo-wh-md-trans.png)
+<div align="center">
+  <h1>Go Sentinel</h1>
+  <p>
+    <strong>Accelerate your Go test-driven development workflow with real-time feedback</strong>
+  </p>
+  <p>
+    <a href="https://github.com/yourusername/go-sentinel/actions">
+      <img src="https://github.com/yourusername/go-sentinel/actions/workflows/test.yml/badge.svg" alt="Build Status">
+    </a>
+    <a href="https://goreportcard.com/report/github.com/yourusername/go-sentinel">
+      <img src="https://goreportcard.com/badge/github.com/yourusername/go-sentinel" alt="Go Report Card">
+    </a>
+    <a href="https://pkg.go.dev/github.com/yourusername/go-sentinel">
+      <img src="https://pkg.go.dev/badge/github.com/yourusername/go-sentinel" alt="Go Reference">
+    </a>
+    <a href="LICENSE">
+      <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT">
+    </a>
+  </p>
+</div>
 
-Go Sentinel is an open source, Go-native CLI utility that supercharges your test-driven development (TDD) workflow by automatically watching your Go source files, rerunning tests on changes, and presenting concise, actionable feedback in your terminal. Built with concurrency and resilience at its core, Go Sentinel helps you keep your TDD flow uninterrupted and productive.
+## 🚀 Overview
 
-## What Problem Does Go Sentinel Solve?
+Go Sentinel is an open-source, Go-native CLI utility that supercharges your test-driven development (TDD) workflow. It automatically watches your Go source files, reruns tests on changes, and presents concise, actionable feedback in your terminal. Built with concurrency and resilience at its core, Go Sentinel helps you maintain an uninterrupted TDD flow.
 
-Manual test execution slows down TDD and feedback loops. Existing tools are often language-agnostic, slow, or lack Go-native ergonomics. Go Sentinel solves this by:
-- **Automatically detecting file changes** in your Go project (excluding vendor and generated files)
-- **Debouncing rapid events** to avoid redundant test runs
-- **Running `go test -json`** per package for accurate, real-time results
-- **Parsing and summarizing test output** with color-coded, human-friendly CLI feedback
-- **Providing keyboard shortcuts** for rerun, filtering failures, and quitting
-- **Ensuring stability** with robust error handling and structured logging
+## ✨ Features
 
-## Key Features
-- Fast, recursive file watching using [fsnotify](https://github.com/fsnotify/fsnotify) (Go 1.17+)
-- Intelligent debouncing that coalesces rapid events per package (~100ms quiet period)
-- Real-time, colored summary with test durations and contextual error information
-- Robust timeout and deadlock protection:
-  - Automatic test timeouts with configurable duration (default: 2m)
-  - Context-based cancellation for graceful termination
-  - Deadlock detection and meaningful error reporting
-  - Inactivity monitoring to detect and report hanging tests
-- Minimal, intuitive keybindings (Enter: rerun tests, f: filter failures only, c/C: copy test information, q: quit)
-- Structured logging with [zap](https://github.com/uber-go/zap) for reliable diagnostics
-- Resilient architecture: pipeline pattern with panic recovery in each goroutine
-- Configurable via CLI flags and/or `watcher.yaml` file
-- Extensible plugin architecture for custom integrations (planned)
-- Test reruns at package or individual test level (future versions)
+- **Real-time Test Execution**: Automatically runs tests when files change
+- **Smart Debouncing**: Coalesces rapid file system events to prevent redundant test runs
+- **Rich Terminal UI**: Color-coded output with clear pass/fail indicators
+- **Interactive Controls**:
+  - `Enter`: Rerun all tests
+  - `f`: Filter to show only failing tests
+  - `c/C`: Copy test information (current/all failures)
+  - `q`: Quit the application
+- **Robust Error Handling**:
+  - Automatic test timeouts (configurable, default: 2m)
+  - Deadlock detection and reporting
+  - Structured logging for debugging
+- **Modern Tech Stack**:
+  - Built with Go 1.17+
+  - Uses [fsnotify](https://github.com/fsnotify/fsnotify) for efficient file watching
+  - [zap](https://github.com/uber-go/zap) for high-performance structured logging
 
-## Project Structure
+## 🏗️ Project Structure
 
 ```
 /go-sentinel
+├── cmd/                  # Command-line applications
+│   ├── go-sentinel-api/  # Web API server with WebSocket support
+│   └── go-sentinel-web/  # Web interface server
 │
-├── cmd/
-│   ├── go-sentinel/         # CLI entrypoint (flag parsing, setup)
-│   └── go-sentinel-api/     # API server entrypoint (for web/frontend integration)
+├── internal/           # Private application code
+│   ├── api/             # API server implementation
+│   ├── config/          # Configuration management
+│   ├── debouncer/       # Event debouncing logic
+│   ├── event/           # Event types and handling
+│   ├── parser/          # Test output parsing
+│   ├── runner/          # Test execution
+│   ├── watcher/         # File system watching
+│   └── web/             # Web interface implementation
 │
-├── internal/
-│   ├── api/                 # API server, OpenAPI config, handlers
-│   ├── watcher/             # fsnotify logic, recursive directory watching
-│   ├── debouncer/           # Event debouncing to coalesce rapid changes
-│   ├── runner/              # Executes go test -json, streams output
-│   ├── parser/              # Parses JSON stream into test results
-│   ├── ui/                  # Rendering logic, key handling
-│   ├── config/              # Configuration management
-│   └── event/               # Event types shared across packages
+├── web/                # Web interface assets
+│   ├── static/          # Static assets
+│   │   ├── css/         # Stylesheets
+│   │   ├── images/      # Image assets
+│   │   └── js/          # JavaScript files
+│   └── templates/       # Server-side templates
+│       ├── layouts/     # Base templates
+│       ├── pages/       # Page-specific templates
+│       └── partials/    # Reusable template components
 │
-├── docs/
-│   ├── RESEARCH.md          # High-level & detailed design, rationale, technical notes
-│   └── assets/              # Architecture diagrams and images
+├── docs/               # Project documentation
+│   ├── assets/          # Documentation assets
+│   ├── COVERAGE.md      # Test coverage information
+│   ├── IMPLEMENTATION_PLAN.md
+│   ├── RESEARCH-API.md
+│   └── RESEARCH.md
 │
-├── README.md                # This file
-├── ROADMAP.md               # Development roadmap and task tracking
-└── LICENSE                  # MIT License
+├── .github/            # GitHub configurations
+├── testdata/            # Test fixtures and data
+├── CHANGELOG.md         # Release history
+├── CHANGES.md           # Detailed change log
+├── go.mod               # Go module definition
+├── go.sum               # Go module checksums
+├── LICENSE              # MIT License
+├── README.md            # This file
+├── ROADMAP.md           # Main project roadmap
+├── ROADMAP-API.md       # API development roadmap
+├── ROADMAP-FRONTEND.md  # Frontend development roadmap
+└── ROADMAP-INTEGRATION.md # Integration roadmap
 ```
 
-> **Note:** The package structure follows Go best practices with clear separation of concerns.
+## 📦 Installation
+
+### Prerequisites
+- Go 1.17 or higher
+- Git
+
+### Using Go Install
+```bash
+go install github.com/yourusername/go-sentinel/cmd/go-sentinel@latest
+```
+
+### Building from Source
+```bash
+git clone https://github.com/yourusername/go-sentinel.git
+cd go-sentinel
+make build
+```
+
+## 🚦 Quick Start
+
+1. Navigate to your Go project directory
+2. Run:
+   ```bash
+   go-sentinel
+   ```
+3. Start editing your files - tests will run automatically on save
+
+## ⚙️ Configuration
+
+Create a `watcher.yaml` file in your project root:
+
+```yaml
+# Default configuration for Go Sentinel
+watch:
+  # Directories to watch (default: ["."])
+  dirs: ["."]
+  
+  # File patterns to include (default: ["*.go"])
+  include: ["*.go"]
+  
+  # Directories to exclude (default: ["vendor", ".git"])
+  exclude: ["vendor", ".git"]
+  
+  # Debounce interval in milliseconds (default: 100)
+  debounce: 100
+
+test:
+  # Test timeout duration (default: 2m)
+  timeout: 2m
+  
+  # Enable/disable test caching (default: true)
+  cache: true
+  
+  # Additional go test flags
+  args: ["-v", "-race"]
+
+log:
+  # Log level (debug, info, warn, error)
+  level: "info"
+  
+  # Log format (console, json)
+  format: "console"
+```
+
+## 📚 Documentation
+
+- [Getting Started](docs/getting-started.md)
+- [Configuration Guide](docs/configuration.md)
+- [Development Guide](docs/development.md)
+- [API Reference](docs/api.md)
+
+## 🤝 Contributing
+
+Go Sentinel is an open source project and welcomes contributions! To get involved:
+- **Read the [docs/RESEARCH.md](docs/RESEARCH.md)** for design context and technical approach
+- **Open issues** for bugs, feature requests, or questions
+- **Submit pull requests** with clear descriptions and tests
+- **Follow Go best practices** for code style and documentation
+- **Add/update tests** for any code changes
+- **Document public flags and configuration**
+- **Use semantic versioning** ([semver.org](https://semver.org/))
+
+### Development Best Practices
+- Always provide `--help` and `--version` flags
+- Document all public flags and configuration files
+- Use clear, predictable exit codes
+- Prefer human-friendly output by default, but support machine-readable formats (e.g., JSON)
+- Keep output concise and support color toggling for accessibility
+- Follow [CLI best practices](https://github.com/arturtamborski/cli-best-practices)
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Inspired by [modd](https://github.com/cortesi/modd) and [reflex](https://github.com/cespare/reflex)
+- Built with [cobra](https://github.com/spf13/cobra) and [viper](https://github.com/spf13/viper)
+- Uses [bubbletea](https://github.com/charmbracelet/bubbletea) for TUI
+- Uses [fsnotify](https://github.com/fsnotify/fsnotify), [zap](https://github.com/uber-go/zap), and other open source libraries
+
+---
+
+<div align="center">
+  Made with ❤️ by the Go Sentinel Team
+</div>
+
+## Development Roadmap
+
+Our detailed [ROADMAP.md](ROADMAP.md) outlines the full development plan in phases:
+
+1. **Project & Environment Setup** - Git, package structure, CI/CD
+2. **Core File Watcher & Debouncer** - fsnotify integration, event coalescing
+3. **Test Runner & Output Parser** - JSON stream processing, structured results
+4. **Interactive CLI UI & Controller** - ANSI color, keybindings, code context
+5. **Concurrency & Resilience** - Pipeline pattern, panic recovery
+6. **Configuration & Validation** - CLI flags, config file support
+7. **Extensibility & Integrations** - Plugins, per-test reruns, coverage tools
+8. **Documentation, Packaging, Release** - Binaries, installation
+9. **Maintenance & Community** - Issue triage, continuous improvement
 
 ## Automatic Server Restart with air
 
@@ -185,49 +339,3 @@ verbosity: info
 - `q`: Quit the watcher
 
 See `go-sentinel --help` for all options.
-
-## Open Source & Contribution Guidelines
-Go Sentinel is an open source project and welcomes contributions! To get involved:
-- **Read the [docs/RESEARCH.md](docs/RESEARCH.md)** for design context and technical approach
-- **Open issues** for bugs, feature requests, or questions
-- **Submit pull requests** with clear descriptions and tests
-- **Follow Go best practices** for code style and documentation
-- **Add/update tests** for any code changes
-- **Document public flags and configuration**
-- **Use semantic versioning** ([semver.org](https://semver.org/))
-
-## Best Practices (from the Community)
-- Always provide `--help` and `--version` flags
-- Document all public flags and configuration files
-- Use clear, predictable exit codes
-- Prefer human-friendly output by default, but support machine-readable formats (e.g., JSON)
-- Keep output concise and support color toggling for accessibility
-- Support easy updates (planned: `go-sentinel update`)
-- Follow [CLI best practices](https://github.com/arturtamborski/cli-best-practices)
-
-## License
-MIT License. See [LICENSE](LICENSE) for details.
-
-## Acknowledgments
-- Inspired by Go TDD workflows and community feedback
-- Uses [fsnotify](https://github.com/fsnotify/fsnotify), [zap](https://github.com/uber-go/zap), and other open source libraries
-
-## Development Roadmap
-
-Our detailed [ROADMAP.md](ROADMAP.md) outlines the full development plan in phases:
-
-1. **Project & Environment Setup** - Git, package structure, CI/CD
-2. **Core File Watcher & Debouncer** - fsnotify integration, event coalescing
-3. **Test Runner & Output Parser** - JSON stream processing, structured results
-4. **Interactive CLI UI & Controller** - ANSI color, keybindings, code context
-5. **Concurrency & Resilience** - Pipeline pattern, panic recovery
-6. **Configuration & Validation** - CLI flags, config file support
-7. **Extensibility & Integrations** - Plugins, per-test reruns, coverage tools
-8. **Documentation, Packaging, Release** - Binaries, installation
-9. **Maintenance & Community** - Issue triage, continuous improvement
-
-We follow strict Test-Driven Development throughout all phases.
-
----
-
-For detailed design, see [`docs/RESEARCH.md`](docs/RESEARCH.md). Contributions and feedback are welcome!
