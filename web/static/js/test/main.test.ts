@@ -139,7 +139,7 @@ describe('Main Interface', () => {
         selectionState.active = force !== undefined ? force : !selectionState.active;
         // (simulate DOM/UI updates as needed for your tests)
       },
-      toggleTestSelection: (id: string, multiSelect?: boolean) => {
+      toggleTestSelection: (_id: string, _multiSelect?: boolean) => {
         // Simulate selection logic for test items
         // (implement as needed for your tests)
       },
