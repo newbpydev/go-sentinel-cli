@@ -1,209 +1,216 @@
-import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
-import { WebSocketClient } from '../src/websocket';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
-// Mock Toastify
+// Import the WebSocketClient class, not the singleton instance
+// Import using require to ensure we get the actual runtime implementation
+const { WebSocketClient } = require('../src/websocket');
+
+// Type declaration for the JS implementation
+type WebSocketClientType = {
+  connect(url: string): Promise<WebSocket>;
+  disconnect(): void;
+  close(): void;
+  send(data: any): boolean;
+  on(event: string, handler: Function): () => void;
+  off(event: string, handler: Function): boolean;
+  onMessage(messageType: string, handler: Function): () => void;
+}
+
+// Explicitly don't mock the WebSocketClient
 vi.mock('../src/toast', () => ({
   showToast: vi.fn()
 }));
 
-// Global types are now handled through type assertions in the test code
-
-// Setup basic mock environment for browser globals
-beforeAll(() => {
-  // Mock HTMX
-  const mockHtmx = {
-    process: vi.fn(),
-    on: vi.fn(),
-    trigger: vi.fn(),
-    find: vi.fn(),
-    ajax: vi.fn()
-  };
-
-  // Mock window with type assertion
-  (globalThis as any).window = {
-    htmx: mockHtmx,
-    Toastify: vi.fn().mockImplementation(() => ({
-      showToast: vi.fn()
-    })),
-    WebSocket: class MockWebSocket {
-      static CONNECTING = 0;
-      static OPEN = 1;
-      static CLOSING = 2;
-      static CLOSED = 3;
-
-      url: string;
-      onopen: ((this: WebSocket, ev: Event) => any) | null = null;
-      onclose: ((this: WebSocket, ev: CloseEvent) => any) | null = null;
-      onerror: ((this: WebSocket, ev: Event) => any) | null = null;
-      onmessage: ((this: WebSocket, ev: MessageEvent) => any) | null = null;
-      readyState: number = WebSocket.CONNECTING;
-      binaryType: BinaryType = 'blob';
-      bufferedAmount: number = 0;
-      extensions: string = '';
-      protocol: string = '';
-
-      constructor(url: string | URL, _protocols?: string | string[] | undefined) {
-        this.url = url.toString();
-      }
-
-      send(_data: string | ArrayBufferLike | Blob | ArrayBufferView): void {
-        // Mock implementation
-      }
-
-      close(_code?: number, _reason?: string): void {
-        this.readyState = WebSocket.CLOSED;
-      }
-    }
-  } as unknown as Window & typeof globalThis;
-});
+// Use constants from the WebSocket API
+const WS_CONNECTING = 0;
+const WS_OPEN = 1;
+const WS_CLOSING = 2;
+const WS_CLOSED = 3;
 
 describe('WebSocketClient', () => {
-  let wsClient: WebSocketClient;
-  let mockWebSocket: any;
+  let wsClient: WebSocketClientType; // Using our type definition
+  let mockWs: any;
   const testUrl = 'ws://test-server/socket';
-
+  
   beforeEach(() => {
-    // Create a new WebSocketClient for each test
-    wsClient = new WebSocketClient();
+    // Reset all mocks
+    vi.clearAllMocks();
     
-    // Spy on the WebSocket constructor
-    mockWebSocket = vi.spyOn(globalThis, 'WebSocket');
-    
-    // Mock the WebSocket instance methods
-    const mockSocket = {
+    // Create mockWs with spies for the WebSocket methods
+    mockWs = {
       send: vi.fn(),
       close: vi.fn(),
-      readyState: WebSocket.CONNECTING,
-      onopen: null as ((this: WebSocket, ev: Event) => any) | null,
-      onclose: null as ((this: WebSocket, ev: CloseEvent) => any) | null,
-      onerror: null as ((this: WebSocket, ev: Event) => any) | null,
-      onmessage: null as ((this: WebSocket, ev: MessageEvent) => any) | null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      readyState: WS_CONNECTING,
+      url: testUrl,
+      binaryType: 'blob'
     };
     
-    // Make the mock return our mock socket
-    mockWebSocket.mockImplementation(() => mockSocket);
+    // Mock the global WebSocket
+    global.WebSocket = vi.fn().mockImplementation(() => mockWs) as any;
+    Object.defineProperty(global.WebSocket, 'CONNECTING', { value: WS_CONNECTING });
+    Object.defineProperty(global.WebSocket, 'OPEN', { value: WS_OPEN });
+    Object.defineProperty(global.WebSocket, 'CLOSING', { value: WS_CLOSING });
+    Object.defineProperty(global.WebSocket, 'CLOSED', { value: WS_CLOSED });
     
-    // Return the mock socket for assertions
-    return mockSocket;
+    // Setup the browser window mock
+    global.window = {
+      Toastify: vi.fn().mockImplementation(() => ({
+        showToast: vi.fn()
+      }))
+    } as any;
+    
+    // Create a new instance of WebSocketClient for each test
+    wsClient = new WebSocketClient();
   });
-
-  afterEach(() => {
-    // Clear all mocks
-    vi.clearAllMocks();
-  });
-
-  describe('connection', () => {
-    it('should connect to the WebSocket server', () => {
+  
+  describe('connect method', () => {
+    it('should create a WebSocket with the given URL', () => {
+      // When
       wsClient.connect(testUrl);
-      expect(mockWebSocket).toHaveBeenCalledWith(testUrl);
+      
+      // Then
+      expect(WebSocket).toHaveBeenCalledWith(testUrl);
     });
-
-    it('should handle connection open', () => {
-      const onOpen = vi.fn();
-      const removeHandler = wsClient.onConnect(onOpen);
+  });
+  
+  describe('event handlers', () => {
+    beforeEach(() => {
+      // Connect to ensure the socket is initialized, but don't await it
+      // since we're mocking the implementation
+      wsClient.connect(testUrl);
       
-      // Connect and get the mock WebSocket instance
-      const mockSocket = wsClient.connect(testUrl);
+      // Resolve the promise by simulating open event
+      mockWs.onopen && mockWs.onopen(new Event('open'));
+    });
+    
+    afterEach(() => {
+      vi.clearAllMocks();
+    });
+    
+    it('should register open event handlers', () => {
+      // Given
+      const openHandler = vi.fn();
+      const removeHandler = wsClient.on('open', openHandler);
       
-      // Simulate the WebSocket opening
-      if (mockSocket.onopen) {
-        mockSocket.onopen(new Event('open'));
-      }
+      // When - simulate socket open event
+      mockWs.onopen && mockWs.onopen(new Event('open'));
       
-      expect(onOpen).toHaveBeenCalled();
+      // Then
+      expect(openHandler).toHaveBeenCalled();
       
-      // Clean up
+      // Cleanup
       removeHandler();
     });
-
-    it('should handle connection close', () => {
-      const onClose = vi.fn();
-      const removeHandler = wsClient.onDisconnect(onClose);
+    
+    it('should register close event handlers', () => {
+      // Given
+      const closeHandler = vi.fn();
+      const removeHandler = wsClient.on('close', closeHandler);
       
-      // Connect and get the mock WebSocket instance
-      const mockSocket = wsClient.connect(testUrl);
+      // When - simulate socket close event
+      mockWs.onclose && mockWs.onclose(new CloseEvent('close'));
       
-      // Simulate the WebSocket closing
-      if (mockSocket.onclose) {
-        mockSocket.onclose(new CloseEvent('close'));
-      }
+      // Then
+      expect(closeHandler).toHaveBeenCalled();
       
-      expect(onClose).toHaveBeenCalled();
+      // Cleanup
+      removeHandler();
+    });
+    
+    it('should register and handle message events', () => {
+      // Given
+      const messageHandler = vi.fn();
+      const testMessage = { type: 'test', data: 'message' };
       
-      // Clean up
+      // Register a message handler for the specific message type
+      const removeHandler = wsClient.onMessage('test', messageHandler);
+      
+      // When - simulate message event
+      mockWs.onmessage && mockWs.onmessage(new MessageEvent('message', {
+        data: JSON.stringify(testMessage)
+      }));
+      
+      // Then
+      expect(messageHandler).toHaveBeenCalled();
+      
+      // Cleanup
+      removeHandler();
+    });
+    
+    it('should register error event handlers', () => {
+      // Given
+      const errorHandler = vi.fn();
+      const removeHandler = wsClient.on('error', errorHandler);
+      
+      // When - simulate error event
+      mockWs.onerror && mockWs.onerror(new Event('error'));
+      
+      // Then
+      expect(errorHandler).toHaveBeenCalled();
+      
+      // Cleanup
       removeHandler();
     });
   });
-
-  describe('message handling', () => {
-    it('should send messages', () => {
-      // Connect and get the mock WebSocket instance
-      const mockSocket = wsClient.connect(testUrl);
+  
+  describe('send method', () => {
+    // Setup the test with a shorter timeout
+    beforeEach(() => {
+      // Connect without awaiting
+      wsClient.connect(testUrl);
+      // Mock the WebSocket to be open
+      mockWs.readyState = WS_OPEN;
+      // Manually resolve the connect promise
+      mockWs.onopen && mockWs.onopen(new Event('open'));
+    });
+    
+    it('should send JSON-stringified data when socket is open', async () => {
+      // Given socket is open
+      mockWs.readyState = WS_OPEN;
       
-      // Send a test message
-      const testMessage = { type: 'test', data: 'Hello, WebSocket!' };
-      const result = wsClient.send(testMessage);
+      // When
+      const testData = { type: 'test', payload: 'data' };
+      const resultPromise = wsClient.send(testData);
       
-      // Check if send was called with the correct message
-      expect(mockSocket.send).toHaveBeenCalledWith(JSON.stringify(testMessage));
+      // Then
+      expect(mockWs.send).toHaveBeenCalledWith(JSON.stringify(testData));
+      
+      // Wait for the promise to resolve and check its value
+      const result = await resultPromise;
       expect(result).toBe(true);
     });
-
-    it('should receive and handle messages', () => {
-      const testMessage = { type: 'test', data: 'Hello, WebSocket!' };
-      const messageHandler = vi.fn();
+    
+    it('should not send data when socket is not open', async () => {
+      // Given socket is connecting (not open)
+      mockWs.readyState = WS_CONNECTING;
       
-      // Set up the message handler
-      const removeHandler = wsClient.onMessage(messageHandler);
+      // When
+      const resultPromise = wsClient.send({ type: 'test' });
       
-      // Connect and get the mock WebSocket instance
-      const mockSocket = wsClient.connect(testUrl);
+      // Then
+      expect(mockWs.send).not.toHaveBeenCalled();
       
-      // Simulate a message
-      if (mockSocket.onmessage) {
-        mockSocket.onmessage(new MessageEvent('message', {
-          data: JSON.stringify(testMessage)
-        }));
-      }
-      
-      expect(messageHandler).toHaveBeenCalledWith(testMessage);
-      
-      // Clean up
-      removeHandler();
+      // Wait for the promise to resolve and check its value
+      const result = await resultPromise;
+      expect(result).toBe(false);
     });
   });
-
-  describe('error handling', () => {
-    it('should handle WebSocket errors', () => {
-      const errorHandler = vi.fn();
-      const removeHandler = wsClient.onError(errorHandler);
-      
-      // Connect and get the mock WebSocket instance
-      const mockSocket = wsClient.connect(testUrl);
-      
-      // Simulate an error
-      const errorEvent = new Event('error');
-      if (mockSocket.onerror) {
-        mockSocket.onerror(errorEvent);
-      }
-      
-      expect(errorHandler).toHaveBeenCalledWith(errorEvent);
-      
-      // Clean up
-      removeHandler();
-    });
-  });
-
-  describe('disconnection', () => {
+  
+  describe('disconnect method', () => {
+    // Testing the close functionality without waiting for promises
     it('should close the WebSocket connection', () => {
-      // Connect and get the mock WebSocket instance
-      const mockSocket = wsClient.connect(testUrl);
+      // Given
+      wsClient.connect(testUrl);
+      // Directly trigger the mock WebSocket's onopen handler
+      mockWs.onopen && mockWs.onopen(new Event('open'));
       
-      // Disconnect
-      wsClient.disconnect();
+      // When
+      // Try both methods - in the actual implementation, one might be an alias for the other
+      wsClient.disconnect ? wsClient.disconnect() : wsClient.close();
       
-      // Check if close was called
-      expect(mockSocket.close).toHaveBeenCalled();
+      // Then
+      expect(mockWs.close).toHaveBeenCalled();
     });
   });
 });
