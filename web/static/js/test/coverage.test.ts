@@ -257,7 +257,7 @@ describe('Coverage Visualization', () => {
       // Add some file rows for testing
       const fileList = document.getElementById('coverage-file-list');
       if (!fileList) {
-        fail('Coverage file list element not found');
+        throw new Error('Coverage file list element not found');
         return;
       }
       
@@ -393,7 +393,7 @@ describe('Coverage Visualization', () => {
       // Make sure we have a row before accessing properties
       const firstRow = rows?.[0];
       if (!firstRow) {
-        fail('Expected to find a row in the file list');
+        throw new Error('Expected to find a row in the file list');
         return;
       }
       

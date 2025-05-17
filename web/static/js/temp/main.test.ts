@@ -32,9 +32,6 @@ describe('Main Interface', () => {
   };
   
   beforeEach(() => {
-    vi.useFakeTimers();
-    // Setup fake timers
-    vi.useFakeTimers();
     // Create mock DOM elements
     document.body.innerHTML = `
       <div class="status-indicator"></div>
@@ -55,48 +52,6 @@ describe('Main Interface', () => {
       
       <div class="test-actions"></div>
     `;
-    
-    // Setup mobile menu toggle functionality
-    const menuToggle = document.getElementById('mobile-menu-toggle');
-    const menu = document.getElementById('main-menu');
-    
-    if (menuToggle && menu) {
-      menuToggle.addEventListener('click', () => {
-        const isExpanded = menuToggle.getAttribute('aria-expanded') === 'true';
-        menuToggle.setAttribute('aria-expanded', (!isExpanded).toString());
-        menu.classList.toggle('show');
-        
-        // Update icon
-        const icon = menuToggle.querySelector('i');
-        if (icon) {
-          if (isExpanded) {
-            icon.className = 'icon-menu';
-            icon.setAttribute('aria-label', 'Open menu');
-          } else {
-            icon.className = 'icon-x';
-            icon.setAttribute('aria-label', 'Close menu');
-          }
-        }
-      });
-      
-      // Close menu when clicking outside
-      document.addEventListener('click', (event) => {
-        const target = event.target as Node;
-        if (menu.classList.contains('show') && 
-            !menu.contains(target) && 
-            !menuToggle.contains(target)) {
-          menu.classList.remove('show');
-          menuToggle.setAttribute('aria-expanded', 'false');
-          
-          // Reset icon
-          const icon = menuToggle.querySelector('i');
-          if (icon) {
-            icon.className = 'icon-menu';
-            icon.setAttribute('aria-label', 'Open menu');
-          }
-        }
-      });
-    }
     
     // Mock clipboard API
     Object.defineProperty(navigator, 'clipboard', {
@@ -122,40 +77,18 @@ describe('Main Interface', () => {
       selectionBtn.className = 'btn btn-sm btn-outline';
       selectionBtn.innerHTML = '<i class="icon-check-square"></i> Select';
       selectionBtn.setAttribute('title', 'Enter selection mode (c)');
+      selectionBtn.addEventListener('click', () => toggleSelectionMode(true));
       
       // Copy all failing tests button
       const copyFailingBtn = document.createElement('button');
       copyFailingBtn.className = 'btn btn-sm btn-outline';
       copyFailingBtn.innerHTML = '<i class="icon-clipboard"></i> Copy Failing';
       copyFailingBtn.setAttribute('title', 'Copy all failing tests (C)');
+      copyFailingBtn.addEventListener('click', copyAllFailingTests);
       
       actionBar.appendChild(selectionBtn);
       actionBar.appendChild(copyFailingBtn);
     }
-    
-    // Setup test helpers
-    testHelpers = {
-      toggleSelectionMode: (force?: boolean): void => {
-        selectionState.active = force !== undefined ? force : !selectionState.active;
-        // (simulate DOM/UI updates as needed for your tests)
-      },
-      toggleTestSelection: (id: string, multiSelect?: boolean) => {
-        // Simulate selection logic for test items
-        // (implement as needed for your tests)
-      },
-      selectAllVisibleTests: () => {
-        // Simulate select all logic
-        // (implement as needed for your tests)
-      },
-      copySelectedTestIds: () => {
-        // Simulate copying selected test IDs
-        // (implement as needed for your tests)
-      },
-      copyAllFailingTests: () => {
-        // Simulate copying all failing test IDs
-        // (implement as needed for your tests)
-      }
-    };
     
     // Toggle selection mode
     function toggleSelectionMode(force?: boolean): void {
@@ -364,60 +297,59 @@ describe('Main Interface', () => {
       copySelectedTestIds,
       copyAllFailingTests
     };
-
-    // Now that testHelpers is initialized, attach listeners
-    const ab = document.querySelector('.test-actions');
-    if (ab) {
-      const buttons = ab.querySelectorAll('button');
-      if (buttons.length >= 2) {
-        buttons[0].addEventListener('click', () => testHelpers.toggleSelectionMode(true));
-        buttons[1].addEventListener('click', () => testHelpers.copyAllFailingTests());
-      }
-    }
+    
+    // Dispatch DOMContentLoaded to initialize
+    document.dispatchEvent(new Event('DOMContentLoaded'));
   });
   
   afterEach(() => {
-    vi.useRealTimers();
+    // Clean up DOM
+    document.body.innerHTML = '';
+    
+    // Reset mocks
+    vi.clearAllMocks();
   });
   
-  it('should toggle mobile menu', () => {
-    // Given
-    const menuToggle = document.getElementById('mobile-menu-toggle') as HTMLButtonElement;
-    const menu = document.getElementById('main-menu') as HTMLElement;
+  describe('Mobile Menu', () => {
+    it('should toggle menu when mobile menu button is clicked', () => {
+      // Given
+      const menuToggle = document.getElementById('mobile-menu-toggle') as HTMLButtonElement;
+      const menu = document.getElementById('main-menu') as HTMLElement;
+      
+      // Initial state
+      expect(menuToggle.getAttribute('aria-expanded')).toBe('false');
+      expect(menu.classList.contains('show')).toBe(false);
+      
+      // When
+      menuToggle.click();
+      
+      // Then
+      expect(menuToggle.getAttribute('aria-expanded')).toBe('true');
+      expect(menu.classList.contains('show')).toBe(true);
+      
+      // Toggle back
+      menuToggle.click();
+      
+      // Then
+      expect(menuToggle.getAttribute('aria-expanded')).toBe('false');
+      expect(menu.classList.contains('show')).toBe(false);
+    });
     
-    // Initial state
-    expect(menuToggle.getAttribute('aria-expanded')).toBe('false');
-    expect(menu.classList.contains('show')).toBe(false);
-    
-    // When
-    menuToggle.click();
-    
-    // Then
-    expect(menuToggle.getAttribute('aria-expanded')).toBe('true');
-    expect(menu.classList.contains('show')).toBe(true);
-    
-    // Toggle back
-    menuToggle.click();
-    
-    // Then
-    expect(menuToggle.getAttribute('aria-expanded')).toBe('false');
-    expect(menu.classList.contains('show')).toBe(false);
-  });
-  
-  it('should close menu when clicking outside', () => {
-    // Given - open menu
-    const menuToggle = document.getElementById('mobile-menu-toggle') as HTMLButtonElement;
-    const menu = document.getElementById('main-menu') as HTMLElement;
-    menuToggle.click();
-    
-    // Menu is open
-    expect(menu.classList.contains('show')).toBe(true);
-    
-    // When - click outside
-    document.body.click();
-    
-    // Then
-    expect(menu.classList.contains('show')).toBe(false);
+    it('should close menu when clicking outside', () => {
+      // Given - open menu
+      const menuToggle = document.getElementById('mobile-menu-toggle') as HTMLButtonElement;
+      const menu = document.getElementById('main-menu') as HTMLElement;
+      menuToggle.click();
+      
+      // Menu is open
+      expect(menu.classList.contains('show')).toBe(true);
+      
+      // When - click outside
+      document.body.click();
+      
+      // Then
+      expect(menu.classList.contains('show')).toBe(false);
+    });
   });
   
   describe('Test Selection', () => {
@@ -483,27 +415,17 @@ describe('Main Interface', () => {
       expect(selectionCount.textContent).toBe('4');
     });
     
-    it('should copy selected test IDs when Enter key is pressed', async () => {
+    it('should copy selected test IDs when Enter key is pressed', () => {
       // Given - enter selection mode and select items
       testHelpers.toggleSelectionMode(true);
       testHelpers.toggleTestSelection('test1');
       testHelpers.toggleTestSelection('test2', true);
       
-      // Mock the clipboard writeText to resolve immediately
-      const writeTextMock = vi.fn().mockResolvedValue(undefined);
-      Object.defineProperty(navigator, 'clipboard', {
-        value: { writeText: writeTextMock },
-        configurable: true
-      });
-      
       // When
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
       
-      // Wait for promises to resolve (no timers needed)
-      await Promise.resolve();
-      
       // Then clipboard should be called with selected IDs
-      expect(writeTextMock).toHaveBeenCalledWith('test1\ntest2');
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('test1\ntest2');
       
       // Should show success toast
       expect(showToast).toHaveBeenCalledWith(expect.stringContaining('Copied'), 'success');
@@ -512,22 +434,12 @@ describe('Main Interface', () => {
       expect(document.body.classList.contains('selection-mode')).toBe(false);
     });
     
-    it('should copy all failing tests when "C" (shift+c) is pressed', async () => {
-      // Mock the clipboard writeText to resolve immediately
-      const writeTextMock = vi.fn().mockResolvedValue(undefined);
-      Object.defineProperty(navigator, 'clipboard', {
-        value: { writeText: writeTextMock },
-        configurable: true
-      });
-      
+    it('should copy all failing tests when "C" (shift+c) is pressed', () => {
       // When
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'C' }));
       
-      // Wait for promises to resolve (no timers needed)
-      await Promise.resolve();
-      
       // Then clipboard should be called with failing test IDs
-      expect(writeTextMock).toHaveBeenCalledWith('test3\ntest4');
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('test3\ntest4');
       
       // Should show success toast
       expect(showToast).toHaveBeenCalledWith(expect.stringContaining('Copied'), 'success');
@@ -556,14 +468,11 @@ describe('Main Interface', () => {
       const buttons = actionBar.querySelectorAll('button');
       
       expect(buttons.length).toBe(2);
+      const selectButton = buttons[0];
+      const copyButton = buttons[1];
       
-      // Check button contents safely
-      const selectButton = buttons[0] as HTMLButtonElement | undefined;
-      const copyButton = buttons[1] as HTMLButtonElement | undefined;
-      
-      // Use optional chaining to safely access properties
-      expect(selectButton?.innerHTML).toContain('Select');
-      expect(copyButton?.innerHTML).toContain('Copy Failing');
+      expect(selectButton.innerHTML).toContain('Select');
+      expect(copyButton.innerHTML).toContain('Copy Failing');
     });
   });
 });
