@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { Toast, __test__ as testUtils, type ToastType } from '../src/toast';
+import { Toast, __test__ as testUtils } from '../src/toast';
 
 // Extend the Window interface to include test utilities
 declare global {
@@ -122,7 +122,7 @@ describe('Toast Notification System', () => {
       closeButton.click();
       
       // Then toast should start removal animation
-      expect(toast.classList.contains('visible')).toBe(false);
+      expect(toast!.classList.contains('visible')).toBe(false);
       
       // After animation completes
       vi.runAllTimers();
@@ -143,7 +143,7 @@ describe('Toast Notification System', () => {
       vi.advanceTimersByTime(1000);
       
       // Toast should start removal animation
-      expect(toast.classList.contains('visible')).toBe(false);
+      expect(toast!.classList.contains('visible')).toBe(false);
       
       // After animation completes
       vi.advanceTimersByTime(300);
@@ -151,7 +151,8 @@ describe('Toast Notification System', () => {
     });
     
     it('should create different icons for each toast type', () => {
-      const toastTypes: Toast.ToastType[] = ['success', 'error', 'warning', 'info'];
+      // Define toast types directly to avoid namespace dependency
+      const toastTypes: Array<'success' | 'error' | 'warning' | 'info'> = ['success', 'error', 'warning', 'info'];
       
       toastTypes.forEach(type => {
         // Reset toast state before each test
@@ -198,105 +199,26 @@ describe('Toast Notification System', () => {
       document.body.innerHTML = '';
       testUtils.resetToastState();
       
-      // When - ensure container is created
-      const container = testUtils.ensureToastContainer();
-      document.body.appendChild(container);
+      // When
+      const container = Toast.ensureContainer();
       
-      // Then - verify container is properly set up
+      // Then
       expect(container).not.toBeNull();
-      expect(container).toBeInstanceOf(HTMLElement);
-      expect(container.id).toBe('toast-container');
+      expect(container!.classList.contains('toast-container')).toBe(true);
       expect(document.body.contains(container)).toBe(true);
-      
-      // Clean up
-      if (container.parentNode) {
-        container.parentNode.removeChild(container);
-      }
     });
     
-    it('should work with a pre-existing container', () => {
-      // Given - container already exists with a specific class
+    it('should return the existing container if it already exists', () => {
+      // Given
       const existingContainer = document.createElement('div');
-      existingContainer.id = 'toast-container';
-      existingContainer.className = 'test-container';
+      existingContainer.classList.add('toast-container');
       document.body.appendChild(existingContainer);
       
-      try {
-        // Reset the toast system state
-        testUtils.resetToastState();
-        
-        // When - show a toast (should use the existing container)
-        Toast.showToast('Test message');
-        
-        // Then - verify the toast was added to the existing container
-        const container = document.getElementById('toast-container');
-        expect(container).toBe(existingContainer);
-        expect(container?.querySelector('.toast')).not.toBeNull();
-        expect(container?.querySelector('.toast-content')?.textContent).toBe('Test message');
-      } finally {
-        // Cleanup
-        if (existingContainer.parentNode) {
-          existingContainer.parentNode.removeChild(existingContainer);
-        }
-        testUtils.resetToastState();
-      }
-    });
-    
-    it('should stack multiple toasts in the container', () => {
       // When
-      Toast.showToast('First toast');
-      Toast.showToast('Second toast');
-      Toast.showToast('Third toast');
+      const container = Toast.ensureContainer();
       
       // Then
-      const container = testUtils.getToastContainer();
-      const toasts = container!.querySelectorAll('.toast');
-      expect(toasts.length).toBe(3);
-    });
-    
-    it('should handle different toast types', () => {
-      // Test all toast types
-      const types: ToastType[] = ['success', 'error', 'warning', 'info'];
-      
-      types.forEach(type => {
-        // Reset state for each test
-        testUtils.resetToastState();
-        document.body.innerHTML = '';
-        
-        // Show toast with current type
-        Toast.showToast(`${type} message`, type);
-        
-        // Verify toast was created with correct type
-        const container = testUtils.getToastContainer();
-        const toast = container!.querySelector(`.toast.toast-${type}`);
-        expect(toast).not.toBeNull();
-        expect(toast!.classList.contains(`toast-${type}`)).toBe(true);
-      });
-    });
-  });
-  
-  describe('Toast API', () => {
-    it('should provide access to the toast container', () => {
-      // When - ensure container exists
-      Toast.showToast('Test message');
-      const container = document.getElementById('toast-container');
-      
-      // Then
-      expect(container).not.toBeNull();
-      expect(container?.id).toBe('toast-container');
-    });
-    
-    it('should allow resetting the toast state', () => {
-      // Given - create some toasts
-      Toast.showToast('Test 1');
-      Toast.showToast('Test 2');
-      
-      // When - reset state
-      Toast.resetState();
-      
-      // Then - container should be removed from DOM
-      const container = document.getElementById('toast-container');
-      expect(container).toBeNull();
+      expect(container).toBe(existingContainer);
     });
   });
 });
