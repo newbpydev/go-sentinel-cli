@@ -171,15 +171,21 @@ export function createToast(level: ToastType, message: string, timeout: number =
  * @export Exported for testing purposes
  */
 export function ensureToastContainer(): HTMLElement {
-    if (toastContainer) return toastContainer;
-    
-    toastContainer = document.getElementById('toast-container');
-    
-    if (!toastContainer) {
-        toastContainer = document.createElement('div');
-        toastContainer.id = 'toast-container';
-        document.body.appendChild(toastContainer);
+    if (toastContainer && document.body.contains(toastContainer)) {
+        return toastContainer;
     }
+    
+    // Check if container exists in the DOM but isn't in our reference
+    const existingContainer = document.getElementById('toast-container');
+    if (existingContainer) {
+        toastContainer = existingContainer;
+        return toastContainer;
+    }
+    
+    // Create a new container if none exists
+    toastContainer = document.createElement('div');
+    toastContainer.id = 'toast-container';
+    document.body.appendChild(toastContainer);
     
     return toastContainer;
 }

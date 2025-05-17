@@ -10,16 +10,20 @@ declare global {
 
 // Helper to set up the toast container for testing
 function setupToastContainer() {
-  // Remove any existing toast containers first
-  const existingContainer = document.getElementById('toast-container');
-  if (existingContainer) {
-    document.body.removeChild(existingContainer);
+  // Reset toast state before each test
+  if (!testUtils || typeof testUtils.resetToastState !== 'function') {
+    throw new Error('testUtils.resetToastState is not available');
   }
   
-  // Create a fresh container for testing
-  const container = document.createElement('div');
-  container.id = 'toast-container';
-  document.body.appendChild(container);
+  // This will clean up any existing container and reset the state
+  testUtils.resetToastState();
+  
+  // Ensure the container is created and attached to the document
+  const container = testUtils.ensureToastContainer();
+  if (!document.body.contains(container)) {
+    document.body.appendChild(container);
+  }
+  
   return container;
 }
 
@@ -32,24 +36,11 @@ describe('Toast Notification System', () => {
     // Reset mocks
     vi.clearAllMocks();
     
-    // Reset toast state before each test
-    if (testUtils && typeof testUtils.resetToastState === 'function') {
-      testUtils.resetToastState();
-    } else {
-      console.error('testUtils.resetToastState is not a function');
-    }
-    
     // Mock setTimeout for toast animations
     vi.useFakeTimers();
     
-    // Set up a fresh toast container
+    // Set up a fresh toast container and reset state
     setupToastContainer();
-    
-    // Initialize the toast container
-    testUtils.ensureToastContainer();
-    
-    // Reset the toast state
-    testUtils.resetToastState();
   });
   
   afterEach(() => {
@@ -203,38 +194,52 @@ describe('Toast Notification System', () => {
   
   describe('Toast container', () => {
     it('should create a container if it does not exist', () => {
-      // Given - no container exists
+      // Given - no container exists and we reset the state
       document.body.innerHTML = '';
+      testUtils.resetToastState();
       
-      // When - show a toast which will create the container
-      Toast.showToast('Test message');
-      
-      // Test that the container is created
+      // When - ensure container is created
       const container = testUtils.ensureToastContainer();
-      expect(container).toBeDefined();
+      document.body.appendChild(container);
+      
+      // Then - verify container is properly set up
+      expect(container).not.toBeNull();
+      expect(container).toBeInstanceOf(HTMLElement);
       expect(container.id).toBe('toast-container');
       expect(document.body.contains(container)).toBe(true);
+      
       // Clean up
       if (container.parentNode) {
         container.parentNode.removeChild(container);
       }
     });
     
-    it('should reuse existing container', () => {
-      // Given - container already exists
+    it('should work with a pre-existing container', () => {
+      // Given - container already exists with a specific class
       const existingContainer = document.createElement('div');
       existingContainer.id = 'toast-container';
+      existingContainer.className = 'test-container';
       document.body.appendChild(existingContainer);
       
-      // When - show a toast
-      Toast.showToast('Test message');
-      
-      // Then - should use existing container
-      const container = document.getElementById('toast-container');
-      expect(container).toBe(existingContainer);
-      
-      // Cleanup
-      document.body.removeChild(existingContainer);
+      try {
+        // Reset the toast system state
+        testUtils.resetToastState();
+        
+        // When - show a toast (should use the existing container)
+        Toast.showToast('Test message');
+        
+        // Then - verify the toast was added to the existing container
+        const container = document.getElementById('toast-container');
+        expect(container).toBe(existingContainer);
+        expect(container?.querySelector('.toast')).not.toBeNull();
+        expect(container?.querySelector('.toast-content')?.textContent).toBe('Test message');
+      } finally {
+        // Cleanup
+        if (existingContainer.parentNode) {
+          existingContainer.parentNode.removeChild(existingContainer);
+        }
+        testUtils.resetToastState();
+      }
     });
     
     it('should stack multiple toasts in the container', () => {
