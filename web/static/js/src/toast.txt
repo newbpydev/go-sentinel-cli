@@ -1,3 +1,4 @@
+
 // Toast notification system for Go Sentinel
 // This script provides toast notifications for both HTMX events and direct JS calls
 

@@ -2,10 +2,76 @@
 // This script provides toast notifications for both HTMX events and direct JS calls
 
 // Define toast types for better type safety
-export type ToastType = 'success' | 'error' | 'warning' | 'info';
+type ToastType = 'success' | 'error' | 'warning' | 'info';
+
+// Define the toast interface for global usage
+interface ToastAPI {
+    success(message: string, timeout?: number): void;
+    error(message: string, timeout?: number): void;
+    warning(message: string, timeout?: number): void;
+    info(message: string, timeout?: number): void;
+}
 
 // Create toast container if it doesn't exist
-let toastContainer: HTMLElement | null = null;
+export let toastContainer: HTMLElement | null = null;
+
+// For testing purposes
+if (typeof window !== 'undefined') {
+  // @ts-ignore - Allow setting toastContainer for testing
+  window.__TEST_TOAST_CONTAINER__ = {
+    set: (value: HTMLElement | null) => { toastContainer = value; },
+    get: () => toastContainer,
+    reset: resetToastState
+  };
+}
+
+// Define the Toast object with all public methods
+const Toast = {
+  showToast,
+  ensureContainer: () => {
+    ensureToastContainer();
+    return toastContainer;
+  },
+  createToast,
+  removeToast,
+  resetState: resetToastState,
+  get container() {
+    return toastContainer;
+  },
+  // Add test utilities to the Toast object
+  __test__: {
+    resetToastState,
+    createToast,
+    removeToast,
+    ensureToastContainer: () => ensureToastContainer(),
+    getToastContainer: () => toastContainer
+  }
+} as const;
+
+// Export the Toast object and types
+export { Toast };
+export type { ToastAPI, ToastType };
+
+// Export test utilities for testing
+export const __test__ = Toast.__test__;
+
+// Expose test utilities globally for testing
+if (typeof window !== 'undefined') {
+  (window as any).__TEST_TOAST_UTILS__ = __test__;
+}
+
+/**
+ * Reset the toast state for testing purposes
+ * Clears the toast container and removes it from the DOM
+ * @internal
+ */
+export function resetToastState() {
+    if (toastContainer && toastContainer.parentNode) {
+        toastContainer.parentNode.removeChild(toastContainer);
+    }
+    toastContainer = null;
+}
+
 
 /**
  * Show a toast notification
@@ -21,8 +87,9 @@ export function showToast(message: string, type: ToastType = 'info', timeout: nu
 /**
  * Remove a toast with animation
  * @param toast - The toast element to remove
+ * @export Exported for testing purposes
  */
-function removeToast(toast: HTMLElement): void {
+export function removeToast(toast: HTMLElement): void {
     if (!toast) return;
     
     toast.classList.remove('visible');
@@ -37,9 +104,9 @@ function removeToast(toast: HTMLElement): void {
 
 /**
  * Create and show a toast notification
- * @private
+ * @export Exported for testing purposes
  */
-function createToast(level: ToastType, message: string, timeout: number = 3000): HTMLElement {
+export function createToast(level: ToastType, message: string, timeout: number = 3000): HTMLElement {
     // Ensure container exists
     const container = ensureToastContainer();
     
@@ -101,8 +168,9 @@ function createToast(level: ToastType, message: string, timeout: number = 3000):
 /**
  * Ensures the toast container exists in the DOM
  * @returns The toast container element
+ * @export Exported for testing purposes
  */
-function ensureToastContainer(): HTMLElement {
+export function ensureToastContainer(): HTMLElement {
     if (toastContainer) return toastContainer;
     
     toastContainer = document.getElementById('toast-container');
@@ -116,32 +184,16 @@ function ensureToastContainer(): HTMLElement {
     return toastContainer;
 }
 
-// Define the toast interface for global usage
-export interface ToastAPI {
-    success(message: string, timeout?: number): void;
-    error(message: string, timeout?: number): void;
-    warning(message: string, timeout?: number): void;
-    info(message: string, timeout?: number): void;
-}
-
 // Initialize the toast system when the DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     ensureToastContainer();
     
-    // Create a global toast object that can be used directly
+    // Create the toast API
     const toast: ToastAPI = {
-        success(message: string, timeout: number = 3000): void {
-            showToast(message, 'success', timeout);
-        },
-        error(message: string, timeout: number = 5000): void {
-            showToast(message, 'error', timeout);
-        },
-        warning(message: string, timeout: number = 4000): void {
-            showToast(message, 'warning', timeout);
-        },
-        info(message: string, timeout: number = 3000): void {
-            showToast(message, 'info', timeout);
-        }
+        success: (message: string, timeout: number = 3000) => showToast(message, 'success', timeout),
+        error: (message: string, timeout: number = 5000) => showToast(message, 'error', timeout),
+        warning: (message: string, timeout: number = 4000) => showToast(message, 'warning', timeout),
+        info: (message: string, timeout: number = 3000) => showToast(message, 'info', timeout)
     };
     
     // Expose the toast object globally
@@ -149,19 +201,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Export default toast API creator function for direct imports
-export default function createToastAPI(): ToastAPI {
+export function createToastAPI(): ToastAPI {
+    ensureToastContainer();
     return {
-        success(message: string, timeout: number = 3000): void {
-            showToast(message, 'success', timeout);
-        },
-        error(message: string, timeout: number = 5000): void {
-            showToast(message, 'error', timeout);
-        },
-        warning(message: string, timeout: number = 4000): void {
-            showToast(message, 'warning', timeout);
-        },
-        info(message: string, timeout: number = 3000): void {
-            showToast(message, 'info', timeout);
-        }
+        success: (message: string, timeout: number = 3000) => showToast(message, 'success', timeout),
+        error: (message: string, timeout: number = 5000) => showToast(message, 'error', timeout),
+        warning: (message: string, timeout: number = 4000) => showToast(message, 'warning', timeout),
+        info: (message: string, timeout: number = 3000) => showToast(message, 'info', timeout)
     };
 }
