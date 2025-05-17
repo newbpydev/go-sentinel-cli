@@ -1,5 +1,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { ValidationError } from '../src/settings';
+
+// Import the actual module to be mocked
+import * as actualSettings from '../src/settings';
+
+// Mock the settings module
+vi.mock('../src/settings', async () => {
+  const actual = await vi.importActual<typeof actualSettings>('../src/settings');
+  return {
+    ...actual,
+    __esModule: true,
+    default: () => {
+      // Initialize event listeners
+      document.dispatchEvent(new Event('DOMContentLoaded'));
+    }
+  };
+});
 
 // Note: We're testing the DOM-based implementation of settings.ts
 // The validation and form submission are triggered via DOM events instead of direct function calls
@@ -12,17 +27,20 @@ describe('Settings Page', () => {
   let feedbackEl: HTMLElement;
 
   // Set up test DOM before each test
-  beforeEach(() => {
+  beforeEach(async () => {
     // Create mocked elements
     settingsForm = document.createElement('form');
     settingsForm.id = 'settings-form';
+    settingsForm.addEventListener('submit', (e) => e.preventDefault()); // Prevent actual form submission
     
     saveButton = document.createElement('button');
     saveButton.id = 'save-all-settings';
+    saveButton.type = 'submit';
     saveButton.textContent = 'Save Settings';
     
     resetButton = document.createElement('button');
     resetButton.id = 'reset-defaults';
+    resetButton.type = 'button';
     resetButton.textContent = 'Reset to Defaults';
     
     feedbackEl = document.createElement('div');
@@ -43,9 +61,16 @@ describe('Settings Page', () => {
     // Mock setTimeout
     vi.useFakeTimers();
     
-    // Trigger DOMContentLoaded to initialize event handlers
-    const event = new Event('DOMContentLoaded');
-    document.dispatchEvent(event);
+    // Import the settings module
+    const settingsModule = await import('../src/settings');
+    
+    // Initialize settings if the default export is a function
+    if (typeof settingsModule.default === 'function') {
+      settingsModule.default();
+    }
+    
+    // Wait for any async operations to complete
+    await new Promise(resolve => setTimeout(resolve, 0));
   });
   
   afterEach(() => {
@@ -183,6 +208,10 @@ describe('Settings Page', () => {
   }
 
   describe('Form validation', () => {
+    // Add a small delay to allow event listeners to be set up
+    beforeEach(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
     it('should validate test timeout within range', async () => {
       // Set invalid value
       const testTimeout = document.getElementById('test-timeout') as HTMLInputElement;
@@ -277,6 +306,10 @@ describe('Settings Page', () => {
   });
   
   describe('Settings API integration', () => {
+    // Add a small delay to allow event listeners to be set up
+    beforeEach(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
     it('should load settings on page load', async () => {
       // Verify fetch was called to load settings
       expect(fetchSpy).toHaveBeenCalledWith('/api/settings');
@@ -333,6 +366,10 @@ describe('Settings Page', () => {
   });
   
   describe('Reset functionality', () => {
+    // Add a small delay to allow event listeners to be set up
+    beforeEach(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
     it('should reset form fields to default values', async () => {
       // First modify values
       const testTimeout = document.getElementById('test-timeout') as HTMLInputElement;
