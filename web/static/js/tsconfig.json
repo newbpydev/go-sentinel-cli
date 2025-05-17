@@ -1,27 +1,23 @@
 {
   "compilerOptions": {
-    /* Base Options */
-    "esModuleInterop": true,
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Node",
     "strict": true,
+    "esModuleInterop": true,
     "skipLibCheck": true,
-    "target": "es2022",
-    "module": "esnext",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "preserve",
-    "lib": ["es2022", "dom"],
-    "types": ["@testing-library/jest-dom"],
-
-    /* Project Structure */
-    "rootDir": ".",
+    "forceConsistentCasingInFileNames": true,
+    "jsx": "react-jsx",
+    "outDir": "./dist",
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
     },
-
-    /* Type Checking */
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "lib": ["es2022", "dom"],
+    "types": [],
     "allowJs": true,
     "checkJs": true,
     "noImplicitAny": true,
@@ -37,30 +33,17 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
-
-    /* Module Resolution */
-    "forceConsistentCasingInFileNames": true,
     "allowSyntheticDefaultImports": true,
-
-    /* Source Maps */
-    "sourceMap": true,
-    "inlineSourceMap": false,
-    "inlineSources": false,
-    "mapRoot": "./",
-    "sourceRoot": "/",
-
-    /* Experimental Options */
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "sourceMap": true
   },
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
-    "src/**/*.js",
     "test/**/*.ts",
-    "test/**/*.tsx",
-    "test/**/*.js",
-    "*.d.ts"
+    "test/**/*.tsx"
   ],
-  "exclude": ["node_modules", "dist"]
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

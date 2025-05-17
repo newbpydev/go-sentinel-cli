@@ -89,7 +89,7 @@ function handleResetClick(e: Event): void {
 /**
  * Load and apply settings from server
  */
-async function loadAndApplySettings(): Promise<void> {
+export async function loadAndApplySettings(): Promise<void> {
   try {
     const settings = await loadSettings();
     if (settings) {
@@ -307,7 +307,7 @@ async function loadSettings(): Promise<GoSentinelSettings | null> {
 /**
  * Reset settings to defaults
  */
-function resetSettings(showFeedbackMessage: boolean = true): void {
+export function resetSettings(showFeedbackMessage: boolean = true): void {
   // Define default settings
   const defaults: GoSentinelSettings = {
     testTimeout: 30,
@@ -341,13 +341,13 @@ export function initSettings(): void {
     settingsForm = document.getElementById('settings-form') as HTMLFormElement | null;
     saveButton = document.getElementById('save-all-settings') as HTMLButtonElement | null;
     resetButton = document.getElementById('reset-defaults') as HTMLButtonElement | null;
-    feedbackEl = document.getElementById('settings-feedback') as HTMLElement | null;
-    
+    feedbackEl = document.getElementById('settings-feedback');
+
     if (!settingsForm || !saveButton || !resetButton || !feedbackEl) {
-      console.error('Required DOM elements not found');
+      console.error('Required settings DOM elements not found');
       return;
     }
-    
+
     // Set up event listeners
     settingsForm.addEventListener('submit', handleFormSubmit);
     resetButton.addEventListener('click', handleResetClick);
@@ -357,22 +357,15 @@ export function initSettings(): void {
   });
 }
 
-// Initialize settings when module is loaded
-initSettings();
-
 // Export functions and types for testing
-export { 
+export {
   validateForm, 
   showFeedback, 
   getSettingsFromForm, 
   saveSettings, 
-  loadSettings, 
-  resetSettings,
+  loadSettings,
   applySettingsToForm,
   handleFormSubmit,
-  handleResetClick,
-  loadAndApplySettings
+  handleResetClick
 };
 
-// Default export for backward compatibility
-export default initSettings;

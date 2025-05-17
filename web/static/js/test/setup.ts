@@ -1,3 +1,28 @@
+// Polyfill CloseEvent if not present (for jsdom)
+if (typeof globalThis.CloseEvent === 'undefined') {
+  class CloseEvent extends Event {
+    code: number;
+    reason: string;
+    wasClean: boolean;
+    constructor(type: string, eventInitDict: any = {}) {
+      super(type, eventInitDict);
+      this.code = eventInitDict.code || 1000;
+      this.reason = eventInitDict.reason || '';
+      this.wasClean = eventInitDict.wasClean || false;
+    }
+  }
+  // @ts-ignore
+  globalThis.CloseEvent = CloseEvent;
+}
+
+// Diagnostic: Check if document is defined
+if (typeof document === 'undefined') {
+  // @ts-ignore
+  globalThis.document = undefined;
+  // eslint-disable-next-line no-console
+  console.warn('[setup.ts] Warning: document is not defined at setup time. jsdom may not be initialized.');
+}
+
 import { expect, vi, afterEach, beforeAll, afterAll } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import * as matchers from '@testing-library/jest-dom/matchers';
