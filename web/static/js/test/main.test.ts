@@ -369,10 +369,10 @@ describe('Main Interface', () => {
     const ab = document.querySelector('.test-actions');
     if (ab) {
       const buttons = ab.querySelectorAll('button');
-      if (buttons.length >= 2) {
-        buttons[0].addEventListener('click', () => testHelpers.toggleSelectionMode(true));
-        buttons[1].addEventListener('click', () => testHelpers.copyAllFailingTests());
-      }
+      const btn0 = buttons[0];
+      const btn1 = buttons[1];
+      if (btn0) btn0.addEventListener('click', () => testHelpers.toggleSelectionMode(true));
+      if (btn1) btn1.addEventListener('click', () => testHelpers.copyAllFailingTests());
     }
   });
   
