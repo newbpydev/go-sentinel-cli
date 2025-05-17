@@ -178,6 +178,8 @@ export function ensureToastContainer(): HTMLElement {
     // Check if container exists in the DOM but isn't in our reference
     const existingContainer = document.getElementById('toast-container');
     if (existingContainer) {
+        existingContainer.id = 'toast-container';
+        existingContainer.className = 'toast-container';
         toastContainer = existingContainer;
         return toastContainer;
     }
@@ -185,6 +187,7 @@ export function ensureToastContainer(): HTMLElement {
     // Create a new container if none exists
     toastContainer = document.createElement('div');
     toastContainer.id = 'toast-container';
+    toastContainer.className = 'toast-container';
     document.body.appendChild(toastContainer);
     
     return toastContainer;

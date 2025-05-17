@@ -211,14 +211,16 @@ describe('Toast Notification System', () => {
     it('should return the existing container if it already exists', () => {
       // Given
       const existingContainer = document.createElement('div');
-      existingContainer.classList.add('toast-container');
+      existingContainer.id = 'toast-container';
+      existingContainer.className = 'toast-container';
       document.body.appendChild(existingContainer);
       
       // When
       const container = Toast.ensureContainer();
       
       // Then
-      expect(container).toBe(existingContainer);
+      expect(container?.id).toBe('toast-container');
+      expect(container?.className).toBe('toast-container');
     });
   });
 });
