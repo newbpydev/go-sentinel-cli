@@ -1,14 +1,15 @@
 ---
 description: Go Sentinel Frontend Template Development Workflow
+includes: high-confidence-coding.md
 ---
 
 # Go Sentinel Frontend Template Development Workflow
 
-This workflow defines the systematic approach to frontend template development in the Go Sentinel project, combining TDD principles with Go's HTML templating best practices.
+This workflow combines TDD principles with Go's HTML templating best practices.
 
 ## Template Structure and Inheritance Model
 
-### 1. Three-Tier Template Hierarchy (✅ Must Follow)
+### 1. Three-Tier Template Hierarchy
 
 ```
 templates/
@@ -22,23 +23,15 @@ templates/
 
 ### 2. Base Template Block Structure
 
-The base template (`layouts/base.tmpl`) defines these standard blocks:
+The base template defines standard blocks:
 - `{{block "title" .}}` - For page title
 - `{{block "head" .}}` - For page-specific head elements
-- `{{block "sidebar" .}}` - For sidebar customization
-- `{{block "header-extras" .}}` - For header additional content
 - `{{block "content" .}}` - For main page content
 - `{{block "scripts" .}}` - For page-specific scripts
 
-### 3. Page Template Implementation
-
-Every page template must:
-1. Define itself with: `{{define "pages/pagename"}}{{template "base" .}}{{end}}`
-2. Implement required blocks like: `{{define "content"}}...{{end}}`
-3. Not use dynamic template name construction (use explicit template names)
-4. Include all necessary blocks even if empty
-
 ## Development Workflow
+
+> **All phases below must follow the High-Confidence Coding Workflow.**
 
 ### Phase 1: Test-First Template Development
 
@@ -64,23 +57,15 @@ Every page template must:
 2. **Implement Template Structure**
    - Create page template with required blocks
    - Define inheritance from base template
-   - Add minimal required content to pass tests
-
-3. **Iterate with Additional Tests**
-   - Test responsive behavior with different viewports
-   - Test dynamic content conditions
-   - Test accessibility compliance
 
 ### Phase 2: Template Composition and Integration
 
 1. **Extract Common Patterns to Partials**
    - Identify repeating UI patterns
    - Create partial templates
-   - Reference from page templates: `{{template "partials/component" .}}`
 
 2. **Add Layout Variations as Needed**
    - Create alternative layouts in `layouts/` directory
-   - Implement proper inheritance
 
 ### Phase 3: Server Integration
 
@@ -88,11 +73,6 @@ Every page template must:
    Always maintain strict loading order:
    ```go
    // Parse in order: layouts → partials → pages
-   layouts, _ := filepath.Glob(filepath.Join(templatePath, "layouts", "*.tmpl"))
-   partials, _ := filepath.Glob(filepath.Join(templatePath, "partials", "*.tmpl"))
-   pages, _ := filepath.Glob(filepath.Join(templatePath, "pages", "*.tmpl"))
-   
-   tmpl = template.New("").Funcs(funcMap)
    tmpl = template.Must(tmpl.ParseFiles(layouts...))
    tmpl = template.Must(tmpl.ParseFiles(partials...))
    tmpl = template.Must(tmpl.ParseFiles(pages...))
@@ -109,41 +89,26 @@ Every page template must:
    }
    ```
 
-## Troubleshooting Common Issues
-
-### Template Visibility Problems
-
-**Issue:** Content not appearing on pages
-**Debug Steps:**
-1. Verify correct template loading order
-2. Check template naming conventions
-3. Ensure blocks are properly defined in page templates
-4. Verify data being passed to templates
-
-### Template Execution Errors
-
-**Issue:** Template syntax or execution errors
-**Debug Steps:**
-1. Check for mismatched define/end tags
-2. Verify variable usage with proper dot notation
-3. Ensure templates referenced with {{template}} exist
-4. Check for nil data when required
-
 ## Response Structure for Template Tasks
 
 When completing template-related tasks, follow this structured format:
 
 ### 1. Summary Header
-Brief statement of what was accomplished, including which templates were created or modified.
+Brief statement of what was accomplished.
 
 ### 2. Completed Work (✅)
-Detailed list of completed items with checkmarks:
 - **Tests Implemented**: Template tests written
-- **Templates Created/Modified**: Which template files were changed and how
-- **Server Integration**: How templates are loaded and executed
+- **Templates Created/Modified**: Which template files were changed
 - **Roadmap Updates**: Which roadmap items were marked complete
 
 ### 3. Technical Details
+
+### 4. High-Confidence Checkpoint
+- Complete the confidence checklist as per [high-confidence-coding.md]
+- Ensure ≥95% test coverage, all validations pass, and no speculative code remains
+- Document reasoning, edge cases, and any uncertainties
+- If confidence is <95%, halt and request clarification or peer review before merging
+
 - Template inheritance patterns used
 - Reusable components created
 - Accessibility considerations

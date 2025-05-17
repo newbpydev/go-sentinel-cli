@@ -1,6 +1,9 @@
 ---
 description: How to enable automatic server restart for Go Sentinel development
+includes: high-confidence-coding.md
 ---
+
+> **This workflow references the [High-Confidence Coding Workflow](high-confidence-coding.md) for all configuration and automation steps. Always perform a confidence checkpoint before considering the setup complete.**
 
 # Go Sentinel: Automatic Server Restart Development Workflow
 
@@ -49,6 +52,12 @@ This workflow enables a smooth, TDD-friendly development experience by automatic
 ## TDD Integration
 - Continue writing and running tests as usual.
 - Optionally, configure air to run tests before/after reloads (see air docs).
+
+## High-Confidence Checkpoint
+- Before considering the setup complete, review the confidence checklist in [high-confidence-coding.md]:
+  - Ensure ≥95% confidence that all configuration and automation steps work as intended
+  - Document any uncertainties, edge cases, or required adjustments
+  - If confidence is <95%, halt and request clarification or peer review before proceeding
 
 ## Troubleshooting
 - If `air` is not found, ensure your Go bin directory is in your PATH.

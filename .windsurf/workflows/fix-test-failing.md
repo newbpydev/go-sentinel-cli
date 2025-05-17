@@ -1,6 +1,9 @@
 ---
 description: Systematic workflow for fixing failing tests using TDD principles
+includes: high-confidence-coding.md
 ---
+
+> **This workflow incorporates the [High-Confidence Coding Workflow](high-confidence-coding.md) to ensure all fixes are ≥95% likely to solve the problem, with systematic validation and minimal hallucination.**
 
 # Workflow: Fixing Failing Tests (TDD-Driven)
 
@@ -52,6 +55,12 @@ This workflow ensures a systematic, repeatable, and thorough process for fixing 
 - If new failures appear, analyze and address them before proceeding.
 
 ## Phase 3: Code Quality and Documentation
+
+> **Perform a high-confidence checkpoint before considering the fix complete. Review all steps in [high-confidence-coding.md]:**
+> - Complete the confidence checklist
+> - Ensure ≥95% test coverage and all validations pass
+> - Document reasoning, edge cases, and uncertainties
+> - If confidence is <95%, halt and request clarification or peer review before merging
 
 ### Step 9: Refactor with Confidence
 - If the fix introduces code smells or duplication, refactor the affected code.

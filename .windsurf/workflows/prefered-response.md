@@ -1,6 +1,9 @@
 ---
 description: preferred response for most cases
+includes: high-confidence-coding.md
 ---
+
+> **All responses must follow the [High-Confidence Coding Workflow](high-confidence-coding.md) to ensure ≥95% confidence in all code and reasoning.**
 
 ## Core Response Principles
 
@@ -15,6 +18,12 @@ description: preferred response for most cases
 5. **Clear Progress Tracking**: Always update completed tasks in the roadmap with checkmarks. Provide visual progress indicators in summaries.
 
 ## Response Structure
+
+> **Before submitting any response, perform a high-confidence checkpoint as per [high-confidence-coding.md]:**
+> - Complete the confidence checklist
+> - Ensure all code and recommendations are ≥95% likely to solve the problem
+> - Document reasoning, edge cases, and uncertainties
+> - If confidence is <95%, halt and request clarification or peer review before delivering the response
 
 When completing tasks or providing updates, use this structured format:
 
