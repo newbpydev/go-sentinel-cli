@@ -36,20 +36,25 @@ interface CoverageUpdateEvent extends CustomEvent {
   };
 }
 
+// Set width of metric fill bars based on data-percentage attributes
+function setMetricFillWidths(): void {
+  document.querySelectorAll('.metric-fill[data-percentage]').forEach(function(el) {
+    const percentage = el.getAttribute('data-percentage');
+    if (percentage) {
+      (el as HTMLElement).style.width = percentage + '%';
+    }
+  });
+}
+
+// Expose for testing and runtime as early as possible
+// Expose for testing and runtime in both browser and Vitest/JSDOM environments
+(window as any).setMetricFillWidths = setMetricFillWidths;
+(globalThis as any).setMetricFillWidths = setMetricFillWidths;
+
 document.addEventListener('DOMContentLoaded', function() {
-  // Set width of metric fill bars based on data-percentage attributes
-  function setMetricFillWidths(): void {
-    document.querySelectorAll('.metric-fill[data-percentage]').forEach(function(el) {
-      const percentage = el.getAttribute('data-percentage');
-      if (percentage) {
-        (el as HTMLElement).style.width = percentage + '%';
-      }
-    });
-  }
-  
   // Initial setup
   setMetricFillWidths();
-  
+
   // Set up observer for dynamic content
   const observer = new MutationObserver(function(mutations) {
     mutations.forEach(function(mutation) {
