@@ -68,7 +68,7 @@
   "vitest": {
     "environment": "jsdom",
     "setupFiles": [
-      "./test/setup.js"
+      "./test/setup.ts"
     ],
     "coverage": {
       "provider": "v8",
@@ -80,12 +80,20 @@
       "exclude": [
         "**/node_modules/**",
         "**/test/**",
-        "**/*.test.js"
+        "**/*.test.js",
+        "**/*.d.ts"
+      ],
+      "include": [
+        "src/**/*.{ts,tsx}",
+        "test/**/*.{ts,tsx}"
       ]
+    },
+    "typecheck": {
+      "enabled": true
     }
   },
   "lint-staged": {
-    "*.js": [
+    "*.{js,ts,tsx}": [
       "eslint --fix",
       "prettier --write"
     ]

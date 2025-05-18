@@ -1,8 +1,19 @@
-// Global TypeScript declarations
+// Global TypeScript declarations for Go Sentinel
 
 // Declare types for global objects
 declare const __APP_VERSION__: string;
 declare const __DEV__: boolean;
+declare const __TEST__: boolean;
+// Vitest globals
+declare const describe: (name: string, fn: () => void) => void;
+declare const it: (name: string, fn: (done?: () => void) => void | Promise<void>, timeout?: number) => void;
+declare const test: typeof it;
+declare const expect: any; // Using 'any' as the actual type is complex and provided by Vitest
+declare const beforeAll: (fn: () => void | Promise<void>, timeout?: number) => void;
+declare const afterAll: (fn: () => void | Promise<void>, timeout?: number) => void;
+declare const beforeEach: (fn: () => void | Promise<void>, timeout?: number) => void;
+declare const afterEach: (fn: () => void | Promise<void>, timeout?: number) => void;
+declare const vi: any; // Vitest's mocking utilities
 
 // Declare types for modules without type definitions
 declare module '*.css' {
@@ -18,7 +29,113 @@ declare module '*.svg' {
 }
 
 // Extend the Window interface to include any global browser APIs or custom properties
-interface Window {
+interface Window extends Window {
+  // Test environment globals
+  __VITEST_BROWSER_PROVIDER__?: any;
+  __VITEST_COVERAGE__?: any;
+  __VITEST_MOCKS__?: Record<string, any>;
+  __VITEST_RESULT__?: any;
+  __VITEST_SEQUENCE__?: any;
+  __VITEST_SNAPSHOT_CLIENT__?: any;
+  __VITEST_WORKER__?: boolean;
+  __VITEST_WORKER_IDS__?: number[];
+  __VITEST_WORKER_PATH__?: string;
+  __VITEST_WORKER_POOL__?: boolean;
+  __VITEST_WORKER_INDEX__?: number;
+  __VITEST_WORKER_COUNT__?: number;
+  __VITEST_WORKER_FILE__?: string;
+  __VITEST_WORKER_THREADS__?: boolean;
+  __VITEST_WORKER_IPC__?: any;
+  __VITEST_WORKER_RPC__?: any;
+  __VITEST_WORKER_WS__?: any;
+  __VITEST_WORKER_TIMER__?: any;
+  __VITEST_WORKER_TIMERS__?: any;
+  __VITEST_WORKER_EVENTS__?: any;
+  __VITEST_WORKER_MODULE_CACHE__?: any;
+  __VITEST_WORKER_MODULE_LOADER__?: any;
+  __VITEST_WORKER_MODULE_MOCK__?: any;
+  __VITEST_WORKER_MODULE_MOCK_FACTORY__?: any;
+  __VITEST_WORKER_MODULE_MOCK_UTILS__?: any;
+  __VITEST_WORKER_MODULE_UTILS__?: any;
+  __VITEST_WORKER_RUNNER__?: any;
+  __VITEST_WORKER_RUNNER_UTILS__?: any;
+  __VITEST_WORKER_SNAPSHOT__?: any;
+  __VITEST_WORKER_SNAPSHOT_CLIENT__?: any;
+  __VITEST_WORKER_SNAPSHOT_SERVER__?: any;
+  __VITEST_WORKER_SNAPSHOT_UTILS__?: any;
+  __VITEST_WORKER_TEST_UTILS__?: any;
+  __VITEST_WORKER_TYPES__?: any;
+  __VITEST_WORKER_UTILS__?: any;
+  __VITEST_WORKER_VITEST__?: any;
+  __VITEST_WORKER_VITEST_UTILS__?: any;
+  __VITEST_WORKER_WEBRTC__?: any;
+  __VITEST_WORKER_WS__?: any;
+  __VITEST_WORKER_WS_CLIENT__?: any;
+  __VITEST_WORKER_WS_SERVER__?: any;
+  __VITEST_WORKER_WS_UTILS__?: any;
+  __VITEST_WORKER_WS_WEBSOCKET__?: any;
+  __VITEST_WORKER_WS_WEBSOCKET_SERVER__?: any;
+  __VITEST_WORKER_WS_WEBSOCKET_UTILS__?: any;
+  __VITEST_WORKER_WS_WEBSOCKET_WEBSOCKET__?: any;
+  __VITEST_WORKER_WS_WEBSOCKET_WEBSOCKET_SERVER__?: any;
+  __VITEST_WORKER_WS_WEBSOCKET_WEBSOCKET_UTILS__?: any;
+  __VITEST_WORKER_WS_WEBSOCKET_WEBSOCKET_WEBSOCKET__?: any;
+  __VITEST_WORKER_WS_WEBSOCKET_WEBSOCKET_WEBSOCKET_SERVER__?: any;
+  __VITEST_WORKER_WS_WEBSOCKET_WEBSOCKET_WEBSOCKET_UTILS__?: any;
+  __VITEST_WORKER_WS_WEBSOCKET_WEBSOCKET_WEBSOCKET_WEBSOCKET__?: any;
+  __VITEST_WORKER_WS_WEBSOCKET_WEBSOCKET_WEBSOCKET_WEBSOCKET_SERVER__?: any;
+  __VITEST_WORKER_WS_WEBSOCKET_WEBSOCKET_WEBSOCKET_WEBSOCKET_UTILS__?: any;
+  __VITEST_WORKER_WS_WEBSOCKET_WEBSOCKET_WEBSOCKET_WEBSOCKET_WEBSOCKET__?: any;
+  __VITEST_WORKER_WS_WEBSOCKET_WEBSOCKET_WEBSOCKET_WEBSOCKET_WEBSOCKET_SERVER__?: any;
+  __VITEST_WORKER_WS_WEBSOCKET_WEBSOCKET_WEBSOCKET_WEBSOCKET_WEBSOCKET_UTILS__?: any;
+  
+  // Test utilities
+  mockClearAllMocks: () => void;
+  mockResetAllMocks: () => void;
+  mockRestoreAllMocks: () => void;
+  mockFn: <T extends (...args: any[]) => any>(fn?: T) => jest.Mock<ReturnType<T>, Parameters<T>>;
+  
+  // Testing Library utilities
+  getByTestId: (testId: string) => HTMLElement;
+  getByText: (text: string | RegExp, selector?: string) => HTMLElement;
+  getByLabelText: (text: string | RegExp, options?: any) => HTMLElement;
+  getByPlaceholderText: (text: string | RegExp) => HTMLElement;
+  getByRole: (role: string, options?: any) => HTMLElement;
+  queryByTestId: (testId: string) => HTMLElement | null;
+  queryByText: (text: string | RegExp, selector?: string) => HTMLElement | null;
+  queryByLabelText: (text: string | RegExp, options?: any) => HTMLElement | null;
+  queryByPlaceholderText: (text: string | RegExp) => HTMLElement | null;
+  queryByRole: (role: string, options?: any) => HTMLElement | null;
+  
+  // WebSocket mocks for testing
+  mockWebSocket: {
+    clear: () => void;
+    instance: () => WebSocket;
+    instances: () => WebSocket[];
+    mockClear: () => void;
+    mockReset: () => void;
+    mockRestore: () => void;
+    mockImplementation: (impl: any) => void;
+    mockImplementationOnce: (impl: any) => void;
+    mockReturnThis: () => void;
+    mockReturnValue: (value: any) => void;
+    mockReturnValueOnce: (value: any) => void;
+    mockResolvedValue: (value: any) => void;
+    mockResolvedValueOnce: (value: any) => void;
+    mockRejectedValue: (value: any) => void;
+    mockRejectedValueOnce: (value: any) => void;
+  };
+  
+  // Mock timers
+  mockTimers: {
+    useFakeTimers: () => void;
+    useRealTimers: () => void;
+    runAllTimers: () => void;
+    runOnlyPendingTimers: () => void;
+    runTimersToTime: (ms: number) => void;
+    setSystemTime: (now?: number | Date) => void;
+    getTimerCount: () => number;
+  };
   // Add any global browser APIs or custom properties here
   htmx?: {
     defineExtension?: (name: string, extension: any) => void;
@@ -63,6 +180,40 @@ declare namespace CustomEventMap {
     };
   }
   // Add more custom event types as needed
+}
+
+// Extend Jest types for Vitest compatibility
+declare namespace jest {
+  interface Mock<T = any, Y extends any[] = any> {
+    (...args: Y): T;
+    mock: MockContext<T, Y>;
+    mockClear(): void;
+    mockReset(): void;
+    mockRestore(): void;
+    mockImplementation(fn: (...args: Y) => T): this;
+    mockImplementationOnce(fn: (...args: Y) => T): this;
+    mockName(name: string): this;
+    mockReturnThis(): this;
+    mockReturnValue(value: T): this;
+    mockReturnValueOnce(value: T): this;
+    mockResolvedValue(value: Awaited<T>): this;
+    mockResolvedValueOnce(value: Awaited<T>): this;
+    mockRejectedValue(value: any): this;
+    mockRejectedValueOnce(value: any): this;
+    getMockName(): string;
+    mockReturnThis(): this;
+  }
+
+  interface MockContext<T, Y extends any[]> {
+    calls: Y[];
+    instances: T[];
+    invocationCallOrder: number[];
+    results: Array<{
+      type: 'return' | 'throw';
+      value: T;
+    }>;
+    lastCall: Y | undefined;
+  }
 }
 
 declare global {
