@@ -3,10 +3,17 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-  # run tests and build the binary
-  pre_cmd = ["go test -tags=integration ./..."]
+  # First run linter, then tests, then build the binary
+  pre_cmd = [
+    "golangci-lint run --timeout=2m",
+    "go test -tags=integration ./..."
+  ]
   cmd = "go build -o ./tmp/main.exe ./cmd/go-sentinel-web"
   bin = "./tmp/main.exe"
+  # Stop if linting or tests fail
+  stop_on_error = true
+  # Show error message in terminal
+  error_length = 10000
 
 [run]
 # run the binary
@@ -15,7 +22,7 @@ tmp_dir = "tmp"
 [watch]
 delay = 1000
 includes = ["**/*.go", "**/*.html", "**/*.tmpl", "**/*.css", "**/*.js"]
-  excludes = ["tmp/**", ".git/**", "vendor/**"]
+  excludes = ["tmp/**", ".git/**", "vendor/**", "web/static/js/node_modules/**"]
 
 [log]
   color = true
