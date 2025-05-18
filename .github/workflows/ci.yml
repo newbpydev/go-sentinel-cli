@@ -32,9 +32,10 @@ jobs:
       - name: Install dependencies
         run: go mod tidy
       
+      # Install the latest stable golangci-lint (config version in .golangci.yml is not the same as binary version)
       - name: Install golangci-lint
         run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.1.6
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
           echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
       
       - name: Lint
@@ -114,5 +115,5 @@ jobs:
       - name: Build frontend
         working-directory: ./web/static/js
         run: |
-          npm install
+          npm ci
           npm run build
