@@ -52,6 +52,7 @@ const updateMetricDisplay = (elementId: string, metric: CoverageMetric): void =>
 };
 
 const loadFileDetails = (filePath: string): void => {
+  // Early return if htmx is not available
   if (!window.htmx) return;
   
   const fileDetails = document.getElementById('file-details');
@@ -60,12 +61,17 @@ const loadFileDetails = (filePath: string): void => {
   // Add loading message as expected by the test
   fileDetails.innerHTML = 'Loading file details';
   
-  // Store htmx in a local variable after the null check
-  const htmx = window.htmx;
-  htmx.ajax('GET', `/api/coverage/files/${encodeURIComponent(filePath)}`, {
-    target: '#file-details',
-    swap: 'innerHTML'
-  });
+  // Use defensive type guard to ensure ajax method exists
+  if (typeof window.htmx === 'object' && 
+      window.htmx !== null && 
+      'ajax' in window.htmx && 
+      typeof window.htmx.ajax === 'function') {
+    
+    window.htmx.ajax('GET', `/api/coverage/files/${encodeURIComponent(filePath)}`, {
+      target: '#file-details',
+      swap: 'innerHTML'
+    });
+  }
   
   (fileDetails as HTMLElement).style.display = 'block';
 };
