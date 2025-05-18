@@ -1,19 +1,10 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
 // Import the WebSocketClient class, not the singleton instance
-// Import using require to ensure we get the actual runtime implementation
-const { WebSocketClient } = require('../src/websocket');
+import { WebSocketClient } from '../src/websocket';
 
-// Type declaration for the JS implementation
-type WebSocketClientType = {
-  connect(url: string): Promise<WebSocket>;
-  disconnect(): void;
-  close(): void;
-  send(data: any): boolean;
-  on(event: string, handler: Function): () => void;
-  off(event: string, handler: Function): boolean;
-  onMessage(messageType: string, handler: Function): () => void;
-}
+// Type declaration for the WebSocketClient
+type WebSocketClientType = InstanceType<typeof WebSocketClient>;
 
 // Explicitly don't mock the WebSocketClient
 vi.mock('../src/toast', () => ({
@@ -123,16 +114,24 @@ describe('WebSocketClient', () => {
       const messageHandler = vi.fn();
       const testMessage = { type: 'test', data: 'message' };
       
-      // Register a message handler for the specific message type
-      const removeHandler = wsClient.onMessage('test', messageHandler);
+      // Connect the WebSocket
+      wsClient.connect(testUrl);
+      
+      // Register a message handler
+      const removeHandler = wsClient.onMessage(messageHandler);
+      
+      // Simulate WebSocket opening
+      mockWs.readyState = WS_OPEN;
+      mockWs.onopen && mockWs.onopen(new Event('open'));
       
       // When - simulate message event
-      mockWs.onmessage && mockWs.onmessage(new MessageEvent('message', {
+      const messageEvent = new MessageEvent('message', {
         data: JSON.stringify(testMessage)
-      }));
+      });
+      mockWs.onmessage && mockWs.onmessage(messageEvent);
       
       // Then
-      expect(messageHandler).toHaveBeenCalled();
+      expect(messageHandler).toHaveBeenCalledWith(testMessage);
       
       // Cleanup
       removeHandler();
@@ -206,8 +205,7 @@ describe('WebSocketClient', () => {
       mockWs.onopen && mockWs.onopen(new Event('open'));
       
       // When
-      // Try both methods - in the actual implementation, one might be an alias for the other
-      wsClient.disconnect ? wsClient.disconnect() : wsClient.close();
+      wsClient.disconnect();
       
       // Then
       expect(mockWs.close).toHaveBeenCalled();
