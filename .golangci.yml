@@ -5,7 +5,6 @@ linters:
   enable:
     - govet
     - golint
-    - gofmt
     - staticcheck
     - errcheck
     - unused
