@@ -22,7 +22,7 @@ tmp_dir = "tmp"
 [watch]
 delay = 1000
 includes = ["**/*.go", "**/*.html", "**/*.tmpl", "**/*.css", "**/*.js"]
-  excludes = ["tmp/**", ".git/**", "vendor/**", "web/static/js/node_modules/**"]
+  excludes = ["tmp/**", ".git/**", "vendor/**"]
 
 [log]
   color = true
