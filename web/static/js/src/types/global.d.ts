@@ -39,6 +39,11 @@ interface Window {
     on: (event: string, callback: (data: any) => void) => void;
     off: (event: string, callback: (data: any) => void) => void;
   };
+
+  // Coverage visualization functions
+  showFileDetails?: (filePath?: string) => void;
+  getCoverageClass?: (percentage: number) => string;
+  goToPage?: (page: number, filter?: string, search?: string) => void;
 }
 
 // Declare types for any global variables or functions

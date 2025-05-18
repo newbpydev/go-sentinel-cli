@@ -1,6 +1,5 @@
 ---
 description: Systematic workflow for fixing failing tests using TDD principles
-includes: high-confidence-coding.md
 ---
 
 > **This workflow incorporates the [High-Confidence Coding Workflow](high-confidence-coding.md) to ensure all fixes are ≥95% likely to solve the problem, with systematic validation and minimal hallucination.**
@@ -101,3 +100,5 @@ This workflow ensures a systematic, repeatable, and thorough process for fixing 
 ---
 
 _This workflow is aligned with TDD and project best practices. For response formatting and reporting, follow the structure in `prefered-response.md`._
+
+Gather all necessary information to ensure we have >95% confidence in our solution.

@@ -70,4 +70,5 @@ This workflow ensures that all code produced is both highly likely (>95%) to sol
 
 ## Usage
 - Reference or include this workflow in any `.windsurf/workflows` file where high-confidence, low-hallucination code is required.
+- Gather all necessary information to ensure we have >95% confidence in our solution.
 - Use as a checklist for critical PRs, releases, or AI-generated code.

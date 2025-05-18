@@ -1,6 +1,5 @@
 ---
 description: preferred response for most cases
-includes: high-confidence-coding.md
 ---
 
 > **All responses must follow the [High-Confidence Coding Workflow](high-confidence-coding.md) to ensure ≥95% confidence in all code and reasoning.**
@@ -73,5 +72,4 @@ Standard event wrappers for Bubble Tea messages
 Support for custom user-defined events
 Event categorization and metadata
 
-Next Steps
-Should we create more edge case tests?
+Gather all necessary information to ensure we have >95% confidence in our solution.
