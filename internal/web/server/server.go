@@ -2,9 +2,11 @@
 package server
 
 import (
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -31,6 +33,17 @@ type Server struct {
 
 // NewServer creates a new web server instance
 func NewServer(templatePath, staticPath string) (*Server, error) {
+	// Check if templatePath exists and is a directory
+	info, err := os.Stat(templatePath)
+	if err != nil || !info.IsDir() {
+		return nil, fmt.Errorf("templatePath does not exist or is not a directory: %v", templatePath)
+	}
+	// Check if staticPath exists and is a directory
+	info, err = os.Stat(staticPath)
+	if err != nil || !info.IsDir() {
+		return nil, fmt.Errorf("staticPath does not exist or is not a directory: %v", staticPath)
+	}
+
 	// 1) Create a root Template with any custom funcs
 	funcMap := template.FuncMap{
 		"year": func() int { return time.Now().Year() },
@@ -240,6 +253,9 @@ func (s *Server) render(pageName string, baseData map[string]interface{}) http.H
 		}
 
 		// 3) Inject year & headers (always make sure the Content-Type is set)
+		if baseData == nil {
+			baseData = make(map[string]interface{})
+		}
 		baseData["Year"] = time.Now().Year()
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 

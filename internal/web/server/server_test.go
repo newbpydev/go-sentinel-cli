@@ -75,6 +75,7 @@ func TestServer_RegisterRoutes(t *testing.T) {
 	dirs := []string{
 		filepath.Join(templatePath, "layouts"),
 		filepath.Join(templatePath, "partials"),
+		filepath.Join(templatePath, "pages"), // Ensure pages dir exists
 		staticPath,
 	}
 	for _, dir := range dirs {
@@ -87,6 +88,16 @@ func TestServer_RegisterRoutes(t *testing.T) {
 	baseTemplate := `{{define "base"}}{{block "content" .}}{{end}}{{end}}`
 	if err := os.WriteFile(filepath.Join(templatePath, "layouts", "base.tmpl"), []byte(baseTemplate), 0644); err != nil {
 		t.Fatalf("Failed to create base template: %v", err)
+	}
+
+	// Create minimal page templates for each route
+	pageNames := []string{"dashboard", "tests", "reports", "history", "settings", "coverage"}
+	for _, name := range pageNames {
+		pageContent := `{{define "content"}}Test Content{{end}}`
+		pagePath := filepath.Join(templatePath, "pages", name+".tmpl")
+		if err := os.WriteFile(pagePath, []byte(pageContent), 0644); err != nil {
+			t.Fatalf("Failed to create page template %s: %v", name, err)
+		}
 	}
 
 	// Create server
@@ -132,11 +143,16 @@ func TestServer_RenderTemplate(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(templatePath, "layouts"), 0755); err != nil {
 		t.Fatalf("Failed to create layouts directory: %v", err)
 	}
+	if err := os.MkdirAll(filepath.Join(templatePath, "pages"), 0755); err != nil {
+		t.Fatalf("Failed to create pages directory: %v", err)
+	}
+	if err := os.MkdirAll(staticPath, 0755); err != nil {
+		t.Fatalf("Failed to create static directory: %v", err)
+	}
 
 	// Create test templates
 	templates := map[string]string{
 		"layouts/base.tmpl": `{{define "base"}}Title: {{.Title}}{{block "content" .}}{{end}}{{end}}`,
-		"layouts/page.tmpl": `{{define "content"}}Content: {{.Content}}{{end}}`,
 	}
 
 	for name, content := range templates {
@@ -144,6 +160,11 @@ func TestServer_RenderTemplate(t *testing.T) {
 		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 			t.Fatalf("Failed to create template %s: %v", name, err)
 		}
+	}
+	// Create required page template
+	pageTmpl := `{{define "content"}}Content: {{.Content}}{{end}}`
+	if err := os.WriteFile(filepath.Join(templatePath, "pages", "page.tmpl"), []byte(pageTmpl), 0644); err != nil {
+		t.Fatalf("Failed to create page template: %v", err)
 	}
 
 	// Create server
@@ -187,6 +208,12 @@ func TestServer_TemplateFunctions(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(templatePath, "layouts"), 0755); err != nil {
 		t.Fatalf("Failed to create layouts directory: %v", err)
 	}
+	if err := os.MkdirAll(filepath.Join(templatePath, "pages"), 0755); err != nil {
+		t.Fatalf("Failed to create pages directory: %v", err)
+	}
+	if err := os.MkdirAll(staticPath, 0755); err != nil {
+		t.Fatalf("Failed to create static directory: %v", err)
+	}
 
 	// Create test template that uses custom functions
 	tmplContent := `{{define "base"}}
@@ -200,6 +227,11 @@ func TestServer_TemplateFunctions(t *testing.T) {
 
 	if err := os.WriteFile(filepath.Join(templatePath, "layouts", "base.tmpl"), []byte(tmplContent), 0644); err != nil {
 		t.Fatalf("Failed to create template: %v", err)
+	}
+	// Create required page template
+	pageTmpl := `{{define "content"}}{{end}}`
+	if err := os.WriteFile(filepath.Join(templatePath, "pages", "base.tmpl"), []byte(pageTmpl), 0644); err != nil {
+		t.Fatalf("Failed to create page template: %v", err)
 	}
 
 	// Create server
@@ -231,8 +263,8 @@ func TestServer_TemplateFunctions(t *testing.T) {
 	}
 
 	for name, expected := range expectedOutputs {
-		if !strings.Contains(body, expected) {
-			t.Errorf("%s: expected %q in output", name, expected)
+		if !strings.Contains(strings.ReplaceAll(body, "\n", ""), expected) {
+			t.Errorf("%s: expected %q in output, got: %q", name, expected, body)
 		}
 	}
 }
