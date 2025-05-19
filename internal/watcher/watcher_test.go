@@ -1,7 +1,6 @@
 package watcher
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -9,7 +8,7 @@ import (
 )
 
 func TestDetectsFileChanges(t *testing.T) {
-	dir, err := ioutil.TempDir("", "gosentinel-test-")
+	dir, err := os.MkdirTemp("", "gosentinel-test-")
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
@@ -17,7 +16,7 @@ func TestDetectsFileChanges(t *testing.T) {
 
 	// Create a Go file
 	filePath := filepath.Join(dir, "main.go")
-	if err := ioutil.WriteFile(filePath, []byte("package main"), 0644); err != nil {
+	if err := os.WriteFile(filePath, []byte("package main"), 0644); err != nil {
 		t.Fatalf("failed to write file: %v", err)
 	}
 
@@ -29,7 +28,7 @@ func TestDetectsFileChanges(t *testing.T) {
 	defer w.Close()
 
 	// Modify file
-	if err := ioutil.WriteFile(filePath, []byte("package main // changed"), 0644); err != nil {
+	if err := os.WriteFile(filePath, []byte("package main // changed"), 0644); err != nil {
 		t.Fatalf("failed to modify file: %v", err)
 	}
 
@@ -45,7 +44,7 @@ func TestDetectsFileChanges(t *testing.T) {
 }
 
 func TestIgnoresVendorAndHiddenDirs(t *testing.T) {
-	dir, err := ioutil.TempDir("", "gosentinel-test-")
+	dir, err := os.MkdirTemp("", "gosentinel-test-")
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
@@ -54,12 +53,12 @@ func TestIgnoresVendorAndHiddenDirs(t *testing.T) {
 	vendorDir := filepath.Join(dir, "vendor")
 	os.Mkdir(vendorDir, 0755)
 	vendorFile := filepath.Join(vendorDir, "ignore.go")
-	ioutil.WriteFile(vendorFile, []byte("package vendor"), 0644)
+	os.WriteFile(vendorFile, []byte("package vendor"), 0644)
 
 	hiddenDir := filepath.Join(dir, ".hidden")
 	os.Mkdir(hiddenDir, 0755)
 	hiddenFile := filepath.Join(hiddenDir, "ignore.go")
-	ioutil.WriteFile(hiddenFile, []byte("package hidden"), 0644)
+	os.WriteFile(hiddenFile, []byte("package hidden"), 0644)
 
 	w, err := NewWatcher(dir)
 	if err != nil {
@@ -68,9 +67,9 @@ func TestIgnoresVendorAndHiddenDirs(t *testing.T) {
 	defer w.Close()
 
 	// Modify vendor file
-	ioutil.WriteFile(vendorFile, []byte("package vendor // changed"), 0644)
+	os.WriteFile(vendorFile, []byte("package vendor // changed"), 0644)
 	// Modify hidden file
-	ioutil.WriteFile(hiddenFile, []byte("package hidden // changed"), 0644)
+	os.WriteFile(hiddenFile, []byte("package hidden // changed"), 0644)
 
 	// Should NOT receive events for these
 	select {
@@ -82,7 +81,7 @@ func TestIgnoresVendorAndHiddenDirs(t *testing.T) {
 }
 
 func TestHandlesFileEvents(t *testing.T) {
-	dir, err := ioutil.TempDir("", "gosentinel-test-")
+	dir, err := os.MkdirTemp("", "gosentinel-test-")
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
@@ -96,11 +95,11 @@ func TestHandlesFileEvents(t *testing.T) {
 
 	filePath := filepath.Join(dir, "test.go")
 	// Create
-	if err := ioutil.WriteFile(filePath, []byte("package test"), 0644); err != nil {
+	if err := os.WriteFile(filePath, []byte("package test"), 0644); err != nil {
 		t.Fatalf("failed to write file: %v", err)
 	}
 	// Write
-	if err := ioutil.WriteFile(filePath, []byte("package test // changed"), 0644); err != nil {
+	if err := os.WriteFile(filePath, []byte("package test // changed"), 0644); err != nil {
 		t.Fatalf("failed to write file: %v", err)
 	}
 	// Remove

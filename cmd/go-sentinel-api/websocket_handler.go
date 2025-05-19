@@ -65,7 +65,9 @@ func (c *WebSocketConnection) Close() error {
 // handleMessages processes incoming WebSocket messages
 func handleMessages(conn *gorillaws.Conn, connID string, connManager *websocket.ConnectionManager) {
 	defer func() {
-		conn.Close()
+		if err := conn.Close(); err != nil {
+			log.Printf("Error closing WebSocket connection: %v", err)
+		}
 		connManager.Remove(connID)
 		log.Printf("WebSocket connection closed: %s", connID)
 	}()

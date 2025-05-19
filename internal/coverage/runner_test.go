@@ -21,7 +21,11 @@ func TestRunTestsWithCoverage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		if removeAllErr := os.RemoveAll(tempDir); removeAllErr != nil {
+			t.Logf("Failed to remove temp dir %s: %v", tempDir, removeAllErr)
+		}
+	}()
 
 	// Define the coverage output path
 	coverageFile := filepath.Join(tempDir, "coverage.out")
@@ -41,10 +45,9 @@ func TestRunTestsWithCoverage(t *testing.T) {
 		Timeout:      3 * time.Second, // Shorter timeout
 	}
 
-	// Run the tests
-	err = RunTestsWithCoverage(ctx, options)
-	// We're just testing if the function runs without hanging
-	// We don't care about test failures (they might be expected)
+	// Run the tests - we ignore the error as we're just testing if the function runs without hanging
+	// and we don't care about test failures (they might be expected)
+	_ = RunTestsWithCoverage(ctx, options)
 	
 	// Check if the coverage file was created or log why it failed
 	if _, err := os.Stat(coverageFile); os.IsNotExist(err) {

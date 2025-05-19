@@ -21,12 +21,13 @@ tmp_dir = "tmp"
 
 [watch]
 delay = 1000
-includes = ["**/*.go", "**/*.html", "**/*.tmpl", "**/*.css", "**/*.js"]
-  excludes = ["tmp/**", ".git/**", "vendor/**"]
+includes = ["**/*.go", "**/*.html", "**/*.tmpl", "**/*.css", "**/*.js", "**/*.ts", "**/*.json"]
+  excludes = ["tmp/**", ".git/**", "vendor/**", "node_modules/**"]
 
 [log]
   color = true
   time = true
+  level = "debug" # debug, info, warn, error
 
 [misc]
   # clean the tmp directory on exit

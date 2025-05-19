@@ -112,12 +112,13 @@ func (r *Runner) RunWithContext(ctx context.Context, pkg string, testName string
 	if err != nil {
 		return err
 	}
-	stderr, err := cmd.StderrPipe()
+	var stderr io.ReadCloser
+	stderr, err = cmd.StderrPipe()
 	if err != nil {
 		return err
 	}
-	if err := cmd.Start(); err != nil {
-		return err
+	if startErr := cmd.Start(); startErr != nil {
+		return startErr
 	}
 
 	// Set up channels for detecting inactivity
@@ -171,8 +172,8 @@ func (r *Runner) RunWithContext(ctx context.Context, pkg string, testName string
 				out <- append([]byte{}, line...)
 			}
 		}
-		if err := scanner.Err(); err != nil {
-			out <- []byte("[runner debug] scanner error: " + err.Error())
+		if scanErr := scanner.Err(); scanErr != nil {
+			out <- []byte("[runner debug] scanner error: " + scanErr.Error())
 		}
 	}
 

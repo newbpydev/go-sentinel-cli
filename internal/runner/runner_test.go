@@ -14,9 +14,11 @@ func TestRunGoTestJSONInCorrectPkg(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to start go test: %v", err)
 	}
-	cmd.Wait()
-	output := string(out.Bytes())
-if !strings.Contains(output, `"Action":"pass"`) {
+	if err := cmd.Wait(); err != nil {
+		t.Fatalf("go test command failed: %v", err)
+	}
+	output := out.String()
+	if !strings.Contains(output, `"Action":"pass"`) {
 	t.Errorf("expected JSON output with pass action, got: %q", output)
 }
 }
@@ -57,7 +59,9 @@ func TestPipeStdoutStderrForRealtimeOutput(t *testing.T) {
 	}
 	done := make(chan struct{})
 	go func() {
-		cmd.Wait()
+		if err := cmd.Wait(); err != nil {
+			t.Errorf("go test command failed: %v", err)
+		}
 		close(done)
 	}()
 	select {

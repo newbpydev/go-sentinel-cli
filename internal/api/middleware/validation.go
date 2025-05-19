@@ -14,14 +14,12 @@ func ValidateJSON(next http.Handler) http.Handler {
 			if r.Body != nil {
 				body, err := io.ReadAll(r.Body)
 				if err != nil {
-					w.WriteHeader(http.StatusBadRequest)
-					w.Write([]byte("invalid body"))
+					http.Error(w, "invalid body", http.StatusBadRequest)
 					return
 				}
 				var js json.RawMessage
 				if err := json.Unmarshal(body, &js); err != nil {
-					w.WriteHeader(http.StatusBadRequest)
-					w.Write([]byte("malformed JSON"))
+					http.Error(w, "malformed JSON", http.StatusBadRequest)
 					return
 				}
 				// Replace body for downstream handlers

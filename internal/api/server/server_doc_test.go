@@ -16,7 +16,9 @@ func TestDocsEndpoint_OpenAPIYAML(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/yaml")
 		w.WriteHeader(http.StatusOK)
-		w.Write(data)
+		if _, err := w.Write(data); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 	}))
 	defer ts.Close()
 

@@ -51,7 +51,10 @@ func RateLimit(limit int, window time.Duration) func(http.Handler) http.Handler 
 			ip := r.RemoteAddr
 			if !rl.allow(ip) {
 				w.WriteHeader(http.StatusTooManyRequests)
-				w.Write([]byte("rate limit exceeded"))
+				if _, err := w.Write([]byte("rate limit exceeded")); err != nil {
+					// Log the error if we can't write the response
+					http.Error(w, "internal server error", http.StatusInternalServerError)
+				}
 				return
 			}
 			next.ServeHTTP(w, r)
