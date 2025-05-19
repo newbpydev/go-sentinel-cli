@@ -34,7 +34,7 @@ func TestConnectionTracking(t *testing.T) {
 		t.Fatalf("Failed to connect first WebSocket: %v", err)
 	}
 	defer func() {
-		if err := conn1.Close(); err != nil {
+		if err = conn1.Close(); err != nil {
 			t.Errorf("Failed to close connection 1: %v", err)
 		}
 	}()
