@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 	
@@ -20,11 +21,13 @@ type NotificationResponse struct {
 func HandleTestNotification(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(NotificationResponse{
+		if err := json.NewEncoder(w).Encode(NotificationResponse{
 			Status:  "error",
 			Type:    "",
 			Message: "Method not allowed",
-		})
+		}); err != nil {
+			log.Printf("Error encoding response: %v", err)
+		}
 		return
 	}
 
@@ -32,11 +35,13 @@ func HandleTestNotification(w http.ResponseWriter, r *http.Request) {
 	typeParam = strings.ToLower(typeParam)
 	if typeParam == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(NotificationResponse{
+		if err := json.NewEncoder(w).Encode(NotificationResponse{
 			Status:  "error",
 			Type:    "",
 			Message: "Missing notification type",
-		})
+		}); err != nil {
+			log.Printf("Error encoding response: %v", err)
+		}
 		return
 	}
 
@@ -44,11 +49,13 @@ func HandleTestNotification(w http.ResponseWriter, r *http.Request) {
 	allowed := map[string]bool{"success": true, "error": true, "warning": true, "info": true}
 	if !allowed[typeParam] {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(NotificationResponse{
+		if err := json.NewEncoder(w).Encode(NotificationResponse{
 			Status:  "error",
 			Type:    typeParam,
 			Message: "Invalid notification type",
-		})
+		}); err != nil {
+			log.Printf("Error encoding response: %v", err)
+		}
 		return
 	}
 	
@@ -66,14 +73,18 @@ func HandleTestNotification(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	// Add the toast notification to the response headers
-	t.AddHeader(w)
+	if err := t.AddHeader(w); err != nil {
+		log.Printf("Error adding toast header: %v", err)
+	}
 	
 	// Return a JSON response as well (for API compatibility)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(NotificationResponse{
+	if err := json.NewEncoder(w).Encode(NotificationResponse{
 		Status:  "ok",
 		Type:    typeParam,
 		Message: "Notification type '" + typeParam + "' triggered successfully.",
-	})
+	}); err != nil {
+		log.Printf("Error encoding response: %v", err)
+	}
 }

@@ -8,28 +8,36 @@ import (
 )
 
 func TestDetectsFileChanges(t *testing.T) {
-	dir, err := os.MkdirTemp("", "gosentinel-test-")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
+	dir, dirErr := os.MkdirTemp("", "gosentinel-test-")
+	if dirErr != nil {
+		t.Fatalf("failed to create temp dir: %v", dirErr)
 	}
-	defer os.RemoveAll(dir)
+	defer func() {
+		if err := os.RemoveAll(dir); err != nil {
+			t.Logf("warning: failed to clean up temp dir: %v", err)
+		}
+	}()
 
 	// Create a Go file
 	filePath := filepath.Join(dir, "main.go")
-	if err := os.WriteFile(filePath, []byte("package main"), 0644); err != nil {
-		t.Fatalf("failed to write file: %v", err)
+	if writeErr := os.WriteFile(filePath, []byte("package main"), 0600); writeErr != nil {
+		t.Fatalf("failed to write file: %v", writeErr)
 	}
 
-	// Start watcher (to be implemented)
-	w, err := NewWatcher(dir)
-	if err != nil {
-		t.Fatalf("failed to start watcher: %v", err)
+	// Start watcher
+	w, watcherErr := NewWatcher(dir)
+	if watcherErr != nil {
+		t.Fatalf("failed to start watcher: %v", watcherErr)
 	}
-	defer w.Close()
+	defer func() {
+		if closeErr := w.Close(); closeErr != nil {
+			t.Logf("warning: error closing watcher: %v", closeErr)
+		}
+	}()
 
 	// Modify file
-	if err := os.WriteFile(filePath, []byte("package main // changed"), 0644); err != nil {
-		t.Fatalf("failed to modify file: %v", err)
+	if modifyErr := os.WriteFile(filePath, []byte("package main // changed"), 0600); modifyErr != nil {
+		t.Fatalf("failed to modify file: %v", modifyErr)
 	}
 
 	// Expect event
@@ -44,32 +52,54 @@ func TestDetectsFileChanges(t *testing.T) {
 }
 
 func TestIgnoresVendorAndHiddenDirs(t *testing.T) {
-	dir, err := os.MkdirTemp("", "gosentinel-test-")
+	tempDir, err := os.MkdirTemp("", "gosentinel-test-")
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(dir)
+	defer func() {
+		if err := os.RemoveAll(tempDir); err != nil {
+			t.Logf("warning: failed to clean up temp dir: %v", err)
+		}
+	}()
 
-	vendorDir := filepath.Join(dir, "vendor")
-	os.Mkdir(vendorDir, 0755)
+	// Setup vendor directory
+	vendorDir := filepath.Join(tempDir, "vendor")
+	if err := os.Mkdir(vendorDir, 0700); err != nil {
+		t.Fatalf("failed to create vendor dir: %v", err)
+	}
 	vendorFile := filepath.Join(vendorDir, "ignore.go")
-	os.WriteFile(vendorFile, []byte("package vendor"), 0644)
+	if err := os.WriteFile(vendorFile, []byte("package vendor"), 0600); err != nil {
+		t.Fatalf("failed to create vendor file: %v", err)
+	}
 
-	hiddenDir := filepath.Join(dir, ".hidden")
-	os.Mkdir(hiddenDir, 0755)
+	// Setup hidden directory
+	hiddenDir := filepath.Join(tempDir, ".hidden")
+	if err := os.Mkdir(hiddenDir, 0700); err != nil {
+		t.Fatalf("failed to create hidden dir: %v", err)
+	}
 	hiddenFile := filepath.Join(hiddenDir, "ignore.go")
-	os.WriteFile(hiddenFile, []byte("package hidden"), 0644)
+	if err := os.WriteFile(hiddenFile, []byte("package hidden"), 0600); err != nil {
+		t.Fatalf("failed to create hidden file: %v", err)
+	}
 
-	w, err := NewWatcher(dir)
+	// Initialize watcher
+	w, err := NewWatcher(tempDir)
 	if err != nil {
 		t.Fatalf("failed to start watcher: %v", err)
 	}
-	defer w.Close()
+	defer func() {
+		if err := w.Close(); err != nil {
+			t.Logf("warning: error closing watcher: %v", err)
+		}
+	}()
 
-	// Modify vendor file
-	os.WriteFile(vendorFile, []byte("package vendor // changed"), 0644)
-	// Modify hidden file
-	os.WriteFile(hiddenFile, []byte("package hidden // changed"), 0644)
+	// Modify files in excluded directories
+	if err := os.WriteFile(vendorFile, []byte("package vendor // changed"), 0600); err != nil {
+		t.Fatalf("failed to modify vendor file: %v", err)
+	}
+	if err := os.WriteFile(hiddenFile, []byte("package hidden // changed"), 0600); err != nil {
+		t.Fatalf("failed to modify hidden file: %v", err)
+	}
 
 	// Should NOT receive events for these
 	select {
@@ -81,30 +111,38 @@ func TestIgnoresVendorAndHiddenDirs(t *testing.T) {
 }
 
 func TestHandlesFileEvents(t *testing.T) {
-	dir, err := os.MkdirTemp("", "gosentinel-test-")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
+	tempDir, dirErr := os.MkdirTemp("", "gosentinel-test-")
+	if dirErr != nil {
+		t.Fatalf("failed to create temp dir: %v", dirErr)
 	}
-	defer os.RemoveAll(dir)
+	defer func() {
+		if removeErr := os.RemoveAll(tempDir); removeErr != nil {
+			t.Logf("warning: failed to clean up temp dir: %v", removeErr)
+		}
+	}()
 
-	w, err := NewWatcher(dir)
-	if err != nil {
-		t.Fatalf("failed to start watcher: %v", err)
+	w, watcherErr := NewWatcher(tempDir)
+	if watcherErr != nil {
+		t.Fatalf("failed to start watcher: %v", watcherErr)
 	}
-	defer w.Close()
+	defer func() {
+		if closeErr := w.Close(); closeErr != nil {
+			t.Logf("warning: error closing watcher: %v", closeErr)
+		}
+	}()
 
-	filePath := filepath.Join(dir, "test.go")
-	// Create
-	if err := os.WriteFile(filePath, []byte("package test"), 0644); err != nil {
-		t.Fatalf("failed to write file: %v", err)
+	filePath := filepath.Join(tempDir, "test.go")
+	// Create file
+	if writeErr := os.WriteFile(filePath, []byte("package test"), 0600); writeErr != nil {
+		t.Fatalf("failed to write file: %v", writeErr)
 	}
-	// Write
-	if err := os.WriteFile(filePath, []byte("package test // changed"), 0644); err != nil {
-		t.Fatalf("failed to write file: %v", err)
+	// Modify file
+	if modifyErr := os.WriteFile(filePath, []byte("package test // changed"), 0600); modifyErr != nil {
+		t.Fatalf("failed to modify file: %v", modifyErr)
 	}
-	// Remove
-	if err := os.Remove(filePath); err != nil {
-		t.Fatalf("failed to remove file: %v", err)
+	// Remove file
+	if removeErr := os.Remove(filePath); removeErr != nil {
+		t.Fatalf("failed to remove file: %v", removeErr)
 	}
 
 	received := 0

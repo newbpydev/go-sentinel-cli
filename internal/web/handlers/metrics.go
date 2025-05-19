@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 )
@@ -29,7 +30,10 @@ func (h *MetricsHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 
 	// For API requests, return JSON
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(metrics)
+	if err := json.NewEncoder(w).Encode(metrics); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 // renderMetricsHTML renders HTML for metrics (for HTMX)
@@ -76,7 +80,9 @@ func (h *MetricsHandler) renderMetricsHTML(w http.ResponseWriter, metrics map[st
 		</div>
 	</div>`
 
-	w.Write([]byte(html))
+	if _, err := w.Write([]byte(html)); err != nil {
+		log.Printf("Error writing metrics HTML response: %v", err)
+	}
 }
 
 // getMetricsData returns mock metrics data

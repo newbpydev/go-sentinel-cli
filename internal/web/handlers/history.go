@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"sort"
 	"sync"
@@ -136,7 +137,10 @@ func (h *HistoryHandler) GetTestRunHistory(w http.ResponseWriter, r *http.Reques
 	limitStr := r.URL.Query().Get("limit")
 	limit := 10 // Default limit
 	if limitStr != "" {
-		fmt.Sscanf(limitStr, "%d", &limit)
+		if _, err := fmt.Sscanf(limitStr, "%d", &limit); err != nil {
+			http.Error(w, "Invalid limit parameter", http.StatusBadRequest)
+			return
+		}
 	}
 	
 	// Get test runs
@@ -150,9 +154,12 @@ func (h *HistoryHandler) GetTestRunHistory(w http.ResponseWriter, r *http.Reques
 	
 	// For API requests, return JSON
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"testRuns": runs,
-	})
+	}); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 // GetTestRunDetails returns details for a specific test run
@@ -160,58 +167,63 @@ func (h *HistoryHandler) GetTestRunDetails(w http.ResponseWriter, r *http.Reques
 	// Get run ID from URL
 	runID := chi.URLParam(r, "runID")
 	if runID == "" {
-		http.Error(w, "Run ID is required", http.StatusBadRequest)
+		http.Error(w, "Missing run ID", http.StatusBadRequest)
 		return
 	}
-	
-	// Get test run
-	run, found := h.history.GetTestRunByID(runID)
-	if !found {
-		http.Error(w, "Test run not found", http.StatusNotFound)
+
+	// Get the test run
+	run, exists := h.history.GetTestRunByID(runID)
+	if !exists {
+		http.NotFound(w, r)
 		return
 	}
-	
+
 	// For HTMX requests, render HTML
 	if r.Header.Get("HX-Request") == "true" {
 		h.renderTestRunDetailsHTML(w, run)
 		return
 	}
-	
+
 	// For API requests, return JSON
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(run)
+	if err := json.NewEncoder(w).Encode(run); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 // CompareTestRuns compares two test runs
 func (h *HistoryHandler) CompareTestRuns(w http.ResponseWriter, r *http.Request) {
-	// Get run IDs from URL
-	baseRunID := r.URL.Query().Get("baseRunID")
-	compareRunID := r.URL.Query().Get("compareRunID")
-	
+	// Get run IDs from query parameters
+	baseRunID := r.URL.Query().Get("base")
+	compareRunID := r.URL.Query().Get("compare")
+
 	if baseRunID == "" || compareRunID == "" {
 		http.Error(w, "Both base and compare run IDs are required", http.StatusBadRequest)
 		return
 	}
-	
-	// Get test runs
-	baseRun, foundBase := h.history.GetTestRunByID(baseRunID)
-	compareRun, foundCompare := h.history.GetTestRunByID(compareRunID)
-	
-	if !foundBase || !foundCompare {
-		http.Error(w, "One or both test runs not found", http.StatusNotFound)
+
+	// Get the test runs
+	baseRun, baseExists := h.history.GetTestRunByID(baseRunID)
+	compareRun, compareExists := h.history.GetTestRunByID(compareRunID)
+
+	if !baseExists || !compareExists {
+		http.NotFound(w, r)
 		return
 	}
-	
+
 	// For HTMX requests, render HTML
 	if r.Header.Get("HX-Request") == "true" {
 		h.renderComparisonHTML(w, baseRun, compareRun)
 		return
 	}
-	
+
 	// For API requests, return JSON
-	comparison := generateComparison(baseRun, compareRun)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(comparison)
+	if err := json.NewEncoder(w).Encode(generateComparison(baseRun, compareRun)); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 // renderHistoryHTML renders HTML for test history
@@ -265,7 +277,9 @@ func (h *HistoryHandler) renderHistoryHTML(w http.ResponseWriter, runs []TestRun
 		html = `<div class="content-padding"><p class="text-center">No test runs available yet.</p></div>`
 	}
 	
-	w.Write([]byte(html))
+	if _, err := w.Write([]byte(html)); err != nil {
+		log.Printf("Error writing response: %v", err)
+	}
 }
 
 // renderTestRunDetailsHTML renders HTML for a single test run
@@ -413,7 +427,9 @@ func (h *HistoryHandler) renderTestRunDetailsHTML(w http.ResponseWriter, run Tes
 		</div>
 	</div>`
 	
-	w.Write([]byte(html))
+	if _, err := w.Write([]byte(html)); err != nil {
+		log.Printf("Error writing response: %v", err)
+	}
 }
 
 // renderComparisonHTML renders HTML comparing two test runs
@@ -589,7 +605,9 @@ func (h *HistoryHandler) renderComparisonHTML(w http.ResponseWriter, baseRun, co
 	</div>
 </div>`
 	
-	w.Write([]byte(html))
+	if _, err := w.Write([]byte(html)); err != nil {
+		log.Printf("Error writing response: %v", err)
+	}
 }
 
 // renderBuildInfo renders HTML for build information

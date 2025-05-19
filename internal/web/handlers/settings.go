@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"html/template"
+	"log"
 	"net/http"
 	"strconv"
 )
@@ -163,7 +164,9 @@ func (h *SettingsHandler) SaveSettings(w http.ResponseWriter, r *http.Request) {
 	// Create feedback message
 	feedbackHTML := `<div class="settings-feedback success">Settings saved successfully</div>`
 	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(feedbackHTML))
+	if _, err := w.Write([]byte(feedbackHTML)); err != nil {
+		log.Printf("Error writing response: %v", err)
+	}
 }
 
 // ResetSettings handles resetting settings to defaults
@@ -183,7 +186,9 @@ func (h *SettingsHandler) ClearCache(w http.ResponseWriter, r *http.Request) {
 	// Create feedback message
 	feedbackHTML := `<div class="settings-feedback success">Cache cleared successfully</div>`
 	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(feedbackHTML))
+	if _, err := w.Write([]byte(feedbackHTML)); err != nil {
+		log.Printf("Error writing response: %v", err)
+	}
 }
 
 // ClearHistory handles clearing the test history
@@ -194,7 +199,9 @@ func (h *SettingsHandler) ClearHistory(w http.ResponseWriter, r *http.Request) {
 	// Create feedback message
 	feedbackHTML := `<div class="settings-feedback success">Test history cleared successfully</div>`
 	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(feedbackHTML))
+	if _, err := w.Write([]byte(feedbackHTML)); err != nil {
+		log.Printf("Error writing response: %v", err)
+	}
 }
 
 // Helper function to send validation error response
