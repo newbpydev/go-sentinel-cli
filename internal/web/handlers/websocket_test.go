@@ -39,27 +39,27 @@ func TestWebSocketMessageSerialization(t *testing.T) {
 		name    string
 		message WebSocketMessage
 	}{
-	{
-		name: "test result message",
-		message: WebSocketMessage{
-			Type: "test_result",
-			Payload: json.RawMessage(`{"name":"TestExample","passed":true,"message":"Test passed successfully","duration":125000000}`),
+		{
+			name: "test result message",
+			message: WebSocketMessage{
+				Type:    "test_result",
+				Payload: json.RawMessage(`{"name":"TestExample","passed":true,"message":"Test passed successfully","duration":125000000}`),
+			},
 		},
-	},
-	{
-		name: "metrics update message",
-		message: WebSocketMessage{
-			Type: "metrics_update",
-			Payload: json.RawMessage(`{"testsRun":5,"testsPassed":5,"coverage":85.5}`),
+		{
+			name: "metrics update message",
+			message: WebSocketMessage{
+				Type:    "metrics_update",
+				Payload: json.RawMessage(`{"testsRun":5,"testsPassed":5,"coverage":85.5}`),
+			},
 		},
-	},
-	{
-		name: "status update message",
-		message: WebSocketMessage{
-			Type: "status_update",
-			Payload: json.RawMessage(`{"status":"running","time":"` + time.Now().Format(time.RFC3339) + `"}`),
+		{
+			name: "status update message",
+			message: WebSocketMessage{
+				Type:    "status_update",
+				Payload: json.RawMessage(`{"status":"running","time":"` + time.Now().Format(time.RFC3339) + `"}`),
+			},
 		},
-	},
 	}
 
 	for _, tt := range tests {
@@ -265,9 +265,9 @@ func TestMessageRoutingByType(t *testing.T) {
 			messageType: "metrics-update",
 			sendFunc: func() {
 				h.BroadcastMetricsUpdate(map[string]interface{}{
-					"testsRun":   5,
+					"testsRun":    5,
 					"testsPassed": 5,
-					"coverage":   85.5,
+					"coverage":    85.5,
 				})
 			},
 			expectData: true,

@@ -23,10 +23,10 @@ func NewSettingsHandler(tmpl *template.Template) *SettingsHandler {
 // Settings represents the application settings
 type Settings struct {
 	// Test Runner settings
-	TestTimeout    int  `json:"testTimeout"`
-	ParallelTests  int  `json:"parallelTests"`
-	VerboseOutput  bool `json:"verboseOutput"`
-	AutoRun        bool `json:"autoRun"`
+	TestTimeout   int  `json:"testTimeout"`
+	ParallelTests int  `json:"parallelTests"`
+	VerboseOutput bool `json:"verboseOutput"`
+	AutoRun       bool `json:"autoRun"`
 
 	// Notification settings
 	NotifySuccess        bool   `json:"notifySuccess"`
@@ -35,9 +35,9 @@ type Settings struct {
 	NotificationPosition string `json:"notificationPosition"`
 
 	// Coverage settings
-	CollectCoverage    bool    `json:"collectCoverage"`
-	CoverageThreshold  float64 `json:"coverageThreshold"`
-	CoverageExclude    string  `json:"coverageExclude"`
+	CollectCoverage   bool    `json:"collectCoverage"`
+	CoverageThreshold float64 `json:"coverageThreshold"`
+	CoverageExclude   string  `json:"coverageExclude"`
 
 	// Appearance settings
 	Theme             string `json:"theme"`
@@ -45,10 +45,10 @@ type Settings struct {
 	AnimationsEnabled bool   `json:"animationsEnabled"`
 
 	// Advanced settings
-	LogLevel       string `json:"logLevel"`
-	CacheDuration  int    `json:"cacheDuration"`
-	DataDirectory  string `json:"dataDirectory"`
-	DebugMode      bool   `json:"debugMode"`
+	LogLevel      string `json:"logLevel"`
+	CacheDuration int    `json:"cacheDuration"`
+	DataDirectory string `json:"dataDirectory"`
+	DebugMode     bool   `json:"debugMode"`
 }
 
 // ValidationResponse represents the response for settings validation
@@ -62,10 +62,10 @@ type ValidationResponse struct {
 func GetDefaultSettings() Settings {
 	return Settings{
 		// Test Runner defaults
-		TestTimeout:    30,
-		ParallelTests:  4,
-		VerboseOutput:  true,
-		AutoRun:        true,
+		TestTimeout:   30,
+		ParallelTests: 4,
+		VerboseOutput: true,
+		AutoRun:       true,
 
 		// Notification defaults
 		NotifySuccess:        true,
@@ -74,9 +74,9 @@ func GetDefaultSettings() Settings {
 		NotificationPosition: "top-right",
 
 		// Coverage defaults
-		CollectCoverage:    true,
-		CoverageThreshold:  80.0,
-		CoverageExclude:    "vendor/\n.git/\n*_test.go",
+		CollectCoverage:   true,
+		CoverageThreshold: 80.0,
+		CoverageExclude:   "vendor/\n.git/\n*_test.go",
 
 		// Appearance defaults
 		Theme:             "dark",
@@ -84,10 +84,10 @@ func GetDefaultSettings() Settings {
 		AnimationsEnabled: true,
 
 		// Advanced defaults
-		LogLevel:       "info",
-		CacheDuration:  30,
-		DataDirectory:  "./data",
-		DebugMode:      false,
+		LogLevel:      "info",
+		CacheDuration: 30,
+		DataDirectory: "./data",
+		DebugMode:     false,
 	}
 }
 
@@ -173,7 +173,7 @@ func (h *SettingsHandler) SaveSettings(w http.ResponseWriter, r *http.Request) {
 func (h *SettingsHandler) ResetSettings(w http.ResponseWriter, r *http.Request) {
 	// In a real implementation, this would reset settings in storage to defaults
 	// For now, we'll just return success
-	
+
 	// Redirect to settings page with default values
 	http.Redirect(w, r, "/settings", http.StatusSeeOther)
 }

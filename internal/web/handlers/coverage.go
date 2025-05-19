@@ -64,19 +64,19 @@ type FileCoverageData struct {
 
 // FileDetailData represents the detailed coverage data for a file
 type FileDetailData struct {
-	FileID           string            `json:"fileID"`
-	FilePath         string            `json:"filePath"`
-	LineCoverage     float64           `json:"lineCoverage"`
-	FunctionCoverage float64           `json:"functionCoverage"`
-	BranchCoverage   float64           `json:"branchCoverage"`
-	CoveredLines     int               `json:"coveredLines"`
-	TotalLines       int               `json:"totalLines"`
-	CoveredFunctions int               `json:"coveredFunctions"`
-	TotalFunctions   int               `json:"totalFunctions"`
-	CoveredBranches  int               `json:"coveredBranches"`
-	TotalBranches    int               `json:"totalBranches"`
-	SourceLines      map[int]string    `json:"sourceLines"`
-	LineStatuses     map[int]string    `json:"lineStatuses"`
+	FileID           string         `json:"fileID"`
+	FilePath         string         `json:"filePath"`
+	LineCoverage     float64        `json:"lineCoverage"`
+	FunctionCoverage float64        `json:"functionCoverage"`
+	BranchCoverage   float64        `json:"branchCoverage"`
+	CoveredLines     int            `json:"coveredLines"`
+	TotalLines       int            `json:"totalLines"`
+	CoveredFunctions int            `json:"coveredFunctions"`
+	TotalFunctions   int            `json:"totalFunctions"`
+	CoveredBranches  int            `json:"coveredBranches"`
+	TotalBranches    int            `json:"totalBranches"`
+	SourceLines      map[int]string `json:"sourceLines"`
+	LineStatuses     map[int]string `json:"lineStatuses"`
 }
 
 // GetCoverageSummary handles requests for the coverage summary
@@ -107,10 +107,10 @@ func (h *CoverageHandler) GetCoverageFiles(w http.ResponseWriter, r *http.Reques
 	if page < 1 {
 		page = 1
 	}
-	
+
 	filter := r.URL.Query().Get("filter")
 	search := r.URL.Query().Get("search")
-	
+
 	// In a real implementation, this would fetch actual coverage data
 	// For now, we'll use mock data
 	files := []FileCoverageData{
@@ -180,7 +180,7 @@ func (h *CoverageHandler) GetCoverageFiles(w http.ResponseWriter, r *http.Reques
 			TotalBranches:    20,
 		},
 	}
-	
+
 	// Apply filtering based on coverage threshold
 	var filteredFiles []FileCoverageData
 	if filter != "" && filter != "all" {
@@ -203,7 +203,7 @@ func (h *CoverageHandler) GetCoverageFiles(w http.ResponseWriter, r *http.Reques
 	} else {
 		filteredFiles = files
 	}
-	
+
 	// Apply search filtering if provided
 	if search != "" {
 		var searchResults []FileCoverageData
@@ -215,29 +215,29 @@ func (h *CoverageHandler) GetCoverageFiles(w http.ResponseWriter, r *http.Reques
 		}
 		filteredFiles = searchResults
 	}
-	
+
 	// Pagination
 	itemsPerPage := 10
 	totalPages := (len(filteredFiles) + itemsPerPage - 1) / itemsPerPage
-	
+
 	// Ensure page is within bounds
 	if page > totalPages && totalPages > 0 {
 		page = totalPages
 	}
-	
+
 	// Calculate slice bounds for pagination
 	startIdx := (page - 1) * itemsPerPage
 	endIdx := startIdx + itemsPerPage
 	if endIdx > len(filteredFiles) {
 		endIdx = len(filteredFiles)
 	}
-	
+
 	// Get the current page of files
 	var pageFiles []FileCoverageData
 	if startIdx < len(filteredFiles) {
 		pageFiles = filteredFiles[startIdx:endIdx]
 	}
-	
+
 	// Prepare the response data
 	data := FileListData{
 		Files:       pageFiles,
@@ -246,7 +246,7 @@ func (h *CoverageHandler) GetCoverageFiles(w http.ResponseWriter, r *http.Reques
 		Filter:      filter,
 		Search:      search,
 	}
-	
+
 	// Render the file list partial
 	if err := h.templates.ExecuteTemplate(w, "partials/coverage-file-list", data); err != nil {
 		http.Error(w, "Failed to render coverage file list", http.StatusInternalServerError)
@@ -262,7 +262,7 @@ func (h *CoverageHandler) GetFileDetail(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "File ID is required", http.StatusBadRequest)
 		return
 	}
-	
+
 	// In a real implementation, this would fetch actual file coverage data
 	// For now, we'll use mock data
 	fileDetail := FileDetailData{
@@ -360,7 +360,7 @@ func (h *CoverageHandler) GetFileDetail(w http.ResponseWriter, r *http.Request) 
 			39: "covered",
 		},
 	}
-	
+
 	// Render the file detail partial
 	if err := h.templates.ExecuteTemplate(w, "partials/coverage-file-detail", fileDetail); err != nil {
 		http.Error(w, "Failed to render file detail", http.StatusInternalServerError)
@@ -376,17 +376,17 @@ func (h *CoverageHandler) SearchCoverage(w http.ResponseWriter, r *http.Request)
 		http.Redirect(w, r, "/api/coverage/files", http.StatusSeeOther)
 		return
 	}
-	
+
 	// Create a new URL with the search parameter
 	q := r.URL.Query()
 	q.Set("search", query)
-	
+
 	// Create a new request with the updated query
 	newURL := *r.URL
 	newURL.RawQuery = q.Encode()
 	newReq := r.Clone(r.Context())
 	newReq.URL = &newURL
-	
+
 	h.GetCoverageFiles(w, newReq)
 }
 
@@ -396,17 +396,17 @@ func (h *CoverageHandler) FilterCoverage(w http.ResponseWriter, r *http.Request)
 	if filter == "" {
 		filter = "all"
 	}
-	
+
 	// Create a new URL with the filter parameter
 	q := r.URL.Query()
 	q.Set("filter", filter)
-	
+
 	// Create a new request with the updated query
 	newURL := *r.URL
 	newURL.RawQuery = q.Encode()
 	newReq := r.Clone(r.Context())
 	newReq.URL = &newURL
-	
+
 	h.GetCoverageFiles(w, newReq)
 }
 

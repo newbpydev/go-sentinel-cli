@@ -41,9 +41,12 @@ func (h *TestResultsHandler) GetTestResults(w http.ResponseWriter, r *http.Reque
 
 	// For API requests, return JSON
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"results": results,
-	})
+	}); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 // RunTest runs a specific test
@@ -74,7 +77,10 @@ func (h *TestResultsHandler) RunTest(w http.ResponseWriter, r *http.Request) {
 
 	// For API requests, return JSON
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 // RunAllTests runs all tests
@@ -94,9 +100,12 @@ func (h *TestResultsHandler) RunAllTests(w http.ResponseWriter, r *http.Request)
 
 	// For API requests, return JSON
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"results": results,
-	})
+	}); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 // FilterTestResults filters test results based on criteria
@@ -105,7 +114,7 @@ func (h *TestResultsHandler) FilterTestResults(w http.ResponseWriter, r *http.Re
 
 	// Get results (mock for now)
 	allResults := getMockTestResults()
-	
+
 	// Filter results if status parameter provided
 	var filteredResults []TestResult
 	if status != "" {
@@ -126,9 +135,12 @@ func (h *TestResultsHandler) FilterTestResults(w http.ResponseWriter, r *http.Re
 
 	// For API requests, return JSON
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"results": filteredResults,
-	})
+	}); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 // renderTestResultsHTML renders HTML for test results (for HTMX)
@@ -136,7 +148,7 @@ func (h *TestResultsHandler) renderTestResultsHTML(w http.ResponseWriter, result
 	// In a real implementation, this would use a template engine
 	// For now, we'll render a simple HTML table
 	w.Header().Set("Content-Type", "text/html")
-	
+
 	html := `<table aria-label="Test Results">
 		<thead>
 			<tr>
@@ -148,13 +160,13 @@ func (h *TestResultsHandler) renderTestResultsHTML(w http.ResponseWriter, result
 			</tr>
 		</thead>
 		<tbody>`
-	
+
 	for i, test := range results {
 		statusClass := "passed"
 		if test.Status == "failed" {
 			statusClass = "failed"
 		}
-		
+
 		html += `<tr class="test-row ` + statusClass + `" data-test-id="` + string(rune(i)) + `" tabindex="0">
 			<td class="test-name">` + test.Name + `</td>
 			<td class="test-status">
@@ -175,10 +187,13 @@ func (h *TestResultsHandler) renderTestResultsHTML(w http.ResponseWriter, result
 			</td>
 		</tr>`
 	}
-	
+
 	html += `</tbody></table>`
-	
-	w.Write([]byte(html))
+
+	if _, err := w.Write([]byte(html)); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 // renderSingleTestHTML renders HTML for a single test row (for HTMX)
@@ -186,12 +201,12 @@ func (h *TestResultsHandler) renderSingleTestHTML(w http.ResponseWriter, test Te
 	// In a real implementation, this would use a template engine
 	// For now, we'll render a simple HTML row
 	w.Header().Set("Content-Type", "text/html")
-	
+
 	statusClass := "passed"
 	if test.Status == "failed" {
 		statusClass = "failed"
 	}
-	
+
 	html := `<tr class="test-row ` + statusClass + `" data-test-id="0" tabindex="0">
 		<td class="test-name">` + test.Name + `</td>
 		<td class="test-status">
@@ -211,8 +226,11 @@ func (h *TestResultsHandler) renderSingleTestHTML(w http.ResponseWriter, test Te
 			</button>
 		</td>
 	</tr>`
-	
-	w.Write([]byte(html))
+
+	if _, err := w.Write([]byte(html)); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 // Helper functions
@@ -220,7 +238,7 @@ func (h *TestResultsHandler) renderSingleTestHTML(w http.ResponseWriter, test Te
 // formatTimeAgo formats a time as relative (e.g., "2 min ago")
 func formatTimeAgo(t time.Time) string {
 	duration := time.Since(t)
-	
+
 	if duration.Minutes() < 1 {
 		return "just now"
 	} else if duration.Minutes() < 60 {
@@ -230,7 +248,7 @@ func formatTimeAgo(t time.Time) string {
 		hours := int(duration.Hours())
 		return string(rune(hours)) + " hours ago"
 	}
-	
+
 	days := int(duration.Hours() / 24)
 	return string(rune(days)) + " days ago"
 }
@@ -238,7 +256,7 @@ func formatTimeAgo(t time.Time) string {
 // getMockTestResults returns mock test results for demonstration
 func getMockTestResults() []TestResult {
 	now := time.Now()
-	
+
 	return []TestResult{
 		{
 			Name:     "TestParseConfig",

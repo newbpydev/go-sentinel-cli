@@ -8,7 +8,7 @@ import (
 	"sort"
 	"sync"
 	"time"
-	
+
 	"github.com/go-chi/chi/v5"
 )
 
@@ -45,25 +45,25 @@ func NewTestRunHistory() *TestRunHistory {
 func (h *TestRunHistory) AddTestRun(run TestRun) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	
+
 	// Generate ID if not provided
 	if run.ID == "" {
 		run.ID = fmt.Sprintf("run-%d", time.Now().UnixNano())
 	}
-	
+
 	// Set timestamp if not provided
 	if run.Timestamp.IsZero() {
 		run.Timestamp = time.Now()
 	}
-	
+
 	// Add run to history
 	h.TestRuns = append(h.TestRuns, run)
-	
+
 	// Sort by timestamp (most recent first)
 	sort.Slice(h.TestRuns, func(i, j int) bool {
 		return h.TestRuns[i].Timestamp.After(h.TestRuns[j].Timestamp)
 	})
-	
+
 	// Limit history size (optional)
 	const maxHistorySize = 100
 	if len(h.TestRuns) > maxHistorySize {
@@ -75,7 +75,7 @@ func (h *TestRunHistory) AddTestRun(run TestRun) {
 func (h *TestRunHistory) GetTestRuns() []TestRun {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	
+
 	// Return a copy to avoid concurrent access issues
 	runs := make([]TestRun, len(h.TestRuns))
 	copy(runs, h.TestRuns)
@@ -86,13 +86,13 @@ func (h *TestRunHistory) GetTestRuns() []TestRun {
 func (h *TestRunHistory) GetTestRunByID(id string) (TestRun, bool) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	
+
 	for _, run := range h.TestRuns {
 		if run.ID == id {
 			return run, true
 		}
 	}
-	
+
 	return TestRun{}, false
 }
 
@@ -100,11 +100,11 @@ func (h *TestRunHistory) GetTestRunByID(id string) (TestRun, bool) {
 func (h *TestRunHistory) GetRecentTestRuns(limit int) []TestRun {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	
+
 	if limit <= 0 || limit > len(h.TestRuns) {
 		limit = len(h.TestRuns)
 	}
-	
+
 	runs := make([]TestRun, limit)
 	copy(runs, h.TestRuns[:limit])
 	return runs
@@ -119,13 +119,13 @@ type HistoryHandler struct {
 func NewHistoryHandler() *HistoryHandler {
 	// Create history with some sample data for demo
 	history := NewTestRunHistory()
-	
+
 	// Add mock test runs for demo
 	mockTestRuns := createMockTestRuns()
 	for _, run := range mockTestRuns {
 		history.AddTestRun(run)
 	}
-	
+
 	return &HistoryHandler{
 		history: history,
 	}
@@ -142,16 +142,16 @@ func (h *HistoryHandler) GetTestRunHistory(w http.ResponseWriter, r *http.Reques
 			return
 		}
 	}
-	
+
 	// Get test runs
 	runs := h.history.GetRecentTestRuns(limit)
-	
+
 	// For HTMX requests, render HTML
 	if r.Header.Get("HX-Request") == "true" {
 		h.renderHistoryHTML(w, runs)
 		return
 	}
-	
+
 	// For API requests, return JSON
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]interface{}{
@@ -229,28 +229,28 @@ func (h *HistoryHandler) CompareTestRuns(w http.ResponseWriter, r *http.Request)
 // renderHistoryHTML renders HTML for test history
 func (h *HistoryHandler) renderHistoryHTML(w http.ResponseWriter, runs []TestRun) {
 	w.Header().Set("Content-Type", "text/html")
-	
+
 	// Start with empty content to replace the loading spinner
 	html := ""
-	
+
 	// Generate history items using the new card-based styling
 	for i, run := range runs {
 		// Format timestamp
 		timestamp := run.Timestamp.Format("Jan 02, 15:04")
 		runNumber := i + 1
-		
+
 		// Calculate success rate
 		successRate := 0
 		if run.TotalTests > 0 {
 			successRate = (run.PassedTests * 100) / run.TotalTests
 		}
-		
+
 		// Generate compare button if not the most recent run
 		compareButton := ""
 		if i > 0 && len(runs) > 0 {
 			compareButton = fmt.Sprintf(`<button class="btn btn-warning" hx-get="/api/history/compare?baseRunID=%s&compareRunID=%s" hx-target="#comparison-container">Compare</button>`, runs[0].ID, run.ID)
 		}
-		
+
 		// Create a history item card with the new styling
 		html += fmt.Sprintf(`
 		<div class="history-item">
@@ -271,12 +271,12 @@ func (h *HistoryHandler) renderHistoryHTML(w http.ResponseWriter, runs []TestRun
 		</div>
 		`, runNumber, timestamp, successRate, run.TotalTests, run.PassedTests, run.FailedTests, run.TotalTime, run.ID, compareButton)
 	}
-	
+
 	// If no runs, show a message
 	if len(runs) == 0 {
 		html = `<div class="content-padding"><p class="text-center">No test runs available yet.</p></div>`
 	}
-	
+
 	if _, err := w.Write([]byte(html)); err != nil {
 		log.Printf("Error writing response: %v", err)
 	}
@@ -285,19 +285,19 @@ func (h *HistoryHandler) renderHistoryHTML(w http.ResponseWriter, runs []TestRun
 // renderTestRunDetailsHTML renders HTML for a single test run
 func (h *HistoryHandler) renderTestRunDetailsHTML(w http.ResponseWriter, run TestRun) {
 	w.Header().Set("Content-Type", "text/html")
-	
+
 	// Calculate success rate
 	successRate := 0
 	if run.TotalTests > 0 {
 		successRate = (run.PassedTests * 100) / run.TotalTests
 	}
-	
+
 	// Format timestamp
 	timestamp := run.Timestamp.Format("Jan 02, 2006 15:04:05")
-	
+
 	// Generate build info
 	buildInfo := renderBuildInfo(run)
-	
+
 	// Start building the HTML
 	html := fmt.Sprintf(`
 	<div class="card-content">
@@ -379,11 +379,11 @@ func (h *HistoryHandler) renderTestRunDetailsHTML(w http.ResponseWriter, run Tes
 						</tr>
 					</thead>
 					<tbody>`,
-		getShortID(run.ID), successRate, 
+		getShortID(run.ID), successRate,
 		run.TotalTests, run.PassedTests, successRate, run.FailedTests, run.TotalTime,
 		timestamp, run.ID, buildInfo,
 		run.TotalTests, run.PassedTests, run.FailedTests)
-	
+
 	// Generate test result rows
 	for _, test := range run.TestResults {
 		// Determine status class
@@ -393,7 +393,7 @@ func (h *HistoryHandler) renderTestRunDetailsHTML(w http.ResponseWriter, run Tes
 			statusClass = "success"
 			statusText = "Passed"
 		}
-		
+
 		// Determine if output should be shown
 		outputHTML := ""
 		if test.Status == "failed" && test.Output != "" {
@@ -403,7 +403,7 @@ func (h *HistoryHandler) renderTestRunDetailsHTML(w http.ResponseWriter, run Tes
 				</td>
 			</tr>`, test.Output)
 		}
-		
+
 		html += fmt.Sprintf(`
 						<tr class="test-row %s" data-test-name="%s" data-test-status="%s">
 							<td class="test-name">%s</td>
@@ -418,7 +418,7 @@ func (h *HistoryHandler) renderTestRunDetailsHTML(w http.ResponseWriter, run Tes
 						%s`,
 			test.Status, test.Name, test.Status, test.Name, statusClass, statusText, test.Duration, outputHTML)
 	}
-	
+
 	// Close all HTML tags properly
 	html += `
 					</tbody>
@@ -426,7 +426,7 @@ func (h *HistoryHandler) renderTestRunDetailsHTML(w http.ResponseWriter, run Tes
 			</div>
 		</div>
 	</div>`
-	
+
 	if _, err := w.Write([]byte(html)); err != nil {
 		log.Printf("Error writing response: %v", err)
 	}
@@ -435,9 +435,9 @@ func (h *HistoryHandler) renderTestRunDetailsHTML(w http.ResponseWriter, run Tes
 // renderComparisonHTML renders HTML comparing two test runs
 func (h *HistoryHandler) renderComparisonHTML(w http.ResponseWriter, baseRun, compareRun TestRun) {
 	w.Header().Set("Content-Type", "text/html")
-	
+
 	comparison := generateComparison(baseRun, compareRun)
-	
+
 	// Prepare formatted values
 	totalTestsClass := "neutral"
 	if comparison.TotalTestsDiff > 0 {
@@ -445,48 +445,48 @@ func (h *HistoryHandler) renderComparisonHTML(w http.ResponseWriter, baseRun, co
 	} else if comparison.TotalTestsDiff < 0 {
 		totalTestsClass = "negative"
 	}
-	
+
 	totalTestsDiffStr := fmt.Sprint(comparison.TotalTestsDiff)
 	if comparison.TotalTestsDiff > 0 {
 		totalTestsDiffStr = "+" + totalTestsDiffStr
 	}
-	
+
 	passedTestsClass := "neutral"
 	if comparison.PassedTestsDiff > 0 {
 		passedTestsClass = "positive"
 	} else if comparison.PassedTestsDiff < 0 {
 		passedTestsClass = "negative"
 	}
-	
+
 	passedTestsDiffStr := fmt.Sprint(comparison.PassedTestsDiff)
 	if comparison.PassedTestsDiff > 0 {
 		passedTestsDiffStr = "+" + passedTestsDiffStr
 	}
-	
+
 	failedTestsClass := "neutral"
 	if comparison.FailedTestsDiff > 0 {
 		failedTestsClass = "negative"
 	} else if comparison.FailedTestsDiff < 0 {
 		failedTestsClass = "positive"
 	}
-	
+
 	failedTestsDiffStr := fmt.Sprint(comparison.FailedTestsDiff)
 	if comparison.FailedTestsDiff > 0 {
 		failedTestsDiffStr = "+" + failedTestsDiffStr
 	}
-	
+
 	successRateClass := "neutral"
 	if comparison.SuccessRateDiff > 0 {
 		successRateClass = "positive"
 	} else if comparison.SuccessRateDiff < 0 {
 		successRateClass = "negative"
 	}
-	
+
 	successRateDiffStr := fmt.Sprintf("%.1f%%", comparison.SuccessRateDiff)
 	if comparison.SuccessRateDiff > 0 {
 		successRateDiffStr = "+" + successRateDiffStr
 	}
-	
+
 	html := fmt.Sprintf(`
 	<div class="card-content">
 		<div class="history-item-header">
@@ -604,7 +604,7 @@ func (h *HistoryHandler) renderComparisonHTML(w http.ResponseWriter, baseRun, co
 		</div>
 	</div>
 </div>`
-	
+
 	if _, err := w.Write([]byte(html)); err != nil {
 		log.Printf("Error writing response: %v", err)
 	}
@@ -616,10 +616,10 @@ func renderBuildInfo(run TestRun) string {
 	if run.Branch == "" && run.Commit == "" && run.TriggeredBy == "" && run.BuildVersion == "" {
 		return ""
 	}
-	
+
 	html := `<div class="build-info card-content-sm">
 		<h5 class="text-md font-medium mb-2">Build Information</h5>`
-	
+
 	if run.Branch != "" {
 		html += fmt.Sprintf(`
 			<div class="detail-item">
@@ -627,7 +627,7 @@ func renderBuildInfo(run TestRun) string {
 				<span class="detail-value">%s</span>
 			</div>`, run.Branch)
 	}
-	
+
 	if run.Commit != "" {
 		html += fmt.Sprintf(`
 			<div class="detail-item">
@@ -635,7 +635,7 @@ func renderBuildInfo(run TestRun) string {
 				<span class="detail-value">%s</span>
 			</div>`, run.Commit)
 	}
-	
+
 	if run.TriggeredBy != "" {
 		html += fmt.Sprintf(`
 			<div class="detail-item">
@@ -643,7 +643,7 @@ func renderBuildInfo(run TestRun) string {
 				<span class="detail-value">%s</span>
 			</div>`, run.TriggeredBy)
 	}
-	
+
 	if run.BuildVersion != "" {
 		html += fmt.Sprintf(`
 			<div class="detail-item">
@@ -651,26 +651,26 @@ func renderBuildInfo(run TestRun) string {
 				<span class="detail-value">%s</span>
 			</div>`, run.BuildVersion)
 	}
-	
+
 	html += `</div>`
-	
+
 	return html
 }
 
 // TestRunComparison holds differences between two test runs
 type TestRunComparison struct {
-	BaseRunID         string   `json:"baseRunId"`
-	CompareRunID      string   `json:"compareRunId"`
-	TotalTestsDiff    int      `json:"totalTestsDiff"`    // Positive = more tests in compare
-	PassedTestsDiff   int      `json:"passedTestsDiff"`   // Positive = more passes in compare
-	FailedTestsDiff   int      `json:"failedTestsDiff"`   // Positive = more failures in compare
-	BaseSuccessRate   int      `json:"baseSuccessRate"`   // As percentage
-	CompareSuccessRate int     `json:"compareSuccessRate"` // As percentage
-	SuccessRateDiff   float64  `json:"successRateDiff"`   // Positive = better success rate in compare
-	Fixed             []string `json:"fixed"`             // Tests that were fixed (failed in base, passed in compare)
-	NewlyFailed       []string `json:"newlyFailed"`       // Tests that newly failed (passed in base, failed in compare)
-	New               []string `json:"new"`               // Tests that are new in compare
-	Removed           []string `json:"removed"`           // Tests that were removed (in base but not in compare)
+	BaseRunID          string   `json:"baseRunId"`
+	CompareRunID       string   `json:"compareRunId"`
+	TotalTestsDiff     int      `json:"totalTestsDiff"`     // Positive = more tests in compare
+	PassedTestsDiff    int      `json:"passedTestsDiff"`    // Positive = more passes in compare
+	FailedTestsDiff    int      `json:"failedTestsDiff"`    // Positive = more failures in compare
+	BaseSuccessRate    int      `json:"baseSuccessRate"`    // As percentage
+	CompareSuccessRate int      `json:"compareSuccessRate"` // As percentage
+	SuccessRateDiff    float64  `json:"successRateDiff"`    // Positive = better success rate in compare
+	Fixed              []string `json:"fixed"`              // Tests that were fixed (failed in base, passed in compare)
+	NewlyFailed        []string `json:"newlyFailed"`        // Tests that newly failed (passed in base, failed in compare)
+	New                []string `json:"new"`                // Tests that are new in compare
+	Removed            []string `json:"removed"`            // Tests that were removed (in base but not in compare)
 }
 
 // generateComparison compares two test runs
@@ -679,72 +679,72 @@ func generateComparison(baseRun, compareRun TestRun) TestRunComparison {
 		BaseRunID:    baseRun.ID,
 		CompareRunID: compareRun.ID,
 	}
-	
+
 	// Calculate basic metrics
 	comparison.TotalTestsDiff = compareRun.TotalTests - baseRun.TotalTests
 	comparison.PassedTestsDiff = compareRun.PassedTests - baseRun.PassedTests
 	comparison.FailedTestsDiff = compareRun.FailedTests - baseRun.FailedTests
-	
+
 	// Calculate success rates
 	comparison.BaseSuccessRate = 0
 	if baseRun.TotalTests > 0 {
 		comparison.BaseSuccessRate = (baseRun.PassedTests * 100) / baseRun.TotalTests
 	}
-	
+
 	comparison.CompareSuccessRate = 0
 	if compareRun.TotalTests > 0 {
 		comparison.CompareSuccessRate = (compareRun.PassedTests * 100) / compareRun.TotalTests
 	}
-	
+
 	comparison.SuccessRateDiff = float64(comparison.CompareSuccessRate - comparison.BaseSuccessRate)
-	
+
 	// Build maps of test status
 	baseTests := make(map[string]string)
 	compareTests := make(map[string]string)
-	
+
 	for _, test := range baseRun.TestResults {
 		baseTests[test.Name] = test.Status
 	}
-	
+
 	for _, test := range compareRun.TestResults {
 		compareTests[test.Name] = test.Status
 	}
-	
+
 	// Find fixed, newly failed, new, and removed tests
 	for name, status := range baseTests {
 		compareStatus, exists := compareTests[name]
-		
+
 		if !exists {
 			comparison.Removed = append(comparison.Removed, name)
 			continue
 		}
-		
+
 		if status == "failed" && compareStatus == "passed" {
 			comparison.Fixed = append(comparison.Fixed, name)
 		} else if status == "passed" && compareStatus == "failed" {
 			comparison.NewlyFailed = append(comparison.NewlyFailed, name)
 		}
 	}
-	
+
 	for name := range compareTests {
 		if _, exists := baseTests[name]; !exists {
 			comparison.New = append(comparison.New, name)
 		}
 	}
-	
+
 	// Sort results for consistency
 	sort.Strings(comparison.Fixed)
 	sort.Strings(comparison.NewlyFailed)
 	sort.Strings(comparison.New)
 	sort.Strings(comparison.Removed)
-	
+
 	return comparison
 }
 
 // createMockTestRuns generates mock test runs for demo
 func createMockTestRuns() []TestRun {
 	now := time.Now()
-	
+
 	runs := []TestRun{
 		{
 			ID:           "run-1",
@@ -812,7 +812,7 @@ func createMockTestRuns() []TestRun {
 			TestResults:  createMockTestResults(128, 9),
 		},
 	}
-	
+
 	return runs
 }
 
@@ -828,7 +828,7 @@ func getShortID(id string) string {
 func createMockTestResults(total, failed int) []TestResult {
 	passed := total - failed
 	results := make([]TestResult, 0, total)
-	
+
 	// Generate passed tests
 	for i := 0; i < passed; i++ {
 		results = append(results, TestResult{
@@ -837,7 +837,7 @@ func createMockTestResults(total, failed int) []TestResult {
 			Duration: fmt.Sprintf("0.%ds", (i%5)+1),
 		})
 	}
-	
+
 	// Generate failed tests
 	for i := 0; i < failed; i++ {
 		results = append(results, TestResult{
@@ -847,6 +847,6 @@ func createMockTestResults(total, failed int) []TestResult {
 			Output:   fmt.Sprintf("Expected value to be %d, got %d", i+10, i+5),
 		})
 	}
-	
+
 	return results
 }

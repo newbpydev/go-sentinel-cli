@@ -24,7 +24,7 @@ func GetMetricsData() map[string]interface{} {
 // This is a utility function used by multiple handlers
 func GetMockTestResults() []TestResult {
 	now := time.Now()
-	
+
 	return []TestResult{
 		{
 			Name:     "TestParseConfig",

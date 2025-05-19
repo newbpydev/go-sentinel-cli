@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	
+
 	"github.com/newbpydev/go-sentinel/internal/web/toast"
 )
 
@@ -58,7 +58,7 @@ func HandleTestNotification(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	
+
 	// Create toast notification based on type
 	var t toast.Toast
 	switch typeParam {
@@ -71,12 +71,12 @@ func HandleTestNotification(w http.ResponseWriter, r *http.Request) {
 	case "info":
 		t = toast.NewInfo("Info: This is an informational notification.")
 	}
-	
+
 	// Add the toast notification to the response headers
 	if err := t.AddHeader(w); err != nil {
 		log.Printf("Error adding toast header: %v", err)
 	}
-	
+
 	// Return a JSON response as well (for API compatibility)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
