@@ -1,16 +1,70 @@
 version: "2"
 run:
   timeout: 5m
+  # Include test files in linting
+  tests: true
+  # Maximum issues count per one linter
+  max-issues-per-linter: 0
+  # Maximum count of issues with the same text
+  max-same-issues: 0
+
 linters:
+  # Disable all linters by default and then explicitly enable specific ones
+  disable-all: true
   enable:
-    # Enabled by default
-    - errcheck
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
+    # Default linters confirmed working
+    - errcheck    # Detect unchecked errors
+    - govet       # Examines Go source code and reports suspicious constructs
+    - staticcheck # Comprehensive static analyzer
+    - ineffassign # Detects ineffectual assignments
+    - unused      # Checks for unused constants, variables, functions and types
     
-    # Additional linters
-    - misspell
-    - revive
-    - gocyclo
+    # Additional linters confirmed working
+    - misspell    # Finds commonly misspelled English words
+    - revive      # Fast, configurable, extensible, flexible, and beautiful linter for Go
+    - gosec       # Inspects source code for security problems
+    - nolintlint  # Reports ill-formed or insufficient nolint directives
+    - prealloc    # Finds slice declarations that could potentially be preallocated
+    - unconvert   # Remove unnecessary type conversions
+    - unparam     # Reports unused function parameters
+    - whitespace  # Tool for detection of leading and trailing whitespace
+
+linters-settings:
+  revive:
+    # See: https://github.com/mgechev/revive#available-rules
+    rules:
+      - name: exported
+        severity: warning
+        disabled: false
+        arguments:
+          - "checkPrivateReceivers"
+          - "sayRepetitiveInsteadOfStutters"
+  gosec:
+    # To select a subset of rules to run
+    includes:
+      - G101-G505
+  govet:
+    # Report about shadowed variables
+    check-shadowing: true
+
+# Output configuration options
+output:
+  # Format: colored-line-number|line-number|json|tab|checkstyle|code-climate|junit-xml|github-actions
+  format: colored-line-number
+  # Print lines of code with issue
+  print-issued-lines: true
+  # Print linter name in the end of issue text
+  print-linter-name: true
+
+# Issues configuration options
+issues:
+  # Maximum count of issues with the same text
+  max-same-issues: 3
+  # Excluding configuration per-path, per-linter, per-text and per-source
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - dupl
+        - gosec

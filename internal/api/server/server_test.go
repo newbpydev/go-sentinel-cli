@@ -64,7 +64,9 @@ func TestServer_GracefulShutdown(t *testing.T) {
 
 go func() {
 		time.Sleep(100 * time.Millisecond)
-		srv.Shutdown(context.Background())
+		if err := srv.Shutdown(context.Background()); err != nil {
+		t.Fatalf("server shutdown failed: %v", err)
+	}
 	}()
 
 	err := srv.ListenAndServe()

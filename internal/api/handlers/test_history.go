@@ -48,5 +48,8 @@ func (h *TestHistoryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(runs)
+	if err := json.NewEncoder(w).Encode(runs); err != nil {
+		http.Error(w, "failed to encode test runs", http.StatusInternalServerError)
+		return
+	}
 }

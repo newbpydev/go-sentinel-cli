@@ -32,7 +32,9 @@ func TestDocsEndpoint_OpenAPIYAML(t *testing.T) {
 	}
 	body := make([]byte, 4096)
 	n, _ := resp.Body.Read(body)
-	resp.Body.Close()
+	if err := resp.Body.Close(); err != nil {
+		t.Fatalf("failed to close response body: %v", err)
+	}
 	if n == 0 || string(body[:n]) == "" || !containsOpenAPI(string(body[:n])) {
 		t.Errorf("/docs did not return OpenAPI YAML")
 	}

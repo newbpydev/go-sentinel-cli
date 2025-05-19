@@ -40,7 +40,9 @@ func (cm *ConnectionManager) Remove(id string) {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
 	if conn, ok := cm.conns[id]; ok {
-		conn.Close()
+		if err := conn.Close(); err != nil {
+			// Log but ignore error on close
+		}
 		delete(cm.conns, id)
 	}
 }

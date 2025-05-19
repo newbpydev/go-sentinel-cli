@@ -33,7 +33,10 @@ func (h *ConfigHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *ConfigHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	cfg := h.store.Get()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(cfg)
+	if err := json.NewEncoder(w).Encode(cfg); err != nil {
+		http.Error(w, "failed to encode config", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (h *ConfigHandler) handleSet(w http.ResponseWriter, r *http.Request) {

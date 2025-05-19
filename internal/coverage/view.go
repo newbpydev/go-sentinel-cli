@@ -214,6 +214,8 @@ func (cv *CoverageView) SelectFile(filename string) {
 }
 
 // showOnlyLowCoverage filters view to show only low coverage files
+// This is a stub implementation that will be completed in a future update
+//nolint:unused // Will be implemented in the future
 func (cv *CoverageView) showOnlyLowCoverage() {
 	// Implementation would update internal filter state
 	// For now this is a stub to satisfy the tests

@@ -47,7 +47,9 @@ func TestGetTestHistory_Pagination(t *testing.T) {
 		t.Errorf("expected 200, got %d", w.Code)
 	}
 	var resp []TestRun
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("bad json: %v", err)
+	}
 	if len(resp) != 2 {
 		t.Errorf("expected 2 results for mock, got %d", len(resp))
 	}

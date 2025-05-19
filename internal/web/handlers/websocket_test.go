@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+//nolint:unused // Test helper function for future test cases
 func assertNoError(t *testing.T, err error) {
 	t.Helper()
 	if err != nil {
@@ -17,6 +18,7 @@ func assertNoError(t *testing.T, err error) {
 	}
 }
 
+//nolint:unused // Test helper function for future test cases
 func assertEqual(t *testing.T, got, want interface{}) {
 	t.Helper()
 	if got != want {
@@ -24,6 +26,7 @@ func assertEqual(t *testing.T, got, want interface{}) {
 	}
 }
 
+//nolint:unused // Test helper function for future test cases
 func assertNotNil(t *testing.T, v interface{}) {
 	t.Helper()
 	if v == nil {

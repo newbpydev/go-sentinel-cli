@@ -129,7 +129,7 @@ func TestConcurrentConnections(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Verify all connections are tracked
-	if count := h.ConnectionCount(); int(count) != numConnections {
+	if count := h.ConnectionCount(); count != numConnections {
 		t.Errorf("Expected %d connections, got %d", numConnections, count)
 	}
 

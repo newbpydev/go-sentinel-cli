@@ -62,7 +62,9 @@ func HandleWebSocketConnection(w http.ResponseWriter, r *http.Request, connManag
 // handleWSMessages processes incoming WebSocket messages
 func handleWSMessages(conn *gorillaws.Conn, connID string, connManager *gosentinel.ConnectionManager) {
 	defer func() {
-		conn.Close()
+		if err := conn.Close(); err != nil {
+		log.Printf("websocket close error: %v", err)
+	}
 		connManager.Remove(connID)
 		log.Printf("WebSocket connection closed: %s", connID)
 	}()

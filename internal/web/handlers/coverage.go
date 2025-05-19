@@ -377,9 +377,17 @@ func (h *CoverageHandler) SearchCoverage(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	
-	// Forward to GetCoverageFiles with search parameter
-	r.URL.Query().Set("search", query)
-	h.GetCoverageFiles(w, r)
+	// Create a new URL with the search parameter
+	q := r.URL.Query()
+	q.Set("search", query)
+	
+	// Create a new request with the updated query
+	newURL := *r.URL
+	newURL.RawQuery = q.Encode()
+	newReq := r.Clone(r.Context())
+	newReq.URL = &newURL
+	
+	h.GetCoverageFiles(w, newReq)
 }
 
 // FilterCoverage handles filter requests for coverage files
@@ -389,9 +397,17 @@ func (h *CoverageHandler) FilterCoverage(w http.ResponseWriter, r *http.Request)
 		filter = "all"
 	}
 	
-	// Forward to GetCoverageFiles with filter parameter
-	r.URL.Query().Set("filter", filter)
-	h.GetCoverageFiles(w, r)
+	// Create a new URL with the filter parameter
+	q := r.URL.Query()
+	q.Set("filter", filter)
+	
+	// Create a new request with the updated query
+	newURL := *r.URL
+	newURL.RawQuery = q.Encode()
+	newReq := r.Clone(r.Context())
+	newReq.URL = &newURL
+	
+	h.GetCoverageFiles(w, newReq)
 }
 
 // Helper function for case-insensitive substring search

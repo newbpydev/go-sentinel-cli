@@ -29,16 +29,6 @@ type APIServer struct {
 	HTTP   *http.Server
 }
 
-type statusRecorder struct {
-	http.ResponseWriter
-	status int
-}
-
-func (r *statusRecorder) WriteHeader(code int) {
-	r.status = code
-	r.ResponseWriter.WriteHeader(code)
-}
-
 func NewAPIServer(cfg api.Config) *APIServer {
 	r := chi.NewRouter()
 
@@ -58,7 +48,9 @@ func NewAPIServer(cfg api.Config) *APIServer {
 	// Docs endpoint (stub for now)
 	r.Get("/docs", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotImplemented)
-		w.Write([]byte("OpenAPI documentation coming soon"))
+		if _, err := w.Write([]byte("OpenAPI documentation coming soon")); err != nil {
+		log.Printf("failed to write docs stub: %v", err)
+	}
 	})
 
 	// Health endpoint
@@ -77,7 +69,9 @@ func NewAPIServer(cfg api.Config) *APIServer {
 			healthCacheExpiry = time.Now().Add(10 * time.Second)
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write(resp)
+		if _, err := w.Write(resp); err != nil {
+		log.Printf("failed to write health response: %v", err)
+	}
 	})
 
 	// WebSocket endpoint

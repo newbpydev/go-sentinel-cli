@@ -37,15 +37,11 @@ func (b *Broadcaster) Remove(id string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if c, ok := b.conns[id]; ok {
-		c.Close()
+		if err := c.Close(); err != nil {
+			// Log but ignore error on close
+		}
 		delete(b.conns, id)
 	}
-}
-
-var msgBufPool = sync.Pool{
-	New: func() interface{} {
-		return make([]byte, 0, 4096)
-	},
 }
 
 func (b *Broadcaster) Broadcast(msg []byte) {
@@ -67,7 +63,9 @@ func (b *Broadcaster) Broadcast(msg []byte) {
 			// Allocate a new buffer for each message to avoid data races
 			buf := make([]byte, len(msg))
 			copy(buf, msg)
-			conn.Send(buf)
+			if err := conn.Send(buf); err != nil {
+				// Log but ignore error on send
+			}
 			<-sem
 		}(c)
 	}

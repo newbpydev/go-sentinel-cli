@@ -2,8 +2,9 @@ package parser
 
 import (
 	"encoding/json"
-	"os"
 	"fmt"
+	"log"
+	"os"
 	"strings"
 	"github.com/newbpydev/go-sentinel/internal/event"
 )
@@ -27,7 +28,12 @@ func LoadTestResultsFromJSON(path string) ([]TestResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open: %w", err)
 	}
-	defer f.Close()
+	defer func() {
+		if closeErr := f.Close(); closeErr != nil {
+			log.Printf("Error closing file: %v", closeErr)
+		}
+	}()
+	
 	var results []TestResult
 	dec := json.NewDecoder(f)
 	if err := dec.Decode(&results); err != nil {
@@ -220,9 +226,16 @@ func getModulePrefix() string {
 	if err != nil {
 		return ""
 	}
-	defer f.Close()
+	defer func() {
+		if closeErr := f.Close(); closeErr != nil {
+			log.Printf("Error closing go.mod file: %v", closeErr)
+		}
+	}()
 	// Instead of using JSON, just scan the file
-	f.Seek(0, 0)
+	if _, err := f.Seek(0, 0); err != nil {
+		log.Printf("Error seeking in go.mod file: %v", err)
+		return ""
+	}
 	buf := make([]byte, 4096)
 	if n, err := f.Read(buf); err == nil && n > 0 {
 		lines := strings.Split(string(buf[:n]), "\n")
@@ -249,6 +262,7 @@ func splitPath(pkg string) []string {
 }
 
 // extractTestName tries to extract the test name from the summary (e.g., "ok   pkg/foo/TestAlpha" -> "TestAlpha")
+//nolint:unused // Will be used in future implementation for test result processing
 func extractTestName(summary string) string {
 	if summary == "" {
 		return ""
