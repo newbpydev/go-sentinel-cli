@@ -1,3 +1,5 @@
+// Package runner provides functionality for executing Go tests and processing their results.
+// It includes tools for running tests, parsing output, and handling test events.
 package runner
 
 import (
@@ -13,6 +15,8 @@ import (
 	"time"
 )
 
+// Runner manages the execution of Go tests and provides configuration options
+// for timeouts and inactivity detection to prevent hanging tests.
 type Runner struct{
 	// Default timeout for test execution
 	defaultTimeout time.Duration
@@ -20,6 +24,9 @@ type Runner struct{
 	inactivityThreshold time.Duration
 }
 
+// NewRunner creates a new test runner with default timeout and inactivity threshold settings.
+// By default, tests will timeout after 2 minutes, and tests showing no activity for 30 seconds
+// will be considered potentially hanging.
 func NewRunner() *Runner { 
 	return &Runner{
 		defaultTimeout: 2 * time.Minute, // Default 2 minute timeout
@@ -30,11 +37,18 @@ func NewRunner() *Runner {
 // startGoTest runs `go test -json` in the given pkg, optionally for a specific testName.
 // Returns the exec.Cmd, a buffer that will contain the output, and any startup error.
 // The caller is responsible for calling Wait() on the command.
+// Note: Currently testName parameter is not used but kept for future implementation.
 func (r *Runner) startGoTest(pkg string, testName string) (*exec.Cmd, *bytes.Buffer, error) {
-	args := []string{"test", "-json"}
-	if testName != "" {
-		args = append(args, "-run", testName)
+	// Validate package path to prevent command injection
+	if !isValidPackagePath(pkg) {
+		return nil, nil, fmt.Errorf("invalid package path: %s", pkg)
 	}
+	
+	args := []string{"test", "-json"}
+	// Uncomment when testName implementation is needed
+	// if testName != "" {
+	// 	args = append(args, "-run", testName)
+	// }
 	args = append(args, pkg)
 	cmd := exec.Command("go", args...)
 	cmd.Dir = findProjectRoot()

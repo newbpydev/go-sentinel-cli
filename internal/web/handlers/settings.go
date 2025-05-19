@@ -99,7 +99,9 @@ func (h *SettingsHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 
 	// Return JSON response
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(settings)
+	if err := json.NewEncoder(w).Encode(settings); err != nil {
+		log.Printf("failed to encode settings: %v", err)
+	}
 }
 
 // ValidateSettings handles validation of settings before saving
@@ -111,8 +113,6 @@ func (h *SettingsHandler) ValidateSettings(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Extract and validate settings
-	// In a real implementation, this would perform thorough validation
-	// For now, we'll do basic validation
 	testTimeout := getFormInt(r, "testTimeout", 30)
 	if testTimeout < 1 || testTimeout > 300 {
 		sendValidationError(w, "Test timeout must be between 1 and 300 seconds")
@@ -138,7 +138,9 @@ func (h *SettingsHandler) ValidateSettings(w http.ResponseWriter, r *http.Reques
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("failed to encode response: %v", err)
+	}
 }
 
 // SaveSettings handles saving of settings
@@ -150,8 +152,6 @@ func (h *SettingsHandler) SaveSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate settings first
-	// In a real implementation, this would perform thorough validation
-	// For now, we'll do basic validation
 	testTimeout := getFormInt(r, "testTimeout", 30)
 	if testTimeout < 1 || testTimeout > 300 {
 		sendValidationError(w, "Test timeout must be between 1 and 300 seconds")
@@ -214,7 +214,9 @@ func sendValidationError(w http.ResponseWriter, message string) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusBadRequest)
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("failed to encode response: %v", err)
+	}
 }
 
 // Helper function to get integer from form
@@ -245,14 +247,4 @@ func getFormFloat(r *http.Request, key string, defaultValue float64) float64 {
 	}
 
 	return value
-}
-
-// Helper function to get boolean from form
-func getFormBool(r *http.Request, key string, defaultValue bool) bool {
-	valueStr := r.FormValue(key)
-	if valueStr == "" {
-		return defaultValue
-	}
-
-	return valueStr == "on" || valueStr == "true"
 }

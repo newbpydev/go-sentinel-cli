@@ -1,3 +1,5 @@
+// Package runner provides functionality for executing Go tests and processing their results.
+// It includes tools for running tests, parsing output, and handling test events.
 package runner
 
 import "fmt"

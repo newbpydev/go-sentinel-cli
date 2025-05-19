@@ -60,8 +60,9 @@ type ErrorContext struct {
 	FileLocation *FileLocation
 }
 
-// ExtractErrorContext scans output events for file:line info and error message.
-
+// ExtractErrorContext scans output events for file:line information and error messages.
+// It parses test output to extract file locations and error details from failed tests,
+// which can be used to provide more context in the UI or for debugging purposes.
 func ExtractErrorContext(events []TestEvent) *ErrorContext {
 	// Support both 'file.go:123: message' and 'file.go:123:message'
 	fileLineRe := regexp.MustCompile(`^([\w./-]+):(\d+): ?(.*)$`)

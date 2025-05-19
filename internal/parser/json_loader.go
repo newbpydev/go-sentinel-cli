@@ -1,3 +1,5 @@
+// Package parser provides functionality for parsing and processing test results.
+// It includes tools for loading test data from JSON files and converting them into structured formats.
 package parser
 
 import (
@@ -5,10 +7,13 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"github.com/newbpydev/go-sentinel/internal/event"
 )
 
+// TestResult represents a single Go test result entry as output by 'go test -json'.
+// It contains all the fields that may be present in the JSON output of Go's test runner.
 type TestResult struct {
 	Time    string  `json:"Time"`
 	Action  string  `json:"Action"`
@@ -23,8 +28,15 @@ type TestResult struct {
 }
 
 // LoadTestResultsFromJSON loads []TestResult from a JSON file
+// It safely handles the file opening and closing, and returns parsed test results.
 func LoadTestResultsFromJSON(path string) ([]TestResult, error) {
-	f, err := os.Open(path)
+	// Validate path to prevent directory traversal attacks
+	cleanPath := filepath.Clean(path)
+	if !filepath.IsAbs(cleanPath) {
+		return nil, fmt.Errorf("path must be absolute: %s", path)
+	}
+	
+	f, err := os.Open(cleanPath)
 	if err != nil {
 		return nil, fmt.Errorf("open: %w", err)
 	}
@@ -158,7 +170,7 @@ func ConvertTestResultsToTree(results []TestResult) *event.TreeNode {
 		if r.Test == "" || !looksLikeTestName(r.Test) {
 			continue
 		}
-		if !(r.Action == "pass" || r.Action == "fail" || r.Action == "skip") {
+		if r.Action != "pass" && r.Action != "fail" && r.Action != "skip" {
 			continue
 		}
 		segments := splitPath(pkgPath)

@@ -125,7 +125,9 @@ func (h *WebSocketHandler) closeAllConnections() {
 	defer h.clientsMu.Unlock()
 
 	for client := range h.clients {
-		client.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "Server shutting down"))
+		if err := client.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "Server shutting down")); err != nil {
+	log.Printf("failed to write close message to websocket client: %v", err)
+}
 		client.Close()
 	}
 

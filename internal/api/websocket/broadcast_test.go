@@ -21,9 +21,9 @@ func (f *fakeConn) IsClosed() bool { f.mu.Lock(); defer f.mu.Unlock(); return f.
 func TestBroadcastToAllConnections(t *testing.T) {
 	b := NewBroadcaster()
 	conns := []*fakeConn{{}, {}, {}}
-	ids := []string{}
+	// Add all connections to the broadcaster
 	for _, c := range conns {
-		ids = append(ids, b.Add(c))
+		b.Add(c)
 	}
 	msg := []byte("test-result")
 	b.Broadcast(msg)

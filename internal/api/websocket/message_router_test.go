@@ -35,7 +35,7 @@ func TestRouter_UnknownType(t *testing.T) {
 
 func TestRouter_HandlerErrorPropagates(t *testing.T) {
 	r := NewRouter()
-	r.Register(MessageTypeCommand, func(payload interface{}) error {
+	r.Register(MessageTypeCommand, func(_ interface{}) error {
 		return errors.New("fail")
 	})
 	err := r.Route(MessageTypeCommand, CommandPayload{Command: "run"})

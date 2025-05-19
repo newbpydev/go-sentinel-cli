@@ -1,10 +1,15 @@
+// Package websocket provides WebSocket communication functionality for the Go Sentinel application.
+// It includes broadcasting capabilities, connection management, and message type handling.
 package websocket
 
 import (
+	"log"
 	"sync"
 	"time"
 )
 
+// Broadcaster manages a collection of WebSocket connections and provides methods
+// for broadcasting messages to all connected clients with optional throttling.
 type Broadcaster struct {
 	mu       sync.RWMutex
 	conns    map[string]broadcastConn
@@ -17,6 +22,8 @@ type broadcastConn interface {
 	Close() error
 }
 
+// NewBroadcaster creates a new Broadcaster instance with an empty connection pool.
+// The broadcaster is used to manage WebSocket connections and broadcast messages to all clients.
 func NewBroadcaster() *Broadcaster {
 	return &Broadcaster{
 		conns: make(map[string]broadcastConn),
@@ -24,6 +31,8 @@ func NewBroadcaster() *Broadcaster {
 	}
 }
 
+// Add registers a new WebSocket connection with the broadcaster and returns
+// a unique identifier for the connection that can be used later for removal.
 func (b *Broadcaster) Add(conn broadcastConn) string {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -33,17 +42,22 @@ func (b *Broadcaster) Add(conn broadcastConn) string {
 	return id
 }
 
+// Remove unregisters and closes a WebSocket connection identified by the given ID.
+// If the connection is not found, this operation is a no-op.
 func (b *Broadcaster) Remove(id string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if c, ok := b.conns[id]; ok {
 		if err := c.Close(); err != nil {
-			// Log but ignore error on close
+			// Log error but continue with removal
+			log.Printf("Error closing connection %s: %v", id, err)
 		}
 		delete(b.conns, id)
 	}
 }
 
+// Broadcast sends a message to all registered WebSocket connections.
+// If throttling is enabled, it will wait for the throttle duration between broadcasts.
 func (b *Broadcaster) Broadcast(msg []byte) {
 	b.mu.RLock()
 	conns := make([]broadcastConn, 0, len(b.conns))
@@ -64,7 +78,8 @@ func (b *Broadcaster) Broadcast(msg []byte) {
 			buf := make([]byte, len(msg))
 			copy(buf, msg)
 			if err := conn.Send(buf); err != nil {
-				// Log but ignore error on send
+				// Log error but continue broadcasting to other connections
+				log.Printf("Error sending message to client: %v", err)
 			}
 			<-sem
 		}(c)
@@ -75,6 +90,8 @@ func (b *Broadcaster) Broadcast(msg []byte) {
 	}
 }
 
+// SetThrottle configures the delay between broadcast operations to prevent flooding clients.
+// A duration of 0 means no throttling is applied.
 func (b *Broadcaster) SetThrottle(d time.Duration) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
