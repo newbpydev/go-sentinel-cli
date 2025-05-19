@@ -9,7 +9,7 @@ import (
 
 func ensureTestdataDir(t *testing.T) string {
 	dir := "testdata"
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0750); err != nil {
 		t.Fatalf("Failed to create testdata dir: %v", err)
 	}
 	return dir

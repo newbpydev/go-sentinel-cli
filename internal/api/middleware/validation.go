@@ -1,10 +1,10 @@
 package middleware
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"net/http"
-	"bytes"
 )
 
 // ValidateJSON returns a middleware that rejects requests with malformed JSON bodies

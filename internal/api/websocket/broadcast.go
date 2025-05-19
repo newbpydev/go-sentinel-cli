@@ -26,7 +26,7 @@ type broadcastConn interface {
 // The broadcaster is used to manage WebSocket connections and broadcast messages to all clients.
 func NewBroadcaster() *Broadcaster {
 	return &Broadcaster{
-		conns: make(map[string]broadcastConn),
+		conns:    make(map[string]broadcastConn),
 		throttle: 0,
 	}
 }

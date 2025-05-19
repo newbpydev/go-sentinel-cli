@@ -48,7 +48,7 @@ func TestRunTestsWithCoverage(t *testing.T) {
 	// Run the tests - we ignore the error as we're just testing if the function runs without hanging
 	// and we don't care about test failures (they might be expected)
 	_ = RunTestsWithCoverage(ctx, options)
-	
+
 	// Check if the coverage file was created or log why it failed
 	if _, err := os.Stat(coverageFile); os.IsNotExist(err) {
 		t.Log("Coverage file wasn't created, but this could be due to test failures")

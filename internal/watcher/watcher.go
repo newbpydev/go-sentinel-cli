@@ -125,4 +125,3 @@ func isSymlink(path string) bool {
 	}
 	return info.Mode()&os.ModeSymlink != 0
 }
-

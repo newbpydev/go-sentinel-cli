@@ -11,6 +11,7 @@ type mockRunner struct {
 	triggered []string
 	cancelled []string
 }
+
 func (m *mockRunner) Trigger(tests []string) error {
 	m.triggered = append(m.triggered, tests...)
 	return nil

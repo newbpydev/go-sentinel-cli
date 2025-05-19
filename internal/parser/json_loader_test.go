@@ -15,7 +15,7 @@ func TestLoadTestResultsFromJSON_ValidFile(t *testing.T) {
 		{"Time":"2023-01-01T00:00:00Z","Action":"run","Package":"pkg/foo","Test":"TestA"},
 		{"Time":"2023-01-01T00:00:01Z","Action":"pass","Package":"pkg/foo","Test":"TestA","Elapsed":0.1}
 	]`
-	if err := os.WriteFile(tmpFile, []byte(testData), 0644); err != nil {
+	if err := os.WriteFile(tmpFile, []byte(testData), 0600); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -45,7 +45,7 @@ func TestLoadTestResultsFromJSON_InvalidFile(t *testing.T) {
 	// Test with invalid JSON
 	tmpDir := t.TempDir()
 	tmpFile := filepath.Join(tmpDir, "invalid.json")
-	if err := os.WriteFile(tmpFile, []byte("invalid json"), 0644); err != nil {
+	if err := os.WriteFile(tmpFile, []byte("invalid json"), 0600); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -274,7 +274,7 @@ func TestGetModulePrefix_ValidFile(t *testing.T) {
 
 	// Create a temporary go.mod file
 	modContent := []byte("module example.com/mymodule\n\ngo 1.21\n")
-	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), modContent, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), modContent, 0600); err != nil {
 		t.Fatalf("Failed to create test go.mod: %v", err)
 	}
 
@@ -330,7 +330,7 @@ func TestGetModulePrefix_InvalidFile(t *testing.T) {
 
 	// Create an invalid go.mod file
 	modContent := []byte("invalid content\n")
-	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), modContent, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), modContent, 0600); err != nil {
 		t.Fatalf("Failed to create test go.mod: %v", err)
 	}
 
@@ -360,7 +360,7 @@ func TestGetModulePrefix_EmptyFile(t *testing.T) {
 	}()
 
 	// Create an empty go.mod file
-	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte{}, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte{}, 0600); err != nil {
 		t.Fatalf("Failed to create test go.mod: %v", err)
 	}
 
@@ -392,7 +392,7 @@ func TestLoadJSON_ValidFile(t *testing.T) {
 		t.Fatalf("failed to marshal test data: %v", err)
 	}
 
-	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
+	if err := os.WriteFile(tmpFile, data, 0600); err != nil {
 		t.Fatalf("failed to write test file: %v", err)
 	}
 
@@ -446,7 +446,7 @@ func TestLoadJSON_InvalidFile(t *testing.T) {
 			tmpDir := t.TempDir()
 			tmpFile := filepath.Join(tmpDir, "test.json")
 
-			if err := os.WriteFile(tmpFile, []byte(tc.content), 0644); err != nil {
+			if err := os.WriteFile(tmpFile, []byte(tc.content), 0600); err != nil {
 				t.Fatalf("failed to write test file: %v", err)
 			}
 
@@ -478,7 +478,7 @@ func TestLoadJSON_InvalidDestination(t *testing.T) {
 	tmpDir := t.TempDir()
 	tmpFile := filepath.Join(tmpDir, "test.json")
 
-	if err := os.WriteFile(tmpFile, []byte("{}"), 0644); err != nil {
+	if err := os.WriteFile(tmpFile, []byte("{}"), 0600); err != nil {
 		t.Fatalf("failed to write test file: %v", err)
 	}
 
@@ -525,7 +525,7 @@ func TestLoadJSON_NestedStructures(t *testing.T) {
 		t.Fatalf("failed to marshal test data: %v", err)
 	}
 
-	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
+	if err := os.WriteFile(tmpFile, data, 0600); err != nil {
 		t.Fatalf("failed to write test file: %v", err)
 	}
 

@@ -14,7 +14,7 @@ const (
 	// MessageTypeTestResult is used for messages containing test execution results
 	MessageTypeTestResult MessageType = "test_result"
 	// MessageTypeCommand is used for messages containing commands to be executed
-	MessageTypeCommand    MessageType = "command"
+	MessageTypeCommand MessageType = "command"
 )
 
 // TestMessage represents the standard message format for WebSocket communication.

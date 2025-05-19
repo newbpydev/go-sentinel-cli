@@ -5,10 +5,11 @@ import (
 	"testing"
 )
 
-type mockConn struct{
+type mockConn struct {
 	closed bool
-	mu sync.Mutex
+	mu     sync.Mutex
 }
+
 func (m *mockConn) Close() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

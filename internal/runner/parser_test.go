@@ -488,11 +488,16 @@ func TestParseTestOutput_PassingTest(t *testing.T) {
 	output := `=== RUN   TestMyFunction
 --- PASS: TestMyFunction (0.12s)
 PASS
-ok  	github.com/newbpydev/go-sentinel/internal/runner	0.123s`
+ok  \tgithub.com/newbpydev/go-sentinel/internal/runner\t0.123s`
 
 	events := ParseTestOutput(strings.NewReader(output))
 	if len(events) != 2 {
 		t.Fatalf("expected 2 events, got %d", len(events))
+	}
+
+	// Debug: print actual events
+	for i, ev := range events {
+		t.Logf("event[%d]: %+v", i, ev)
 	}
 
 	// Check run event
@@ -514,11 +519,16 @@ func TestParseTestOutput_FailingTest(t *testing.T) {
     failing_test.go:42: expected true, got false
 FAIL
 exit status 1
-FAIL	github.com/newbpydev/go-sentinel/internal/runner	0.056s`
+FAIL\tgithub.com/newbpydev/go-sentinel/internal/runner\t0.056s`
 
 	events := ParseTestOutput(strings.NewReader(output))
 	if len(events) != 2 {
 		t.Fatalf("expected 2 events, got %d", len(events))
+	}
+
+	// Debug: print actual events
+	for i, ev := range events {
+		t.Logf("event[%d]: %+v", i, ev)
 	}
 
 	// Check run event
@@ -542,11 +552,16 @@ func TestParseTestOutput_SkippedTest(t *testing.T) {
 --- SKIP: TestSkippedFunction (0.00s)
     skipped_test.go:23: skipping test in short mode
 PASS
-ok  	github.com/newbpydev/go-sentinel/internal/runner	0.001s`
+ok  \tgithub.com/newbpydev/go-sentinel/internal/runner\t0.001s`
 
 	events := ParseTestOutput(strings.NewReader(output))
 	if len(events) != 2 {
 		t.Fatalf("expected 2 events, got %d", len(events))
+	}
+
+	// Debug: print actual events
+	for i, ev := range events {
+		t.Logf("event[%d]: %+v", i, ev)
 	}
 
 	// Check run event

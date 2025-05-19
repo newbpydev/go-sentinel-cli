@@ -1,8 +1,8 @@
 package websocket
 
 import (
-	"testing"
 	"sync"
+	"testing"
 )
 
 func BenchmarkConnectionManager_AddRemove(b *testing.B) {

@@ -10,6 +10,7 @@ type mockCoreEngine struct {
 	commandsRcvd  []string
 	failOnCommand bool
 }
+
 func (m *mockCoreEngine) SendUpdate(update string) {
 	m.updatesSent = append(m.updatesSent, update)
 }
@@ -22,9 +23,8 @@ func (m *mockCoreEngine) ReceiveCommand(cmd string) error {
 }
 
 type CoreError struct{ msg string }
+
 func (e *CoreError) Error() string { return e.msg }
-
-
 
 func TestAPIReceivesUpdatesFromCore(t *testing.T) {
 	core := &mockCoreEngine{}
@@ -39,7 +39,6 @@ func TestAPIReceivesUpdatesFromCore(t *testing.T) {
 	}
 	t.Errorf("API did not receive update from core: %+v", core.updatesSent)
 }
-
 
 func TestCommandsFromAPIPropagateToCore(t *testing.T) {
 	core := &mockCoreEngine{}
@@ -58,7 +57,6 @@ func TestCommandsFromAPIPropagateToCore(t *testing.T) {
 	t.Errorf("Command not propagated: %+v", core.commandsRcvd)
 }
 
-
 func TestProperErrorHandlingBetweenComponents(t *testing.T) {
 	core := &mockCoreEngine{failOnCommand: true}
 	adapter := NewCoreAdapter(core)
@@ -75,4 +73,3 @@ func TestProperErrorHandlingBetweenComponents(t *testing.T) {
 		t.Errorf("Expected error, got %v", err)
 	}
 }
-

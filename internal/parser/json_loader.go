@@ -43,8 +43,8 @@ func LoadTestResultsFromJSON(path string) ([]TestResult, error) {
 		return nil, fmt.Errorf("open: %w", err)
 	}
 	defer func() {
-		if closeErr := f.Close(); closeErr != nil {
-			log.Printf("Error closing file: %v", closeErr)
+		if err := f.Close(); err != nil {
+			log.Printf("error closing file: %v", err)
 		}
 	}()
 
@@ -239,8 +239,8 @@ func getModulePrefix() string {
 		return ""
 	}
 	defer func() {
-		if closeErr := f.Close(); closeErr != nil {
-			log.Printf("Error closing go.mod file: %v", closeErr)
+		if err := f.Close(); err != nil {
+			log.Printf("Error closing go.mod file: %v", err)
 		}
 	}()
 	// Instead of using JSON, just scan the file
@@ -273,8 +273,6 @@ func splitPath(pkg string) []string {
 }
 
 // extractTestName tries to extract the test name from the summary (e.g., "ok   pkg/foo/TestAlpha" -> "TestAlpha")
-//
-//nolint:unused // Will be used in future implementation for test result processing
 func extractTestName(summary string) string {
 	if summary == "" {
 		return ""
@@ -295,11 +293,16 @@ func LoadJSON(path string, dest interface{}) error {
 	if _, ok := dest.(*interface{}); !ok && !isPointer(dest) {
 		return fmt.Errorf("destination must be a pointer")
 	}
-	f, err := os.Open(path)
+	cleanPath := filepath.Clean(path)
+	f, err := os.Open(cleanPath)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Printf("error closing file: %v", err)
+		}
+	}()
 	dec := json.NewDecoder(f)
 	if err := dec.Decode(dest); err != nil {
 		if err == io.EOF {

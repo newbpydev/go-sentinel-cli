@@ -8,13 +8,13 @@ import (
 func TestBufferRapidEventsPerPackage(t *testing.T) {
 	debounce := NewDebouncer(50 * time.Millisecond)
 	ch := debounce.Events()
-	
+
 	go func() {
 		debounce.Emit("pkgA")
 		debounce.Emit("pkgA")
 		debounce.Emit("pkgA")
 	}()
-	
+
 	var count int
 	for {
 		select {
@@ -35,10 +35,10 @@ func TestBufferRapidEventsPerPackage(t *testing.T) {
 func TestTriggerAfterQuietPeriod(t *testing.T) {
 	debounce := NewDebouncer(30 * time.Millisecond)
 	ch := debounce.Events()
-	
+
 	start := time.Now()
 	debounce.Emit("pkgB")
-	
+
 	select {
 	case <-ch:
 		elapsed := time.Since(start)

@@ -12,6 +12,7 @@ import (
 type mockConfigStore struct {
 	cfg map[string]interface{}
 }
+
 func (m *mockConfigStore) Get() map[string]interface{} {
 	return m.cfg
 }
@@ -27,6 +28,7 @@ func (m *mockConfigStore) Validate(cfg map[string]interface{}) error {
 }
 
 type ConfigError struct{ msg string }
+
 func (e *ConfigError) Error() string { return e.msg }
 
 func TestGetConfiguration(t *testing.T) {

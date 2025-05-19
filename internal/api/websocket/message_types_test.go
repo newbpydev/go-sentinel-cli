@@ -5,14 +5,17 @@ import (
 	"testing"
 )
 
-
 func TestMessageEncodingDecoding(t *testing.T) {
 	payload := TestResultPayload{TestID: "abc", Status: "pass"}
 	payloadBytes, err := json.Marshal(payload)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	msg := TestMessage{Type: "test_result", Payload: payloadBytes}
 	msgBytes, err := json.Marshal(msg)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	var decoded TestMessage
 	if err := json.Unmarshal(msgBytes, &decoded); err != nil {
 		t.Fatalf("failed to decode: %v", err)
@@ -36,16 +39,24 @@ func TestHandleDifferentMessageTypes(t *testing.T) {
 	switch msg1.Type {
 	case "test_result":
 		var p TestResultPayload
-		if err := json.Unmarshal(msg1.Payload, &p); err != nil { t.Fatal(err) }
-		if p.Status != "fail" { t.Errorf("expected fail, got %s", p.Status) }
+		if err := json.Unmarshal(msg1.Payload, &p); err != nil {
+			t.Fatal(err)
+		}
+		if p.Status != "fail" {
+			t.Errorf("expected fail, got %s", p.Status)
+		}
 	case "command":
 		t.Error("should not route to command")
 	}
 	switch msg2.Type {
 	case "command":
 		var p CommandPayload
-		if err := json.Unmarshal(msg2.Payload, &p); err != nil { t.Fatal(err) }
-		if p.Command != "run" { t.Errorf("expected run, got %s", p.Command) }
+		if err := json.Unmarshal(msg2.Payload, &p); err != nil {
+			t.Fatal(err)
+		}
+		if p.Command != "run" {
+			t.Errorf("expected run, got %s", p.Command)
+		}
 	case "test_result":
 		t.Error("should not route to test_result")
 	}
