@@ -161,3 +161,10 @@ dist
 
 # Local development
 .local/
+
+# Cursor
+.cursor/
+.cursor.json
+*.cursor-cache
+.aicursor/
+.ai-cursor/
