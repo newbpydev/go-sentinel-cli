@@ -66,10 +66,10 @@ func TestParseTestEvents_TrackAllActions(t *testing.T) {
 func TestExtractErrorContext_FileLineExtraction(t *testing.T) {
 	// Test both formats: 'file.go:123:message' and 'file.go:123: message'
 	cases := []struct {
-		input    string
-		file     string
-		line     int
-		message  string
+		input   string
+		file    string
+		line    int
+		message string
 	}{
 		{"file.go:123:some message", "file.go", 123, "file.go:123:some message"},
 		{"file.go:123: some message", "file.go", 123, "file.go:123: some message"},
@@ -166,7 +166,7 @@ func TestGroupTestEvents(t *testing.T) {
 	if len(grouped["pkg1"]) != 2 {
 		t.Errorf("expected 2 tests in pkg1, got %d", len(grouped["pkg1"]))
 	}
-	
+
 	// Verify pkg2 has TestC
 	if len(grouped["pkg2"]) != 1 {
 		t.Errorf("expected 1 test in pkg2, got %d", len(grouped["pkg2"]))
@@ -203,11 +203,11 @@ func TestSummarizeTestResults_OutputLines(t *testing.T) {
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
-	
+
 	if len(results[0].OutputLines) != 3 {
 		t.Errorf("expected 3 output lines, got %d", len(results[0].OutputLines))
 	}
-	
+
 	expectedLines := []string{"line1\n", "line2\n", "line3\n"}
 	for i, expected := range expectedLines {
 		if results[0].OutputLines[i] != expected {
@@ -228,7 +228,7 @@ func TestParseTestEvents_BuildErrors(t *testing.T) {
 	if len(events) != 2 {
 		t.Fatalf("expected 2 events for build error, got %d", len(events))
 	}
-	
+
 	// Verify build error output is captured
 	containsBuildFailed := false
 	for _, ev := range events {
@@ -253,18 +253,18 @@ func TestParseTestEvents_TestPanics(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error parsing panic: %v", err)
 	}
-	
+
 	grouped := GroupTestEvents(events)
 	results := SummarizeTestResults(grouped)
-	
+
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result for panic test, got %d", len(results))
 	}
-	
+
 	if results[0].Passed {
 		t.Errorf("expected panicked test to be marked as failed")
 	}
-	
+
 	containsPanic := false
 	for _, line := range results[0].OutputLines {
 		if strings.Contains(line, "panic:") {
@@ -287,22 +287,22 @@ func TestParseTestEvents_TestTimeouts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error parsing timeout: %v", err)
 	}
-	
+
 	grouped := GroupTestEvents(events)
 	results := SummarizeTestResults(grouped)
-	
+
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result for timeout test, got %d", len(results))
 	}
-	
+
 	if results[0].Passed {
 		t.Errorf("expected timed out test to be marked as failed")
 	}
-	
+
 	if results[0].Duration < 60.0 {
 		t.Errorf("expected timeout test to have duration >= 60s, got %f", results[0].Duration)
 	}
-	
+
 	containsTimeout := false
 	for _, line := range results[0].OutputLines {
 		if strings.Contains(line, "timed out") {
@@ -312,5 +312,173 @@ func TestParseTestEvents_TestTimeouts(t *testing.T) {
 	}
 	if !containsTimeout {
 		t.Errorf("expected timeout message to be included in output lines")
+	}
+}
+
+func TestParseTestEvents_ValidJSON(t *testing.T) {
+	jsonInput := `{"Time":"2023-01-01T00:00:00Z","Action":"run","Package":"pkg","Test":"TestA"}
+{"Time":"2023-01-01T00:00:01Z","Action":"pass","Package":"pkg","Test":"TestA","Elapsed":0.1}`
+	r := bytes.NewBufferString(jsonInput)
+	events, err := ParseTestEvents(r)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(events) != 2 {
+		t.Fatalf("expected 2 events, got %d", len(events))
+	}
+
+	// Check first event
+	if events[0].Action != "run" || events[0].Package != "pkg" || events[0].Test != "TestA" {
+		t.Errorf("unexpected first event: %+v", events[0])
+	}
+
+	// Check second event
+	if events[1].Action != "pass" || events[1].Package != "pkg" || events[1].Test != "TestA" || events[1].Elapsed != 0.1 {
+		t.Errorf("unexpected second event: %+v", events[1])
+	}
+}
+
+func TestParseTestEvents_InvalidJSON(t *testing.T) {
+	jsonInput := `{"invalid json`
+	r := bytes.NewBufferString(jsonInput)
+	_, err := ParseTestEvents(r)
+	if err == nil {
+		t.Error("expected error for invalid JSON")
+	}
+}
+
+func TestGroupTestEvents_Basic(t *testing.T) {
+	events := []TestEvent{
+		{Package: "pkg1", Test: "TestA", Action: "run"},
+		{Package: "pkg1", Test: "TestA", Action: "pass"},
+		{Package: "pkg2", Test: "TestB", Action: "run"},
+		{Package: "pkg2", Test: "TestB", Action: "fail"},
+	}
+
+	grouped := GroupTestEvents(events)
+
+	// Check pkg1 events
+	pkg1Events, ok := grouped["pkg1"]
+	if !ok {
+		t.Fatal("missing pkg1 events")
+	}
+	testAEvents, ok := pkg1Events["TestA"]
+	if !ok {
+		t.Fatal("missing TestA events")
+	}
+	if len(testAEvents) != 2 {
+		t.Errorf("expected 2 events for TestA, got %d", len(testAEvents))
+	}
+
+	// Check pkg2 events
+	pkg2Events, ok := grouped["pkg2"]
+	if !ok {
+		t.Fatal("missing pkg2 events")
+	}
+	testBEvents, ok := pkg2Events["TestB"]
+	if !ok {
+		t.Fatal("missing TestB events")
+	}
+	if len(testBEvents) != 2 {
+		t.Errorf("expected 2 events for TestB, got %d", len(testBEvents))
+	}
+}
+
+func TestGroupTestEvents_Empty(t *testing.T) {
+	grouped := GroupTestEvents(nil)
+	if len(grouped) != 0 {
+		t.Errorf("expected empty map for nil events, got %d entries", len(grouped))
+	}
+
+	grouped = GroupTestEvents([]TestEvent{})
+	if len(grouped) != 0 {
+		t.Errorf("expected empty map for empty events, got %d entries", len(grouped))
+	}
+}
+
+func TestExtractErrorContext_FileLocation(t *testing.T) {
+	events := []TestEvent{
+		{
+			Action:  "output",
+			Package: "pkg/foo",
+			Test:    "TestA",
+			Output:  "    example_test.go:42: test failed",
+		},
+		{
+			Action:  "output",
+			Package: "pkg/foo",
+			Test:    "TestA",
+			Output:  "some other output",
+		},
+		{
+			Action:  "output",
+			Package: "pkg/foo",
+			Test:    "TestA",
+			Output:  "    another_test.go:123: another error",
+		},
+	}
+
+	context := ExtractErrorContext(events)
+	if context == nil {
+		t.Fatal("expected non-nil error context")
+	}
+
+	if context.FileLocation == nil {
+		t.Fatal("expected non-nil file location")
+	}
+
+	if context.FileLocation.File != "example_test.go" {
+		t.Errorf("expected file 'example_test.go', got %q", context.FileLocation.File)
+	}
+
+	if context.FileLocation.Line != 42 {
+		t.Errorf("expected line 42, got %d", context.FileLocation.Line)
+	}
+
+	if !strings.Contains(context.Message, "test failed") {
+		t.Errorf("expected message to contain 'test failed', got %q", context.Message)
+	}
+}
+
+func TestExtractErrorContext_NoFileLocation(t *testing.T) {
+	events := []TestEvent{
+		{
+			Action:  "output",
+			Package: "pkg/foo",
+			Test:    "TestA",
+			Output:  "some error message without file location",
+		},
+		{
+			Action:  "output",
+			Package: "pkg/foo",
+			Test:    "TestA",
+			Output:  "another line of output",
+		},
+	}
+
+	context := ExtractErrorContext(events)
+	if context == nil {
+		t.Fatal("expected non-nil error context")
+	}
+
+	if context.FileLocation != nil {
+		t.Error("expected nil file location for output without file:line")
+	}
+
+	if context.Message == "" {
+		t.Error("expected non-empty error message")
+	}
+}
+
+func TestExtractErrorContext_EmptyEvents(t *testing.T) {
+	context := ExtractErrorContext(nil)
+	if context != nil {
+		t.Error("expected nil context for nil events")
+	}
+
+	context = ExtractErrorContext([]TestEvent{})
+	if context != nil {
+		t.Error("expected nil context for empty events")
 	}
 }
