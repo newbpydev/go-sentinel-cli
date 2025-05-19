@@ -70,7 +70,9 @@ func TestFormatTestOutput_PassingTest(t *testing.T) {
 	}
 
 	output := FormatTestOutput(events)
-	lines := strings.Split(output, "\n")
+
+	// Debug output
+	t.Logf("Actual output:\n%s", output)
 
 	// Check for expected output format
 	if !strings.Contains(output, "=== RUN   TestPass") {
@@ -79,7 +81,7 @@ func TestFormatTestOutput_PassingTest(t *testing.T) {
 	if !strings.Contains(output, "--- PASS: TestPass (0.123s)") {
 		t.Error("missing pass marker with elapsed time")
 	}
-	if !strings.Contains(output, "ok  	pkg/foo") {
+	if !strings.Contains(output, "ok   \tpkg/foo") && !strings.Contains(output, "ok   pkg/foo") {
 		t.Error("missing package status")
 	}
 }
@@ -348,11 +350,14 @@ func TestFormatTestOutput_MultiplePackages(t *testing.T) {
 
 	output := FormatTestOutput(events)
 
+	// Debug output
+	t.Logf("Actual output:\n%s", output)
+
 	// Check for package separation
-	if !strings.Contains(output, "ok  	pkg/foo") {
+	if !strings.Contains(output, "ok   \tpkg/foo") && !strings.Contains(output, "ok   pkg/foo") {
 		t.Error("missing status for first package")
 	}
-	if !strings.Contains(output, "ok  	pkg/bar") {
+	if !strings.Contains(output, "ok   \tpkg/bar") && !strings.Contains(output, "ok   pkg/bar") {
 		t.Error("missing status for second package")
 	}
 

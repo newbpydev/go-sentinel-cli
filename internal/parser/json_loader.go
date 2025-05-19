@@ -5,10 +5,12 @@ package parser
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+
 	"github.com/newbpydev/go-sentinel/internal/event"
 )
 
@@ -35,7 +37,7 @@ func LoadTestResultsFromJSON(path string) ([]TestResult, error) {
 	if !filepath.IsAbs(cleanPath) {
 		return nil, fmt.Errorf("path must be absolute: %s", path)
 	}
-	
+
 	f, err := os.Open(cleanPath)
 	if err != nil {
 		return nil, fmt.Errorf("open: %w", err)
@@ -45,7 +47,7 @@ func LoadTestResultsFromJSON(path string) ([]TestResult, error) {
 			log.Printf("Error closing file: %v", closeErr)
 		}
 	}()
-	
+
 	var results []TestResult
 	dec := json.NewDecoder(f)
 	if err := dec.Decode(&results); err != nil {
@@ -57,7 +59,7 @@ func LoadTestResultsFromJSON(path string) ([]TestResult, error) {
 // ConvertTestResultsToTree converts flat results to a TreeNode hierarchy
 // looksLikeTestName returns true if the summary or test field looks like a test name
 func looksLikeTestName(s string) bool {
-	return strings.HasPrefix(s, "Test") || 
+	return strings.HasPrefix(s, "Test") ||
 		strings.HasPrefix(s, "Example") ||
 		strings.HasPrefix(s, "Benchmark")
 }
@@ -97,7 +99,6 @@ func ConvertTestResultsToTree(results []TestResult) *event.TreeNode {
 			packageHasTests[pkgPath] = true
 		}
 	}
-
 
 	// Build tree, include packages with tests or skipped
 	topNodes := []*event.TreeNode{}
@@ -156,7 +157,6 @@ func ConvertTestResultsToTree(results []TestResult) *event.TreeNode {
 			parent = node
 		}
 	}
-
 
 	// Add test nodes under their respective package
 	for _, r := range results {
@@ -261,7 +261,6 @@ func getModulePrefix() string {
 	return ""
 }
 
-
 // splitPath splits a package path into segments (e.g., "a/b/c" -> ["a","b","c"])
 func splitPath(pkg string) []string {
 	var out []string
@@ -274,6 +273,7 @@ func splitPath(pkg string) []string {
 }
 
 // extractTestName tries to extract the test name from the summary (e.g., "ok   pkg/foo/TestAlpha" -> "TestAlpha")
+//
 //nolint:unused // Will be used in future implementation for test result processing
 func extractTestName(summary string) string {
 	if summary == "" {
@@ -284,4 +284,33 @@ func extractTestName(summary string) string {
 		return parts[len(parts)-1]
 	}
 	return summary
+}
+
+// LoadJSON loads JSON from a file into the provided destination (pointer to struct, map, or slice).
+func LoadJSON(path string, dest interface{}) error {
+	if dest == nil {
+		return fmt.Errorf("destination must not be nil")
+	}
+	// Must be a pointer
+	if _, ok := dest.(*interface{}); !ok && !isPointer(dest) {
+		return fmt.Errorf("destination must be a pointer")
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	dec := json.NewDecoder(f)
+	if err := dec.Decode(dest); err != nil {
+		if err == io.EOF {
+			return fmt.Errorf("unexpected end of JSON input")
+		}
+		return err
+	}
+	return nil
+}
+
+// isPointer returns true if v is a pointer
+func isPointer(v interface{}) bool {
+	return fmt.Sprintf("%T", v)[0] == '*'
 }
