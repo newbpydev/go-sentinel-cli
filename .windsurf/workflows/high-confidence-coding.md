@@ -1,10 +1,10 @@
 ---
-description: Workflow for 95%+ Confidence, Low-Hallucination Coding
+description: Workflow for 95%+ Confidence, Clean, and Efficient Coding
 ---
 
 # High-Confidence Coding Workflow (≥95% Solution Accuracy)
 
-This workflow ensures that all code produced is both highly likely (>95%) to solve the intended problem and is generated with >95% confidence, minimizing hallucinations and errors. It is designed to be included or referenced by other workflows for critical or production-quality code.
+This workflow ensures that all code produced is both highly likely (>95%) to solve the intended problem, is clean and efficient, and is generated with >95% confidence, minimizing errors and adhering to linter guidelines. It is designed to be included or referenced by other workflows for critical or production-quality code.
 
 ## Phase 1: Problem Understanding & Requirements
 
@@ -23,10 +23,13 @@ This workflow ensures that all code produced is both highly likely (>95%) to sol
    - Create or review tests that cover all requirements, including edge/error cases.
    - Ensure tests are behavior-focused and independent.
    - Document test coverage goals (aim for 100%, never <95%).
+   - Include performance and efficiency tests where applicable.
 
 4. **Plan Multiple Validation Layers**
    - Identify all validation steps: unit tests, integration tests, static analysis, linting, manual review, etc.
    - Specify how each will be checked before code is considered complete.
+   - **Configure linters with strict rules** that enforce code cleanliness and efficiency.
+   - Set up pre-commit hooks for local validation.
 
 ## Phase 3: Systematic, Modular Implementation
 
@@ -34,9 +37,11 @@ This workflow ensures that all code produced is both highly likely (>95%) to sol
    - Make the smallest possible code change to pass the next test.
    - After each increment, run all validation steps.
    - If any validation fails, halt and fix before proceeding.
+   - Ensure code is clean, efficient, and follows best practices.
 
 6. **Self-Review and Error Analysis**
-   - After each increment, review for possible errors, missed cases, or hallucinations.
+   - After each increment, review for possible errors, missed cases, or inefficiencies.
+   - Run linters and fix **ALL** warnings and errors without exception.
    - Explicitly document any uncertainties or assumptions.
    - If confidence <95%, halt and request clarification or perform further validation.
 
@@ -45,8 +50,10 @@ This workflow ensures that all code produced is both highly likely (>95%) to sol
 7. **Confidence Checklist (Must Pass All)**
    - [ ] All tests pass (unit, integration, edge cases)
    - [ ] Code coverage ≥95%
-   - [ ] Static analysis and linting pass
+   - [ ] Static analysis passes with zero issues
+   - [ ] **ALL linter checks pass with zero warnings**
    - [ ] Solution matches all requirements and constraints
+   - [ ] Code is clean, efficient, and follows best practices
    - [ ] Reasoning and implementation steps are fully documented
    - [ ] No unexplained or speculative code (no hallucination)
    - [ ] If any box is unchecked, halt and address before proceeding
@@ -54,21 +61,14 @@ This workflow ensures that all code produced is both highly likely (>95%) to sol
 8. **Peer/AI Review (Optional for Solo, Required for Team)**
    - Request a second review (human or AI) for critical code.
    - Review must focus on correctness, clarity, and confidence.
-
-## Phase 5: Documentation & Communication
-
-9. **Document Everything**
-   - Clearly document the solution, tests, and reasoning.
-   - Note any assumptions, limitations, or open questions.
-
-10. **Communicate Results and Next Steps**
-   - Summarize what was accomplished and confidence level.
    - If confidence is <95% at any point, escalate for clarification or additional review before merging.
 
 ---
-*Last Updated: 2025-05-17*
+*Last Updated: 2025-05-19*
 
 ## Usage
-- Reference or include this workflow in any `.windsurf/workflows` file where high-confidence, low-hallucination code is required.
+- Reference or include this workflow in any `.windsurf/workflows` file where high-confidence, clean, and efficient code is required.
 - Gather all necessary information to ensure we have >95% confidence in our solution.
+- **Always run linters** and fix ALL issues before considering code complete.
 - Use as a checklist for critical PRs, releases, or AI-generated code.
+- Remember that no PR should be merged unless it meets ALL quality criteria with >95% confidence.
