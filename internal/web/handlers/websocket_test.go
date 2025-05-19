@@ -40,16 +40,16 @@ func TestWebSocketMessageSerialization(t *testing.T) {
 		message WebSocketMessage
 	}{
 		{
-			name: "test result message",
+			name: "test update message",
 			message: WebSocketMessage{
-				Type:    "test_result",
-				Payload: json.RawMessage(`{"name":"TestExample","passed":true,"message":"Test passed successfully","duration":125000000}`),
+				Type:    "test-update",
+				Payload: json.RawMessage(`{"name":"TestExample","status":"passed","duration":"125ms","lastRun":"` + time.Now().Format(time.RFC3339) + `"}`),
 			},
 		},
 		{
 			name: "metrics update message",
 			message: WebSocketMessage{
-				Type:    "metrics_update",
+				Type:    "metrics-update",
 				Payload: json.RawMessage(`{"testsRun":5,"testsPassed":5,"coverage":85.5}`),
 			},
 		},
@@ -83,7 +83,6 @@ func TestWebSocketMessageSerialization(t *testing.T) {
 			}
 
 			// For complex payloads, we'll just check they can be marshaled back to JSON
-			// since direct comparison might be tricky with time.Time and numeric types
 			_, err = json.Marshal(parsed.Payload)
 			if err != nil {
 				t.Fatalf("payload is not valid JSON: %v", err)
@@ -213,16 +212,16 @@ func TestBroadcastTestResults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to read test results from first client: %v", err)
 	}
-	if msg1.Type != "test_results" {
-		t.Errorf("Expected message type 'test_results' for first client, got %q", msg1.Type)
+	if msg1.Type != "test-results" {
+		t.Errorf("Expected message type 'test-results' for first client, got %q", msg1.Type)
 	}
 
 	err = conn2.ReadJSON(&msg2)
 	if err != nil {
 		t.Fatalf("Failed to read test results from second client: %v", err)
 	}
-	if msg2.Type != "test_results" {
-		t.Errorf("Expected message type 'test_results' for second client, got %q", msg2.Type)
+	if msg2.Type != "test-results" {
+		t.Errorf("Expected message type 'test-results' for second client, got %q", msg2.Type)
 	}
 }
 
@@ -265,7 +264,7 @@ func TestMessageRoutingByType(t *testing.T) {
 	}{
 		{
 			name:        "test results message",
-			messageType: "test_results",
+			messageType: "test-results",
 			sendFunc: func() {
 				h.BroadcastTestResults([]WSTestResult{{
 					Name:     "TestExample",
@@ -320,7 +319,7 @@ func TestMessageRoutingByType(t *testing.T) {
 			}
 
 			// For test results, verify the structure
-			if tt.messageType == "test_results" {
+			if tt.messageType == "test-results" {
 				var results []WSTestResult
 				if err := json.Unmarshal(msg.Payload, &results); err != nil {
 					t.Fatalf("Failed to unmarshal test results: %v", err)

@@ -16,12 +16,24 @@ func (m *mockHistoryStore) Add(run TestRun) error {
 	return nil
 }
 
-func (m *mockHistoryStore) GetRecent(_, _ int) ([]TestRun, error) {
-	return m.runs, nil
+func (m *mockHistoryStore) GetRecent(limit, offset int) ([]TestRun, error) {
+	if offset > len(m.runs) {
+		return []TestRun{}, nil
+	}
+	end := offset + limit
+	if end > len(m.runs) {
+		end = len(m.runs)
+	}
+	return m.runs[offset:end], nil
 }
 
 func TestGetTestHistory_Success(t *testing.T) {
-	hs := &mockHistoryStore{}
+	hs := &mockHistoryStore{
+		runs: []TestRun{
+			{ID: "1"},
+			{ID: "2"},
+		},
+	}
 	h := NewTestHistoryHandler(hs)
 	r := httptest.NewRequest("GET", "/api/test-history?limit=2", nil)
 	w := httptest.NewRecorder()
@@ -41,9 +53,15 @@ func TestGetTestHistory_Success(t *testing.T) {
 }
 
 func TestGetTestHistory_Pagination(t *testing.T) {
-	hs := &mockHistoryStore{}
+	hs := &mockHistoryStore{
+		runs: []TestRun{
+			{ID: "1"},
+			{ID: "2"},
+			{ID: "3"},
+		},
+	}
 	h := NewTestHistoryHandler(hs)
-	r := httptest.NewRequest("GET", "/api/test-history?limit=1&offset=1", nil)
+	r := httptest.NewRequest("GET", "/api/test-history?limit=2&offset=1", nil)
 	w := httptest.NewRecorder()
 
 	h.ServeHTTP(w, r)
@@ -55,8 +73,8 @@ func TestGetTestHistory_Pagination(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("bad json: %v", err)
 	}
-	if len(resp) != 2 {
-		t.Errorf("expected 2 results for mock, got %d", len(resp))
+	if len(resp) != 2 || resp[0].ID != "2" {
+		t.Errorf("unexpected response: %+v", resp)
 	}
 }
 

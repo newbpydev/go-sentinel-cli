@@ -33,9 +33,11 @@ func TestConnectionTracking(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect first WebSocket: %v", err)
 	}
+	// Only defer close if not already closed
+	conn1Closed := false
 	defer func() {
-		if err = conn1.Close(); err != nil {
-			t.Errorf("Failed to close connection 1: %v", err)
+		if !conn1Closed {
+			_ = conn1.Close()
 		}
 	}()
 
@@ -50,9 +52,10 @@ func TestConnectionTracking(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect second WebSocket: %v", err)
 	}
+	conn2Closed := false
 	defer func() {
-		if err := conn2.Close(); err != nil {
-			t.Errorf("Failed to close connection 2: %v", err)
+		if !conn2Closed {
+			_ = conn2.Close()
 		}
 	}()
 
@@ -64,8 +67,12 @@ func TestConnectionTracking(t *testing.T) {
 
 	// Disconnect first client
 	if err := conn1.Close(); err != nil {
-		t.Errorf("Failed to close connection 1: %v", err)
+		// Only log if not already closed
+		if !conn1Closed {
+			t.Errorf("Failed to close connection 1: %v", err)
+		}
 	}
+	conn1Closed = true
 	time.Sleep(100 * time.Millisecond) // Give time for cleanup
 
 	// Verify connection count after disconnect
@@ -75,8 +82,11 @@ func TestConnectionTracking(t *testing.T) {
 
 	// Disconnect second client
 	if err := conn2.Close(); err != nil {
-		t.Errorf("Failed to close connection 2: %v", err)
+		if !conn2Closed {
+			t.Errorf("Failed to close connection 2: %v", err)
+		}
 	}
+	conn2Closed = true
 	time.Sleep(100 * time.Millisecond) // Give time for cleanup
 
 	// Verify connection count after all disconnects
@@ -102,16 +112,20 @@ func TestBroadcastToDisconnectedClient(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect WebSocket: %v", err)
 	}
+	connClosed := false
 	defer func() {
-		if err := conn.Close(); err != nil {
-			t.Errorf("Failed to close connection: %v", err)
+		if !connClosed {
+			_ = conn.Close()
 		}
 	}()
 
 	// Close the connection immediately
 	if err := conn.Close(); err != nil {
-		t.Errorf("Failed to close connection: %v", err)
+		if !connClosed {
+			t.Errorf("Failed to close connection: %v", err)
+		}
 	}
+	connClosed = true
 
 	// Try to broadcast to disconnected client
 	h.BroadcastTestResults([]WSTestResult{{

@@ -2,12 +2,23 @@ package coverage
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
+func ensureTestdataDir(t *testing.T) string {
+	dir := "testdata"
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("Failed to create testdata dir: %v", err)
+	}
+	return dir
+}
+
 func TestNewCollector(t *testing.T) {
-	// Create a temporary coverage profile
-	tempFile, err := os.CreateTemp("", "coverage-*.out")
+	dir := ensureTestdataDir(t)
+	// Create a temporary coverage profile in ./testdata
+	tempFile, err := os.CreateTemp(dir, "coverage-*.out")
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
@@ -30,8 +41,14 @@ github.com/newbpydev/go-sentinel/internal/sample/sample.go:16.13,18.3 1 0
 		t.Fatalf("Failed to close temp file: %v", closeErr)
 	}
 
-	// Test creating a new collector
-	collector, err := NewCollector(tempFile.Name())
+	// Use relative path for collector
+	relPath, err := filepath.Rel(".", tempFile.Name())
+	if err != nil {
+		t.Fatalf("Failed to get relative path: %v", err)
+	}
+	// Replace backslashes with forward slashes for validation compatibility
+	relPath = strings.ReplaceAll(relPath, "\\", "/")
+	collector, err := NewCollector(relPath)
 	if err != nil {
 		t.Fatalf("Failed to create collector: %v", err)
 	}
@@ -46,8 +63,8 @@ github.com/newbpydev/go-sentinel/internal/sample/sample.go:16.13,18.3 1 0
 }
 
 func TestCalculateMetrics(t *testing.T) {
-	// Create a temporary coverage profile
-	tempFile, err := os.CreateTemp("", "coverage-*.out")
+	dir := ensureTestdataDir(t)
+	tempFile, err := os.CreateTemp(dir, "coverage-*.out")
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
@@ -56,7 +73,6 @@ func TestCalculateMetrics(t *testing.T) {
 			t.Fatalf("Failed to remove temp file: %v", removeErr)
 		}
 	}(tempFile.Name())
-	// Write a sample cover profile content that we can verify metrics against
 	sampleContent := `mode: set
 github.com/newbpydev/go-sentinel/internal/sample/sample.go:10.39,12.2 1 1
 github.com/newbpydev/go-sentinel/internal/sample/sample.go:14.52,16.13 2 1
@@ -70,38 +86,38 @@ github.com/newbpydev/go-sentinel/internal/sample/sample.go:16.13,18.3 1 0
 		t.Fatalf("Failed to close temp file: %v", closeErr)
 	}
 
-	// Create collector with sample data
-	collector, err := NewCollector(tempFile.Name())
+	relPath, err := filepath.Rel(".", tempFile.Name())
+	if err != nil {
+		t.Fatalf("Failed to get relative path: %v", err)
+	}
+	// Replace backslashes with forward slashes for validation compatibility
+	relPath = strings.ReplaceAll(relPath, "\\", "/")
+	collector, err := NewCollector(relPath)
 	if err != nil {
 		t.Fatalf("Failed to create collector: %v", err)
 	}
 
-	// Calculate metrics
 	metrics, err := collector.CalculateMetrics()
 	if err != nil {
 		t.Fatalf("Failed to calculate metrics: %v", err)
 	}
 
-	// Verify metrics
 	if metrics == nil {
 		t.Fatal("Expected metrics to be calculated, got nil")
 	}
 
-	// We should have 75% line coverage based on the sample data
-	// (3 out of 4 lines covered)
 	if metrics.LineCoverage < 74.0 || metrics.LineCoverage > 76.0 {
 		t.Errorf("Expected LineCoverage to be around 75%%, got %.2f%%", metrics.LineCoverage)
 	}
 
-	// Should have at least one file in the metrics
 	if len(metrics.FileMetrics) == 0 {
 		t.Error("Expected file metrics to be calculated, got none")
 	}
 }
 
 func TestFileMetricsCalculation(t *testing.T) {
-	// Create a temporary coverage profile
-	tempFile, err := os.CreateTemp("", "coverage-*.out")
+	dir := ensureTestdataDir(t)
+	tempFile, err := os.CreateTemp(dir, "coverage-*.out")
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
@@ -111,7 +127,6 @@ func TestFileMetricsCalculation(t *testing.T) {
 		}
 	}(tempFile.Name())
 
-	// Write a sample cover profile content
 	sampleContent := `mode: set
 github.com/newbpydev/go-sentinel/internal/sample/sample.go:10.39,12.2 1 1
 github.com/newbpydev/go-sentinel/internal/sample/sample.go:14.52,16.13 2 1
@@ -125,8 +140,13 @@ github.com/newbpydev/go-sentinel/internal/sample/sample.go:16.13,18.3 1 0
 		t.Fatalf("Failed to close temp file: %v", closeErr)
 	}
 
-	// Create collector and get metrics
-	collector, err := NewCollector(tempFile.Name())
+	relPath, err := filepath.Rel(".", tempFile.Name())
+	if err != nil {
+		t.Fatalf("Failed to get relative path: %v", err)
+	}
+	// Replace backslashes with forward slashes for validation compatibility
+	relPath = strings.ReplaceAll(relPath, "\\", "/")
+	collector, err := NewCollector(relPath)
 	if err != nil {
 		t.Fatalf("Failed to create collector: %v", err)
 	}
@@ -136,24 +156,20 @@ github.com/newbpydev/go-sentinel/internal/sample/sample.go:16.13,18.3 1 0
 		t.Fatalf("Failed to calculate metrics: %v", err)
 	}
 
-	// Check file metrics for the sample file
 	sampleFilePath := "github.com/newbpydev/go-sentinel/internal/sample/sample.go"
 	fileMetrics, ok := metrics.FileMetrics[sampleFilePath]
 	if !ok {
 		t.Fatalf("Expected metrics for file %s, not found", sampleFilePath)
 	}
 
-	// Verify file-specific coverage metrics
 	if fileMetrics.LineCoverage < 74.0 || fileMetrics.LineCoverage > 76.0 {
 		t.Errorf("Expected file LineCoverage to be around 75%%, got %.2f%%", fileMetrics.LineCoverage)
 	}
 
-	// Verify execution counts
 	if len(fileMetrics.LineExecutionCounts) == 0 {
 		t.Error("Expected line execution counts to be calculated, got none")
 	}
 
-	// Verify branch coverage
 	if fileMetrics.BranchCoverage < 0 || fileMetrics.BranchCoverage > 100 {
 		t.Errorf("Expected valid branch coverage percentage, got %.2f%%", fileMetrics.BranchCoverage)
 	}

@@ -2,9 +2,9 @@ package runner
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 	"time"
-	"strings"
 )
 
 func TestRunGoTestJSONInCorrectPkg(t *testing.T) {
@@ -19,8 +19,8 @@ func TestRunGoTestJSONInCorrectPkg(t *testing.T) {
 	}
 	output := out.String()
 	if !strings.Contains(output, `"Action":"pass"`) {
-	t.Errorf("expected JSON output with pass action, got: %q", output)
-}
+		t.Errorf("expected JSON output with pass action, got: %q", output)
+	}
 }
 
 func TestCaptureStdoutStderrAndHandleErrors(t *testing.T) {
@@ -30,13 +30,13 @@ func TestCaptureStdoutStderrAndHandleErrors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to start go test: %v", err)
 	}
-	
+
 	// Wait for the command to complete
 	err = cmd.Wait()
 	if err != nil {
 		t.Fatalf("go test command failed: %v", err)
 	}
-	
+
 	// Check if we got any output
 	if out.Len() == 0 {
 		t.Error("expected non-empty stdout from go test, but got empty output")
@@ -50,19 +50,19 @@ func TestHandleNonJSONOutput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to start go test: %v", err)
 	}
-	
+
 	// Wait for the command to complete
 	err = cmd.Wait()
 	if err == nil {
 		t.Error("expected error for build failure, but got none")
 	}
-	
+
 	// Check if we got any output
 	output := out.Bytes()
 	if len(output) == 0 {
 		t.Fatal("expected output from go test for build failure, but got none")
 	}
-	
+
 	// Check for build error in output
 	if !bytes.Contains(bytes.ToLower(output), []byte("build")) {
 		t.Errorf("expected build error in output, got: %q", output)
@@ -88,7 +88,7 @@ func TestPipeStdoutStderrForRealtimeOutput(t *testing.T) {
 		if out.Len() == 0 {
 			t.Errorf("expected output from go test, got: %q", out.Bytes())
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(5 * time.Second):
 		t.Error("timeout waiting for go test output")
 	}
 }

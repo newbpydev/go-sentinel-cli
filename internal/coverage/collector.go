@@ -9,6 +9,7 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"golang.org/x/tools/cover"
@@ -30,7 +31,11 @@ func validateCoveragePath(path string) error {
 	}
 
 	// Check for suspicious characters
-	if strings.ContainsAny(cleanPath, "<>:\"\\|?*") {
+	invalidChars := "<>:\"|?*"
+	if runtime.GOOS != "windows" {
+		invalidChars += "\\" // Only treat backslash as invalid on non-Windows
+	}
+	if strings.ContainsAny(cleanPath, invalidChars) {
 		return fmt.Errorf("path contains invalid characters: %s", path)
 	}
 
