@@ -107,7 +107,11 @@ func TestWebSocketMessageHandling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect to WebSocket: %v", err)
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Errorf("Failed to close connection: %v", err)
+		}
+	}()
 
 	// Test sending a message to the server
 	payload, err := json.Marshal(map[string]string{"message": "test"})
@@ -160,14 +164,22 @@ func TestBroadcastTestResults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect first client: %v", err)
 	}
-	defer conn1.Close()
+	defer func() {
+		if err := conn1.Close(); err != nil {
+			t.Errorf("Failed to close connection: %v", err)
+		}
+	}()
 
 	// Connect second client
 	conn2, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
 		t.Fatalf("Failed to connect second client: %v", err)
 	}
-	defer conn2.Close()
+	defer func() {
+		if err := conn2.Close(); err != nil {
+			t.Errorf("Failed to close connection: %v", err)
+		}
+	}()
 
 	// Send test results
 	testResults := []WSTestResult{{
@@ -228,7 +240,11 @@ func TestMessageRoutingByType(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect to WebSocket: %v", err)
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Errorf("Failed to close connection: %v", err)
+		}
+	}()
 
 	// Read the initial connected message
 	var msg WebSocketMessage
@@ -329,7 +345,11 @@ func TestHandleMalformedMessages(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect to WebSocket: %v", err)
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Errorf("Failed to close connection: %v", err)
+		}
+	}()
 
 	// Send malformed JSON
 	err = conn.WriteMessage(websocket.TextMessage, []byte("{invalid json"))

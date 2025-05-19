@@ -50,7 +50,9 @@ func TestConnectionTracking(t *testing.T) {
 	}
 
 	// Disconnect first client
-	conn1.Close()
+	if err := conn1.Close(); err != nil {
+		t.Errorf("Failed to close connection: %v", err)
+	}
 	time.Sleep(100 * time.Millisecond) // Give time for cleanup
 
 	// Verify connection count after disconnect
@@ -59,7 +61,9 @@ func TestConnectionTracking(t *testing.T) {
 	}
 
 	// Disconnect second client
-	conn2.Close()
+	if err := conn2.Close(); err != nil {
+		t.Errorf("Failed to close connection: %v", err)
+	}
 	time.Sleep(100 * time.Millisecond) // Give time for cleanup
 
 	// Verify connection count after all disconnects
@@ -84,7 +88,11 @@ func TestBroadcastToDisconnectedClient(t *testing.T) {
 	}
 
 	// Close the connection immediately
-	conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Errorf("Failed to close connection: %v", err)
+		}
+	}()
 
 	// Try to broadcast to disconnected client
 	h.BroadcastTestResults([]WSTestResult{{

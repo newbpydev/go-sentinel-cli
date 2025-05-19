@@ -1,3 +1,4 @@
+// Package handlers provides HTTP request handlers for the API
 package handlers
 
 import (
@@ -5,16 +6,19 @@ import (
 	"net/http"
 )
 
+// ConfigStore defines the interface for configuration storage
 type ConfigStore interface {
 	Get() map[string]interface{}
 	Set(cfg map[string]interface{}) error
 	Validate(cfg map[string]interface{}) error
 }
 
+// ConfigHandler handles configuration-related HTTP requests
 type ConfigHandler struct {
 	store ConfigStore
 }
 
+// NewConfigHandler creates a new ConfigHandler with the given store
 func NewConfigHandler(store ConfigStore) *ConfigHandler {
 	return &ConfigHandler{store: store}
 }
@@ -30,6 +34,7 @@ func (h *ConfigHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleGet handles GET requests for configuration
 func (h *ConfigHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	cfg := h.store.Get()
 	w.Header().Set("Content-Type", "application/json")

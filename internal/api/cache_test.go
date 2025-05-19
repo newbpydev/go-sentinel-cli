@@ -31,7 +31,7 @@ func TestCacheEvictsOldest(t *testing.T) {
 	}
 }
 
-func TestCacheThreadSafety(t *testing.T) {
+func TestCacheThreadSafety(_ *testing.T) {
 	cache := NewResultCache(10)
 	wg := sync.WaitGroup{}
 	for i := 0; i < 100; i++ {
@@ -39,7 +39,7 @@ func TestCacheThreadSafety(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			cache.Set(string(rune('a'+i%10)), i)
-			cache.Get(string(rune('a'+i%10)))
+			cache.Get(string(rune('a' + i%10)))
 		}(i)
 	}
 	wg.Wait()

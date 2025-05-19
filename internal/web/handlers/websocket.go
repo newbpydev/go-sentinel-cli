@@ -156,7 +156,6 @@ func (h *WebSocketHandler) broadcastMessage(msg WebSocketMessage) {
 }
 
 // closeAllConnections closes all active WebSocket connections
-
 func (h *WebSocketHandler) closeAllConnections() {
 	h.clientsMu.Lock()
 	defer h.clientsMu.Unlock()
@@ -272,7 +271,7 @@ func (h *WebSocketHandler) sendConnectedMessage(conn *websocket.Conn) {
 func (h *WebSocketHandler) sendPong(conn *websocket.Conn) {
 	// Create pong message
 	pongMsg := WebSocketMessage{
-		Type: "pong",
+		Type:    "pong",
 		Payload: json.RawMessage(`{"timestamp":"` + time.Now().Format(time.RFC3339) + `"}`),
 	}
 
@@ -325,7 +324,6 @@ func (h *WebSocketHandler) readPump(conn *websocket.Conn) {
 	}()
 
 	// Configure connection
-
 	conn.SetReadLimit(512) // 512 bytes max message size
 
 	if err := conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
@@ -341,7 +339,6 @@ func (h *WebSocketHandler) readPump(conn *websocket.Conn) {
 	})
 
 	// Start ping-pong keepalive
-
 	h.wg.Add(1)
 
 	go func() {
@@ -365,109 +362,68 @@ func (h *WebSocketHandler) readPump(conn *websocket.Conn) {
 	}()
 
 	// Message handling loop
-
 	for {
-
 		var msg WebSocketMessage
 
 		err := conn.ReadJSON(&msg)
 
 		if err != nil {
-
 			if websocket.IsUnexpectedCloseError(
-
 				err,
-
 				websocket.CloseGoingAway,
-
 				websocket.CloseAbnormalClosure,
-
 				websocket.CloseNormalClosure,
 			) {
-
 				log.Printf("WebSocket error: %v", err)
-
 			}
-
 			break
-
 		}
 
 		// Handle ping message
-
 		if msg.Type == "ping" {
-
 			h.sendPong(conn)
-
 			continue
-
 		}
 
 		// Handle other message types if needed
-
 		switch msg.Type {
-
 		case "subscribe":
-
 			// Handle subscription requests
-
 		case "unsubscribe":
-
 			// Handle unsubscription requests
-
 		case "test_result":
-
 			// Handle test result message
-
 			var result WSTestResult
 
 			if err := json.Unmarshal(msg.Payload, &result); err != nil {
-
 				h.sendError(conn, "invalid_test_result", "Invalid test result format: "+err.Error())
-
 				continue
-
 			}
 
 			log.Printf("Received test result: %+v", result)
 
 			// Echo back with ack
-
 			ackMsg := WebSocketMessage{
-
 				Type: "test_result_ack",
 			}
 
 			if err := conn.WriteJSON(ackMsg); err != nil {
-
 				log.Printf("Error sending ack: %v", err)
-
 			}
-
 		case "status_update":
-
 			// Handle status update
-
 			var status StatusUpdate
 
 			if err := json.Unmarshal(msg.Payload, &status); err != nil {
-
 				h.sendError(conn, "invalid_status_update", "Invalid status update format")
-
 				continue
-
 			}
 
 			log.Printf("Status update: %+v", status)
-
 		default:
-
 			h.sendError(conn, "unknown_message_type", "Unhandled message type: "+msg.Type)
-
 		}
-
 	}
-
 }
 
 // sendError sends an error message to the client with proper error handling
@@ -701,25 +657,15 @@ func (h *WebSocketHandler) sendDemoMetrics() {
 // Helper functions
 
 // randomStatus returns a random test status for demo
-
 func randomStatus() string {
-
 	if time.Now().UnixNano()%5 == 0 {
-
 		return "failed"
-
 	}
-
 	return "passed"
-
 }
 
 // randomDuration returns a random test duration for demo
-
 func randomDuration() string {
-
 	durations := []string{"0.5s", "0.8s", "1.1s", "1.3s", "0.9s"}
-
 	return durations[time.Now().UnixNano()%int64(len(durations))]
-
 }

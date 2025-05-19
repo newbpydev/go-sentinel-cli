@@ -11,10 +11,10 @@ func ToastErrorHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Create a response wrapper to intercept writes
 		ww := NewResponseWriter(w)
-		
+
 		// Call the next handler
 		next.ServeHTTP(ww, r)
-		
+
 		// If there was an error (status >= 400), convert it to a toast notification
 		// Only for HTMX requests to avoid affecting regular page loads
 		if ww.Status() >= 400 && r.Header.Get("HX-Request") == "true" {
@@ -23,11 +23,14 @@ func ToastErrorHandler(next http.Handler) http.Handler {
 			if errMsg == "" {
 				errMsg = http.StatusText(ww.Status())
 			}
-			
+
 			// Create toast notification
 			t := toast.NewError(errMsg)
-			t.AddHeader(w)
-			
+			if err := t.AddHeader(w); err != nil {
+				http.Error(w, "Failed to add toast header", http.StatusInternalServerError)
+				return
+			}
+
 			// Set status to 200 to avoid HTMX error handling
 			w.WriteHeader(http.StatusOK)
 		}

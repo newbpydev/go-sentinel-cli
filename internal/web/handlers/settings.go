@@ -92,7 +92,7 @@ func GetDefaultSettings() Settings {
 }
 
 // GetSettings handles requests for the current settings
-func (h *SettingsHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
+func (h *SettingsHandler) GetSettings(w http.ResponseWriter, _ *http.Request) {
 	// In a real implementation, this would fetch settings from storage
 	// For now, we'll use default settings
 	settings := GetDefaultSettings()
@@ -179,7 +179,7 @@ func (h *SettingsHandler) ResetSettings(w http.ResponseWriter, r *http.Request) 
 }
 
 // ClearCache handles clearing the application cache
-func (h *SettingsHandler) ClearCache(w http.ResponseWriter, r *http.Request) {
+func (h *SettingsHandler) ClearCache(w http.ResponseWriter, _ *http.Request) {
 	// In a real implementation, this would clear the cache
 	// For now, we'll just return success
 

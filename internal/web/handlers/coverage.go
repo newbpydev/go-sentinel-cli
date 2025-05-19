@@ -80,7 +80,7 @@ type FileDetailData struct {
 }
 
 // GetCoverageSummary handles requests for the coverage summary
-func (h *CoverageHandler) GetCoverageSummary(w http.ResponseWriter, r *http.Request) {
+func (h *CoverageHandler) GetCoverageSummary(w http.ResponseWriter, _ *http.Request) {
 	// In a real implementation, this would fetch actual coverage data
 	// For now, we'll use mock data
 	summary := CoverageSummaryData{

@@ -3,8 +3,8 @@
 package runner
 
 import (
-	"bytes"
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -17,7 +17,7 @@ import (
 
 // Runner manages the execution of Go tests and provides configuration options
 // for timeouts and inactivity detection to prevent hanging tests.
-type Runner struct{
+type Runner struct {
 	// Default timeout for test execution
 	defaultTimeout time.Duration
 	// Threshold for detecting inactive/hanging tests
@@ -27,23 +27,23 @@ type Runner struct{
 // NewRunner creates a new test runner with default timeout and inactivity threshold settings.
 // By default, tests will timeout after 2 minutes, and tests showing no activity for 30 seconds
 // will be considered potentially hanging.
-func NewRunner() *Runner { 
+func NewRunner() *Runner {
 	return &Runner{
-		defaultTimeout: 2 * time.Minute, // Default 2 minute timeout
+		defaultTimeout:      2 * time.Minute,  // Default 2 minute timeout
 		inactivityThreshold: 30 * time.Second, // Default 30 second inactivity threshold
-	} 
+	}
 }
 
 // startGoTest runs `go test -json` in the given pkg, optionally for a specific testName.
 // Returns the exec.Cmd, a buffer that will contain the output, and any startup error.
 // The caller is responsible for calling Wait() on the command.
 // Note: Currently testName parameter is not used but kept for future implementation.
-func (r *Runner) startGoTest(pkg string, testName string) (*exec.Cmd, *bytes.Buffer, error) {
+func (r *Runner) startGoTest(pkg string, _ string) (*exec.Cmd, *bytes.Buffer, error) {
 	// Validate package path to prevent command injection
 	if !isValidPackagePath(pkg) {
 		return nil, nil, fmt.Errorf("invalid package path: %s", pkg)
 	}
-	
+
 	args := []string{"test", "-json"}
 	// Uncomment when testName implementation is needed
 	// if testName != "" {
@@ -96,6 +96,16 @@ func (r *Runner) buildTestArgs(pkg string, testName string, timeout time.Duratio
 	return args
 }
 
+// validateArgs validates command arguments for security
+func validateArgs(args []string) error {
+	for _, arg := range args {
+		if strings.Contains(arg, "..") || strings.Contains(arg, ";") || strings.Contains(arg, "|") {
+			return fmt.Errorf("invalid argument: %s", arg)
+		}
+	}
+	return nil
+}
+
 // Run executes go test -json and sends each output line to the channel.
 // For backward compatibility, this calls RunWithContext using the default timeout.
 func (r *Runner) Run(pkg string, testName string, out chan<- []byte) error {
@@ -120,13 +130,16 @@ func (r *Runner) RunWithContext(ctx context.Context, pkg string, testName string
 
 	// Create command with args and context
 	args := r.buildTestArgs(pkg, testName, cmdTimeout)
+	if err := validateArgs(args); err != nil {
+		return err
+	}
 	cmd := exec.CommandContext(ctx, "go", args...)
 	cmd.Dir = findProjectRoot()
-	
+
 	// Log the exact command being executed - this helps in debugging
 	cmdString := "go " + strings.Join(args, " ")
 	out <- []byte(fmt.Sprintf("\n[COMMAND] %s\n", cmdString))
-	
+
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
@@ -229,7 +242,6 @@ func (r *Runner) RunWithContext(ctx context.Context, pkg string, testName string
 	}
 	return err
 }
-
 
 // findProjectRoot returns the absolute path to the project root directory.
 func findProjectRoot() string {

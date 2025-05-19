@@ -1,3 +1,4 @@
+// Package server provides the web server implementation for the application
 package server
 
 import (
@@ -213,14 +214,14 @@ func (s *Server) registerRoutes() {
 	s.router.Get("/ws", s.websocketHandler.HandleWebSocket)
 
 	// Not found
-	s.router.NotFound(func(w http.ResponseWriter, r *http.Request) {
+	s.router.NotFound(func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "Not Found", http.StatusNotFound)
 	})
 }
 
 // render returns a handler that injects base-template blocks
 func (s *Server) render(pageName string, baseData map[string]interface{}) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		// 1) Clone the **un-executed** master
 		t, err := s.templates.Clone()
 		if err != nil {
@@ -252,6 +253,14 @@ func (s *Server) render(pageName string, baseData map[string]interface{}) http.H
 
 // Start begins listening on the given address
 func (s *Server) Start(addr string) error {
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           s.router,
+		ReadTimeout:       15 * time.Second,
+		ReadHeaderTimeout: 15 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
 	log.Printf("Starting web server on %s", addr)
-	return http.ListenAndServe(addr, s.router)
+	return srv.ListenAndServe()
 }

@@ -23,7 +23,8 @@ var upgrader = gorillaws.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	// Allow connections from any origin for development
-	CheckOrigin: func(r *http.Request) bool {
+	CheckOrigin: func(_ *http.Request) bool {
+		// In production, you should validate the origin
 		return true
 	},
 }

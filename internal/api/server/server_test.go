@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -58,19 +59,26 @@ func TestServer_AppliesMiddlewareChain(t *testing.T) {
 func TestServer_GracefulShutdown(t *testing.T) {
 	r := chi.NewRouter()
 	srv := &http.Server{
-		Addr:    "127.0.0.1:0",
-		Handler: r,
+		Addr:              "127.0.0.1:0",
+		Handler:           r,
+		ReadHeaderTimeout: 3 * time.Second,
 	}
 
-go func() {
+	errChan := make(chan error, 1)
+	go func() {
 		time.Sleep(100 * time.Millisecond)
 		if err := srv.Shutdown(context.Background()); err != nil {
-		t.Fatalf("server shutdown failed: %v", err)
-	}
+			errChan <- fmt.Errorf("server shutdown failed: %v", err)
+		}
+		close(errChan)
 	}()
 
-	err := srv.ListenAndServe()
-	if err != nil && err != http.ErrServerClosed {
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		t.Fatalf("unexpected server error: %v", err)
+	}
+
+	// Check for any shutdown errors
+	if err := <-errChan; err != nil {
+		t.Fatal(err)
 	}
 }

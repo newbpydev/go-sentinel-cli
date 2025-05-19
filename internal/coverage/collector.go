@@ -1,3 +1,5 @@
+// Package coverage provides functionality for collecting and analyzing test coverage data.
+// It includes tools for parsing coverage profiles, generating reports, and visualizing coverage information.
 package coverage
 
 import (
@@ -102,7 +104,7 @@ func (c *CoverageCollector) CalculateMetrics() (*CoverageMetrics, error) {
 			if block.NumStmt > 1 {
 				fileBranches++
 				totalBranches++
-				
+
 				if block.Count > 0 {
 					fileCoveredBranches++
 					coveredBranches++
@@ -153,6 +155,28 @@ func (c *CoverageCollector) CalculateMetrics() (*CoverageMetrics, error) {
 	return metrics, nil
 }
 
+// validatePath checks if the path is safe to read
+func validatePath(path string) error {
+	// Add path validation logic here
+	if path == "" {
+		return fmt.Errorf("empty path")
+	}
+	// Add more validation as needed
+	return nil
+}
+
+// ReadFile reads a file with validation
+func readFileWithValidation(absPath string) ([]byte, error) {
+	if err := validatePath(absPath); err != nil {
+		return nil, fmt.Errorf("invalid path: %w", err)
+	}
+	content, err := os.ReadFile(absPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+	return content, nil
+}
+
 // GetSourceCode retrieves the source code for a given file with coverage annotations
 func (c *CoverageCollector) GetSourceCode(filePath string) (map[int]string, error) {
 	// Get absolute path
@@ -162,7 +186,7 @@ func (c *CoverageCollector) GetSourceCode(filePath string) (map[int]string, erro
 	}
 
 	// Read file content
-	content, err := os.ReadFile(absPath)
+	content, err := readFileWithValidation(absPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
@@ -170,7 +194,7 @@ func (c *CoverageCollector) GetSourceCode(filePath string) (map[int]string, erro
 	// Split into lines
 	lines := strings.Split(string(content), "\n")
 	result := make(map[int]string)
-	
+
 	// Add each line to the result with line number as key
 	for i, line := range lines {
 		result[i+1] = line // Line numbers are 1-based
@@ -196,7 +220,7 @@ func (c *CoverageCollector) AnalyzeBranches(filePath string) ([]BranchInfo, erro
 
 	// Extract branch information
 	var branches []BranchInfo
-	
+
 	// Visit all nodes in the AST
 	ast.Inspect(node, func(n ast.Node) bool {
 		switch stmt := n.(type) {

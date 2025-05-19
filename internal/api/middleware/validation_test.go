@@ -8,7 +8,7 @@ import (
 )
 
 func TestValidateJSON_RejectsMalformed(t *testing.T) {
-	h := ValidateJSON(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := ValidateJSON(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	w := httptest.NewRecorder()
@@ -20,7 +20,7 @@ func TestValidateJSON_RejectsMalformed(t *testing.T) {
 }
 
 func TestValidateJSON_AllowsWellFormed(t *testing.T) {
-	h := ValidateJSON(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := ValidateJSON(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	w := httptest.NewRecorder()

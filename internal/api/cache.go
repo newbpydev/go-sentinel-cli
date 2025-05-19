@@ -1,3 +1,5 @@
+// Package api provides the core API functionality for the Go Sentinel service.
+// It includes caching, request handling, and integration with the core test engine.
 package api
 
 import (
@@ -5,6 +7,8 @@ import (
 	"sync"
 )
 
+// ResultCache provides a thread-safe cache for storing test results
+// with a fixed capacity using a least recently used (LRU) eviction policy.
 type ResultCache struct {
 	capacity int
 	mu       sync.Mutex
@@ -17,6 +21,8 @@ type cacheEntry struct {
 	value interface{}
 }
 
+// NewResultCache creates a new ResultCache with the specified capacity.
+// The capacity determines how many items can be stored before old ones are evicted.
 func NewResultCache(capacity int) *ResultCache {
 	return &ResultCache{
 		capacity: capacity,
@@ -25,6 +31,8 @@ func NewResultCache(capacity int) *ResultCache {
 	}
 }
 
+// Set adds or updates a value in the cache with the given key.
+// If the cache is at capacity, the least recently used item is evicted.
 func (c *ResultCache) Set(key string, value interface{}) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -45,6 +53,8 @@ func (c *ResultCache) Set(key string, value interface{}) {
 	c.items[key] = elem
 }
 
+// Get retrieves a value from the cache by key.
+// Returns the value and a boolean indicating whether the key was found.
 func (c *ResultCache) Get(key string) (interface{}, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()

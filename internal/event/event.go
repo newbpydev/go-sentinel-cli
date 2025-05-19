@@ -1,3 +1,4 @@
+// Package event provides event handling and dispatching functionality
 package event
 
 import (
@@ -24,9 +25,9 @@ type FileEvent struct {
 
 // RunnerEvent represents an event from the test runner
 type RunnerEvent struct {
-	Package string     // Package being tested
-	Test    string     // Test being run (empty for package)
-	Status  string     // Status (started, running, completed)
+	Package string       // Package being tested
+	Test    string       // Test being run (empty for package)
+	Status  string       // Status (started, running, completed)
 	Results []TestResult // Results if completed
 }
 
@@ -41,15 +42,15 @@ func (e ErrorEvent) Error() string {
 
 // TreeNode represents a node in the test tree (package/test)
 type TreeNode struct {
-	Title    string       // Node name (package/test name)
+	Title    string      // Node name (package/test name)
 	Children []*TreeNode // Child nodes
-	Expanded bool         // Whether the node is expanded in the UI
-	Level    int          // Nesting level
-	Parent   *TreeNode    // Parent node reference
-	Coverage float64      // Test coverage percentage
-	Passed   *bool        // Whether test passed, nil if not a test
-	Duration float64      // Test duration
-	Error    string       // Error message if test failed
+	Expanded bool        // Whether the node is expanded in the UI
+	Level    int         // Nesting level
+	Parent   *TreeNode   // Parent node reference
+	Coverage float64     // Test coverage percentage
+	Passed   *bool       // Whether test passed, nil if not a test
+	Duration float64     // Test duration
+	Error    string      // Error message if test failed
 }
 
 // BoolPtr returns a pointer to a boolean value

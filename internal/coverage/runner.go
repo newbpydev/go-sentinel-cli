@@ -12,9 +12,9 @@ import (
 
 // TestRunnerOptions defines options for running tests with coverage
 type TestRunnerOptions struct {
-	PackagePaths   []string // List of packages to run tests for
-	OutputPath     string   // Where to save the coverage profile
-	Timeout        time.Duration
+	PackagePaths        []string // List of packages to run tests for
+	OutputPath          string   // Where to save the coverage profile
+	Timeout             time.Duration
 	IncludeCoveredFiles bool // Include files with 100% coverage
 }
 
@@ -33,30 +33,30 @@ func RunTestsWithCoverage(ctx context.Context, options TestRunnerOptions) error 
 	// Ensure the output directory exists
 	outputDir := filepath.Dir(options.OutputPath)
 	if outputDir != "." && outputDir != "/" {
-		if err := os.MkdirAll(outputDir, 0755); err != nil {
+		if err := os.MkdirAll(outputDir, 0750); err != nil {
 			return fmt.Errorf("failed to create output directory: %w", err)
 		}
 	}
 
 	// Prepare the go test command with coverage
 	args := []string{"test"}
-	
+
 	// Add timeout if specified
 	if options.Timeout > 0 {
 		args = append(args, fmt.Sprintf("-timeout=%v", options.Timeout))
 	}
-	
+
 	// Add coverage options
 	args = append(args, fmt.Sprintf("-coverprofile=%s", options.OutputPath))
-	
+
 	// Add packages to test
 	args = append(args, options.PackagePaths...)
-	
+
 	// Run the command
 	cmd := exec.CommandContext(ctx, "go", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	
+
 	// Execute the command
 	err := cmd.Run()
 	if err != nil {
@@ -65,27 +65,27 @@ func RunTestsWithCoverage(ctx context.Context, options TestRunnerOptions) error 
 		if _, statErr := os.Stat(options.OutputPath); statErr != nil {
 			return fmt.Errorf("failed to generate coverage profile: %w", err)
 		}
-		
+
 		// If the file exists, continue with analysis despite test failures
 		fmt.Println("Some tests failed, but coverage profile was generated.")
 	}
-	
+
 	return nil
 }
 
 // FindAllPackages finds all Go packages in the specified root directory
 func FindAllPackages(rootDir string) ([]string, error) {
 	var packages []string
-	
+
 	// Use go list to find all packages
 	cmd := exec.Command("go", "list", "./...")
 	cmd.Dir = rootDir
-	
+
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list packages: %w", err)
 	}
-	
+
 	// Parse the output
 	lines := strings.Split(string(output), "\n")
 	for _, line := range lines {
@@ -94,7 +94,7 @@ func FindAllPackages(rootDir string) ([]string, error) {
 			packages = append(packages, line)
 		}
 	}
-	
+
 	return packages, nil
 }
 
@@ -103,7 +103,7 @@ func GenerateCoverageReport(coverageFile, htmlOutput string) error {
 	// Create output directory if needed
 	outputDir := filepath.Dir(htmlOutput)
 	if outputDir != "." && outputDir != "/" {
-		if err := os.MkdirAll(outputDir, 0755); err != nil {
+		if err := os.MkdirAll(outputDir, 0750); err != nil {
 			return fmt.Errorf("failed to create output directory: %w", err)
 		}
 	}
@@ -123,9 +123,9 @@ func GenerateCoverageReport(coverageFile, htmlOutput string) error {
 
 	// Enhance the HTML report with additional styling
 	enhancedHTML := enhanceHTMLReport(string(html))
-	
+
 	// Write the enhanced HTML back to the file
-	if err := os.WriteFile(htmlOutput, []byte(enhancedHTML), 0644); err != nil {
+	if err := os.WriteFile(htmlOutput, []byte(enhancedHTML), 0600); err != nil {
 		return fmt.Errorf("failed to write enhanced HTML: %w", err)
 	}
 
@@ -217,7 +217,7 @@ func enhanceHTMLReport(html string) string {
 	enhanced := strings.Replace(html, "</head>", additionalCSS+"</head>", 1)
 	enhanced = strings.Replace(enhanced, "<body>", "<body>"+header, 1)
 	enhanced = strings.Replace(enhanced, "</body>", footer+"</body>", 1)
-	
+
 	return enhanced
 }
 
@@ -235,33 +235,33 @@ func GenerateEnhancedCoverageReport(options CoverageReportOptions) error {
 	if err := GenerateCoverageReport(options.CoverageFile, options.OutputPath); err != nil {
 		return err
 	}
-	
+
 	// Get detailed coverage metrics
 	collector, err := NewCollector(options.CoverageFile)
 	if err != nil {
 		return err
 	}
-	
+
 	metrics, err := collector.CalculateMetrics()
 	if err != nil {
 		return err
 	}
-	
+
 	// Read the enhanced HTML file
 	html, err := os.ReadFile(options.OutputPath)
 	if err != nil {
 		return fmt.Errorf("failed to read HTML report: %w", err)
 	}
-	
+
 	// Add a coverage summary to the report
 	summaryHTML := generateCoverageSummaryHTML(metrics, options.Title)
 	enhanced := strings.Replace(string(html), "<body>", "<body>"+summaryHTML, 1)
-	
+
 	// Write the enhanced HTML back to the file
-	if err := os.WriteFile(options.OutputPath, []byte(enhanced), 0644); err != nil {
+	if err := os.WriteFile(options.OutputPath, []byte(enhanced), 0600); err != nil {
 		return fmt.Errorf("failed to write enhanced HTML: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -270,7 +270,7 @@ func generateCoverageSummaryHTML(metrics *CoverageMetrics, title string) string 
 	if title == "" {
 		title = "Coverage Summary"
 	}
-	
+
 	return fmt.Sprintf(`
 <div class="coverage-meta">
     <h2>%s</h2>
@@ -289,8 +289,8 @@ func generateCoverageSummaryHTML(metrics *CoverageMetrics, title string) string 
         </tr>
     </table>
 </div>
-`, 
-		title, 
+`,
+		title,
 		metrics.StatementCoverage,
 		metrics.BranchCoverage,
 		metrics.FunctionCoverage,

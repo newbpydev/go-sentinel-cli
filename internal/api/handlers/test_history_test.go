@@ -8,7 +8,8 @@ import (
 )
 
 type mockHistoryStore struct{}
-func (m *mockHistoryStore) GetRecent(limit, offset int) ([]TestRun, error) {
+
+func (m *mockHistoryStore) GetRecent(_, offset int) ([]TestRun, error) {
 	return []TestRun{
 		{ID: "1", Status: "pass"},
 		{ID: "2", Status: "fail"},

@@ -1,3 +1,5 @@
+// Package main provides the entry point for the Go Sentinel API server.
+// It initializes and starts the API server with all necessary configurations.
 package main
 
 import (

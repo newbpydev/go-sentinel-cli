@@ -1,3 +1,4 @@
+// Package metrics provides functionality for collecting and exposing application metrics
 package metrics
 
 import (
@@ -14,7 +15,7 @@ var (
 )
 
 // Handler exposes Prometheus-style metrics
-func Handler(w http.ResponseWriter, r *http.Request) {
+func Handler(w http.ResponseWriter, _ *http.Request) {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 

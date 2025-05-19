@@ -1,3 +1,4 @@
+// Package debouncer provides functionality for debouncing actions and events
 package debouncer
 
 import (
@@ -7,9 +8,9 @@ import (
 
 // ActionDebouncer debounces actions by a key
 type ActionDebouncer struct {
-	duration  time.Duration
-	mutex     sync.Mutex
-	timers    map[string]*time.Timer
+	duration time.Duration
+	mutex    sync.Mutex
+	timers   map[string]*time.Timer
 }
 
 // NewActionDebouncer creates a new action debouncer with the specified timeout
