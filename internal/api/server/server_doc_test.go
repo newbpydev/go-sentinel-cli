@@ -8,7 +8,7 @@ import (
 )
 
 func TestDocsEndpoint_OpenAPIYAML(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		data, err := os.ReadFile("api-docs.yaml")
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

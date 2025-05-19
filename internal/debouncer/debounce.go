@@ -4,6 +4,7 @@ import (
 	"time"
 )
 
+// Debouncer provides a mechanism to debounce string events by a specified interval.
 type Debouncer struct {
 	interval time.Duration
 	in       chan string
@@ -11,6 +12,7 @@ type Debouncer struct {
 	quit     chan struct{}
 }
 
+// NewDebouncer creates a new Debouncer with the given interval.
 func NewDebouncer(d time.Duration) *Debouncer {
 	deb := &Debouncer{
 		interval: d,
@@ -22,10 +24,12 @@ func NewDebouncer(d time.Duration) *Debouncer {
 	return deb
 }
 
+// Emit sends a string event to the debouncer.
 func (d *Debouncer) Emit(pkg string) {
 	d.in <- pkg
 }
 
+// Events returns a channel that receives debounced string events.
 func (d *Debouncer) Events() <-chan string {
 	return d.out
 }

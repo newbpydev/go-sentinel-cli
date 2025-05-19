@@ -1,3 +1,4 @@
+// Package middleware provides HTTP middleware for the Go Sentinel web server, including logging.
 package middleware
 
 import (
@@ -10,10 +11,10 @@ import (
 func Logger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		
+
 		// Process the request
 		next.ServeHTTP(w, r)
-		
+
 		// Log details after the request is complete
 		log.Printf(
 			"%s %s %s %s",

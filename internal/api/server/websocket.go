@@ -35,7 +35,7 @@ var upgrader = gorillaws.Upgrader{
 }
 
 // SetupWebSocketHandlers registers WebSocket handlers in the router
-func SetupWebSocketHandlers(r http.Handler) {
+func SetupWebSocketHandlers(_ http.Handler) {
 	// This function is called from NewAPIServer
 	log.Println("Setting up WebSocket handlers")
 }

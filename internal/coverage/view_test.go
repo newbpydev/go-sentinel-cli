@@ -7,7 +7,7 @@ import (
 
 func TestCoverageViewCreation(t *testing.T) {
 	// Create sample coverage metrics
-	metrics := &CoverageMetrics{
+	metrics := &Metrics{
 		StatementCoverage: 85.5,
 		BranchCoverage:    70.2,
 		FunctionCoverage:  90.0,
@@ -42,7 +42,7 @@ func TestCoverageViewCreation(t *testing.T) {
 
 func TestCoverageViewRendering(t *testing.T) {
 	// Create sample coverage metrics
-	metrics := &CoverageMetrics{
+	metrics := &Metrics{
 		StatementCoverage: 85.5,
 		BranchCoverage:    70.2,
 		FunctionCoverage:  90.0,
@@ -67,12 +67,12 @@ func TestCoverageViewRendering(t *testing.T) {
 	// Create and render the coverage view
 	view := NewCoverageView(metrics)
 	rendered := view.Render()
-	
+
 	// Check that the rendered output contains expected elements
 	if !strings.Contains(rendered, "Coverage Report") {
 		t.Error("Expected rendered view to contain 'Coverage Report'")
 	}
-	
+
 	if !strings.Contains(rendered, "88.3") {
 		t.Error("Expected rendered view to show line coverage percentage")
 	}
@@ -80,7 +80,7 @@ func TestCoverageViewRendering(t *testing.T) {
 
 func TestCoverageViewColorCoding(t *testing.T) {
 	// Create sample coverage metrics with various coverage levels
-	metrics := &CoverageMetrics{
+	metrics := &Metrics{
 		LineCoverage: 75.0,
 		FileMetrics: map[string]*FileMetrics{
 			"high_coverage.go": {
@@ -112,17 +112,17 @@ func TestCoverageViewColorCoding(t *testing.T) {
 	// Create and render the coverage view
 	view := NewCoverageView(metrics)
 	rendered := view.Render()
-	
+
 	// Check that high coverage files are rendered in green
 	if !strings.Contains(rendered, "high_coverage.go") {
 		t.Error("Expected rendered view to contain high coverage file")
 	}
-	
+
 	// Check that medium coverage files are rendered in yellow
 	if !strings.Contains(rendered, "medium_coverage.go") {
 		t.Error("Expected rendered view to contain medium coverage file")
 	}
-	
+
 	// Check that low coverage files are rendered in red
 	if !strings.Contains(rendered, "low_coverage.go") {
 		t.Error("Expected rendered view to contain low coverage file")
@@ -156,16 +156,16 @@ func TestFileCoverageView(t *testing.T) {
 	// Create and render the file coverage view
 	view := NewFileCoverageView("sample.go", fileMetrics, sourceCode)
 	rendered := view.Render()
-	
+
 	// Check that the rendered output shows source code with coverage annotations
 	if !strings.Contains(rendered, "sample.go") {
 		t.Error("Expected rendered view to contain file name")
 	}
-	
+
 	if !strings.Contains(rendered, "88.3%") {
 		t.Error("Expected rendered view to show coverage percentage")
 	}
-	
+
 	if !strings.Contains(rendered, "1x") {
 		t.Error("Expected rendered view to show execution counts")
 	}
@@ -173,13 +173,13 @@ func TestFileCoverageView(t *testing.T) {
 
 func TestCoverageKeyBindings(t *testing.T) {
 	// Create a coverage view with key handlers
-	view := NewCoverageView(&CoverageMetrics{})
-	
+	view := NewCoverageView(&Metrics{})
+
 	// Check that the view has expected key handlers
 	if !view.HasKeyBinding('v') {
 		t.Error("Expected coverage view to have 'v' key binding for toggling view")
 	}
-	
+
 	if !view.HasKeyBinding('f') {
 		t.Error("Expected coverage view to have 'f' key binding for filtering")
 	}

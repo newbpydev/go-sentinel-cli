@@ -22,7 +22,7 @@ func TestRateLimit_AllowsRequestsBelowLimit(t *testing.T) {
 }
 
 func TestRateLimit_BlocksRequestsAboveLimit(t *testing.T) {
-	h := RateLimit(2, time.Second)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := RateLimit(2, time.Second)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	w := httptest.NewRecorder()
@@ -37,7 +37,7 @@ func TestRateLimit_BlocksRequestsAboveLimit(t *testing.T) {
 }
 
 func TestRateLimit_ResetsAfterWindow(t *testing.T) {
-	h := RateLimit(1, 50*time.Millisecond)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := RateLimit(1, 50*time.Millisecond)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	w := httptest.NewRecorder()

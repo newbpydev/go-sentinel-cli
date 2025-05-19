@@ -1,3 +1,4 @@
+// Package toast provides toast notification utilities for the Go Sentinel web UI.
 package toast
 
 import (
@@ -55,12 +56,12 @@ func (t Toast) ToJSON() (string, error) {
 	eventData := map[string]Toast{
 		"showToast": t,
 	}
-	
+
 	data, err := json.Marshal(eventData)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal toast: %w", err)
 	}
-	
+
 	return string(data), nil
 }
 
@@ -70,15 +71,15 @@ func (t Toast) AddHeader(w http.ResponseWriter) error {
 	if err != nil {
 		return err
 	}
-	
+
 	// Set HX-Trigger header to trigger the toast notification
 	w.Header().Set("HX-Trigger", jsonData)
-	
+
 	// If this is an error toast, also prevent HTML swap
 	if t.Level == Error {
 		w.Header().Set("HX-Reswap", "none")
 	}
-	
+
 	return nil
 }
 

@@ -49,7 +49,7 @@ func NewAPIServer(cfg api.Config) *APIServer {
 	r.Get("/metrics", metrics.Handler)
 
 	// Docs endpoint (stub for now)
-	r.Get("/docs", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/docs", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotImplemented)
 		if _, err := w.Write([]byte("OpenAPI documentation coming soon")); err != nil {
 			log.Printf("failed to write docs stub: %v", err)
@@ -57,7 +57,7 @@ func NewAPIServer(cfg api.Config) *APIServer {
 	})
 
 	// Health endpoint
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
 		cacheKey := "health_ok"
 		var resp []byte
 		var ok bool

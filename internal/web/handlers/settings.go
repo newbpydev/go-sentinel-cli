@@ -192,7 +192,7 @@ func (h *SettingsHandler) ClearCache(w http.ResponseWriter, _ *http.Request) {
 }
 
 // ClearHistory handles clearing the test history
-func (h *SettingsHandler) ClearHistory(w http.ResponseWriter, r *http.Request) {
+func (h *SettingsHandler) ClearHistory(w http.ResponseWriter, _ *http.Request) {
 	// In a real implementation, this would clear the test history
 	// For now, we'll just return success
 
