@@ -117,7 +117,7 @@ func GenerateCoverageReport(coverageFile, htmlOutput string) error {
 
 	// G304: Potential file inclusion via variable (gosec)
 	// The path is validated before use
-	html, err := os.ReadFile(htmlOutput)
+	html, err := os.ReadFile(htmlOutput) // #nosec G304
 	if err != nil {
 		return fmt.Errorf("failed to read generated HTML: %w", err)
 	}

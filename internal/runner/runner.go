@@ -135,7 +135,7 @@ func (r *Runner) RunWithContext(ctx context.Context, pkg string, testName string
 	}
 	// G204: Subprocess launched with variable (gosec)
 	// Args are validated by validateArgs before use
-	cmd := exec.CommandContext(ctx, "go", args...)
+	cmd := exec.CommandContext(ctx, "go", args...) // #nosec G204
 	cmd.Dir = findProjectRoot()
 
 	// Log the exact command being executed - this helps in debugging

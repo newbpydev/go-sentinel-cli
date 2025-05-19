@@ -34,7 +34,7 @@ func RunGoList(args ...string) (string, error) {
 		}
 	}
 
-	cmd := exec.Command("go", append([]string{"list"}, args...)...)
+	cmd := exec.Command("go", append([]string{"list"}, args...)...) // #nosec G204
 	out, err := cmd.CombinedOutput()
 	return string(out), err
 }
@@ -58,7 +58,7 @@ func RunGoFmt(pkgs ...string) (string, error) {
 		}
 	}
 
-	cmd := exec.Command("go", append([]string{"fmt"}, pkgs...)...)
+	cmd := exec.Command("go", append([]string{"fmt"}, pkgs...)...) // #nosec G204
 	out, err := cmd.CombinedOutput()
 	return string(out), err
 }

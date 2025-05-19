@@ -198,7 +198,7 @@ func (c *Collector) GetSourceCode(filePath string) (map[int]string, error) {
 
 	// G304: Potential file inclusion via variable (gosec)
 	// The path is validated by validateCoveragePath before use
-	content, err := os.ReadFile(absPath)
+	content, err := os.ReadFile(absPath) // #nosec G304
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
