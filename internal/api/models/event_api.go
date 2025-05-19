@@ -4,16 +4,15 @@ import (
 	runner "github.com/newbpydev/go-sentinel/internal/runner"
 )
 
-
 // APITestEvent is the API-facing version of runner.TestEvent
 // with JSON tags suitable for public API responses.
 type APITestEvent struct {
 	Time    string  `json:"time"`
 	Action  string  `json:"action"`
 	Package string  `json:"package"`
-	Test    string  `json:"test,omitempty"`
-	Output  string  `json:"output,omitempty"`
-	Elapsed float64 `json:"elapsed,omitempty"`
+	Test    string  `json:"test"`
+	Output  string  `json:"output"`
+	Elapsed float64 `json:"elapsed"`
 }
 
 // ConvertRunnerTestEventToAPI converts a runner.TestEvent to APITestEvent

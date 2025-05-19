@@ -196,9 +196,15 @@ func TestAggregateTestResults_AllFailed(t *testing.T) {
 	if summary.Failed != 3 {
 		t.Errorf("expected Failed=3, got %d", summary.Failed)
 	}
-	if summary.Duration != 0.6 {
+	if !floatEquals(summary.Duration, 0.6) {
 		t.Errorf("expected Duration=0.6, got %f", summary.Duration)
 	}
+}
+
+// floatEquals checks if two floats are equal within a small epsilon
+func floatEquals(a, b float64) bool {
+	const epsilon = 1e-6
+	return (a-b) < epsilon && (b-a) < epsilon
 }
 
 func TestAggregateTestResults_SingleResult(t *testing.T) {

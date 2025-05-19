@@ -71,7 +71,6 @@ func ExtractErrorContext(events []TestEvent) *ErrorContext {
 		return nil
 	}
 
-	// Support both 'file.go:123: message' and 'file.go:123:message'
 	fileLineRe := regexp.MustCompile(`(?m)^\s*([\w./-]+):(\d+):?\s*(.*)$`)
 	var lastOutput string
 	var hasError bool
@@ -97,22 +96,8 @@ func ExtractErrorContext(events []TestEvent) *ErrorContext {
 		}
 	}
 
-	// Always return a context if there is any output and a failing test
+	// If there is any output and a failing test, return a context
 	if lastOutput != "" && hasError {
-		return &ErrorContext{
-			Message: lastOutput,
-		}
-	}
-
-	// If we have a failing test but no error message, return a context with just the failure status
-	if hasError {
-		return &ErrorContext{
-			Message: "test failed",
-		}
-	}
-
-	// If there is any output at all, return a context with the last output as message
-	if lastOutput != "" {
 		return &ErrorContext{
 			Message: lastOutput,
 		}
@@ -172,8 +157,8 @@ func SummarizeTestResults(grouped map[string]map[string][]TestEvent) []TestResul
 // subtests, timestamps, and coverage information.
 func ParseTestOutput(r io.Reader) []TestEvent {
 	var events []TestEvent
-	var currentTest string
 	var currentPkg string
+	var testStack []string
 	var lastTime time.Time
 	seenLines := make(map[string]bool)
 	var buffered []TestEvent
@@ -204,9 +189,10 @@ func ParseTestOutput(r io.Reader) []TestEvent {
 			continue
 		}
 
-		// Parse RUN marker
+		// Parse RUN marker (push to stack)
 		if strings.HasPrefix(line, "=== RUN") {
 			testName := strings.TrimSpace(strings.TrimPrefix(line, "=== RUN"))
+			testStack = append(testStack, testName)
 			lastTime = lastTime.Add(time.Millisecond)
 			event := TestEvent{
 				Time:    lastTime.Format(time.RFC3339),
@@ -219,11 +205,10 @@ func ParseTestOutput(r io.Reader) []TestEvent {
 			} else {
 				events = append(events, event)
 			}
-			currentTest = testName
 			continue
 		}
 
-		// Parse PASS/FAIL/SKIP markers
+		// Parse PASS/FAIL/SKIP markers (pop from stack)
 		if strings.HasPrefix(line, "--- ") {
 			parts := strings.Fields(line)
 			if len(parts) < 4 {
@@ -255,6 +240,10 @@ func ParseTestOutput(r io.Reader) []TestEvent {
 			} else {
 				events = append(events, event)
 			}
+			// Pop the test from the stack if it matches
+			if len(testStack) > 0 && testStack[len(testStack)-1] == testName {
+				testStack = testStack[:len(testStack)-1]
+			}
 			continue
 		}
 
@@ -267,7 +256,7 @@ func ParseTestOutput(r io.Reader) []TestEvent {
 					Time:    lastTime.Format(time.RFC3339),
 					Action:  "output",
 					Package: currentPkg,
-					Test:    currentTest,
+					Test:    "",
 					Output:  line,
 				}
 				if currentPkg == "" {
@@ -282,11 +271,16 @@ func ParseTestOutput(r io.Reader) []TestEvent {
 		// Add all non-empty output lines that are not already seen
 		if line != "" && !strings.HasPrefix(line, "=== RUN") && !strings.HasPrefix(line, "--- ") && !strings.HasPrefix(line, "ok  ") && !strings.HasPrefix(line, "FAIL") {
 			lastTime = lastTime.Add(time.Millisecond)
+			// Assign output to the most recent test in the stack, if any
+			testName := ""
+			if len(testStack) > 0 {
+				testName = testStack[len(testStack)-1]
+			}
 			event := TestEvent{
 				Time:    lastTime.Format(time.RFC3339),
 				Action:  "output",
 				Package: currentPkg,
-				Test:    currentTest,
+				Test:    testName,
 				Output:  line,
 			}
 			if currentPkg == "" {
