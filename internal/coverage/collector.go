@@ -5,7 +5,6 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -163,7 +162,7 @@ func (c *CoverageCollector) GetSourceCode(filePath string) (map[int]string, erro
 	}
 
 	// Read file content
-	content, err := ioutil.ReadFile(absPath)
+	content, err := os.ReadFile(absPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}

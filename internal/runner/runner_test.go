@@ -26,27 +26,46 @@ func TestRunGoTestJSONInCorrectPkg(t *testing.T) {
 func TestCaptureStdoutStderrAndHandleErrors(t *testing.T) {
 	r := NewRunner()
 	pkg := "./internal/runner/testdata/passonly"
-	_, out, err := r.startGoTest(pkg, "")
+	cmd, out, err := r.startGoTest(pkg, "")
 	if err != nil {
 		t.Fatalf("failed to start go test: %v", err)
 	}
+	
+	// Wait for the command to complete
+	err = cmd.Wait()
+	if err != nil {
+		t.Fatalf("go test command failed: %v", err)
+	}
+	
+	// Check if we got any output
 	if out.Len() == 0 {
-		t.Errorf("expected non-empty stdout from go test, got: %q", out.Bytes())
+		t.Error("expected non-empty stdout from go test, but got empty output")
 	}
 }
 
 func TestHandleNonJSONOutput(t *testing.T) {
 	r := NewRunner()
 	pkg := "./internal/runner/testdata/badbuild"
-	_, out, err := r.startGoTest(pkg, "")
+	cmd, out, err := r.startGoTest(pkg, "")
+	if err != nil {
+		t.Fatalf("failed to start go test: %v", err)
+	}
+	
+	// Wait for the command to complete
+	err = cmd.Wait()
 	if err == nil {
-		t.Error("expected error for build failure")
+		t.Error("expected error for build failure, but got none")
 	}
-	if out == nil || out.Len() == 0 {
-		t.Fatalf("expected output from go test for build failure, got: %q", out.Bytes())
+	
+	// Check if we got any output
+	output := out.Bytes()
+	if len(output) == 0 {
+		t.Fatal("expected output from go test for build failure, but got none")
 	}
-	if !bytes.Contains(bytes.ToLower(out.Bytes()), []byte("build")) {
-		t.Errorf("expected build error output, got: %q", out.Bytes())
+	
+	// Check for build error in output
+	if !bytes.Contains(bytes.ToLower(output), []byte("build")) {
+		t.Errorf("expected build error in output, got: %q", output)
 	}
 }
 

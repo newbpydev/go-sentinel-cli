@@ -20,8 +20,8 @@ tmp_dir = "tmp"
   cmd = "./tmp/main.exe"
 
 [watch]
-delay = 1000
-includes = ["**/*.go", "**/*.html", "**/*.tmpl", "**/*.css", "**/*.js", "**/*.ts", "**/*.json"]
+  delay = 1000
+  includes = ["**/*.go", "**/*.html", "**/*.tmpl", "**/*.css", "**/*.js", "**/*.ts", "**/*.json"]
   excludes = ["tmp/**", ".git/**", "vendor/**", "**/node_modules/**"]
 
 [log]

@@ -28,7 +28,8 @@ func NewRunner() *Runner {
 }
 
 // startGoTest runs `go test -json` in the given pkg, optionally for a specific testName.
-// Returns the exec.Cmd, a buffer containing output, and any startup error.
+// Returns the exec.Cmd, a buffer that will contain the output, and any startup error.
+// The caller is responsible for calling Wait() on the command.
 func (r *Runner) startGoTest(pkg string, testName string) (*exec.Cmd, *bytes.Buffer, error) {
 	args := []string{"test", "-json"}
 	if testName != "" {
@@ -38,13 +39,17 @@ func (r *Runner) startGoTest(pkg string, testName string) (*exec.Cmd, *bytes.Buf
 	cmd := exec.Command("go", args...)
 	cmd.Dir = findProjectRoot()
 
-	out, err := cmd.CombinedOutput()
-	buf := bytes.NewBuffer(out)
-	if err != nil {
-		buf.WriteString("\n[runner debug] cmd.Wait() error: " + err.Error() + "\n")
-		return cmd, buf, err
+	// Create a buffer to capture the output
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
+	cmd.Stderr = &buf
+
+	// Start the command
+	if err := cmd.Start(); err != nil {
+		return nil, &buf, fmt.Errorf("failed to start command: %w", err)
 	}
-	return cmd, buf, nil
+
+	return cmd, &buf, nil
 }
 
 // SetTimeout sets the default timeout for test execution
