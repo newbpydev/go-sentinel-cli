@@ -159,160 +159,158 @@ func ParseTestOutput(r io.Reader) []TestEvent {
 	var events []TestEvent
 	var currentPkg string
 	var testStack []string
-	var lastTime time.Time
-	seenLines := make(map[string]bool)
-	var buffered []TestEvent
+	var lastTime = time.Now().UTC()
+	var lastStatusTest string
+	var bufferedOrder []string
+	var bufferedRunEvents = make(map[string]TestEvent)
+	var bufferedStatusEvents = make(map[string]TestEvent)
+	var bufferedOutputs = make(map[string][]string)
+	var seenTest = make(map[string]bool)
 
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
-		if line == "" || seenLines[line] {
+		if line == "" {
 			continue
 		}
-		seenLines[line] = true
 
 		// Skip summary lines
 		if line == "PASS" || line == "FAIL" || strings.HasPrefix(line, "exit status") {
 			continue
 		}
 
-		// Parse package status lines first to set the package name, but do not emit events for them
+		// Package status line
 		if (strings.HasPrefix(line, "ok  ") || strings.HasPrefix(line, "FAIL")) && len(strings.Fields(line)) >= 2 {
 			parts := strings.Fields(line)
 			currentPkg = parts[1]
-			// Flush any buffered events with the now-known package
-			for i := range buffered {
-				buffered[i].Package = currentPkg
-				events = append(events, buffered[i])
+			// Assign package to all buffered events and flush them in order
+			for _, testName := range bufferedOrder {
+				re, hasRun := bufferedRunEvents[testName]
+				se, hasStatus := bufferedStatusEvents[testName]
+				if hasRun {
+					re.Package = currentPkg
+					events = append(events, re)
+				}
+				if hasStatus {
+					se.Package = currentPkg
+					if outs, ok := bufferedOutputs[testName]; ok && len(outs) > 0 {
+						if se.Output != "" {
+							se.Output += "\n" + strings.Join(outs, "\n")
+						} else {
+							se.Output = strings.Join(outs, "\n")
+						}
+					}
+					events = append(events, se)
+				}
 			}
-			buffered = nil
+			bufferedOrder = nil
+			bufferedRunEvents = make(map[string]TestEvent)
+			bufferedStatusEvents = make(map[string]TestEvent)
+			bufferedOutputs = make(map[string][]string)
+			seenTest = make(map[string]bool)
 			continue
 		}
 
-		// Parse RUN marker (push to stack)
+		// RUN marker
 		if strings.HasPrefix(line, "=== RUN") {
 			testName := strings.TrimSpace(strings.TrimPrefix(line, "=== RUN"))
 			testStack = append(testStack, testName)
 			lastTime = lastTime.Add(time.Millisecond)
-			event := TestEvent{
-				Time:    lastTime.Format(time.RFC3339),
-				Action:  "run",
-				Package: currentPkg,
-				Test:    testName,
+			re := TestEvent{
+				Time:   lastTime.Format(time.RFC3339),
+				Action: "run",
+				Test:   testName,
 			}
-			if currentPkg == "" {
-				buffered = append(buffered, event)
-			} else {
-				events = append(events, event)
+			bufferedRunEvents[testName] = re
+			if !seenTest[testName] {
+				bufferedOrder = append(bufferedOrder, testName)
+				seenTest[testName] = true
 			}
 			continue
 		}
 
-		// Parse PASS/FAIL/SKIP markers (pop from stack)
+		// PASS/FAIL/SKIP marker
 		if strings.HasPrefix(line, "--- ") {
 			parts := strings.Fields(line)
 			if len(parts) < 4 {
 				continue
 			}
-
-			status := strings.TrimPrefix(parts[1], "")
+			status := strings.ToLower(parts[1])
 			testName := parts[2]
 			duration := 0.0
-
-			// Parse duration (e.g., "(0.00s)")
 			if len(parts) > 3 && strings.HasPrefix(parts[3], "(") && strings.HasSuffix(parts[3], ")") {
-				durStr := strings.Trim(parts[3], "()")
-				durStr = strings.TrimSuffix(durStr, "s")
+				durStr := strings.Trim(parts[3], "()s")
 				fmt.Sscanf(durStr, "%f", &duration)
 			}
-
-			action := strings.ToLower(status)
 			lastTime = lastTime.Add(time.Millisecond)
-			event := TestEvent{
+			se := TestEvent{
 				Time:    lastTime.Format(time.RFC3339),
-				Action:  action,
-				Package: currentPkg,
+				Action:  status,
 				Test:    testName,
 				Elapsed: duration,
 			}
-			if currentPkg == "" {
-				buffered = append(buffered, event)
-			} else {
-				events = append(events, event)
+			// Attach output to status event and clear buffer
+			if outs, ok := bufferedOutputs[testName]; ok && len(outs) > 0 {
+				se.Output = strings.Join(outs, "\n")
+				bufferedOutputs[testName] = nil
 			}
-			// Pop the test from the stack if it matches
+			bufferedStatusEvents[testName] = se
+			lastStatusTest = testName
+			if !seenTest[testName] {
+				bufferedOrder = append(bufferedOrder, testName)
+				seenTest[testName] = true
+			}
+			// Remove from stack if present
 			if len(testStack) > 0 && testStack[len(testStack)-1] == testName {
 				testStack = testStack[:len(testStack)-1]
 			}
 			continue
 		}
 
-		// Parse coverage information and other output
+		// Coverage line
 		if strings.Contains(line, "coverage:") {
-			var coverage float64
-			if _, err := fmt.Sscanf(line, "coverage: %f%% of statements", &coverage); err == nil {
-				lastTime = lastTime.Add(time.Millisecond)
-				event := TestEvent{
-					Time:    lastTime.Format(time.RFC3339),
-					Action:  "output",
-					Package: currentPkg,
-					Test:    "",
-					Output:  line,
-				}
-				if currentPkg == "" {
-					buffered = append(buffered, event)
+			// Attach to last status event for the package
+			if lastStatusTest != "" {
+				if bufferedOutputs[lastStatusTest] == nil {
+					bufferedOutputs[lastStatusTest] = []string{line}
 				} else {
-					events = append(events, event)
+					bufferedOutputs[lastStatusTest] = append(bufferedOutputs[lastStatusTest], line)
 				}
 			}
 			continue
 		}
 
-		// Add all non-empty output lines that are not already seen
-		if line != "" && !strings.HasPrefix(line, "=== RUN") && !strings.HasPrefix(line, "--- ") && !strings.HasPrefix(line, "ok  ") && !strings.HasPrefix(line, "FAIL") {
-			lastTime = lastTime.Add(time.Millisecond)
-			// Assign output to the most recent test in the stack, if any
-			testName := ""
-			if len(testStack) > 0 {
-				testName = testStack[len(testStack)-1]
-			}
-			event := TestEvent{
-				Time:    lastTime.Format(time.RFC3339),
-				Action:  "output",
-				Package: currentPkg,
-				Test:    testName,
-				Output:  line,
-			}
-			if currentPkg == "" {
-				buffered = append(buffered, event)
-			} else {
-				events = append(events, event)
-			}
+		// Output line (attach to last test in stack)
+		if len(testStack) > 0 {
+			lastTest := testStack[len(testStack)-1]
+			bufferedOutputs[lastTest] = append(bufferedOutputs[lastTest], line)
 		}
 	}
 
-	// If any buffered events remain, assign them to the last known package (if any)
-	for i := range buffered {
-		buffered[i].Package = currentPkg
-		events = append(events, buffered[i])
+	// Flush any remaining buffered events (for the last package)
+	for _, testName := range bufferedOrder {
+		re, hasRun := bufferedRunEvents[testName]
+		se, hasStatus := bufferedStatusEvents[testName]
+		if hasRun {
+			if re.Package == "" {
+				re.Package = currentPkg
+			}
+			events = append(events, re)
+		}
+		if hasStatus {
+			if se.Package == "" {
+				se.Package = currentPkg
+			}
+			if outs, ok := bufferedOutputs[testName]; ok && len(outs) > 0 {
+				if se.Output != "" {
+					se.Output += "\n" + strings.Join(outs, "\n")
+				} else {
+					se.Output = strings.Join(outs, "\n")
+				}
+			}
+			events = append(events, se)
+		}
 	}
 
-	// Filter out duplicate events while preserving order
-	seen := make(map[string]bool)
-	filtered := make([]TestEvent, 0, len(events))
-	for _, ev := range events {
-		// Skip empty output events
-		if ev.Action == "output" && ev.Output == "" {
-			continue
-		}
-
-		// Create a unique key for the event
-		key := fmt.Sprintf("%s:%s:%s:%s:%s", ev.Time, ev.Action, ev.Package, ev.Test, ev.Output)
-		if !seen[key] {
-			seen[key] = true
-			filtered = append(filtered, ev)
-		}
-	}
-
-	return filtered
+	return events
 }
