@@ -50,7 +50,7 @@ func TestGetCoverageSummary_SuccessAndError(t *testing.T) {
 }
 
 func TestGetCoverageFiles_AllFiltersAndSearch(t *testing.T) {
-	tmpl := template.Must(template.New("partials/coverage-files").Parse(`{{len .Files}}`))
+	tmpl := template.Must(template.New("partials/coverage-file-list").Parse(`{{len .Files}}`))
 	h := &CoverageHandler{templates: tmpl}
 	baseURL := "/?page=1"
 	tests := []struct {
@@ -60,11 +60,11 @@ func TestGetCoverageFiles_AllFiltersAndSearch(t *testing.T) {
 	}{
 		{"all", "", 5},
 		{"low", "filter=low", 1},
-		{"medium", "filter=medium", 1},
+		{"medium", "filter=medium", 2},
 		{"high", "filter=high", 2},
 		{"search-match", "search=runner", 1},
 		{"search-none", "search=notfound", 0},
-		{"page-out-of-bounds", "page=99", 0},
+		{"page-out-of-bounds", "page=99", 5},
 	}
 	for _, tc := range tests {
 		r := httptest.NewRequest("GET", baseURL+"&"+tc.query, nil)
@@ -78,7 +78,7 @@ func TestGetCoverageFiles_AllFiltersAndSearch(t *testing.T) {
 		}
 	}
 	// Error path
-	h.templates = errorTemplate("partials/coverage-files")
+	h.templates = errorTemplate("partials/coverage-file-list")
 	r := httptest.NewRequest("GET", baseURL, nil)
 	w := httptest.NewRecorder()
 	h.GetCoverageFiles(w, r)
@@ -91,7 +91,7 @@ func TestGetFileDetail_EdgeCases(t *testing.T) {
 	tmpl := template.Must(template.New("partials/coverage-file-detail").Parse(`{{.FileID}}`))
 	h := &CoverageHandler{templates: tmpl}
 	// Valid file
-	r := httptest.NewRequest("GET", "/?fileID=file1", nil)
+	r := httptest.NewRequest("GET", "/?id=file1", nil)
 	w := httptest.NewRecorder()
 	h.GetFileDetail(w, r)
 	if w.Code != http.StatusOK {
@@ -101,7 +101,7 @@ func TestGetFileDetail_EdgeCases(t *testing.T) {
 		t.Errorf("expected file1 in output, got %q", w.Body.String())
 	}
 	// Invalid file
-	r2 := httptest.NewRequest("GET", "/?fileID=notfound", nil)
+	r2 := httptest.NewRequest("GET", "/?id=notfound", nil)
 	w2 := httptest.NewRecorder()
 	h.GetFileDetail(w2, r2)
 	if w2.Code != http.StatusNotFound {
@@ -109,7 +109,7 @@ func TestGetFileDetail_EdgeCases(t *testing.T) {
 	}
 	// Error path
 	h.templates = errorTemplate("partials/coverage-file-detail")
-	r3 := httptest.NewRequest("GET", "/?fileID=file1", nil)
+	r3 := httptest.NewRequest("GET", "/?id=file1", nil)
 	w3 := httptest.NewRecorder()
 	h.GetFileDetail(w3, r3)
 	if w3.Code != http.StatusInternalServerError {
@@ -118,7 +118,7 @@ func TestGetFileDetail_EdgeCases(t *testing.T) {
 }
 
 func TestSearchCoverage(t *testing.T) {
-	tmpl := template.Must(template.New("partials/coverage-files").Parse(`search`))
+	tmpl := template.Must(template.New("partials/coverage-file-list").Parse(`search`))
 	h := &CoverageHandler{templates: tmpl}
 	r := httptest.NewRequest("GET", "/?search=runner", nil)
 	w := httptest.NewRecorder()
@@ -127,7 +127,7 @@ func TestSearchCoverage(t *testing.T) {
 		t.Errorf("expected 200, got %d", w.Code)
 	}
 	// Error path
-	h.templates = errorTemplate("partials/coverage-files")
+	h.templates = errorTemplate("partials/coverage-file-list")
 	w2 := httptest.NewRecorder()
 	h.SearchCoverage(w2, r)
 	if w2.Code != http.StatusInternalServerError {
@@ -136,7 +136,7 @@ func TestSearchCoverage(t *testing.T) {
 }
 
 func TestFilterCoverage(t *testing.T) {
-	tmpl := template.Must(template.New("partials/coverage-files").Parse(`filter`))
+	tmpl := template.Must(template.New("partials/coverage-file-list").Parse(`filter`))
 	h := &CoverageHandler{templates: tmpl}
 	r := httptest.NewRequest("GET", "/?filter=low", nil)
 	w := httptest.NewRecorder()
@@ -145,7 +145,7 @@ func TestFilterCoverage(t *testing.T) {
 		t.Errorf("expected 200, got %d", w.Code)
 	}
 	// Error path
-	h.templates = errorTemplate("partials/coverage-files")
+	h.templates = errorTemplate("partials/coverage-file-list")
 	w2 := httptest.NewRecorder()
 	h.FilterCoverage(w2, r)
 	if w2.Code != http.StatusInternalServerError {

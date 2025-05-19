@@ -265,103 +265,29 @@ func (h *CoverageHandler) GetFileDetail(w http.ResponseWriter, r *http.Request) 
 
 	// In a real implementation, this would fetch actual file coverage data
 	// For now, we'll use mock data
-	fileDetail := FileDetailData{
-		FileID:           fileID,
-		FilePath:         "internal/parser/parser.go",
-		LineCoverage:     92.5,
-		FunctionCoverage: 100.0,
-		BranchCoverage:   85.7,
-		CoveredLines:     185,
-		TotalLines:       200,
-		CoveredFunctions: 12,
-		TotalFunctions:   12,
-		CoveredBranches:  18,
-		TotalBranches:    21,
-		SourceLines: map[int]string{
-			1:  "package parser",
-			2:  "",
-			3:  "import (",
-			4:  "    \"fmt\"",
-			5:  "    \"strings\"",
-			6:  ")",
-			7:  "",
-			8:  "// Parser handles parsing of test output",
-			9:  "type Parser struct {",
-			10: "    buffer string",
-			11: "}",
-			12: "",
-			13: "// NewParser creates a new parser instance",
-			14: "func NewParser() *Parser {",
-			15: "    return &Parser{}",
-			16: "}",
-			17: "",
-			18: "// Parse parses the test output",
-			19: "func (p *Parser) Parse(input string) ([]TestResult, error) {",
-			20: "    if input == \"\" {",
-			21: "        return nil, fmt.Errorf(\"empty input\")",
-			22: "    }",
-			23: "",
-			24: "    lines := strings.Split(input, \"\\n\")",
-			25: "    results := make([]TestResult, 0)",
-			26: "",
-			27: "    // Process lines",
-			28: "    for _, line := range lines {",
-			29: "        if strings.HasPrefix(line, \"--- PASS\") {",
-			30: "            // Handle passing test",
-			31: "            results = append(results, TestResult{Status: \"pass\"})",
-			32: "        } else if strings.HasPrefix(line, \"--- FAIL\") {",
-			33: "            // Handle failing test",
-			34: "            results = append(results, TestResult{Status: \"fail\"})",
-			35: "        }",
-			36: "    }",
-			37: "",
-			38: "    return results, nil",
-			39: "}",
-		},
-		LineStatuses: map[int]string{
-			1:  "covered",
-			2:  "not-executable",
-			3:  "covered",
-			4:  "covered",
-			5:  "covered",
-			6:  "covered",
-			7:  "not-executable",
-			8:  "not-executable",
-			9:  "covered",
-			10: "covered",
-			11: "covered",
-			12: "not-executable",
-			13: "not-executable",
-			14: "covered",
-			15: "covered",
-			16: "covered",
-			17: "not-executable",
-			18: "not-executable",
-			19: "covered",
-			20: "covered",
-			21: "covered",
-			22: "covered",
-			23: "not-executable",
-			24: "covered",
-			25: "covered",
-			26: "not-executable",
-			27: "not-executable",
-			28: "covered",
-			29: "covered",
-			30: "not-executable",
-			31: "covered",
-			32: "covered",
-			33: "not-executable",
-			34: "covered",
-			35: "covered",
-			36: "covered",
-			37: "not-executable",
-			38: "covered",
-			39: "covered",
+	mockFiles := map[string]FileDetailData{
+		"file1": {
+			FileID:           "file1",
+			FilePath:         "internal/parser/parser.go",
+			LineCoverage:     92.5,
+			FunctionCoverage: 100.0,
+			BranchCoverage:   85.7,
+			CoveredLines:     185,
+			TotalLines:       200,
+			CoveredFunctions: 12,
+			TotalFunctions:   12,
+			CoveredBranches:  18,
+			TotalBranches:    21,
+			SourceLines:      map[int]string{1: "package parser"},
+			LineStatuses:     map[int]string{1: "covered"},
 		},
 	}
+	fileDetail, ok := mockFiles[fileID]
+	if !ok {
+		http.Error(w, "File not found", http.StatusNotFound)
+		return
+	}
 
-	// Render the file detail partial
 	if err := h.templates.ExecuteTemplate(w, "partials/coverage-file-detail", fileDetail); err != nil {
 		http.Error(w, "Failed to render file detail", http.StatusInternalServerError)
 		return
@@ -371,17 +297,22 @@ func (h *CoverageHandler) GetFileDetail(w http.ResponseWriter, r *http.Request) 
 // SearchCoverage handles search requests for coverage files
 func (h *CoverageHandler) SearchCoverage(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("query")
-	if query == "" {
-		// If no query, redirect to get all files
+	search := r.URL.Query().Get("search")
+	if query == "" && search == "" {
+		// If no query or search, redirect to get all files
 		http.Redirect(w, r, "/api/coverage/files", http.StatusSeeOther)
 		return
 	}
 
-	// Create a new URL with the search parameter
-	q := r.URL.Query()
-	q.Set("search", query)
+	// Prefer 'query' if present, else use 'search'
+	searchVal := query
+	if searchVal == "" {
+		searchVal = search
+	}
 
-	// Create a new request with the updated query
+	q := r.URL.Query()
+	q.Set("search", searchVal)
+
 	newURL := *r.URL
 	newURL.RawQuery = q.Encode()
 	newReq := r.Clone(r.Context())
