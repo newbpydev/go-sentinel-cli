@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -16,7 +17,10 @@ func TestConnectionTracking(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h.HandleWebSocket(w, r)
 	}))
-	defer server.Close()
+	defer func() {
+		server.Close()
+		h.Close()
+	}()
 
 	// Test initial connection count
 	if h.ConnectionCount() != 0 {
@@ -29,6 +33,11 @@ func TestConnectionTracking(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect first WebSocket: %v", err)
 	}
+	defer func() {
+		if err := conn1.Close(); err != nil {
+			t.Errorf("Failed to close connection 1: %v", err)
+		}
+	}()
 
 	// Verify connection count
 	time.Sleep(100 * time.Millisecond) // Give time for connection to be registered
@@ -39,9 +48,13 @@ func TestConnectionTracking(t *testing.T) {
 	// Connect second client
 	conn2, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
-		conn1.Close()
 		t.Fatalf("Failed to connect second WebSocket: %v", err)
 	}
+	defer func() {
+		if err := conn2.Close(); err != nil {
+			t.Errorf("Failed to close connection 2: %v", err)
+		}
+	}()
 
 	// Verify connection count
 	time.Sleep(100 * time.Millisecond)
@@ -51,7 +64,7 @@ func TestConnectionTracking(t *testing.T) {
 
 	// Disconnect first client
 	if err := conn1.Close(); err != nil {
-		t.Errorf("Failed to close connection: %v", err)
+		t.Errorf("Failed to close connection 1: %v", err)
 	}
 	time.Sleep(100 * time.Millisecond) // Give time for cleanup
 
@@ -62,7 +75,7 @@ func TestConnectionTracking(t *testing.T) {
 
 	// Disconnect second client
 	if err := conn2.Close(); err != nil {
-		t.Errorf("Failed to close connection: %v", err)
+		t.Errorf("Failed to close connection 2: %v", err)
 	}
 	time.Sleep(100 * time.Millisecond) // Give time for cleanup
 
@@ -78,7 +91,10 @@ func TestBroadcastToDisconnectedClient(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h.HandleWebSocket(w, r)
 	}))
-	defer server.Close()
+	defer func() {
+		server.Close()
+		h.Close()
+	}()
 
 	// Connect client
 	url := "ws" + server.URL[4:] + "/ws"
@@ -86,13 +102,16 @@ func TestBroadcastToDisconnectedClient(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect WebSocket: %v", err)
 	}
-
-	// Close the connection immediately
 	defer func() {
 		if err := conn.Close(); err != nil {
 			t.Errorf("Failed to close connection: %v", err)
 		}
 	}()
+
+	// Close the connection immediately
+	if err := conn.Close(); err != nil {
+		t.Errorf("Failed to close connection: %v", err)
+	}
 
 	// Try to broadcast to disconnected client
 	h.BroadcastTestResults([]WSTestResult{{
@@ -111,22 +130,34 @@ func TestConcurrentConnections(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h.HandleWebSocket(w, r)
 	}))
-	defer server.Close()
+	defer func() {
+		server.Close()
+		h.Close()
+	}()
 
 	url := "ws" + server.URL[4:] + "/ws"
 	const numConnections = 10
 	var connected int32
 
+	// Create a WaitGroup to track goroutines
+	var wg sync.WaitGroup
+	wg.Add(numConnections)
+
 	// Connect multiple clients concurrently
 	for i := 0; i < numConnections; i++ {
 		go func() {
+			defer wg.Done()
 			conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 			if err != nil {
 				t.Logf("Failed to connect: %v", err)
 				return
 			}
 			atomic.AddInt32(&connected, 1)
-			defer conn.Close()
+			defer func() {
+				if err := conn.Close(); err != nil {
+					t.Logf("Failed to close connection: %v", err)
+				}
+			}()
 
 			// Keep connection alive for a bit
 			time.Sleep(500 * time.Millisecond)
@@ -141,8 +172,11 @@ func TestConcurrentConnections(t *testing.T) {
 		t.Errorf("Expected %d connections, got %d", numConnections, count)
 	}
 
+	// Wait for all goroutines to complete
+	wg.Wait()
+
 	// Wait for connections to close
-	time.Sleep(600 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	// Verify all connections are cleaned up
 	if count := h.ConnectionCount(); count != 0 {

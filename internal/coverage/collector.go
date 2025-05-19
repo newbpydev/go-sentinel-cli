@@ -14,6 +14,29 @@ import (
 	"golang.org/x/tools/cover"
 )
 
+// validateCoveragePath performs security checks on file paths
+func validateCoveragePath(path string) error {
+	// Clean the path to resolve any ".." or "." components
+	cleanPath := filepath.Clean(path)
+
+	// Check for directory traversal attempts
+	if strings.Contains(cleanPath, "..") {
+		return fmt.Errorf("path contains directory traversal attempt: %s", path)
+	}
+
+	// Check for absolute paths
+	if filepath.IsAbs(cleanPath) {
+		return fmt.Errorf("absolute paths are not allowed: %s", path)
+	}
+
+	// Check for suspicious characters
+	if strings.ContainsAny(cleanPath, "<>:\"\\|?*") {
+		return fmt.Errorf("path contains invalid characters: %s", path)
+	}
+
+	return nil
+}
+
 // CoverageCollector handles the collection and analysis of coverage data
 type CoverageCollector struct {
 	CoverageFile string
@@ -22,6 +45,11 @@ type CoverageCollector struct {
 
 // NewCollector creates a new coverage collector from a coverage profile file
 func NewCollector(coverageFile string) (*CoverageCollector, error) {
+	// Validate the coverage file path
+	if err := validateCoveragePath(coverageFile); err != nil {
+		return nil, fmt.Errorf("invalid coverage file path: %w", err)
+	}
+
 	// Check if the file exists
 	if _, err := os.Stat(coverageFile); os.IsNotExist(err) {
 		return nil, fmt.Errorf("coverage file does not exist: %s", coverageFile)
@@ -155,38 +183,21 @@ func (c *CoverageCollector) CalculateMetrics() (*CoverageMetrics, error) {
 	return metrics, nil
 }
 
-// validatePath checks if the path is safe to read
-func validatePath(path string) error {
-	// Add path validation logic here
-	if path == "" {
-		return fmt.Errorf("empty path")
-	}
-	// Add more validation as needed
-	return nil
-}
-
-// ReadFile reads a file with validation
-func readFileWithValidation(absPath string) ([]byte, error) {
-	if err := validatePath(absPath); err != nil {
-		return nil, fmt.Errorf("invalid path: %w", err)
-	}
-	content, err := os.ReadFile(absPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %w", err)
-	}
-	return content, nil
-}
-
 // GetSourceCode retrieves the source code for a given file with coverage annotations
 func (c *CoverageCollector) GetSourceCode(filePath string) (map[int]string, error) {
+	// Validate the file path
+	if err := validateCoveragePath(filePath); err != nil {
+		return nil, fmt.Errorf("invalid source file path: %w", err)
+	}
+
 	// Get absolute path
 	absPath, err := filepath.Abs(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get absolute path: %w", err)
 	}
 
-	// Read file content
-	content, err := readFileWithValidation(absPath)
+	// Read file content with validation
+	content, err := os.ReadFile(absPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
@@ -205,6 +216,11 @@ func (c *CoverageCollector) GetSourceCode(filePath string) (map[int]string, erro
 
 // AnalyzeBranches performs deeper branch analysis using AST
 func (c *CoverageCollector) AnalyzeBranches(filePath string) ([]BranchInfo, error) {
+	// Validate the file path
+	if err := validateCoveragePath(filePath); err != nil {
+		return nil, fmt.Errorf("invalid source file path: %w", err)
+	}
+
 	// Get absolute path
 	absPath, err := filepath.Abs(filePath)
 	if err != nil {

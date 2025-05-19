@@ -49,8 +49,8 @@ func NewAPIServer(cfg api.Config) *APIServer {
 	r.Get("/docs", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotImplemented)
 		if _, err := w.Write([]byte("OpenAPI documentation coming soon")); err != nil {
-		log.Printf("failed to write docs stub: %v", err)
-	}
+			log.Printf("failed to write docs stub: %v", err)
+		}
 	})
 
 	// Health endpoint
@@ -70,8 +70,8 @@ func NewAPIServer(cfg api.Config) *APIServer {
 		}
 		w.WriteHeader(http.StatusOK)
 		if _, err := w.Write(resp); err != nil {
-		log.Printf("failed to write health response: %v", err)
-	}
+			log.Printf("failed to write health response: %v", err)
+		}
 	})
 
 	// WebSocket endpoint
@@ -86,33 +86,54 @@ func NewAPIServer(cfg api.Config) *APIServer {
 
 	log.Println("WebSocket handler registered at /ws endpoint")
 
-	httpSrv := &http.Server{
-		Addr:         ":" + cfg.Port,
-		Handler:      r,
-		ReadTimeout:  time.Duration(cfg.ReadTimeout) * time.Second,
-		WriteTimeout: time.Duration(cfg.WriteTimeout) * time.Second,
-	}
-
 	return &APIServer{
 		Config: cfg,
 		Router: r,
-		HTTP:   httpSrv,
+		HTTP: &http.Server{
+			Addr:              cfg.Port,
+			Handler:           r,
+			ReadTimeout:       15 * time.Second,
+			ReadHeaderTimeout: 15 * time.Second,
+			WriteTimeout:      15 * time.Second,
+			IdleTimeout:       60 * time.Second,
+		},
 	}
 }
 
+// Start begins listening on the configured port and handles graceful shutdown
 func (s *APIServer) Start() error {
-	// Graceful shutdown
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	// Create a channel to listen for errors coming from the listener.
+	serverErrors := make(chan error, 1)
+
+	// Create a channel to listen for an interrupt or terminate signal from the OS.
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
+
+	// Start the service listening for requests.
 	go func() {
-		<-quit
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		if err := s.HTTP.Shutdown(ctx); err != nil {
-			log.Printf("API server forced to shutdown: %v", err)
-		}
+		log.Printf("API listening on %s", s.HTTP.Addr)
+		serverErrors <- s.HTTP.ListenAndServe()
 	}()
 
-	fmt.Printf("[api] Listening on %s\n", s.HTTP.Addr)
-	return s.HTTP.ListenAndServe()
+	// Blocking main and waiting for shutdown.
+	select {
+	case err := <-serverErrors:
+		return fmt.Errorf("server error: %w", err)
+
+	case sig := <-shutdown:
+		log.Printf("main: %v: Start shutdown", sig)
+
+		// Give outstanding requests a deadline for completion.
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		// Asking listener to shut down and shed load.
+		if err := s.HTTP.Shutdown(ctx); err != nil {
+			// Error from closing listeners, or context timeout:
+			s.HTTP.Close()
+			return fmt.Errorf("could not stop server gracefully: %w", err)
+		}
+	}
+
+	return nil
 }
