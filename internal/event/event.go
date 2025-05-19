@@ -57,3 +57,50 @@ type TreeNode struct {
 func BoolPtr(b bool) *bool {
 	return &b
 }
+
+// Validate checks if the TestResult has valid fields
+func (r TestResult) Validate() error {
+	if r.Package == "" {
+		return fmt.Errorf("package is required")
+	}
+	if r.Elapsed < 0 {
+		return fmt.Errorf("elapsed time cannot be negative")
+	}
+	return nil
+}
+
+// Validate checks if the FileEvent has valid fields
+func (e FileEvent) Validate() error {
+	if e.Path == "" {
+		return fmt.Errorf("path is required")
+	}
+	if e.Op == "" {
+		return fmt.Errorf("operation is required")
+	}
+	validOps := map[string]bool{"create": true, "write": true, "remove": true}
+	if !validOps[e.Op] {
+		return fmt.Errorf("invalid operation: %s", e.Op)
+	}
+	return nil
+}
+
+// Validate checks if the RunnerEvent has valid fields
+func (e RunnerEvent) Validate() error {
+	if e.Package == "" {
+		return fmt.Errorf("package is required")
+	}
+	if e.Status == "" {
+		return fmt.Errorf("status is required")
+	}
+	validStatus := map[string]bool{"started": true, "running": true, "completed": true}
+	if !validStatus[e.Status] {
+		return fmt.Errorf("invalid status: %s", e.Status)
+	}
+	// Validate test results if present
+	for _, result := range e.Results {
+		if err := result.Validate(); err != nil {
+			return err
+		}
+	}
+	return nil
+}

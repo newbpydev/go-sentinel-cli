@@ -238,3 +238,368 @@ func TestRunnerEvent_Fields(t *testing.T) {
 		t.Errorf("len(Results) = %d, want 2", len(event.Results))
 	}
 }
+
+func TestTestResult_Validation(t *testing.T) {
+	tests := []struct {
+		name    string
+		result  TestResult
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "valid result",
+			result: TestResult{
+				Package: "pkg/foo",
+				Test:    "TestBar",
+				Passed:  true,
+				Elapsed: 1.5,
+			},
+			wantErr: false,
+		},
+		{
+			name: "missing package",
+			result: TestResult{
+				Test:    "TestBar",
+				Passed:  true,
+				Elapsed: 1.5,
+			},
+			wantErr: true,
+			errMsg:  "package is required",
+		},
+		{
+			name: "zero elapsed time",
+			result: TestResult{
+				Package: "pkg/foo",
+				Test:    "TestBar",
+				Passed:  true,
+				Elapsed: 0,
+			},
+			wantErr: false,
+		},
+		{
+			name: "negative elapsed time",
+			result: TestResult{
+				Package: "pkg/foo",
+				Test:    "TestBar",
+				Passed:  true,
+				Elapsed: -1.5,
+			},
+			wantErr: true,
+			errMsg:  "elapsed time cannot be negative",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.result.Validate()
+			if tc.wantErr {
+				if err == nil {
+					t.Error("expected error but got nil")
+				} else if err.Error() != tc.errMsg {
+					t.Errorf("expected error message %q, got %q", tc.errMsg, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestFileEvent_Validation(t *testing.T) {
+	tests := []struct {
+		name    string
+		event   FileEvent
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "valid event",
+			event: FileEvent{
+				Path: "path/to/file.go",
+				Op:   "write",
+			},
+			wantErr: false,
+		},
+		{
+			name: "missing path",
+			event: FileEvent{
+				Op: "write",
+			},
+			wantErr: true,
+			errMsg:  "path is required",
+		},
+		{
+			name: "missing operation",
+			event: FileEvent{
+				Path: "path/to/file.go",
+			},
+			wantErr: true,
+			errMsg:  "operation is required",
+		},
+		{
+			name: "invalid operation",
+			event: FileEvent{
+				Path: "path/to/file.go",
+				Op:   "invalid",
+			},
+			wantErr: true,
+			errMsg:  "invalid operation: invalid",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.event.Validate()
+			if tc.wantErr {
+				if err == nil {
+					t.Error("expected error but got nil")
+				} else if err.Error() != tc.errMsg {
+					t.Errorf("expected error message %q, got %q", tc.errMsg, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestRunnerEvent_Validation(t *testing.T) {
+	tests := []struct {
+		name    string
+		event   RunnerEvent
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "valid event",
+			event: RunnerEvent{
+				Package: "pkg/foo",
+				Test:    "TestBar",
+				Status:  "completed",
+				Results: []TestResult{
+					{Package: "pkg/foo", Test: "TestBar", Passed: true},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "missing package",
+			event: RunnerEvent{
+				Test:   "TestBar",
+				Status: "completed",
+			},
+			wantErr: true,
+			errMsg:  "package is required",
+		},
+		{
+			name: "missing status",
+			event: RunnerEvent{
+				Package: "pkg/foo",
+				Test:    "TestBar",
+			},
+			wantErr: true,
+			errMsg:  "status is required",
+		},
+		{
+			name: "invalid status",
+			event: RunnerEvent{
+				Package: "pkg/foo",
+				Test:    "TestBar",
+				Status:  "invalid",
+			},
+			wantErr: true,
+			errMsg:  "invalid status: invalid",
+		},
+		{
+			name: "invalid test result",
+			event: RunnerEvent{
+				Package: "pkg/foo",
+				Test:    "TestBar",
+				Status:  "completed",
+				Results: []TestResult{
+					{Test: "TestBar", Passed: true}, // Missing package
+				},
+			},
+			wantErr: true,
+			errMsg:  "package is required",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.event.Validate()
+			if tc.wantErr {
+				if err == nil {
+					t.Error("expected error but got nil")
+				} else if err.Error() != tc.errMsg {
+					t.Errorf("expected error message %q, got %q", tc.errMsg, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestTreeNode_AddChild(t *testing.T) {
+	root := &TreeNode{
+		Title:    "root",
+		Level:    0,
+		Expanded: true,
+	}
+
+	child := &TreeNode{
+		Title:    "child",
+		Level:    1,
+		Expanded: false,
+	}
+
+	// Add child to root
+	root.Children = append(root.Children, child)
+	child.Parent = root
+
+	// Verify parent-child relationship
+	if child.Parent != root {
+		t.Error("child's parent should be root")
+	}
+	if len(root.Children) != 1 || root.Children[0] != child {
+		t.Error("root should have child in its children")
+	}
+	if child.Level != root.Level+1 {
+		t.Errorf("child level should be parent level + 1, got %d, want %d", child.Level, root.Level+1)
+	}
+}
+
+func TestTreeNode_DeepNesting(t *testing.T) {
+	root := &TreeNode{
+		Title:    "root",
+		Level:    0,
+		Expanded: true,
+	}
+
+	// Create a chain of nodes: root -> a -> b -> c
+	a := &TreeNode{Title: "a", Level: 1, Expanded: true}
+	b := &TreeNode{Title: "b", Level: 2, Expanded: true}
+	c := &TreeNode{Title: "c", Level: 3, Expanded: false}
+
+	root.Children = append(root.Children, a)
+	a.Parent = root
+	a.Children = append(a.Children, b)
+	b.Parent = a
+	b.Children = append(b.Children, c)
+	c.Parent = b
+
+	// Verify the chain
+	if len(root.Children) != 1 || root.Children[0] != a {
+		t.Error("root should have 'a' as child")
+	}
+	if len(a.Children) != 1 || a.Children[0] != b {
+		t.Error("'a' should have 'b' as child")
+	}
+	if len(b.Children) != 1 || b.Children[0] != c {
+		t.Error("'b' should have 'c' as child")
+	}
+	if c.Parent != b || b.Parent != a || a.Parent != root {
+		t.Error("parent chain should be intact")
+	}
+}
+
+func TestTreeNode_TestResults(t *testing.T) {
+	tests := []struct {
+		name     string
+		node     *TreeNode
+		wantPass bool
+	}{
+		{
+			name: "passing test",
+			node: &TreeNode{
+				Title:    "TestPass",
+				Level:    1,
+				Coverage: 0.85,
+				Passed:   BoolPtr(true),
+				Duration: 0.123,
+			},
+			wantPass: true,
+		},
+		{
+			name: "failing test",
+			node: &TreeNode{
+				Title:    "TestFail",
+				Level:    1,
+				Coverage: 0.75,
+				Passed:   BoolPtr(false),
+				Duration: 0.456,
+				Error:    "assertion failed",
+			},
+			wantPass: false,
+		},
+		{
+			name: "skipped test",
+			node: &TreeNode{
+				Title:    "TestSkip",
+				Level:    1,
+				Passed:   nil,
+				Duration: 0,
+			},
+			wantPass: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.node.Passed != nil && *tc.node.Passed != tc.wantPass {
+				t.Errorf("node %s: got passed=%v, want %v", tc.node.Title, *tc.node.Passed, tc.wantPass)
+			}
+			if tc.node.Error != "" && *tc.node.Passed {
+				t.Errorf("node %s: has error but marked as passed", tc.node.Title)
+			}
+		})
+	}
+}
+
+func TestTreeNode_Coverage(t *testing.T) {
+	tests := []struct {
+		name         string
+		node         *TreeNode
+		wantCoverage float64
+	}{
+		{
+			name: "full coverage",
+			node: &TreeNode{
+				Title:    "TestFull",
+				Coverage: 1.0,
+			},
+			wantCoverage: 1.0,
+		},
+		{
+			name: "partial coverage",
+			node: &TreeNode{
+				Title:    "TestPartial",
+				Coverage: 0.75,
+			},
+			wantCoverage: 0.75,
+		},
+		{
+			name: "no coverage",
+			node: &TreeNode{
+				Title:    "TestNone",
+				Coverage: 0.0,
+			},
+			wantCoverage: 0.0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.node.Coverage != tc.wantCoverage {
+				t.Errorf("node %s: got coverage=%v, want %v", tc.node.Title, tc.node.Coverage, tc.wantCoverage)
+			}
+		})
+	}
+}

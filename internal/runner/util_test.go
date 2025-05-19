@@ -30,10 +30,10 @@ func TestRunGoList_ValidArgs(t *testing.T) {
 		name string
 		args []string
 	}{
-		{"standard package", {"-f", "{{.ImportPath}}", "fmt"}},
-		{"dot package", {"-f", "{{.Name}}", "."}},
-		{"all packages", {"-e", "all"}},
-		{"test package", {"-test", "."}},
+		{name: "standard package", args: []string{"-f", "{{.ImportPath}}", "fmt"}},
+		{name: "dot package", args: []string{"-f", "{{.Name}}", "."}},
+		{name: "all packages", args: []string{"-e", "all"}},
+		{name: "test package", args: []string{"-test", "."}},
 	}
 
 	for _, tc := range tests {
@@ -54,11 +54,11 @@ func TestRunGoList_InvalidArgs(t *testing.T) {
 		name string
 		args []string
 	}{
-		{"command injection", {"; ls"}},
-		{"pipe", {"| echo"}},
-		{"redirect", {"> file"}},
-		{"backticks", {"`pwd`"}},
-		{"dollar sign", {"$PATH"}},
+		{name: "command injection", args: []string{"; ls"}},
+		{name: "pipe", args: []string{"| echo"}},
+		{name: "redirect", args: []string{"> file"}},
+		{name: "backticks", args: []string{"`pwd`"}},
+		{name: "dollar sign", args: []string{"$PATH"}},
 	}
 
 	for _, tc := range tests {
@@ -87,11 +87,11 @@ func TestRunGoFmt_ValidPaths(t *testing.T) {
 		paths   []string
 		wantErr bool
 	}{
-		{"current package", {"."}, false},
-		{"specific package", {"./internal/runner"}, false},
-		{"multiple packages", {"./internal/runner", "./internal/parser"}, false},
-		{"invalid path", {"../../../etc/passwd"}, true},
-		{"command injection", {"; ls"}, true},
+		{name: "current package", paths: []string{"."}, wantErr: false},
+		{name: "specific package", paths: []string{"./internal/runner"}, wantErr: false},
+		{name: "multiple packages", paths: []string{"./internal/runner", "./internal/parser"}, wantErr: false},
+		{name: "invalid path", paths: []string{"../../../etc/passwd"}, wantErr: true},
+		{name: "command injection", paths: []string{"; ls"}, wantErr: true},
 	}
 
 	for _, tc := range tests {

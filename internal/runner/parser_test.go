@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+	"time"
 )
 
 // Test 3.3.1: Parse TestEvent JSON objects from output stream
@@ -480,5 +481,267 @@ func TestExtractErrorContext_EmptyEvents(t *testing.T) {
 	context = ExtractErrorContext([]TestEvent{})
 	if context != nil {
 		t.Error("expected nil context for empty events")
+	}
+}
+
+func TestParseTestOutput_PassingTest(t *testing.T) {
+	output := `=== RUN   TestMyFunction
+--- PASS: TestMyFunction (0.12s)
+PASS
+ok  	github.com/newbpydev/go-sentinel/internal/runner	0.123s`
+
+	events := ParseTestOutput(strings.NewReader(output))
+	if len(events) != 2 {
+		t.Fatalf("expected 2 events, got %d", len(events))
+	}
+
+	// Check run event
+	run := events[0]
+	if run.Action != "run" || run.Test != "TestMyFunction" {
+		t.Errorf("unexpected run event: %+v", run)
+	}
+
+	// Check pass event
+	pass := events[1]
+	if pass.Action != "pass" || pass.Test != "TestMyFunction" || pass.Elapsed != 0.12 {
+		t.Errorf("unexpected pass event: %+v", pass)
+	}
+}
+
+func TestParseTestOutput_FailingTest(t *testing.T) {
+	output := `=== RUN   TestFailingFunction
+--- FAIL: TestFailingFunction (0.05s)
+    failing_test.go:42: expected true, got false
+FAIL
+exit status 1
+FAIL	github.com/newbpydev/go-sentinel/internal/runner	0.056s`
+
+	events := ParseTestOutput(strings.NewReader(output))
+	if len(events) != 2 {
+		t.Fatalf("expected 2 events, got %d", len(events))
+	}
+
+	// Check run event
+	run := events[0]
+	if run.Action != "run" || run.Test != "TestFailingFunction" {
+		t.Errorf("unexpected run event: %+v", run)
+	}
+
+	// Check fail event
+	fail := events[1]
+	if fail.Action != "fail" || fail.Test != "TestFailingFunction" || fail.Elapsed != 0.05 {
+		t.Errorf("unexpected fail event: %+v", fail)
+	}
+	if !strings.Contains(fail.Output, "expected true, got false") {
+		t.Errorf("fail event missing error message: %q", fail.Output)
+	}
+}
+
+func TestParseTestOutput_SkippedTest(t *testing.T) {
+	output := `=== RUN   TestSkippedFunction
+--- SKIP: TestSkippedFunction (0.00s)
+    skipped_test.go:23: skipping test in short mode
+PASS
+ok  	github.com/newbpydev/go-sentinel/internal/runner	0.001s`
+
+	events := ParseTestOutput(strings.NewReader(output))
+	if len(events) != 2 {
+		t.Fatalf("expected 2 events, got %d", len(events))
+	}
+
+	// Check run event
+	run := events[0]
+	if run.Action != "run" || run.Test != "TestSkippedFunction" {
+		t.Errorf("unexpected run event: %+v", run)
+	}
+
+	// Check skip event
+	skip := events[1]
+	if skip.Action != "skip" || skip.Test != "TestSkippedFunction" {
+		t.Errorf("unexpected skip event: %+v", skip)
+	}
+	if !strings.Contains(skip.Output, "skipping test in short mode") {
+		t.Errorf("skip event missing message: %q", skip.Output)
+	}
+}
+
+func TestParseTestOutput_SubtestPassing(t *testing.T) {
+	output := `=== RUN   TestParent
+=== RUN   TestParent/SubtestA
+=== RUN   TestParent/SubtestB
+--- PASS: TestParent (0.20s)
+    --- PASS: TestParent/SubtestA (0.10s)
+    --- PASS: TestParent/SubtestB (0.10s)
+PASS
+ok  	github.com/newbpydev/go-sentinel/internal/runner	0.203s`
+
+	events := ParseTestOutput(strings.NewReader(output))
+	if len(events) != 6 {
+		t.Fatalf("expected 6 events, got %d", len(events))
+	}
+
+	// Verify parent test events
+	if events[0].Action != "run" || events[0].Test != "TestParent" {
+		t.Errorf("unexpected parent run event: %+v", events[0])
+	}
+	if events[5].Action != "pass" || events[5].Test != "TestParent" || events[5].Elapsed != 0.20 {
+		t.Errorf("unexpected parent pass event: %+v", events[5])
+	}
+
+	// Verify subtest events
+	subtests := []string{"TestParent/SubtestA", "TestParent/SubtestB"}
+	for i, subtest := range subtests {
+		runIdx := i*2 + 1
+		passIdx := i*2 + 2
+
+		if events[runIdx].Action != "run" || events[runIdx].Test != subtest {
+			t.Errorf("unexpected subtest run event: %+v", events[runIdx])
+		}
+		if events[passIdx].Action != "pass" || events[passIdx].Test != subtest || events[passIdx].Elapsed != 0.10 {
+			t.Errorf("unexpected subtest pass event: %+v", events[passIdx])
+		}
+	}
+}
+
+func TestParseTestOutput_SubtestFailing(t *testing.T) {
+	output := `=== RUN   TestParent
+=== RUN   TestParent/SubtestA
+=== RUN   TestParent/SubtestB
+--- FAIL: TestParent (0.20s)
+    --- PASS: TestParent/SubtestA (0.10s)
+    --- FAIL: TestParent/SubtestB (0.10s)
+        parent_test.go:42: subtest B failed
+FAIL
+exit status 1
+FAIL	github.com/newbpydev/go-sentinel/internal/runner	0.203s`
+
+	events := ParseTestOutput(strings.NewReader(output))
+	if len(events) != 6 {
+		t.Fatalf("expected 6 events, got %d", len(events))
+	}
+
+	// Verify parent test events
+	if events[0].Action != "run" || events[0].Test != "TestParent" {
+		t.Errorf("unexpected parent run event: %+v", events[0])
+	}
+	if events[5].Action != "fail" || events[5].Test != "TestParent" || events[5].Elapsed != 0.20 {
+		t.Errorf("unexpected parent fail event: %+v", events[5])
+	}
+
+	// Verify subtest events
+	subtestA := events[2]
+	if subtestA.Action != "pass" || subtestA.Test != "TestParent/SubtestA" || subtestA.Elapsed != 0.10 {
+		t.Errorf("unexpected subtestA event: %+v", subtestA)
+	}
+
+	subtestB := events[4]
+	if subtestB.Action != "fail" || subtestB.Test != "TestParent/SubtestB" || subtestB.Elapsed != 0.10 {
+		t.Errorf("unexpected subtestB event: %+v", subtestB)
+	}
+	if !strings.Contains(subtestB.Output, "subtest B failed") {
+		t.Errorf("subtestB missing error message: %q", subtestB.Output)
+	}
+}
+
+func TestParseTestOutput_Timestamps(t *testing.T) {
+	output := `=== RUN   TestFunction
+--- PASS: TestFunction (0.10s)
+PASS
+ok  	github.com/newbpydev/go-sentinel/internal/runner	0.103s`
+
+	events := ParseTestOutput(strings.NewReader(output))
+	if len(events) != 2 {
+		t.Fatalf("expected 2 events, got %d", len(events))
+	}
+
+	// Check that timestamps are in RFC3339 format
+	for _, ev := range events {
+		if ev.Time == "" {
+			t.Errorf("event missing timestamp: %+v", ev)
+			continue
+		}
+		_, err := time.Parse(time.RFC3339, ev.Time)
+		if err != nil {
+			t.Errorf("invalid timestamp %q: %v", ev.Time, err)
+		}
+	}
+
+	// Check that timestamps are in chronological order
+	first, err := time.Parse(time.RFC3339, events[0].Time)
+	if err != nil {
+		t.Fatalf("failed to parse first timestamp: %v", err)
+	}
+	second, err := time.Parse(time.RFC3339, events[1].Time)
+	if err != nil {
+		t.Fatalf("failed to parse second timestamp: %v", err)
+	}
+	if !first.Before(second) {
+		t.Errorf("timestamps not in order: %v not before %v", first, second)
+	}
+}
+
+func TestParseTestOutput_Coverage(t *testing.T) {
+	output := `=== RUN   TestFunction
+--- PASS: TestFunction (0.10s)
+PASS
+coverage: 85.2% of statements
+ok  	github.com/newbpydev/go-sentinel/internal/runner	0.103s`
+
+	events := ParseTestOutput(strings.NewReader(output))
+	if len(events) != 2 {
+		t.Fatalf("expected 2 events, got %d", len(events))
+	}
+
+	// Check that coverage information is captured
+	pass := events[1]
+	if !strings.Contains(pass.Output, "coverage: 85.2% of statements") {
+		t.Errorf("coverage information not captured in output: %q", pass.Output)
+	}
+}
+
+func TestParseTestOutput_EmptyOutput(t *testing.T) {
+	events := ParseTestOutput(strings.NewReader(""))
+	if len(events) != 0 {
+		t.Errorf("expected no events from empty output, got %d", len(events))
+	}
+}
+
+func TestParseTestOutput_InvalidOutput(t *testing.T) {
+	output := `this is not a valid test output
+it should still be handled gracefully
+without producing any events`
+
+	events := ParseTestOutput(strings.NewReader(output))
+	if len(events) != 0 {
+		t.Errorf("expected no events from invalid output, got %d", len(events))
+	}
+}
+
+func TestParseTestOutput_PackageNames(t *testing.T) {
+	output := `=== RUN   TestFunction
+--- PASS: TestFunction (0.10s)
+PASS
+ok  	github.com/newbpydev/go-sentinel/pkg/foo	0.103s
+=== RUN   TestOtherFunction
+--- PASS: TestOtherFunction (0.05s)
+PASS
+ok  	github.com/newbpydev/go-sentinel/pkg/bar	0.053s`
+
+	events := ParseTestOutput(strings.NewReader(output))
+	if len(events) != 4 {
+		t.Fatalf("expected 4 events, got %d", len(events))
+	}
+
+	// Check package names are correctly parsed
+	expectedPkgs := []string{
+		"github.com/newbpydev/go-sentinel/pkg/foo",
+		"github.com/newbpydev/go-sentinel/pkg/foo",
+		"github.com/newbpydev/go-sentinel/pkg/bar",
+		"github.com/newbpydev/go-sentinel/pkg/bar",
+	}
+	for i, ev := range events {
+		if ev.Package != expectedPkgs[i] {
+			t.Errorf("event %d: expected package %q, got %q", i, expectedPkgs[i], ev.Package)
+		}
 	}
 }

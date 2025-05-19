@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -373,4 +374,181 @@ func TestGetModulePrefix_EmptyFile(t *testing.T) {
 	if prefix != "" {
 		t.Errorf("Expected empty module prefix, got %q", prefix)
 	}
+}
+
+func TestLoadJSON_ValidFile(t *testing.T) {
+	// Create a temporary test file
+	testData := map[string]interface{}{
+		"name": "test",
+		"age":  30,
+		"tags": []string{"a", "b", "c"},
+	}
+
+	tmpDir := t.TempDir()
+	tmpFile := filepath.Join(tmpDir, "test.json")
+
+	data, err := json.Marshal(testData)
+	if err != nil {
+		t.Fatalf("failed to marshal test data: %v", err)
+	}
+
+	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
+		t.Fatalf("failed to write test file: %v", err)
+	}
+
+	// Test loading the file
+	var result map[string]interface{}
+	if err := LoadJSON(tmpFile, &result); err != nil {
+		t.Fatalf("LoadJSON failed: %v", err)
+	}
+
+	// Verify contents
+	if result["name"] != "test" {
+		t.Errorf("expected name=test, got %v", result["name"])
+	}
+	if result["age"].(float64) != 30 {
+		t.Errorf("expected age=30, got %v", result["age"])
+	}
+	tags := result["tags"].([]interface{})
+	if len(tags) != 3 || tags[0].(string) != "a" {
+		t.Errorf("unexpected tags: %v", tags)
+	}
+}
+
+func TestLoadJSON_InvalidFile(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name:    "empty file",
+			content: "",
+			wantErr: true,
+			errMsg:  "unexpected end of JSON input",
+		},
+		{
+			name:    "invalid JSON",
+			content: "{invalid json",
+			wantErr: true,
+			errMsg:  "invalid character",
+		},
+		{
+			name:    "null content",
+			content: "null",
+			wantErr: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			tmpFile := filepath.Join(tmpDir, "test.json")
+
+			if err := os.WriteFile(tmpFile, []byte(tc.content), 0644); err != nil {
+				t.Fatalf("failed to write test file: %v", err)
+			}
+
+			var result interface{}
+			err := LoadJSON(tmpFile, &result)
+
+			if tc.wantErr {
+				if err == nil {
+					t.Error("expected error but got nil")
+				} else if tc.errMsg != "" && !contains(err.Error(), tc.errMsg) {
+					t.Errorf("expected error containing %q, got %v", tc.errMsg, err)
+				}
+			} else if err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestLoadJSON_NonexistentFile(t *testing.T) {
+	var result interface{}
+	err := LoadJSON("nonexistent.json", &result)
+	if err == nil {
+		t.Error("expected error loading nonexistent file")
+	}
+}
+
+func TestLoadJSON_InvalidDestination(t *testing.T) {
+	tmpDir := t.TempDir()
+	tmpFile := filepath.Join(tmpDir, "test.json")
+
+	if err := os.WriteFile(tmpFile, []byte("{}"), 0644); err != nil {
+		t.Fatalf("failed to write test file: %v", err)
+	}
+
+	// Try to load into nil
+	err := LoadJSON(tmpFile, nil)
+	if err == nil {
+		t.Error("expected error loading into nil destination")
+	}
+
+	// Try to load into non-pointer
+	var nonPtr interface{}
+	err = LoadJSON(tmpFile, nonPtr)
+	if err == nil {
+		t.Error("expected error loading into non-pointer")
+	}
+}
+
+func TestLoadJSON_NestedStructures(t *testing.T) {
+	type nested struct {
+		Field string `json:"field"`
+	}
+	type testStruct struct {
+		Name    string                 `json:"name"`
+		Numbers []int                  `json:"numbers"`
+		Nested  nested                 `json:"nested"`
+		Map     map[string]interface{} `json:"map"`
+	}
+
+	input := testStruct{
+		Name:    "test",
+		Numbers: []int{1, 2, 3},
+		Nested:  nested{Field: "nested value"},
+		Map: map[string]interface{}{
+			"key": "value",
+			"num": 42,
+		},
+	}
+
+	tmpDir := t.TempDir()
+	tmpFile := filepath.Join(tmpDir, "test.json")
+
+	data, err := json.Marshal(input)
+	if err != nil {
+		t.Fatalf("failed to marshal test data: %v", err)
+	}
+
+	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
+		t.Fatalf("failed to write test file: %v", err)
+	}
+
+	var result testStruct
+	if err := LoadJSON(tmpFile, &result); err != nil {
+		t.Fatalf("LoadJSON failed: %v", err)
+	}
+
+	if result.Name != input.Name {
+		t.Errorf("expected name=%q, got %q", input.Name, result.Name)
+	}
+	if len(result.Numbers) != len(input.Numbers) {
+		t.Errorf("expected %d numbers, got %d", len(input.Numbers), len(result.Numbers))
+	}
+	if result.Nested.Field != input.Nested.Field {
+		t.Errorf("expected nested field=%q, got %q", input.Nested.Field, result.Nested.Field)
+	}
+	if v, ok := result.Map["key"].(string); !ok || v != "value" {
+		t.Errorf("expected map[key]=%q, got %v", "value", result.Map["key"])
+	}
+}
+
+// Helper function to check if a string contains a substring
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && s[0:len(substr)] == substr
 }
