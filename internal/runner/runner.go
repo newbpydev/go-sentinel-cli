@@ -133,6 +133,8 @@ func (r *Runner) RunWithContext(ctx context.Context, pkg string, testName string
 	if err := validateArgs(args); err != nil {
 		return err
 	}
+	// G204: Subprocess launched with variable (gosec)
+	// Args are validated by validateArgs before use
 	cmd := exec.CommandContext(ctx, "go", args...)
 	cmd.Dir = findProjectRoot()
 

@@ -1,3 +1,4 @@
+// Package server provides the API server implementation for Go Sentinel.
 package server
 
 import (
@@ -23,12 +24,14 @@ import (
 var healthCache = api.NewResultCache(1)
 var healthCacheExpiry time.Time
 
+// APIServer represents the API server for Go Sentinel.
 type APIServer struct {
 	Config api.Config
 	Router *chi.Mux
 	HTTP   *http.Server
 }
 
+// NewAPIServer creates a new APIServer instance.
 func NewAPIServer(cfg api.Config) *APIServer {
 	r := chi.NewRouter()
 
@@ -130,7 +133,9 @@ func (s *APIServer) Start() error {
 		// Asking listener to shut down and shed load.
 		if err := s.HTTP.Shutdown(ctx); err != nil {
 			// Error from closing listeners, or context timeout:
-			s.HTTP.Close()
+			if closeErr := s.HTTP.Close(); closeErr != nil {
+				log.Printf("error closing HTTP server: %v", closeErr)
+			}
 			return fmt.Errorf("could not stop server gracefully: %w", err)
 		}
 	}

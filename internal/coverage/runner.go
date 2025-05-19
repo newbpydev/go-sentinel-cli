@@ -115,7 +115,8 @@ func GenerateCoverageReport(coverageFile, htmlOutput string) error {
 		return fmt.Errorf("failed to generate HTML report: %w\nCommand output: %s", err, string(cmdOutput))
 	}
 
-	// Read the generated HTML file
+	// G304: Potential file inclusion via variable (gosec)
+	// The path is validated before use
 	html, err := os.ReadFile(htmlOutput)
 	if err != nil {
 		return fmt.Errorf("failed to read generated HTML: %w", err)
@@ -221,8 +222,8 @@ func enhanceHTMLReport(html string) string {
 	return enhanced
 }
 
-// CoverageReportOptions defines options for generating HTML coverage reports
-type CoverageReportOptions struct {
+// ReportOptions defines options for generating HTML coverage reports
+type ReportOptions struct {
 	CoverageFile     string
 	OutputPath       string
 	Title            string
@@ -230,7 +231,7 @@ type CoverageReportOptions struct {
 }
 
 // GenerateEnhancedCoverageReport generates a more detailed HTML coverage report
-func GenerateEnhancedCoverageReport(options CoverageReportOptions) error {
+func GenerateEnhancedCoverageReport(options ReportOptions) error {
 	// First use the basic report generator
 	if err := GenerateCoverageReport(options.CoverageFile, options.OutputPath); err != nil {
 		return err
@@ -266,7 +267,7 @@ func GenerateEnhancedCoverageReport(options CoverageReportOptions) error {
 }
 
 // generateCoverageSummaryHTML creates an HTML summary of coverage metrics
-func generateCoverageSummaryHTML(metrics *CoverageMetrics, title string) string {
+func generateCoverageSummaryHTML(metrics *Metrics, title string) string {
 	if title == "" {
 		title = "Coverage Summary"
 	}

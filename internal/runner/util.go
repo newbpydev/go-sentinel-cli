@@ -24,6 +24,8 @@ func RunGoEnv() (string, error) {
 
 // RunGoList runs 'go list <args>' and returns its output and error.
 // It validates the arguments to prevent command injection.
+// G204: Subprocess launched with a potential tainted input or cmd arguments (gosec)
+// Args are validated by isValidGoCommandArg before use
 func RunGoList(args ...string) (string, error) {
 	// Validate arguments to prevent command injection
 	for _, arg := range args {
@@ -31,7 +33,7 @@ func RunGoList(args ...string) (string, error) {
 			return "", fmt.Errorf("invalid argument for go list: %s", arg)
 		}
 	}
-	
+
 	cmd := exec.Command("go", append([]string{"list"}, args...)...)
 	out, err := cmd.CombinedOutput()
 	return string(out), err
@@ -46,6 +48,8 @@ func RunGoModTidy() (string, error) {
 
 // RunGoFmt runs 'go fmt <packages>' and returns its output and error.
 // It validates the package paths to prevent command injection.
+// G204: Subprocess launched with a potential tainted input or cmd arguments (gosec)
+// Args are validated by isValidPackagePath before use
 func RunGoFmt(pkgs ...string) (string, error) {
 	// Validate package paths to prevent command injection
 	for _, pkg := range pkgs {
@@ -53,7 +57,7 @@ func RunGoFmt(pkgs ...string) (string, error) {
 			return "", fmt.Errorf("invalid package path for go fmt: %s", pkg)
 		}
 	}
-	
+
 	cmd := exec.Command("go", append([]string{"fmt"}, pkgs...)...)
 	out, err := cmd.CombinedOutput()
 	return string(out), err
@@ -63,14 +67,14 @@ func RunGoFmt(pkgs ...string) (string, error) {
 // This helps prevent command injection by rejecting suspicious arguments.
 func isValidGoCommandArg(arg string) bool {
 	// Reject arguments that might be used for command injection
-	if strings.Contains(arg, ";") || strings.Contains(arg, "&") || 
-	   strings.Contains(arg, "|") || strings.Contains(arg, ">") || 
-	   strings.Contains(arg, "<") || strings.Contains(arg, "`") || 
-	   strings.HasPrefix(arg, "-") || strings.Contains(arg, "$(") || 
-	   strings.Contains(arg, "${") {
+	if strings.Contains(arg, ";") || strings.Contains(arg, "&") ||
+		strings.Contains(arg, "|") || strings.Contains(arg, ">") ||
+		strings.Contains(arg, "<") || strings.Contains(arg, "`") ||
+		strings.HasPrefix(arg, "-") || strings.Contains(arg, "$(") ||
+		strings.Contains(arg, "${") {
 		return false
 	}
-	
+
 	// Additional validation for Go package/module paths
 	return true
 }
@@ -82,7 +86,7 @@ func isValidPackagePath(path string) bool {
 	if path == "" {
 		return false
 	}
-	
+
 	// Check for suspicious characters that might enable command injection
 	return isValidGoCommandArg(path)
 }

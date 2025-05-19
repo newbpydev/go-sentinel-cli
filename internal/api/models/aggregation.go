@@ -1,3 +1,4 @@
+// Package models provides data aggregation models for Go Sentinel API.
 package models
 
 // TestResultSummary represents aggregated statistics for a set of test results.

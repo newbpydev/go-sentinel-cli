@@ -5,15 +5,18 @@ import (
 	"net/http"
 )
 
+// TestRunner defines the interface for running tests.
 type TestRunner interface {
 	Trigger(tests []string) error
 	Cancel(ids []string) error
 }
 
+// TestControlHandler handles test control operations.
 type TestControlHandler struct {
 	runner TestRunner
 }
 
+// NewTestControlHandler creates a new TestControlHandler.
 func NewTestControlHandler(runner TestRunner) *TestControlHandler {
 	return &TestControlHandler{runner: runner}
 }

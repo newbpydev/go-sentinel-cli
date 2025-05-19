@@ -13,7 +13,7 @@ import (
 
 func TestServer_InitializesWithProperRoutes(t *testing.T) {
 	r := chi.NewRouter()
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -40,7 +40,7 @@ func TestServer_AppliesMiddlewareChain(t *testing.T) {
 
 	r := chi.NewRouter()
 	r.Use(mw)
-	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/test", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 

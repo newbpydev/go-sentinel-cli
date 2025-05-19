@@ -4,21 +4,42 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 )
 
+// TestRun represents a single execution of tests.
 type TestRun struct {
-	ID     string `json:"id"`
+	ID           string       `json:"id"`
+	Timestamp    time.Time    `json:"timestamp"`
+	TotalTests   int          `json:"totalTests"`
+	PassedTests  int          `json:"passedTests"`
+	FailedTests  int          `json:"failedTests"`
+	TotalTime    string       `json:"totalTime"` // Duration as string for display
+	TestResults  []TestResult `json:"testResults"`
+	Branch       string       `json:"branch,omitempty"`
+	Commit       string       `json:"commit,omitempty"`
+	TriggeredBy  string       `json:"triggeredBy,omitempty"`
+	BuildVersion string       `json:"buildVersion,omitempty"`
+}
+
+// TestResult represents a single test result (minimal stub for test history).
+type TestResult struct {
+	Name   string `json:"name"`
 	Status string `json:"status"`
 }
 
+// HistoryStore defines the interface for test run history storage.
 type HistoryStore interface {
+	Add(run TestRun) error
 	GetRecent(limit, offset int) ([]TestRun, error)
 }
 
+// TestHistoryHandler handles test run history operations.
 type TestHistoryHandler struct {
 	store HistoryStore
 }
 
+// NewTestHistoryHandler creates a new TestHistoryHandler.
 func NewTestHistoryHandler(store HistoryStore) *TestHistoryHandler {
 	return &TestHistoryHandler{store: store}
 }

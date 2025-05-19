@@ -13,7 +13,7 @@ import (
 // CoverageHandler handles requests related to test coverage visualization
 type CoverageHandler struct {
 	templates *template.Template
-	collector *coverage.CoverageCollector
+	collector *coverage.Collector
 }
 
 // NewCoverageHandler creates a new coverage handler

@@ -12,21 +12,21 @@ import (
 var (
 	// Style definitions
 	titleStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#FFFFFF")).
-		Background(lipgloss.Color("#0366d6")).
-		Padding(0, 1)
+			Bold(true).
+			Foreground(lipgloss.Color("#FFFFFF")).
+			Background(lipgloss.Color("#0366d6")).
+			Padding(0, 1)
 
 	headerStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#333333")).
-		Background(lipgloss.Color("#f1f8ff")).
-		Padding(0, 1)
+			Bold(true).
+			Foreground(lipgloss.Color("#333333")).
+			Background(lipgloss.Color("#f1f8ff")).
+			Padding(0, 1)
 
 	// Coverage percentage styles based on thresholds
 	highCoverageStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#28a745")) // Green
-	medCoverageStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#f1e05a"))  // Yellow
-	lowCoverageStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#d73a49"))  // Red
+	medCoverageStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#f1e05a")) // Yellow
+	lowCoverageStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#d73a49")) // Red
 
 	// Line annotation styles
 	coveredLineStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#28a745"))
@@ -34,9 +34,9 @@ var (
 	executionStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#0366d6"))
 )
 
-// CoverageView represents the TUI component for displaying coverage
-type CoverageView struct {
-	metrics           *CoverageMetrics
+// View represents a coverage view for a file or package.
+type View struct {
+	metrics           *Metrics
 	selectedFile      string
 	selectedFileIndex int
 	sortedFiles       []string // Sorted list of file names for predictable navigation
@@ -44,16 +44,16 @@ type CoverageView struct {
 	height            int
 	keyHandlers       map[rune]func()
 	visible           bool
-	collector         *CoverageCollector // Reference to the collector for source code access
-	showLowCoverage   bool // Filter to show only files with low coverage
+	collector         *Collector // Reference to the collector for source code access
+	showLowCoverage   bool       // Filter to show only files with low coverage
 }
 
 // NewCoverageView creates a new coverage view
-func NewCoverageView(metrics *CoverageMetrics) *CoverageView {
-	cv := &CoverageView{
+func NewCoverageView(metrics *Metrics) *View {
+	cv := &View{
 		metrics:           metrics,
-		width:             80,  // Default width
-		height:            20,  // Default height
+		width:             80, // Default width
+		height:            20, // Default height
 		keyHandlers:       make(map[rune]func()),
 		visible:           true,
 		collector:         nil, // Will be set when a coverage file is loaded
@@ -64,7 +64,7 @@ func NewCoverageView(metrics *CoverageMetrics) *CoverageView {
 	// Initialize the sorted files list if we have metrics
 	if metrics != nil && metrics.FileMetrics != nil {
 		cv.updateSortedFiles()
-		
+
 		// Initialize selectedFile to first file if available
 		if len(cv.sortedFiles) > 0 {
 			cv.selectedFile = cv.sortedFiles[0]
@@ -83,33 +83,33 @@ func NewCoverageView(metrics *CoverageMetrics) *CoverageView {
 }
 
 // SetCollector sets the coverage collector for accessing source code
-func (cv *CoverageView) SetCollector(collector *CoverageCollector) {
+func (cv *View) SetCollector(collector *Collector) {
 	cv.collector = collector
 }
 
 // GetSourceCode retrieves the source code for a given file
-func (cv *CoverageView) GetSourceCode(filePath string) (map[int]string, error) {
+func (cv *View) GetSourceCode(filePath string) (map[int]string, error) {
 	if cv.collector == nil {
 		return make(map[int]string), nil
 	}
-	
+
 	// Use the collector to get the source code
 	return cv.collector.GetSourceCode(filePath)
 }
 
 // HasKeyBinding checks if the view has a specific key binding
-func (cv *CoverageView) HasKeyBinding(key rune) bool {
+func (cv *View) HasKeyBinding(key rune) bool {
 	_, exists := cv.keyHandlers[key]
 	return exists
 }
 
 // updateSortedFiles refreshes the sorted list of files from the metrics
-func (cv *CoverageView) updateSortedFiles() {
+func (cv *View) updateSortedFiles() {
 	if cv.metrics == nil || cv.metrics.FileMetrics == nil {
 		cv.sortedFiles = nil
 		return
 	}
-	
+
 	// Get all file names
 	cv.sortedFiles = make([]string, 0, len(cv.metrics.FileMetrics))
 	for filename := range cv.metrics.FileMetrics {
@@ -124,18 +124,18 @@ func (cv *CoverageView) updateSortedFiles() {
 			cv.sortedFiles = append(cv.sortedFiles, filename)
 		}
 	}
-	
+
 	// Sort the file names for consistent navigation
 	sort.Strings(cv.sortedFiles)
 }
 
 // ToggleLowCoverageFilter toggles the filter to show only low coverage files
-func (cv *CoverageView) ToggleLowCoverageFilter() {
+func (cv *View) ToggleLowCoverageFilter() {
 	cv.showLowCoverage = !cv.showLowCoverage
-	
+
 	// Update the file list based on the new filter
 	cv.updateSortedFiles()
-	
+
 	// Reset selection to first file
 	cv.selectedFileIndex = 0
 	if len(cv.sortedFiles) > 0 {
@@ -146,54 +146,54 @@ func (cv *CoverageView) ToggleLowCoverageFilter() {
 }
 
 // SelectNextFile selects the next file in the list
-func (cv *CoverageView) SelectNextFile() {
+func (cv *View) SelectNextFile() {
 	if len(cv.sortedFiles) == 0 {
 		return
 	}
-	
+
 	// Move to next file, wrapping around if necessary
 	cv.selectedFileIndex = (cv.selectedFileIndex + 1) % len(cv.sortedFiles)
 	cv.selectedFile = cv.sortedFiles[cv.selectedFileIndex]
 }
 
 // SelectPreviousFile selects the previous file in the list
-func (cv *CoverageView) SelectPreviousFile() {
+func (cv *View) SelectPreviousFile() {
 	if len(cv.sortedFiles) == 0 {
 		return
 	}
-	
+
 	// Move to previous file, wrapping around if necessary
 	cv.selectedFileIndex = (cv.selectedFileIndex - 1 + len(cv.sortedFiles)) % len(cv.sortedFiles)
 	cv.selectedFile = cv.sortedFiles[cv.selectedFileIndex]
 }
 
 // SelectFirstFile selects the first file in the list
-func (cv *CoverageView) SelectFirstFile() {
+func (cv *View) SelectFirstFile() {
 	if len(cv.sortedFiles) == 0 {
 		return
 	}
-	
+
 	cv.selectedFileIndex = 0
 	cv.selectedFile = cv.sortedFiles[0]
 }
 
 // SelectLastFile selects the last file in the list
-func (cv *CoverageView) SelectLastFile() {
+func (cv *View) SelectLastFile() {
 	if len(cv.sortedFiles) == 0 {
 		return
 	}
-	
+
 	cv.selectedFileIndex = len(cv.sortedFiles) - 1
 	cv.selectedFile = cv.sortedFiles[cv.selectedFileIndex]
 }
 
 // GetSelectedFile returns the currently selected file path
-func (cv *CoverageView) GetSelectedFile() string {
+func (cv *View) GetSelectedFile() string {
 	return cv.selectedFile
 }
 
 // HandleKey processes a key press
-func (cv *CoverageView) HandleKey(key rune) bool {
+func (cv *View) HandleKey(key rune) bool {
 	handler, exists := cv.keyHandlers[key]
 	if exists {
 		handler()
@@ -203,26 +203,27 @@ func (cv *CoverageView) HandleKey(key rune) bool {
 }
 
 // SetSize sets the size of the view
-func (cv *CoverageView) SetSize(width, height int) {
+func (cv *View) SetSize(width, height int) {
 	cv.width = width
 	cv.height = height
 }
 
 // SelectFile selects a file to show detailed coverage for
-func (cv *CoverageView) SelectFile(filename string) {
+func (cv *View) SelectFile(filename string) {
 	cv.selectedFile = filename
 }
 
 // showOnlyLowCoverage filters view to show only low coverage files
 // This is a stub implementation that will be completed in a future update
+//
 //nolint:unused // Will be implemented in the future
-func (cv *CoverageView) showOnlyLowCoverage() {
+func (cv *View) showOnlyLowCoverage() {
 	// Implementation would update internal filter state
 	// For now this is a stub to satisfy the tests
 }
 
 // Render renders the coverage view
-func (cv *CoverageView) Render() string {
+func (cv *View) Render() string {
 	if !cv.visible || cv.metrics == nil {
 		return ""
 	}
@@ -258,20 +259,20 @@ func (cv *CoverageView) Render() string {
 		metrics := cv.metrics.FileMetrics[filename]
 		coverageStyle := getCoverageStyle(metrics.LineCoverage)
 		shortFileName := getShortFileName(filename)
-		
+
 		// Highlight the currently selected file
 		isSelected := filename == cv.selectedFile
 		linePrefix := "  "
 		if isSelected {
 			linePrefix = "▶ "
 		}
-		
+
 		// Format line with index, selection marker, and coverage
-		fileDisplay := fmt.Sprintf("%s%s: %s", 
+		fileDisplay := fmt.Sprintf("%s%s: %s",
 			linePrefix,
 			shortFileName,
 			coverageStyle.Render(fmt.Sprintf("%.1f%%", metrics.LineCoverage)))
-		
+
 		// If selected, use a highlighted style
 		if isSelected {
 			fileDisplay = lipgloss.NewStyle().
@@ -279,7 +280,7 @@ func (cv *CoverageView) Render() string {
 				Background(lipgloss.Color("#f1f8ff")).
 				Render(fileDisplay)
 		}
-		
+
 		sb.WriteString(fileDisplay + "\n")
 
 		// If this is the selected file and we have detailed metrics, show them
@@ -296,11 +297,11 @@ func (cv *CoverageView) Render() string {
 
 // FileCoverageView represents a view for detailed file coverage
 type FileCoverageView struct {
-	filename    string
-	metrics     *FileMetrics
-	sourceCode  map[int]string
-	width       int
-	height      int
+	filename   string
+	metrics    *FileMetrics
+	sourceCode map[int]string
+	width      int
+	height     int
 }
 
 // NewFileCoverageView creates a new detailed file coverage view
@@ -334,7 +335,7 @@ func (fcv *FileCoverageView) Render() string {
 
 	// Render coverage summary
 	coverageStyle := getCoverageStyle(fcv.metrics.LineCoverage)
-	sb.WriteString(fmt.Sprintf("Coverage: %s\n\n", 
+	sb.WriteString(fmt.Sprintf("Coverage: %s\n\n",
 		coverageStyle.Render(fmt.Sprintf("%.1f%%", fcv.metrics.LineCoverage))))
 
 	// Render source code with coverage annotations
@@ -350,11 +351,11 @@ func (fcv *FileCoverageView) Render() string {
 		for _, lineNum := range lineNumbers {
 			code := fcv.sourceCode[lineNum]
 			execCount, hasExec := fcv.metrics.LineExecutionCounts[lineNum]
-			
+
 			// Determine line style based on coverage
 			lineStyle := coveredLineStyle
 			executionAnnotation := ""
-			
+
 			if hasExec {
 				if execCount > 0 {
 					// Covered line
@@ -365,7 +366,7 @@ func (fcv *FileCoverageView) Render() string {
 					executionAnnotation = uncoveredLineStyle.Render("0x")
 				}
 			}
-			
+
 			// Format the line with annotations
 			sb.WriteString(fmt.Sprintf("%4d | %s %s\n",
 				lineNum,

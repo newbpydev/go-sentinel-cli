@@ -1,3 +1,4 @@
+// Package middleware provides HTTP middleware for the Go Sentinel API, including rate limiting.
 package middleware
 
 import (
@@ -7,10 +8,10 @@ import (
 )
 
 type rateLimiter struct {
-	mu        sync.Mutex
-	requests  map[string][]time.Time
-	limit     int
-	window    time.Duration
+	mu       sync.Mutex
+	requests map[string][]time.Time
+	limit    int
+	window   time.Duration
 }
 
 func newRateLimiter(limit int, window time.Duration) *rateLimiter {

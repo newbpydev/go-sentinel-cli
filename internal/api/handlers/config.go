@@ -35,7 +35,7 @@ func (h *ConfigHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleGet handles GET requests for configuration
-func (h *ConfigHandler) handleGet(w http.ResponseWriter, r *http.Request) {
+func (h *ConfigHandler) handleGet(w http.ResponseWriter, _ *http.Request) {
 	cfg := h.store.Get()
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(cfg); err != nil {

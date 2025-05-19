@@ -28,7 +28,8 @@ var upgrader = gorillaws.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	// Allow connections from any origin for development
-	CheckOrigin: func(r *http.Request) bool {
+	CheckOrigin: func(_ *http.Request) bool {
+		// In production, you should validate the origin
 		return true
 	},
 }
@@ -47,14 +48,14 @@ func HandleWebSocketConnection(w http.ResponseWriter, r *http.Request, connManag
 		log.Printf("Failed to upgrade to WebSocket: %v", err)
 		return
 	}
-	
+
 	// Create a connection wrapper for the manager
 	wsConn := NewWebSocketConnection(conn)
-	
+
 	// Register with connection manager
 	connID := connManager.Add(wsConn)
 	log.Printf("New WebSocket connection established: %s", connID)
-	
+
 	// Handle incoming messages in a goroutine
 	go handleWSMessages(conn, connID, connManager)
 }
@@ -63,8 +64,8 @@ func HandleWebSocketConnection(w http.ResponseWriter, r *http.Request, connManag
 func handleWSMessages(conn *gorillaws.Conn, connID string, connManager *gosentinel.ConnectionManager) {
 	defer func() {
 		if err := conn.Close(); err != nil {
-		log.Printf("websocket close error: %v", err)
-	}
+			log.Printf("websocket close error: %v", err)
+		}
 		connManager.Remove(connID)
 		log.Printf("WebSocket connection closed: %s", connID)
 	}()
@@ -73,8 +74,8 @@ func handleWSMessages(conn *gorillaws.Conn, connID string, connManager *gosentin
 		// Read message
 		messageType, message, err := conn.ReadMessage()
 		if err != nil {
-			if gorillaws.IsUnexpectedCloseError(err, 
-				gorillaws.CloseGoingAway, 
+			if gorillaws.IsUnexpectedCloseError(err,
+				gorillaws.CloseGoingAway,
 				gorillaws.CloseAbnormalClosure) {
 				log.Printf("WebSocket read error: %v", err)
 			}

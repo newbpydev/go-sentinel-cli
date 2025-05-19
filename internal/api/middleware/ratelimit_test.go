@@ -8,7 +8,7 @@ import (
 )
 
 func TestRateLimit_AllowsRequestsBelowLimit(t *testing.T) {
-	h := RateLimit(3, time.Second)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := RateLimit(3, time.Second)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	w := httptest.NewRecorder()

@@ -7,13 +7,17 @@ import (
 	"testing"
 )
 
-type mockHistoryStore struct{}
+type mockHistoryStore struct {
+	runs []TestRun
+}
 
-func (m *mockHistoryStore) GetRecent(_, offset int) ([]TestRun, error) {
-	return []TestRun{
-		{ID: "1", Status: "pass"},
-		{ID: "2", Status: "fail"},
-	}, nil
+func (m *mockHistoryStore) Add(run TestRun) error {
+	m.runs = append(m.runs, run)
+	return nil
+}
+
+func (m *mockHistoryStore) GetRecent(_, _ int) ([]TestRun, error) {
+	return m.runs, nil
 }
 
 func TestGetTestHistory_Success(t *testing.T) {
@@ -31,7 +35,7 @@ func TestGetTestHistory_Success(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("bad json: %v", err)
 	}
-	if len(resp) != 2 || resp[0].ID != "1" || resp[1].Status != "fail" {
+	if len(resp) != 2 || resp[0].ID != "1" {
 		t.Errorf("unexpected response: %+v", resp)
 	}
 }
