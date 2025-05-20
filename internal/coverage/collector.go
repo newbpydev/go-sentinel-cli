@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
+	"time"
 
 	"golang.org/x/tools/cover"
 )
@@ -46,6 +48,9 @@ func validateCoveragePath(path string) error {
 type Collector struct {
 	CoverageFile string
 	Profiles     []*cover.Profile
+	mu           sync.RWMutex
+	lastUpdate   time.Time
+	cleanupTimer *time.Timer
 }
 
 // NewCollector creates a new coverage collector from a coverage profile file
@@ -55,21 +60,90 @@ func NewCollector(coverageFile string) (*Collector, error) {
 		return nil, fmt.Errorf("invalid coverage file path: %w", err)
 	}
 
-	// Check if the file exists
-	if _, err := os.Stat(coverageFile); os.IsNotExist(err) {
-		return nil, fmt.Errorf("coverage file does not exist: %s", coverageFile)
+	c := &Collector{
+		CoverageFile: coverageFile,
+		mu:           sync.RWMutex{},
+	}
+
+	// Try to load initial profiles, but don't fail if file doesn't exist
+	if _, err := os.Stat(coverageFile); err == nil {
+		if profiles, err := cover.ParseProfiles(coverageFile); err == nil {
+			c.Profiles = profiles
+			c.lastUpdate = time.Now()
+		}
+	}
+
+	// Start cleanup timer
+	c.startCleanupTimer()
+
+	return c, nil
+}
+
+// startCleanupTimer starts a timer to periodically clean up old coverage files
+func (c *Collector) startCleanupTimer() {
+	c.cleanupTimer = time.NewTimer(5 * time.Minute)
+	go func() {
+		for {
+			<-c.cleanupTimer.C
+			c.cleanupOldFiles()
+			c.cleanupTimer.Reset(5 * time.Minute)
+		}
+	}()
+}
+
+// cleanupOldFiles removes coverage files older than 1 hour
+func (c *Collector) cleanupOldFiles() {
+	tempDir := os.TempDir()
+	files, err := filepath.Glob(filepath.Join(tempDir, "coverage-test*"))
+	if err != nil {
+		return
+	}
+
+	for _, file := range files {
+		info, err := os.Stat(file)
+		if err != nil {
+			continue
+		}
+
+		// Remove files older than 1 hour
+		if time.Since(info.ModTime()) > time.Hour {
+			if err := os.RemoveAll(file); err != nil {
+				// Log error but continue with other files
+				fmt.Printf("Warning: failed to remove old coverage file %s: %v\n", file, err)
+			}
+		}
+	}
+}
+
+// Refresh reloads the coverage profiles from the file
+func (c *Collector) Refresh() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Check if file exists
+	if _, err := os.Stat(c.CoverageFile); os.IsNotExist(err) {
+		// Clear profiles but don't return error
+		c.Profiles = nil
+		return nil
 	}
 
 	// Parse the coverage profiles
-	profiles, err := cover.ParseProfiles(coverageFile)
+	profiles, err := cover.ParseProfiles(c.CoverageFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse coverage profiles: %w", err)
+		return fmt.Errorf("failed to parse coverage profiles: %w", err)
 	}
 
-	return &Collector{
-		CoverageFile: coverageFile,
-		Profiles:     profiles,
-	}, nil
+	c.Profiles = profiles
+	c.lastUpdate = time.Now()
+	return nil
+}
+
+// Close cleans up resources used by the collector
+func (c *Collector) Close() error {
+	if c.cleanupTimer != nil {
+		c.cleanupTimer.Stop()
+	}
+	return nil
 }
 
 // CalculateMetrics processes coverage data and returns metrics

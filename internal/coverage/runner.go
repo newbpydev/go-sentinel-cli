@@ -16,6 +16,7 @@ type TestRunnerOptions struct {
 	OutputPath          string   // Where to save the coverage profile
 	Timeout             time.Duration
 	IncludeCoveredFiles bool // Include files with 100% coverage
+	CleanupTempFiles    bool // Whether to clean up temporary coverage files
 }
 
 // RunTestsWithCoverage runs tests for the specified packages with coverage enabled
@@ -29,6 +30,24 @@ func RunTestsWithCoverage(ctx context.Context, options TestRunnerOptions) error 
 		// Use a default output path
 		options.OutputPath = "coverage.out"
 	}
+
+	// Create a temporary directory for coverage files
+	tempDir, err := os.MkdirTemp("", "coverage-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp directory: %w", err)
+	}
+
+	// Clean up temp directory when done if requested
+	if options.CleanupTempFiles {
+		defer func() {
+			if err := os.RemoveAll(tempDir); err != nil {
+				fmt.Printf("Warning: failed to clean up temp directory %s: %v\n", tempDir, err)
+			}
+		}()
+	}
+
+	// Use the temp directory for coverage output
+	tempCoverageFile := filepath.Join(tempDir, "coverage.out")
 
 	// Ensure the output directory exists
 	outputDir := filepath.Dir(options.OutputPath)
@@ -47,26 +66,34 @@ func RunTestsWithCoverage(ctx context.Context, options TestRunnerOptions) error 
 	}
 
 	// Add coverage options
-	args = append(args, fmt.Sprintf("-coverprofile=%s", options.OutputPath))
+	args = append(args, fmt.Sprintf("-coverprofile=%s", tempCoverageFile))
 
 	// Add packages to test
 	args = append(args, options.PackagePaths...)
 
-	// Run the command
-	cmd := exec.CommandContext(ctx, "go", args...)
+	// Run the command with a timeout context
+	cmdCtx, cancel := context.WithTimeout(ctx, options.Timeout+5*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(cmdCtx, "go", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
 	// Execute the command
-	err := cmd.Run()
-	if err != nil {
-		// Even if tests fail, we might still have coverage data
-		// Check if the output file was created
-		if _, statErr := os.Stat(options.OutputPath); statErr != nil {
-			return fmt.Errorf("failed to generate coverage profile: %w", err)
-		}
+	err = cmd.Run()
 
-		// If the file exists, continue with analysis despite test failures
+	// Check if we have coverage data regardless of test success/failure
+	if _, statErr := os.Stat(tempCoverageFile); statErr == nil {
+		// Move the coverage file to the final destination
+		if moveErr := os.Rename(tempCoverageFile, options.OutputPath); moveErr != nil {
+			return fmt.Errorf("failed to move coverage file: %w", moveErr)
+		}
+	} else if err != nil {
+		// Only return error if we also failed to generate coverage
+		return fmt.Errorf("failed to generate coverage profile: %w", err)
+	}
+
+	if err != nil {
 		fmt.Println("Some tests failed, but coverage profile was generated.")
 	}
 

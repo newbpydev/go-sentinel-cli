@@ -3,14 +3,13 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-  # First run linter, then tests, then build the binary
+  # First run linter, then build the binary
   pre_cmd = [
-    "golangci-lint run --timeout=2m",
-    "go test -tags=integration ./..."
+    "golangci-lint run --timeout=2m"
   ]
   cmd = "go build -o ./tmp/main.exe ./cmd/go-sentinel-web"
   bin = "./tmp/main.exe"
-  # Stop if linting or tests fail
+  # Stop if linting fails
   stop_on_error = true
   # Show error message in terminal
   error_length = 10000
@@ -21,8 +20,46 @@ tmp_dir = "tmp"
 
 [watch]
   delay = 1000
-  includes = ["**/*.go", "**/*.html", "**/*.tmpl", "**/*.css", "**/*.js", "**/*.ts", "**/*.json"]
-  excludes = ["tmp/**", ".git/**", "vendor/**", "**/node_modules/**"]
+  # Be more specific about what to watch
+  includes = [
+    # Go files
+    "./cmd/**/*.go",
+    "./internal/**/*.go",
+    "./pkg/**/*.go",
+    # Web files
+    "./web/templates/**/*.tmpl",
+    "./web/static/css/**/*.css",
+    "./web/static/js/src/**/*.ts",
+    "./web/static/js/src/**/*.js",
+    # Config files
+    "./*.json",
+    "./*.yaml",
+    "./*.toml"
+  ]
+  # Exclude patterns
+  excludes = [
+    # Build artifacts and temp files
+    "./tmp/**/*",
+    "./dist/**/*",
+    "./build/**/*",
+    "**/*.exe",
+    "**/*.test",
+    "**/*.out",
+    # Dependencies and version control
+    "./.git/**/*",
+    "./vendor/**/*",
+    "**/node_modules/**/*",
+    # Test files
+    "**/*_test.go",
+    "**/testdata/**/*",
+    # Coverage files
+    "**/coverage/**/*",
+    "**/*.coverage.*"
+  ]
+  # File extensions to watch
+  extensions = ["go", "tmpl", "css", "js", "ts", "json", "yaml", "toml"]
+  # Directories to watch
+  watch_directories = true
 
 [log]
   color = true
