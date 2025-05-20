@@ -51,6 +51,7 @@ type Collector struct {
 	mu           sync.RWMutex
 	lastUpdate   time.Time
 	cleanupTimer *time.Timer
+	stopChan     chan struct{} // Add channel to signal cleanup goroutine to stop
 }
 
 // NewCollector creates a new coverage collector from a coverage profile file
@@ -63,6 +64,7 @@ func NewCollector(coverageFile string) (*Collector, error) {
 	c := &Collector{
 		CoverageFile: coverageFile,
 		mu:           sync.RWMutex{},
+		stopChan:     make(chan struct{}), // Initialize stop channel
 	}
 
 	// Try to load initial profiles, but don't fail if file doesn't exist
@@ -84,9 +86,16 @@ func (c *Collector) startCleanupTimer() {
 	c.cleanupTimer = time.NewTimer(5 * time.Minute)
 	go func() {
 		for {
-			<-c.cleanupTimer.C
-			c.cleanupOldFiles()
-			c.cleanupTimer.Reset(5 * time.Minute)
+			select {
+			case <-c.cleanupTimer.C:
+				c.cleanupOldFiles()
+				c.cleanupTimer.Reset(5 * time.Minute)
+			case <-c.stopChan:
+				if !c.cleanupTimer.Stop() {
+					<-c.cleanupTimer.C
+				}
+				return
+			}
 		}
 	}()
 }
@@ -94,7 +103,7 @@ func (c *Collector) startCleanupTimer() {
 // cleanupOldFiles removes coverage files older than 1 hour
 func (c *Collector) cleanupOldFiles() {
 	tempDir := os.TempDir()
-	files, err := filepath.Glob(filepath.Join(tempDir, "coverage-test*"))
+	files, err := filepath.Glob(filepath.Join(tempDir, "coverage-*.out"))
 	if err != nil {
 		return
 	}
@@ -140,9 +149,12 @@ func (c *Collector) Refresh() error {
 
 // Close cleans up resources used by the collector
 func (c *Collector) Close() error {
-	if c.cleanupTimer != nil {
-		c.cleanupTimer.Stop()
-	}
+	// Signal cleanup goroutine to stop
+	close(c.stopChan)
+
+	// Clean up any remaining files
+	c.cleanupOldFiles()
+
 	return nil
 }
 

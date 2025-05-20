@@ -1,30 +1,77 @@
 package handlers
 
 import (
+	"fmt"
 	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/newbpydev/go-sentinel/internal/coverage"
 )
 
-// CoverageHandler handles requests related to test coverage visualization
+// CoverageHandler handles coverage report requests
 type CoverageHandler struct {
 	templates *template.Template
 	collector *coverage.Collector
+	mu        sync.RWMutex
 }
 
 // NewCoverageHandler creates a new coverage handler
 func NewCoverageHandler(tmpl *template.Template) *CoverageHandler {
-	// Create a default collector with a mock coverage file path
-	// In a real implementation, this would be configured from settings
-	collector, _ := coverage.NewCollector("coverage.out")
 	return &CoverageHandler{
 		templates: tmpl,
-		collector: collector,
 	}
+}
+
+// Initialize sets up the coverage collector
+func (h *CoverageHandler) Initialize(coverageFile string) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	// Close existing collector if any
+	if h.collector != nil {
+		h.collector.Close()
+	}
+
+	// Create new collector
+	collector, err := coverage.NewCollector(coverageFile)
+	if err != nil {
+		return fmt.Errorf("failed to create coverage collector: %w", err)
+	}
+
+	h.collector = collector
+	return nil
+}
+
+// Close cleans up resources
+func (h *CoverageHandler) Close() error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	if h.collector != nil {
+		if err := h.collector.Close(); err != nil {
+			return fmt.Errorf("failed to close coverage collector: %w", err)
+		}
+		h.collector = nil
+	}
+	return nil
+}
+
+// ServeHTTP handles HTTP requests for coverage data
+func (h *CoverageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.mu.RLock()
+	collector := h.collector
+	h.mu.RUnlock()
+
+	if collector == nil {
+		http.Error(w, "Coverage collector not initialized", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Handle request...
 }
 
 // CoverageSummaryData represents the data for the coverage summary

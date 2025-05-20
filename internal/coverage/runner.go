@@ -32,19 +32,17 @@ func RunTestsWithCoverage(ctx context.Context, options TestRunnerOptions) error 
 	}
 
 	// Create a temporary directory for coverage files
-	tempDir, err := os.MkdirTemp("", "coverage-*")
+	tempDir, err := os.MkdirTemp("", "coverage-")
 	if err != nil {
 		return fmt.Errorf("failed to create temp directory: %w", err)
 	}
 
-	// Clean up temp directory when done if requested
-	if options.CleanupTempFiles {
-		defer func() {
-			if err := os.RemoveAll(tempDir); err != nil {
-				fmt.Printf("Warning: failed to clean up temp directory %s: %v\n", tempDir, err)
-			}
-		}()
-	}
+	// Always clean up temp directory when done
+	defer func() {
+		if err := os.RemoveAll(tempDir); err != nil {
+			fmt.Printf("Warning: failed to clean up temp directory %s: %v\n", tempDir, err)
+		}
+	}()
 
 	// Use the temp directory for coverage output
 	tempCoverageFile := filepath.Join(tempDir, "coverage.out")
@@ -79,8 +77,24 @@ func RunTestsWithCoverage(ctx context.Context, options TestRunnerOptions) error 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	// Execute the command
-	err = cmd.Run()
+	// Create a channel to signal command completion
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Run()
+	}()
+
+	// Wait for either command completion or context cancellation
+	var cmdErr error
+	select {
+	case <-ctx.Done():
+		// Context was cancelled, kill the process
+		if cmd.Process != nil {
+			cmd.Process.Kill()
+		}
+		cmdErr = ctx.Err()
+	case cmdErr = <-done:
+		// Command completed normally
+	}
 
 	// Check if we have coverage data regardless of test success/failure
 	if _, statErr := os.Stat(tempCoverageFile); statErr == nil {
@@ -88,12 +102,12 @@ func RunTestsWithCoverage(ctx context.Context, options TestRunnerOptions) error 
 		if moveErr := os.Rename(tempCoverageFile, options.OutputPath); moveErr != nil {
 			return fmt.Errorf("failed to move coverage file: %w", moveErr)
 		}
-	} else if err != nil {
+	} else if cmdErr != nil {
 		// Only return error if we also failed to generate coverage
-		return fmt.Errorf("failed to generate coverage profile: %w", err)
+		return fmt.Errorf("failed to generate coverage profile: %w", cmdErr)
 	}
 
-	if err != nil {
+	if cmdErr != nil && cmdErr != context.Canceled {
 		fmt.Println("Some tests failed, but coverage profile was generated.")
 	}
 
