@@ -122,7 +122,7 @@ func (r *Runner) RunOnce(opts RunOptions) (string, error) {
 	// Prepare phase
 	prepareStart := time.Now()
 	if parseErr == nil && opts.Renderer != nil && run != nil {
-		opts.Renderer.RenderTestRun(run)
+		opts.Renderer.RenderFinalSummary(run)
 	}
 	if run != nil {
 		run.PrepareDuration = time.Since(prepareStart)

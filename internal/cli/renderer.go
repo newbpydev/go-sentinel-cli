@@ -241,6 +241,14 @@ func formatDuration(d time.Duration) string {
 
 // RenderFinalSummary renders the final test summary
 func (r *Renderer) RenderFinalSummary(run *TestRun) {
+	// Header
+	r.renderHeader()
+
+	// Test results
+	for _, suite := range run.Suites {
+		r.renderSuite(suite)
+	}
+
 	// Add a newline before summary
 	r.writeln("")
 
@@ -289,7 +297,8 @@ func (r *Renderer) RenderFinalSummary(run *TestRun) {
 
 	// Show failed tests if any
 	if run.NumFailed > 0 {
-		r.writeln(r.style.FormatErrorHeader("FAILED Tests"))
+		r.writeln(r.style.FormatErrorHeader("FAILED TESTS"))
+		r.writeln("")
 
 		var failedTests []struct {
 			Suite string
@@ -317,15 +326,15 @@ func (r *Renderer) RenderFinalSummary(run *TestRun) {
 		for _, ft := range failedTests {
 			r.writeln(r.style.FormatFailedSuite(ft.Suite))
 			r.writeln(r.style.FormatFailedTest(ft.Test.Name))
-			if ft.Test.Error != nil {
+			if ft.Test.Error != nil && ft.Test.Error.Message != "" {
 				r.writeln(r.style.FormatErrorMessage(ft.Test.Error.Message))
 				if ft.Test.Error.Location != nil {
 					r.writeln(r.style.FormatErrorMessage(fmt.Sprintf("at %s:%d",
 						ft.Test.Error.Location.File, ft.Test.Error.Location.Line)))
 				}
 			}
+			r.writeln("")
 		}
-		r.writeln("")
 	}
 }
 

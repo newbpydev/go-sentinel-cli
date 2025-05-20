@@ -72,10 +72,12 @@ var (
 				Foreground(lipgloss.Color("#E03E3E"))
 
 	summaryPassedStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#2EA043"))
+				Bold(true).
+				Foreground(lipgloss.Color("#4ACA70"))
 
 	summarySkippedStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#ca8a04"))
+				Bold(true).
+				Foreground(lipgloss.Color("#FFA500"))
 
 	summaryLabelStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("#6E7681"))
@@ -146,12 +148,12 @@ func (s *Style) FormatTestSummary(label string, failed, passed, skipped, total i
 
 	// Add passed count
 	if passed > 0 {
-		stats = append(stats, fmt.Sprintf("%s passed", summaryValueStyle.Render(fmt.Sprintf("%d", passed))))
+		stats = append(stats, fmt.Sprintf("%s passed", summaryPassedStyle.Render(fmt.Sprintf("%d", passed))))
 	}
 
 	// Add skipped count if any
 	if skipped > 0 {
-		stats = append(stats, fmt.Sprintf("%s skipped", summaryValueStyle.Render(fmt.Sprintf("%d", skipped))))
+		stats = append(stats, fmt.Sprintf("%s skipped", summarySkippedStyle.Render(fmt.Sprintf("%d", skipped))))
 	}
 
 	// Join all parts with proper spacing and add total in parentheses
@@ -188,22 +190,22 @@ func (s *Style) FormatHeader(text string) string {
 
 // FormatErrorHeader formats an error header
 func (s *Style) FormatErrorHeader(text string) string {
-	return errorStyle.Render(text)
+	return errorStyle.Bold(true).Render(text)
 }
 
 // FormatFailedSuite formats a failed test suite path
 func (s *Style) FormatFailedSuite(path string) string {
-	return fmt.Sprintf("  %s", path)
+	return fmt.Sprintf("  %s", dimStyle.Render(path))
 }
 
 // FormatFailedTest formats a failed test name
 func (s *Style) FormatFailedTest(name string) string {
-	return fmt.Sprintf("    %s", errorStyle.Render(name))
+	return fmt.Sprintf("  %s", errorStyle.Bold(true).Render(name))
 }
 
 // FormatErrorMessage formats an error message
 func (s *Style) FormatErrorMessage(message string) string {
-	return fmt.Sprintf("      %s", message)
+	return fmt.Sprintf("    %s", dimStyle.Render(message))
 }
 
 // FormatErrorLocation formats a test error location
