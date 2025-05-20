@@ -6,7 +6,8 @@
   "type": "module",
   "main": "main.js",
   "scripts": {
-    "build": "tsc",
+    "build": "vite build",
+    "build:watch": "vite build --watch",
     "dev": "vite",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",

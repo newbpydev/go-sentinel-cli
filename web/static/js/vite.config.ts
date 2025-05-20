@@ -1,6 +1,6 @@
-import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
+import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [vue()],
@@ -10,23 +10,23 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: '../dist',
-    emptyOutDir: true,
+    outDir: '../',
+    emptyOutDir: false,
     sourcemap: true,
-    lib: {
-      entry: resolve(__dirname, 'src/main.ts'),
-      name: 'GoSentinel',
-      fileName: (format) => `go-sentinel.${format}.js`,
-    },
     rollupOptions: {
-      // Make sure to externalize deps that shouldn't be bundled
-      external: ['vue'],
-      output: {
-        globals: {
-          vue: 'Vue',
-        },
+      input: {
+        'main': resolve(__dirname, 'src/main.ts'),
+        'toast': resolve(__dirname, 'src/toast.ts'),
+        'coverage': resolve(__dirname, 'src/coverage.ts'),
+        'settings': resolve(__dirname, 'src/settings.ts'),
+        'websocket': resolve(__dirname, 'src/websocket.ts')
       },
-    },
+      output: {
+        entryFileNames: '[name].js',
+        chunkFileNames: '[name]-[hash].js',
+        assetFileNames: '[name].[ext]'
+      }
+    }
   },
   server: {
     port: 3000,
