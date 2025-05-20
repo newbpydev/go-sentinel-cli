@@ -16,7 +16,7 @@ func TestRunner_RunOnce(t *testing.T) {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 	defer func() {
-		if err := os.RemoveAll(tmpDir); err != nil {
+		if err = os.RemoveAll(tmpDir); err != nil {
 			t.Errorf("Failed to remove temp dir: %v", err)
 		}
 	}()
@@ -131,19 +131,19 @@ func TestRunner_WatchMode(t *testing.T) {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 	defer func() {
-		if err := os.RemoveAll(dir); err != nil {
+		if err = os.RemoveAll(dir); err != nil {
 			t.Logf("Warning: failed to remove temp dir %s: %v", dir, err)
 		}
 	}()
 
 	// Initialize Go module
-	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example\n\ngo 1.23\n"), 0600); err != nil {
+	if err = os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example\n\ngo 1.23\n"), 0600); err != nil {
 		t.Fatalf("Failed to create go.mod: %v", err)
 	}
 
 	// Create a test file
 	testFile := filepath.Join(dir, "example_test.go")
-	if err := os.WriteFile(testFile, []byte(`package example
+	if err = os.WriteFile(testFile, []byte(`package example
 
 import "testing"
 
@@ -203,7 +203,7 @@ func TestRunner_FailFast(t *testing.T) {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 	defer func() {
-		if err := os.RemoveAll(tmpDir); err != nil {
+		if err = os.RemoveAll(tmpDir); err != nil {
 			t.Errorf("Failed to remove temp dir: %v", err)
 		}
 	}()
@@ -249,13 +249,13 @@ func TestRunner_Run(t *testing.T) {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 	defer func() {
-		if err := os.RemoveAll(tmpDir); err != nil {
+		if err = os.RemoveAll(tmpDir); err != nil {
 			t.Errorf("Failed to remove temp dir: %v", err)
 		}
 	}()
 
 	// Create go.mod
-	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte("module example\n\ngo 1.23\n"), 0600); err != nil {
+	if err = os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte("module example\n\ngo 1.23\n"), 0600); err != nil {
 		t.Fatalf("Failed to write go.mod: %v", err)
 	}
 
