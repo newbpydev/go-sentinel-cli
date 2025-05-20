@@ -9,12 +9,18 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/joho/godotenv"
 	"github.com/newbpydev/go-sentinel/internal/web/server"
 )
 
 func main() {
-	// Define command-line flags
-	addr := flag.String("addr", ":8080", "HTTP server address")
+	// Load .env file if it exists
+	if err := godotenv.Load(); err != nil {
+		log.Printf("Warning: .env file not found, using default values")
+	}
+
+	// Define command-line flags with environment variable fallbacks
+	webPort := flag.String("web-port", getEnvWithDefault("WEB_PORT", "3000"), "Web server port")
 	templatesDir := flag.String("templates", "./web/templates", "Path to templates directory")
 	staticDir := flag.String("static", "./web/static", "Path to static files directory")
 	flag.Parse()
@@ -38,6 +44,20 @@ func main() {
 		log.Fatalf("Failed to create server: %v", err)
 	}
 
-	fmt.Printf("Go Sentinel Web Server starting on %s\n", *addr)
-	log.Fatal(srv.Start(*addr))
+	// Format the web port with a colon prefix if not provided
+	formattedWebPort := *webPort
+	if formattedWebPort[0] != ':' {
+		formattedWebPort = ":" + formattedWebPort
+	}
+
+	fmt.Printf("Go Sentinel Web Server starting on %s\n", formattedWebPort)
+	log.Fatal(srv.Start(formattedWebPort))
+}
+
+// getEnvWithDefault returns the value of an environment variable or a default value
+func getEnvWithDefault(key, defaultValue string) string {
+	if value, exists := os.LookupEnv(key); exists && value != "" {
+		return value
+	}
+	return defaultValue
 }

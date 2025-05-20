@@ -36,30 +36,36 @@ tmp_dir = "tmp"
     "./*.yaml",
     "./*.toml"
   ]
-  # Exclude patterns
+  # Exclude patterns - order matters, excludes are processed first
   excludes = [
+    # Dependencies and version control
+    "./web/static/js/node_modules",
+    "./web/static/js/node_modules/**",
+    "./.git",
+    "./.git/**",
+    "./vendor",
+    "./vendor/**",
     # Build artifacts and temp files
-    "./tmp/**/*",
-    "./dist/**/*",
-    "./build/**/*",
+    "./tmp",
+    "./tmp/**",
+    "./dist",
+    "./dist/**",
+    "./build",
+    "./build/**",
     "**/*.exe",
     "**/*.test",
     "**/*.out",
-    # Dependencies and version control
-    "./.git/**/*",
-    "./vendor/**/*",
-    "**/node_modules/**/*",
     # Test files
     "**/*_test.go",
-    "**/testdata/**/*",
+    "**/testdata",
+    "**/testdata/**",
     # Coverage files
-    "**/coverage/**/*",
+    "**/coverage",
+    "**/coverage/**",
     "**/*.coverage.*"
   ]
   # File extensions to watch
   extensions = ["go", "tmpl", "css", "js", "ts", "json", "yaml", "toml"]
-  # Directories to watch
-  watch_directories = true
 
 [log]
   color = true
