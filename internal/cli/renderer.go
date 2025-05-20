@@ -68,21 +68,20 @@ func (r *Renderer) RenderTestRun(run *TestRun) {
 		}
 	}
 
-	// Format like Vitest:
-	// Test Files  1 failed | 7 passed (8)
-	r.writeln("%s", r.style.FormatTestSummary("Test Files", failedFiles, passedFiles, 0, len(run.Suites)))
+	// Format summaries with consistent spacing
+	r.writeln(r.style.FormatTestSummary("Test Files", failedFiles, passedFiles, 0, len(run.Suites)))
+	r.writeln(r.style.FormatTestSummary("Tests", run.NumFailed, run.NumPassed, run.NumSkipped, run.NumTotal))
+	r.writeln(r.style.FormatTimestamp("Start at", run.StartTime))
 
-	// Tests summary
-	// Tests      8 failed | 70 passed (78)
-	r.writeln("%s", r.style.FormatTestSummary("Tests", run.NumFailed, run.NumPassed, run.NumSkipped, run.NumTotal))
-
-	// Start time
-	// Start at 11:39:32
-	r.writeln("%s", r.style.FormatTimestamp("Start at", run.StartTime))
-
-	// Duration - detailed format with breakdown like Vitest
-	// Duration  26.17s (transform 859ms, setup 34.48s, collect 1.29s, tests 1.00s, environment 78.91s, prepare 3.69s)
-	detailedDuration := fmt.Sprintf("%.2fs", run.Duration.Seconds())
+	// Calculate total duration from all components
+	totalDuration := run.TransformDuration + run.SetupDuration + run.CollectDuration +
+		run.TestsDuration + run.EnvDuration + run.PrepareDuration
+	if totalDuration == 0 {
+		// If no component durations, use the overall duration
+		totalDuration = run.Duration
+	}
+	mainDurationStr := formatDuration(totalDuration)
+	formattedMainDuration := r.style.FormatDuration("Duration", mainDurationStr)
 
 	// Add breakdown details if available
 	breakdownParts := []string{}
@@ -106,13 +105,13 @@ func (r *Renderer) RenderTestRun(run *TestRun) {
 	}
 
 	// Add breakdown in parentheses if we have any detail
+	fullDurationOutput := formattedMainDuration
 	if len(breakdownParts) > 0 {
-		detailedDuration += " (" + strings.Join(breakdownParts, ", ") + ")"
+		breakdownString := " (" + strings.Join(breakdownParts, ", ") + ")"
+		fullDurationOutput += breakdownTextStyle.Render(breakdownString)
 	}
 
-	r.writeln("%s", r.style.FormatDuration("Duration", detailedDuration))
-
-	// Add a newline after summary
+	r.writeln(fullDurationOutput)
 	r.writeln("")
 }
 
@@ -233,14 +232,15 @@ func (r *Renderer) RenderFileChange(path string) {
 
 // Helper functions
 
+// formatDuration formats a duration in milliseconds to a human-readable string
 func formatDuration(d time.Duration) string {
 	if d < time.Second {
-		return fmt.Sprintf("%dms", d.Milliseconds())
+		return fmt.Sprintf("%.0fms", float64(d.Milliseconds()))
 	}
 	return fmt.Sprintf("%.2fs", d.Seconds())
 }
 
-// RenderFinalSummary renders the final test run summary
+// RenderFinalSummary renders the final test summary
 func (r *Renderer) RenderFinalSummary(run *TestRun) {
 	// Add a newline before summary
 	r.writeln("")
@@ -256,24 +256,19 @@ func (r *Renderer) RenderFinalSummary(run *TestRun) {
 		}
 	}
 
-	// Format like Vitest:
-	// Test Files  1 failed | 7 passed (8)
-	r.writeln("%s", r.style.FormatTestSummary("Test Files", failedFiles, passedFiles, 0, len(run.Suites)))
+	r.writeln(r.style.FormatTestSummary("Test Files", failedFiles, passedFiles, 0, len(run.Suites)))
+	r.writeln(r.style.FormatTestSummary("Tests", run.NumFailed, run.NumPassed, run.NumSkipped, run.NumTotal))
+	r.writeln("")
+	r.writeln(r.style.FormatTimestamp("Start at", run.StartTime))
 
-	// Tests summary
-	// Tests      8 failed | 70 passed (78)
-	r.writeln("%s", r.style.FormatTestSummary("Tests", run.NumFailed, run.NumPassed, run.NumSkipped, run.NumTotal))
-
-	// Start time
-	// Start at 11:39:32
-	r.writeln("%s", r.style.FormatTimestamp("Start at", run.StartTime))
-
-	// Duration - detailed format with breakdown like Vitest
-	// Duration  26.17s (transform 859ms, setup 34.48s, collect 1.29s, tests 1.00s, environment 78.91s, prepare 3.69s)
-	detailedDuration := fmt.Sprintf("%.2fs", run.Duration.Seconds())
+	// Duration with breakdown
+	mainDurationStr := formatDuration(run.Duration)
+	formattedMainDuration := r.style.FormatDuration("Duration", mainDurationStr)
 
 	// Add breakdown details if available
 	breakdownParts := []string{}
+
+	// Order the breakdown parts to match Vitest
 	if run.TransformDuration > 0 {
 		breakdownParts = append(breakdownParts, fmt.Sprintf("transform %s", formatDuration(run.TransformDuration)))
 	}
@@ -294,27 +289,26 @@ func (r *Renderer) RenderFinalSummary(run *TestRun) {
 	}
 
 	// Add breakdown in parentheses if we have any detail
+	fullDurationOutput := formattedMainDuration
 	if len(breakdownParts) > 0 {
-		detailedDuration += " (" + strings.Join(breakdownParts, ", ") + ")"
+		breakdownString := " (" + strings.Join(breakdownParts, ", ") + ")"
+		fullDurationOutput += breakdownTextStyle.Render(breakdownString)
 	}
 
-	r.writeln("%s", r.style.FormatDuration("Duration", detailedDuration))
-
-	// Add a newline after summary
+	r.writeln(fullDurationOutput)
 	r.writeln("")
 
 	// If there are failed tests, show them at the end
 	if run.NumFailed > 0 {
-		r.writeln("")
-		r.writeln("%s", r.style.FormatErrorHeader(" FAILED Tests:"))
+		r.writeln(r.style.FormatErrorHeader(" FAILED Tests:"))
 		for _, suite := range run.Suites {
 			if suite.NumFailed > 0 {
-				r.writeln("%s", r.style.FormatFailedSuite(suite.FilePath))
+				r.writeln(r.style.FormatFailedSuite(suite.FilePath))
 				for _, test := range suite.Tests {
 					if test.Status == TestStatusFailed {
-						r.writeln("%s", r.style.FormatFailedTest(test.Name))
+						r.writeln(r.style.FormatFailedTest(test.Name))
 						if test.Error != nil {
-							r.writeln("%s", r.style.FormatErrorMessage(test.Error.Message))
+							r.writeln(r.style.FormatErrorMessage(test.Error.Message))
 						}
 					}
 				}

@@ -47,7 +47,7 @@ var (
 			Foreground(lipgloss.Color("#ca8a04")) // Vitest yellow
 
 	dimStyle = lipgloss.NewStyle().
-			Faint(true)
+			Foreground(lipgloss.Color("#6E7681"))
 
 	// Test status styles
 	passedStyle = lipgloss.NewStyle().
@@ -65,6 +65,22 @@ var (
 	runningStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#3b82f6")).
 			SetString("⠋")
+
+	// Vitest-like summary styles
+	summaryFailedStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#E03E3E"))
+
+	summaryPassedStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#2EA043"))
+
+	summaryLabelStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#6E7681"))
+
+	summaryValueStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#7D8590"))
+
+	breakdownTextStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#7D8590"))
 )
 
 // Style handles terminal styling and formatting
@@ -112,61 +128,61 @@ func (s *Style) FormatTestName(result *TestResult) string {
 
 // FormatTestSummary formats a test summary line with colors
 func (s *Style) FormatTestSummary(label string, failed, passed, skipped, total int) string {
-	// Add label with consistent padding (Test Files is the longest at 10 chars)
-	parts := []string{fmt.Sprintf("%-12s", label)}
+	// Add label with consistent padding and indentation
+	prefix := ""
+	if label == "Tests" {
+		prefix = "  " // Add indentation for Tests line
+	}
+	labelPart := fmt.Sprintf("%s%-12s", prefix, summaryLabelStyle.Render(label))
 
-	// Use more vibrant colors for the numbers
-	boldFailStyle := errorStyle.Bold(true)
-	boldPassStyle := successStyle.Bold(true)
-	boldSkipStyle := warningStyle.Bold(true)
+	// Build the summary parts
+	var stats []string
 
-	// Vitest style: If no failures, everything is green; otherwise show failures in red
-	if failed == 0 && skipped == 0 {
-		// Everything passed - all green
-		parts = append(parts, boldPassStyle.Render(fmt.Sprintf("%d passed", passed)))
-	} else {
-		// Show detailed breakdown with vibrant colors
-		var stats []string
-		if failed > 0 {
-			stats = append(stats, boldFailStyle.Render(fmt.Sprintf("%d failed", failed)))
-		}
-		if passed > 0 {
-			stats = append(stats, boldPassStyle.Render(fmt.Sprintf("%d passed", passed)))
-		}
-		if skipped > 0 {
-			stats = append(stats, boldSkipStyle.Render(fmt.Sprintf("%d skipped", skipped)))
-		}
-
-		// Join stats with separator
-		if len(stats) > 0 {
-			parts = append(parts, strings.Join(stats, " | "))
-		}
+	// Always show failed count when > 0
+	if failed > 0 {
+		stats = append(stats, fmt.Sprintf("%s failed", summaryFailedStyle.Render(fmt.Sprintf("%d", failed))))
 	}
 
-	// Add total in parentheses with dim style
-	parts = append(parts, dimStyle.Render(fmt.Sprintf("(%d)", total)))
+	// Add separator bar if we have both failed and passed
+	if failed > 0 && passed > 0 {
+		stats = append(stats, "|")
+	}
 
-	return strings.Join(parts, " ")
+	// Add passed count
+	if passed > 0 {
+		stats = append(stats, fmt.Sprintf("%s passed", summaryPassedStyle.Render(fmt.Sprintf("%d", passed))))
+	}
+
+	// Add skipped count if any
+	if skipped > 0 {
+		if len(stats) > 0 {
+			stats = append(stats, "|")
+		}
+		stats = append(stats, fmt.Sprintf("%s skipped", warningStyle.Render(fmt.Sprintf("%d", skipped))))
+	}
+
+	// Add total count
+	if len(stats) > 0 {
+		stats = append(stats, fmt.Sprintf("(%d)", total))
+	} else {
+		stats = append(stats, fmt.Sprintf("%d", total))
+	}
+
+	return fmt.Sprintf("%s%s", labelPart, strings.Join(stats, " "))
 }
 
 // FormatTimestamp formats a timestamp line with consistent padding
 func (s *Style) FormatTimestamp(label string, t time.Time) string {
-	// Add label with consistent padding (Test Files is the longest at 10 chars)
-	parts := []string{fmt.Sprintf("%-12s", label)}
-
-	// Format time as HH:MM:SS
-	timeStr := t.Format("15:04:05")
-	parts = append(parts, timeStr)
-
-	return strings.Join(parts, " ")
+	labelPart := fmt.Sprintf("  %-12s", summaryLabelStyle.Render(label))
+	timeStr := summaryValueStyle.Render(t.Format("15:04:05"))
+	return fmt.Sprintf("%s%s", labelPart, timeStr)
 }
 
-// FormatDuration formats a duration line with consistent padding
-func (s *Style) FormatDuration(label string, duration string) string {
-	// Add label with consistent padding (Test Files is the longest at 10 chars)
-	parts := []string{fmt.Sprintf("%-12s", label)}
-	parts = append(parts, duration)
-	return strings.Join(parts, " ")
+// FormatDuration formats the main duration value, expecting breakdown to be handled separately for styling
+func (s *Style) FormatDuration(label string, mainDuration string) string {
+	labelPart := fmt.Sprintf("  %-12s", summaryLabelStyle.Render(label))
+	durationPart := summaryValueStyle.Render(mainDuration)
+	return fmt.Sprintf("%s%s", labelPart, durationPart)
 }
 
 // FormatHeader formats a header line

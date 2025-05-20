@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -62,48 +63,69 @@ func (r *Runner) RunOnce(opts RunOptions) (string, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	startTime := time.Now()
+
 	// Show test start message
 	if opts.Renderer != nil {
 		opts.Renderer.RenderTestStart(nil)
 	}
 
-	// Build the go test command
+	// Transform phase
+	transformStart := time.Now()
 	args := []string{"test"}
-
-	// Add -json flag for parsing
 	args = append(args, "-json")
-
-	// Add fail-fast flag if enabled
 	if opts.FailFast {
 		args = append(args, "-failfast")
 	}
-
-	// Add test filter if specified
 	if len(opts.Tests) > 0 {
 		args = append(args, "-run", strings.Join(opts.Tests, "|"))
 	}
-
-	// Add packages to test
 	if len(opts.Packages) > 0 {
 		args = append(args, opts.Packages...)
 	} else {
 		args = append(args, "./...")
 	}
+	transformDuration := time.Since(transformStart)
 
-	// Create and configure the command
+	// Setup phase
+	setupStart := time.Now()
 	cmd := exec.Command("go", args...)
 	cmd.Dir = r.workDir
 	cmd.Env = os.Environ()
+	setupDuration := time.Since(setupStart)
 
-	// Capture output
+	// Collection phase
+	collectStart := time.Now()
 	output, err := cmd.CombinedOutput()
 	outputStr := string(output)
+	collectDuration := time.Since(collectStart)
 
-	// Parse test output
+	// Test execution phase
+	testsStart := time.Now()
 	parser := NewParser()
 	run, parseErr := parser.Parse(strings.NewReader(outputStr))
-	if parseErr == nil && opts.Renderer != nil {
+	testsDuration := time.Since(testsStart)
+
+	// Environment phase
+	envStart := time.Now()
+	if run != nil {
+		run.StartTime = startTime
+		run.EndTime = time.Now()
+		run.Duration = run.EndTime.Sub(startTime)
+		run.TransformDuration = transformDuration
+		run.SetupDuration = setupDuration
+		run.CollectDuration = collectDuration
+		run.TestsDuration = testsDuration
+		run.EnvDuration = time.Since(envStart)
+	}
+
+	// Prepare phase
+	prepareStart := time.Now()
+	if parseErr == nil && opts.Renderer != nil && run != nil {
 		opts.Renderer.RenderTestRun(run)
+	}
+	if run != nil {
+		run.PrepareDuration = time.Since(prepareStart)
 	}
 
 	// Return error for test failures

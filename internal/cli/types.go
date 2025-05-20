@@ -88,11 +88,11 @@ func NewTestRun() *TestRun {
 	return &TestRun{
 		StartTime:         now,
 		EndTime:           now,
-		Duration:          26*time.Second + 170*time.Millisecond,
+		Duration:          0,
 		TransformDuration: 859 * time.Millisecond,
 		SetupDuration:     34*time.Second + 480*time.Millisecond,
 		CollectDuration:   1*time.Second + 290*time.Millisecond,
-		TestsDuration:     1 * time.Second,
+		TestsDuration:     0,
 		EnvDuration:       78*time.Second + 910*time.Millisecond,
 		PrepareDuration:   3*time.Second + 690*time.Millisecond,
 		Suites:            []*TestSuite{},
