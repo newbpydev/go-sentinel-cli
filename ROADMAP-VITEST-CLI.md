@@ -16,107 +16,107 @@ Go Sentinel CLI will offer:
 
 ## Phase 1: Core CLI Output Design (TDD)
 
-- [ ] **1.1. Design Output Format & Data Structure Tests**
-  - [ ] 1.1.1. Test: Define TestResult structure with required fields for Vitest-like display
-  - [ ] 1.1.2. Test: Parse go test output correctly into the structure
-  - [ ] 1.1.3. Test: Handle edge cases (panics, build failures, timeouts)
+- [x] **1.1. Design Output Format & Data Structure Tests**
+  - [x] 1.1.1. Test: Define TestResult structure with required fields for Vitest-like display
+  - [x] 1.1.2. Test: Parse go test output correctly into the structure
+  - [x] 1.1.3. Test: Handle edge cases (panics, build failures, timeouts)
 
-- [ ] **1.2. Implement Output Format & Data Structures**
-  - [ ] 1.2.1. Implement TestResult structure with all required fields
-  - [ ] 1.2.2. Implement JSON test output parser for go test -json
-  - [ ] 1.2.3. Add support for capturing source code context from failed tests
+- [x] **1.2. Implement Output Format & Data Structures**
+  - [x] 1.2.1. Implement TestResult structure with all required fields
+  - [x] 1.2.2. Implement JSON test output parser for go test -json
+  - [x] 1.2.3. Add support for capturing source code context from failed tests
 
-- [ ] **1.3. Color Scheme & Visual Elements Tests**
-  - [ ] 1.3.1. Test: Define color scheme constants matching Vitest style
-  - [ ] 1.3.2. Test: Generate ANSI color sequences correctly
-  - [ ] 1.3.3. Test: Handle terminal capability detection
-  - [ ] 1.3.4. Test: Handle emoji/icon fallbacks for different terminals
+- [x] **1.3. Color Scheme & Visual Elements Tests**
+  - [x] 1.3.1. Test: Define color scheme constants matching Vitest style
+  - [x] 1.3.2. Test: Generate ANSI color sequences correctly
+  - [x] 1.3.3. Test: Handle terminal capability detection
+  - [x] 1.3.4. Test: Handle emoji/icon fallbacks for different terminals
 
-- [ ] **1.4. Implement Color & Visual Elements**
-  - [ ] 1.4.1. Implement color scheme constants
-  - [ ] 1.4.2. Create helpers for ANSI color output
-  - [ ] 1.4.3. Implement terminal capability detection
-  - [ ] 1.4.4. Add emoji/icon support with fallbacks
+- [x] **1.4. Implement Color & Visual Elements**
+  - [x] 1.4.1. Implement color scheme constants
+  - [x] 1.4.2. Create helpers for ANSI color output
+  - [x] 1.4.3. Implement terminal capability detection
+  - [x] 1.4.4. Add emoji/icon support with fallbacks
 
 ---
 
 ## Phase 2: Test Results Formatting & Display (TDD)
 
-- [ ] **2.1. Test Header/Summary Design Tests**
-  - [ ] 2.1.1. Test: Format test file/suite header with file path and status
-  - [ ] 2.1.2. Test: Generate test run summary with pass/fail counts
-  - [ ] 2.1.3. Test: Format timing information correctly
-  - [ ] 2.1.4. Test: Handle multiline headers gracefully
+- [x] **2.1. Test Header/Summary Design Tests**
+  - [x] 2.1.1. Test: Format test file/suite header with file path and status
+  - [x] 2.1.2. Test: Generate test run summary with pass/fail counts
+  - [x] 2.1.3. Test: Format timing information correctly
+  - [x] 2.1.4. Test: Handle multiline headers gracefully
 
-- [ ] **2.2. Implement Test Header/Summary**
-  - [ ] 2.2.1. Implement file/suite header formatter
-  - [ ] 2.2.2. Create summary generator with statistics
-  - [ ] 2.2.3. Implement timing formatter with appropriate precision
-  - [ ] 2.2.4. Add multiline header support
+- [x] **2.2. Implement Test Header/Summary**
+  - [x] 2.2.1. Implement file/suite header formatter
+  - [x] 2.2.2. Create summary generator with statistics
+  - [x] 2.2.3. Implement timing formatter with appropriate precision
+  - [x] 2.2.4. Add multiline header support
 
-- [ ] **2.3. Individual Test Result Display Tests**
-  - [ ] 2.3.1. Test: Format passed tests with green check and name
-  - [ ] 2.3.2. Test: Format failed tests with red X and name
-  - [ ] 2.3.3. Test: Indent subtests/nested tests correctly
-  - [ ] 2.3.4. Test: Handle test names with special characters
+- [x] **2.3. Individual Test Result Display Tests**
+  - [x] 2.3.1. Test: Format passed tests with green check and name
+  - [x] 2.3.2. Test: Format failed tests with red X and name
+  - [x] 2.3.3. Test: Indent subtests/nested tests correctly
+  - [x] 2.3.4. Test: Handle test names with special characters
 
-- [ ] **2.4. Implement Individual Test Result Display**
-  - [ ] 2.4.1. Create passed test formatter
-  - [ ] 2.4.2. Create failed test formatter
-  - [ ] 2.4.3. Implement subtest/nested test indentation
-  - [ ] 2.4.4. Add special character handling in test names
+- [x] **2.4. Implement Individual Test Result Display**
+  - [x] 2.4.1. Create passed test formatter
+  - [x] 2.4.2. Create failed test formatter
+  - [x] 2.4.3. Implement subtest/nested test indentation
+  - [x] 2.4.4. Add special character handling in test names
 
-- [ ] **2.5. Error Context & Source Code Display Tests**
-  - [ ] 2.5.1. Test: Extract 5 lines of context around error location
-  - [ ] 2.5.2. Test: Highlight specific error line
-  - [ ] 2.5.3. Test: Format stack traces in a readable way
-  - [ ] 2.5.4. Test: Handle missing source files gracefully
+- [x] **2.5. Error Context & Source Code Display Tests**
+  - [x] 2.5.1. Test: Extract 5 lines of context around error location
+  - [x] 2.5.2. Test: Highlight specific error line
+  - [x] 2.5.3. Test: Format stack traces in a readable way
+  - [x] 2.5.4. Test: Handle missing source files gracefully
 
-- [ ] **2.6. Implement Error Context & Source Display**
-  - [ ] 2.6.1. Implement source code context extractor
-  - [ ] 2.6.2. Create syntax highlighting for error lines
-  - [ ] 2.6.3. Implement stack trace formatter
-  - [ ] 2.6.4. Add fallback handling for missing source files
+- [x] **2.6. Implement Error Context & Source Display**
+  - [x] 2.6.1. Implement source code context extractor
+  - [x] 2.6.2. Create syntax highlighting for error lines
+  - [x] 2.6.3. Implement stack trace formatter
+  - [x] 2.6.4. Add fallback handling for missing source files
 
 ---
 
 ## Phase 3: Watch Mode & Selective Testing (TDD)
 
-- [ ] **3.1. File Change Detection Integration Tests**
-  - [ ] 3.1.1. Test: Integrate with existing file watcher
-  - [ ] 3.1.2. Test: Detect changes to test files
-  - [ ] 3.1.3. Test: Detect changes to implementation files
-  - [ ] 3.1.4. Test: Identify related test files for changed implementation files
+- [x] **3.1. File Change Detection Integration Tests**
+  - [x] 3.1.1. Test: Integrate with existing file watcher
+  - [x] 3.1.2. Test: Detect changes to test files
+  - [x] 3.1.3. Test: Detect changes to implementation files
+  - [x] 3.1.4. Test: Identify related test files for changed implementation files
 
-- [ ] **3.2. Implement File Change Detection Integration**
-  - [ ] 3.2.1. Connect to existing file watcher component
-  - [ ] 3.2.2. Add path filtering for test files
-  - [ ] 3.2.3. Create mapping between implementation and test files
-  - [ ] 3.2.4. Implement change-to-test-file resolution logic
+- [x] **3.2. Implement File Change Detection Integration**
+  - [x] 3.2.1. Connect to existing file watcher component
+  - [x] 3.2.2. Add path filtering for test files
+  - [x] 3.2.3. Create mapping between implementation and test files
+  - [x] 3.2.4. Implement change-to-test-file resolution logic
 
-- [ ] **3.3. Selective Test Running Tests**
-  - [ ] 3.3.1. Test: Run only tests from modified test files
-  - [ ] 3.3.2. Test: Run related tests when implementation files change
-  - [ ] 3.3.3. Test: Support running all tests on demand
-  - [ ] 3.3.4. Test: Handle package-level changes correctly
+- [x] **3.3. Selective Test Running Tests**
+  - [x] 3.3.1. Test: Run only tests from modified test files
+  - [x] 3.3.2. Test: Run related tests when implementation files change
+  - [x] 3.3.3. Test: Support running all tests on demand
+  - [x] 3.3.4. Test: Handle package-level changes correctly
 
-- [ ] **3.4. Implement Selective Test Running**
-  - [ ] 3.4.1. Create test file selector
-  - [ ] 3.4.2. Implement related test finder
-  - [ ] 3.4.3. Add full test suite runner
-  - [ ] 3.4.4. Implement package-level dependency analysis
+- [x] **3.4. Implement Selective Test Running**
+  - [x] 3.4.1. Create test file selector
+  - [x] 3.4.2. Implement related test finder
+  - [x] 3.4.3. Add full test suite runner
+  - [x] 3.4.4. Implement package-level dependency analysis
 
-- [ ] **3.5. Watch Mode UI Tests**
-  - [ ] 3.5.1. Test: Display watch mode status line
-  - [ ] 3.5.2. Test: Handle terminal clearing between runs
-  - [ ] 3.5.3. Test: Show file change notifications
-  - [ ] 3.5.4. Test: Display watch mode key commands
+- [x] **3.5. Watch Mode UI Tests**
+  - [x] 3.5.1. Test: Display watch mode status line
+  - [x] 3.5.2. Test: Handle terminal clearing between runs
+  - [x] 3.5.3. Test: Show file change notifications
+  - [x] 3.5.4. Test: Display watch mode key commands
 
-- [ ] **3.6. Implement Watch Mode UI**
-  - [ ] 3.6.1. Create watch mode status line
-  - [ ] 3.6.2. Implement terminal clearing functionality
-  - [ ] 3.6.3. Add file change notification display
-  - [ ] 3.6.4. Implement key command display and handling
+- [x] **3.6. Implement Watch Mode UI**
+  - [x] 3.6.1. Create watch mode status line
+  - [x] 3.6.2. Implement terminal clearing functionality
+  - [x] 3.6.3. Add file change notification display
+  - [x] 3.6.4. Implement key command display and handling
 
 ---
 
