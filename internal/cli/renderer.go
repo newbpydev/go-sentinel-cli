@@ -3,49 +3,9 @@ package cli
 import (
 	"fmt"
 	"io"
+	"log"
 	"strings"
 	"time"
-
-	"github.com/charmbracelet/lipgloss"
-)
-
-var (
-	// Styles
-	titleStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("#ffffff"))
-
-	subtitleStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#666666"))
-
-	successStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#00ff00"))
-
-	errorStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#ff0000"))
-
-	warningStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#ffff00"))
-
-	dimStyle = lipgloss.NewStyle().
-			Faint(true)
-
-	// Test status styles
-	passedStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#00ff00")).
-			SetString("✓")
-
-	failedStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#ff0000")).
-			SetString("✕")
-
-	skippedStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#ffff00")).
-			SetString("○")
-
-	runningStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#0000ff")).
-			SetString("⠋")
 )
 
 // Renderer handles the display of test results
@@ -56,12 +16,31 @@ type Renderer struct {
 	height int
 }
 
-// NewRenderer creates a new renderer instance
+// write is a helper method to handle write errors
+func (r *Renderer) write(format string, args ...interface{}) {
+	if _, err := fmt.Fprintf(r.out, format, args...); err != nil {
+		log.Printf("Error writing to output: %v", err)
+	}
+}
+
+// writeln is a helper method to handle write errors with newline
+func (r *Renderer) writeln(format string, args ...interface{}) {
+	r.write(format+"\n", args...)
+}
+
+// NewRenderer creates a new test result renderer
 func NewRenderer(out io.Writer) *Renderer {
 	return &Renderer{
 		out:   out,
-		style: NewStyle(),
-		width: 80, // Default width
+		style: NewStyle(true), // Enable colors by default
+	}
+}
+
+// NewRendererWithStyle creates a new renderer with a custom style
+func NewRendererWithStyle(out io.Writer, useColors bool) *Renderer {
+	return &Renderer{
+		out:   out,
+		style: NewStyle(useColors),
 	}
 }
 
@@ -75,22 +54,80 @@ func (r *Renderer) RenderTestRun(run *TestRun) {
 		r.renderSuite(suite)
 	}
 
-	// Summary
-	r.renderSummary(run)
+	// Add a newline before summary
+	r.writeln("")
+
+	// Test Files summary
+	passedFiles := 0
+	failedFiles := 0
+	for _, suite := range run.Suites {
+		if suite.NumFailed > 0 {
+			failedFiles++
+		} else {
+			passedFiles++
+		}
+	}
+
+	// Format like Vitest:
+	// Test Files  1 failed | 7 passed (8)
+	r.writeln("%s", r.style.FormatTestSummary("Test Files", failedFiles, passedFiles, 0, len(run.Suites)))
+
+	// Tests summary
+	// Tests      8 failed | 70 passed (78)
+	r.writeln("%s", r.style.FormatTestSummary("Tests", run.NumFailed, run.NumPassed, run.NumSkipped, run.NumTotal))
+
+	// Start time
+	// Start at 11:39:32
+	r.writeln("%s", r.style.FormatTimestamp("Start at", run.StartTime))
+
+	// Duration - detailed format with breakdown like Vitest
+	// Duration  26.17s (transform 859ms, setup 34.48s, collect 1.29s, tests 1.00s, environment 78.91s, prepare 3.69s)
+	detailedDuration := fmt.Sprintf("%.2fs", run.Duration.Seconds())
+
+	// Add breakdown details if available
+	breakdownParts := []string{}
+	if run.TransformDuration > 0 {
+		breakdownParts = append(breakdownParts, fmt.Sprintf("transform %s", formatDuration(run.TransformDuration)))
+	}
+	if run.SetupDuration > 0 {
+		breakdownParts = append(breakdownParts, fmt.Sprintf("setup %s", formatDuration(run.SetupDuration)))
+	}
+	if run.CollectDuration > 0 {
+		breakdownParts = append(breakdownParts, fmt.Sprintf("collect %s", formatDuration(run.CollectDuration)))
+	}
+	if run.TestsDuration > 0 {
+		breakdownParts = append(breakdownParts, fmt.Sprintf("tests %s", formatDuration(run.TestsDuration)))
+	}
+	if run.EnvDuration > 0 {
+		breakdownParts = append(breakdownParts, fmt.Sprintf("environment %s", formatDuration(run.EnvDuration)))
+	}
+	if run.PrepareDuration > 0 {
+		breakdownParts = append(breakdownParts, fmt.Sprintf("prepare %s", formatDuration(run.PrepareDuration)))
+	}
+
+	// Add breakdown in parentheses if we have any detail
+	if len(breakdownParts) > 0 {
+		detailedDuration += " (" + strings.Join(breakdownParts, ", ") + ")"
+	}
+
+	r.writeln("%s", r.style.FormatDuration("Duration", detailedDuration))
+
+	// Add a newline after summary
+	r.writeln("")
 }
 
 // renderHeader renders the test run header
 func (r *Renderer) renderHeader() {
 	header := r.style.FormatHeader(" GO SENTINEL ")
-	fmt.Fprintln(r.out, header)
-	fmt.Fprintln(r.out)
+	r.writeln("%s", header)
+	r.writeln("")
 }
 
 // renderSuite renders a test suite
 func (r *Renderer) renderSuite(suite *TestSuite) {
 	// Suite header
 	if suite.Package != "" {
-		fmt.Fprintf(r.out, "%s\n", r.style.FormatHeader(fmt.Sprintf(" %s ", suite.Package)))
+		r.writeln("%s", r.style.FormatHeader(fmt.Sprintf(" %s ", suite.Package)))
 	}
 
 	// Test results
@@ -103,7 +140,7 @@ func (r *Renderer) renderSuite(suite *TestSuite) {
 		r.renderErrors(suite.Errors)
 	}
 
-	fmt.Fprintln(r.out)
+	r.writeln("")
 }
 
 // RenderTestResult renders a single test result
@@ -119,7 +156,7 @@ func (r *Renderer) RenderTestResult(result *TestResult) {
 
 	// Add indentation for subtests
 	indent := strings.Repeat("  ", result.Depth)
-	fmt.Fprintf(r.out, "%s%s\n", indent, name)
+	r.writeln("%s%s", indent, name)
 
 	// Show error details for failed tests
 	if result.Status == TestStatusFailed && result.Error != nil {
@@ -139,51 +176,39 @@ func (r *Renderer) renderError(err *TestError, depth int) {
 	indent := strings.Repeat("  ", depth)
 
 	// Error header
-	fmt.Fprintf(r.out, "%sError:\n", indent)
+	r.writeln("%sError:", indent)
 
 	// Error message
 	if err.Message != "" {
-		fmt.Fprintf(r.out, "%s%s\n", indent, strings.TrimSpace(err.Message))
+		r.writeln("%s%s", indent, strings.TrimSpace(err.Message))
 	}
 
 	// Source location and snippet
 	if err.Location != nil {
-		fmt.Fprintf(r.out, "%s%s\n", indent, r.style.FormatErrorLocation(err.Location))
+		r.writeln("%s%s", indent, r.style.FormatErrorLocation(err.Location))
 		if err.Location.Snippet != "" {
-			fmt.Fprintf(r.out, "%s%s\n", indent, r.style.FormatErrorSnippet(err.Location.Snippet, err.Location.Line))
+			r.writeln("%s%s", indent, r.style.FormatErrorSnippet(err.Location.Snippet, err.Location.Line))
 		}
 	}
 
 	// Expected/Actual values if present
 	if err.Expected != "" || err.Actual != "" {
-		fmt.Fprintln(r.out)
+		r.writeln("")
 		if err.Expected != "" {
-			fmt.Fprintf(r.out, "%sExpected: %s\n", indent, err.Expected)
+			r.writeln("%sExpected: %s", indent, err.Expected)
 		}
 		if err.Actual != "" {
-			fmt.Fprintf(r.out, "%s  Actual: %s\n", indent, err.Actual)
+			r.writeln("%s  Actual: %s", indent, err.Actual)
 		}
 	}
 
-	fmt.Fprintln(r.out)
+	r.writeln("")
 }
 
-// renderSummary renders the final test run summary
-func (r *Renderer) renderSummary(run *TestRun) {
-	// Separator
-	fmt.Fprintln(r.out, lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#666666")).
-		Render(strings.Repeat("─", r.width)))
-
-	// Summary line
-	fmt.Fprintln(r.out, r.style.FormatSummary(run))
-	fmt.Fprintln(r.out)
-}
-
-// RenderTestStart renders the initial test run message
-func (r *Renderer) RenderTestStart(run *TestRun) {
-	fmt.Fprintln(r.out, r.style.FormatHeader(" RUNNING TESTS "))
-	fmt.Fprintln(r.out)
+// RenderTestStart renders the start of a test run
+func (r *Renderer) RenderTestStart(_ *TestRun) {
+	// Add a blank line before test output
+	r.writeln("")
 }
 
 // SetDimensions sets the terminal dimensions
@@ -194,16 +219,16 @@ func (r *Renderer) SetDimensions(width, height int) {
 
 // RenderWatchHeader displays the watch mode header
 func (r *Renderer) RenderWatchHeader() {
-	fmt.Fprintln(r.out, titleStyle.Render("Watch Mode"))
-	fmt.Fprintln(r.out, " Press 'a' to run all tests")
-	fmt.Fprintln(r.out, " Press 'f' to run only failed tests")
-	fmt.Fprintln(r.out, " Press 'q' to quit")
-	fmt.Fprintln(r.out)
+	r.writeln("%s", r.style.FormatHeader(" WATCH MODE "))
+	r.writeln(" Press 'a' to run all tests")
+	r.writeln(" Press 'f' to run only failed tests")
+	r.writeln(" Press 'q' to quit")
+	r.writeln("")
 }
 
 // RenderFileChange displays a file change notification
 func (r *Renderer) RenderFileChange(path string) {
-	fmt.Fprintf(r.out, "\nFile changed: %s\n\n", path)
+	r.writeln("\nFile changed: %s\n", path)
 }
 
 // Helper functions
@@ -217,28 +242,86 @@ func formatDuration(d time.Duration) string {
 
 // RenderFinalSummary renders the final test run summary
 func (r *Renderer) RenderFinalSummary(run *TestRun) {
-	fmt.Fprintln(r.out, titleStyle.Render("Test Run"))
-	fmt.Fprintln(r.out)
+	// Add a newline before summary
+	r.writeln("")
 
-	// Summary line
-	fmt.Fprintf(r.out, "Total: %d Passed: %d Failed: %d Skipped: %d Time: %.2fs\n",
-		run.NumTotal, run.NumPassed, run.NumFailed, run.NumSkipped, run.Duration.Seconds())
-
-	// Failed tests section
-	if run.NumFailed > 0 {
-		fmt.Fprintln(r.out)
-		fmt.Fprintln(r.out, errorStyle.Render("Failed Tests:"))
-		for _, suite := range run.Suites {
-			for _, test := range suite.Tests {
-				if test.Status == TestStatusFailed {
-					fmt.Fprintf(r.out, "  %s (%s)\n", test.Name, suite.FilePath)
-				}
-			}
+	// Test Files summary
+	passedFiles := 0
+	failedFiles := 0
+	for _, suite := range run.Suites {
+		if suite.NumFailed > 0 {
+			failedFiles++
+		} else {
+			passedFiles++
 		}
 	}
 
-	// Duration
-	fmt.Fprintf(r.out, "\nTotal Duration: %.2fs\n", run.Duration.Seconds())
+	// Format like Vitest:
+	// Test Files  1 failed | 7 passed (8)
+	r.writeln("%s", r.style.FormatTestSummary("Test Files", failedFiles, passedFiles, 0, len(run.Suites)))
+
+	// Tests summary
+	// Tests      8 failed | 70 passed (78)
+	r.writeln("%s", r.style.FormatTestSummary("Tests", run.NumFailed, run.NumPassed, run.NumSkipped, run.NumTotal))
+
+	// Start time
+	// Start at 11:39:32
+	r.writeln("%s", r.style.FormatTimestamp("Start at", run.StartTime))
+
+	// Duration - detailed format with breakdown like Vitest
+	// Duration  26.17s (transform 859ms, setup 34.48s, collect 1.29s, tests 1.00s, environment 78.91s, prepare 3.69s)
+	detailedDuration := fmt.Sprintf("%.2fs", run.Duration.Seconds())
+
+	// Add breakdown details if available
+	breakdownParts := []string{}
+	if run.TransformDuration > 0 {
+		breakdownParts = append(breakdownParts, fmt.Sprintf("transform %s", formatDuration(run.TransformDuration)))
+	}
+	if run.SetupDuration > 0 {
+		breakdownParts = append(breakdownParts, fmt.Sprintf("setup %s", formatDuration(run.SetupDuration)))
+	}
+	if run.CollectDuration > 0 {
+		breakdownParts = append(breakdownParts, fmt.Sprintf("collect %s", formatDuration(run.CollectDuration)))
+	}
+	if run.TestsDuration > 0 {
+		breakdownParts = append(breakdownParts, fmt.Sprintf("tests %s", formatDuration(run.TestsDuration)))
+	}
+	if run.EnvDuration > 0 {
+		breakdownParts = append(breakdownParts, fmt.Sprintf("environment %s", formatDuration(run.EnvDuration)))
+	}
+	if run.PrepareDuration > 0 {
+		breakdownParts = append(breakdownParts, fmt.Sprintf("prepare %s", formatDuration(run.PrepareDuration)))
+	}
+
+	// Add breakdown in parentheses if we have any detail
+	if len(breakdownParts) > 0 {
+		detailedDuration += " (" + strings.Join(breakdownParts, ", ") + ")"
+	}
+
+	r.writeln("%s", r.style.FormatDuration("Duration", detailedDuration))
+
+	// Add a newline after summary
+	r.writeln("")
+
+	// If there are failed tests, show them at the end
+	if run.NumFailed > 0 {
+		r.writeln("")
+		r.writeln("%s", r.style.FormatErrorHeader(" FAILED Tests:"))
+		for _, suite := range run.Suites {
+			if suite.NumFailed > 0 {
+				r.writeln("%s", r.style.FormatFailedSuite(suite.FilePath))
+				for _, test := range suite.Tests {
+					if test.Status == TestStatusFailed {
+						r.writeln("%s", r.style.FormatFailedTest(test.Name))
+						if test.Error != nil {
+							r.writeln("%s", r.style.FormatErrorMessage(test.Error.Message))
+						}
+					}
+				}
+				r.writeln("")
+			}
+		}
+	}
 }
 
 // RenderProgress renders the current test progress
@@ -249,7 +332,7 @@ func (r *Renderer) RenderProgress(run *TestRun) {
 	}
 
 	percentage := float64(completed) / float64(run.NumTotal) * 100
-	fmt.Fprintf(r.out, "Running tests... %.0f%% (%d/%d)\n", percentage, completed, run.NumTotal)
+	r.write("Running tests... %.0f%% (%d/%d)\n", percentage, completed, run.NumTotal)
 }
 
 // RenderSuiteSummary renders a test suite summary
@@ -259,12 +342,69 @@ func (r *Renderer) RenderSuiteSummary(suite *TestSuite) {
 		return
 	}
 
-	fmt.Fprintln(r.out, titleStyle.Render("Suite"))
-	fmt.Fprintf(r.out, "  %s\n", suite.FilePath)
-	fmt.Fprintf(r.out, "  Total: %d\n", suite.NumTotal)
-	fmt.Fprintf(r.out, "  Passed: %d\n", suite.NumPassed)
-	fmt.Fprintf(r.out, "  Failed: %d\n", suite.NumFailed)
-	fmt.Fprintf(r.out, "  Skipped: %d\n", suite.NumSkipped)
-	fmt.Fprintf(r.out, "  Time: %.2fs\n", suite.Duration.Seconds())
-	fmt.Fprintln(r.out)
+	r.writeln("Suite")
+	r.writeln("  %s", suite.FilePath)
+	r.writeln("  Total: %d", suite.NumTotal)
+	r.writeln("  Passed: %d", suite.NumPassed)
+	r.writeln("  Failed: %d", suite.NumFailed)
+	r.writeln("  Skipped: %d", suite.NumSkipped)
+	r.writeln("  Time: %.2fs", suite.Duration.Seconds())
+	r.writeln("")
+}
+
+// RenderTestSummary renders a test run summary
+func (r *Renderer) RenderTestSummary(run *TestRun) {
+	// Count passed and failed files
+	passedFiles := 0
+	failedFiles := 0
+	for _, suite := range run.Suites {
+		if suite.NumFailed > 0 {
+			failedFiles++
+		} else {
+			passedFiles++
+		}
+	}
+
+	// Print test file summary
+	if _, err := fmt.Fprintln(r.out, r.style.FormatTestSummary("Test Files", failedFiles, passedFiles, 0, len(run.Suites))); err != nil {
+		log.Printf("Error writing test file summary: %v", err)
+	}
+
+	// Print test summary
+	if _, err := fmt.Fprintln(r.out, r.style.FormatTestSummary("Tests", run.NumFailed, run.NumPassed, run.NumSkipped, run.NumTotal)); err != nil {
+		log.Printf("Error writing test summary: %v", err)
+	}
+}
+
+// RenderSuite renders a test suite
+func (r *Renderer) RenderSuite(suite *TestSuite) {
+	// Print suite header
+	if _, err := fmt.Fprintf(r.out, "%s\n", r.style.FormatHeader(fmt.Sprintf(" %s ", suite.Package))); err != nil {
+		log.Printf("Error writing suite header: %v", err)
+	}
+
+	// Test results
+	for _, result := range suite.Tests {
+		r.RenderTestResult(result)
+	}
+
+	// Suite errors
+	if len(suite.Errors) > 0 {
+		r.renderErrors(suite.Errors)
+	}
+
+	r.writeln("")
+}
+
+// RenderTest renders a test result
+func (r *Renderer) RenderTest(test *TestResult, indent string) {
+	// Print test name
+	name := r.style.FormatTestName(test)
+	r.write("%s%s\n", indent, name)
+
+	// Print error if test failed
+	if test.Error != nil {
+		r.write("%sError:\n", indent)
+		// ... rest of the error handling ...
+	}
 }

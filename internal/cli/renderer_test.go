@@ -70,14 +70,14 @@ func TestRenderer_RenderTestResult(t *testing.T) {
 func TestRenderer_RenderFinalSummary(t *testing.T) {
 	var buf bytes.Buffer
 	r := NewRenderer(&buf)
-	r.style.useColors = false // Disable colors for predictable output
 
 	run := &TestRun{
+		StartTime:  time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
+		Duration:   3 * time.Second,
 		NumTotal:   10,
 		NumPassed:  7,
 		NumFailed:  2,
 		NumSkipped: 1,
-		Duration:   3 * time.Second,
 		Suites: []*TestSuite{
 			{
 				FilePath: "pkg/foo/foo_test.go",
@@ -85,12 +85,15 @@ func TestRenderer_RenderFinalSummary(t *testing.T) {
 					{
 						Name:   "TestFailed1",
 						Status: TestStatusFailed,
+						Error:  &TestError{Message: "expected true, got false"},
 					},
 					{
 						Name:   "TestFailed2",
 						Status: TestStatusFailed,
+						Error:  &TestError{Message: "expected 42, got 41"},
 					},
 				},
+				NumFailed: 2,
 			},
 		},
 	}
@@ -98,22 +101,25 @@ func TestRenderer_RenderFinalSummary(t *testing.T) {
 	r.RenderFinalSummary(run)
 	output := buf.String()
 
-	expectedParts := []string{
-		"Test Run",
-		"Total: 10",
-		"Passed: 7",
-		"Failed: 2",
-		"Skipped: 1",
-		"Failed Tests:",
+	expectedStrings := []string{
+		"Test Files",
+		"1 failed",
+		"Tests",
+		"2 failed",
+		"7 passed",
+		"1 skipped",
+		"(10)",
+		"Start at",
+		"Duration",
+		"FAILED Tests",
 		"TestFailed1",
 		"TestFailed2",
 		"pkg/foo/foo_test.go",
-		"Total Duration: 3.00s",
 	}
 
-	for _, part := range expectedParts {
-		if !strings.Contains(output, part) {
-			t.Errorf("Output should contain %q: %s", part, output)
+	for _, s := range expectedStrings {
+		if !strings.Contains(output, s) {
+			t.Errorf("Output should contain %q:\n%s", s, output)
 		}
 	}
 }

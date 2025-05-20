@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -33,7 +34,9 @@ func (h *CoverageHandler) Initialize(coverageFile string) error {
 
 	// Close existing collector if any
 	if h.collector != nil {
-		h.collector.Close()
+		if err := h.collector.Close(); err != nil {
+			log.Printf("Error closing collector: %v", err)
+		}
 	}
 
 	// Create new collector
@@ -53,7 +56,7 @@ func (h *CoverageHandler) Close() error {
 
 	if h.collector != nil {
 		if err := h.collector.Close(); err != nil {
-			return fmt.Errorf("failed to close coverage collector: %w", err)
+			log.Printf("Error closing collector: %v", err)
 		}
 		h.collector = nil
 	}
@@ -61,7 +64,7 @@ func (h *CoverageHandler) Close() error {
 }
 
 // ServeHTTP handles HTTP requests for coverage data
-func (h *CoverageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *CoverageHandler) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 	h.mu.RLock()
 	collector := h.collector
 	h.mu.RUnlock()

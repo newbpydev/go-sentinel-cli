@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,11 +22,12 @@ type Runner struct {
 
 // RunOptions configures how tests are run
 type RunOptions struct {
-	OnlyFailed bool
-	FailFast   bool
-	Watch      bool
-	Tests      []string
-	Packages   []string
+	OnlyFailed bool      // Only run previously failed tests
+	FailFast   bool      // Stop on first failure
+	Watch      bool      // Enable watch mode
+	Tests      []string  // Specific tests to run
+	Packages   []string  // Specific packages to test
+	Renderer   *Renderer // Custom renderer for test output
 }
 
 // NewRunner creates a new test runner
@@ -43,7 +45,21 @@ func NewRunner(workDir string) (*Runner, error) {
 
 // Run executes tests with the given options
 func (r *Runner) Run(ctx context.Context, opts RunOptions) error {
+	// Use default renderer if none provided
+	if opts.Renderer == nil {
+		opts.Renderer = NewRenderer(os.Stdout)
+	}
+
 	if opts.Watch {
+		// Close any existing watcher before starting watch mode
+		if err := r.watcher.Close(); err != nil {
+			log.Printf("Error closing watcher: %v", err)
+		}
+		defer func() {
+			if err := r.watcher.Close(); err != nil {
+				log.Printf("Error closing watcher: %v", err)
+			}
+		}()
 		return r.Watch(ctx, opts)
 	}
 	_, err := r.RunOnce(opts)
@@ -54,6 +70,11 @@ func (r *Runner) Run(ctx context.Context, opts RunOptions) error {
 func (r *Runner) RunOnce(opts RunOptions) (string, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	// Show test start message
+	if opts.Renderer != nil {
+		opts.Renderer.RenderTestStart(nil)
+	}
 
 	// Build the go test command
 	args := []string{"test"}
@@ -87,6 +108,13 @@ func (r *Runner) RunOnce(opts RunOptions) (string, error) {
 	output, err := cmd.CombinedOutput()
 	outputStr := string(output)
 
+	// Parse test output
+	parser := NewParser()
+	run, parseErr := parser.Parse(strings.NewReader(outputStr))
+	if parseErr == nil && opts.Renderer != nil {
+		opts.Renderer.RenderTestRun(run)
+	}
+
 	// Return error for test failures
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
@@ -108,7 +136,16 @@ func (r *Runner) Watch(ctx context.Context, opts RunOptions) error {
 	if err := r.addWatchPaths(); err != nil {
 		return err
 	}
-	defer r.watcher.Close()
+	defer func() {
+		if err := r.watcher.Close(); err != nil {
+			log.Printf("Error closing watcher: %v", err)
+		}
+	}()
+
+	// Show watch mode header
+	if opts.Renderer != nil {
+		opts.Renderer.RenderWatchHeader()
+	}
 
 	// Run tests initially
 	if _, err := r.RunOnce(opts); err != nil {
@@ -125,6 +162,10 @@ func (r *Runner) Watch(ctx context.Context, opts RunOptions) error {
 				return nil
 			}
 			if r.shouldRunTests(event.Name) {
+				// Show file change notification
+				if opts.Renderer != nil {
+					opts.Renderer.RenderFileChange(event.Name)
+				}
 				if _, err := r.RunOnce(opts); err != nil {
 					return err
 				}
@@ -171,5 +212,7 @@ func (r *Runner) addWatchPaths() error {
 
 // Stop stops the test runner
 func (r *Runner) Stop() {
-	r.watcher.Close()
+	if err := r.watcher.Close(); err != nil {
+		log.Printf("Error closing watcher: %v", err)
+	}
 }

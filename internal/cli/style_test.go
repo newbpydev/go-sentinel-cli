@@ -4,7 +4,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestStyle_StatusIcon(t *testing.T) {
@@ -180,30 +179,29 @@ func TestStyle_FormatErrorSnippet(t *testing.T) {
 	}
 }
 
-func TestStyle_FormatSummary(t *testing.T) {
-	run := &TestRun{
-		NumTotal:   10,
-		NumPassed:  7,
-		NumFailed:  2,
-		NumSkipped: 1,
-		Duration:   2 * time.Second,
-	}
-
+func TestStyle_FormatTestSummary(t *testing.T) {
 	s := &Style{useColors: false}
-	got := s.FormatSummary(run)
 
-	// Verify all numbers are present in the output
-	expectedParts := []string{
-		"Total: 10",
-		"Passed: 7",
-		"Failed: 2",
-		"Skipped: 1",
-		"Time: 2.00s",
+	// Test with no failures
+	got := s.FormatTestSummary("Test Files", 0, 8, 0, 8)
+	if !strings.Contains(got, "8 passed") {
+		t.Errorf("FormatTestSummary() = %q, should contain '8 passed'", got)
+	}
+	if !strings.Contains(got, "(8)") {
+		t.Errorf("FormatTestSummary() = %q, should contain total '(8)'", got)
 	}
 
+	// Test with mixed results
+	got = s.FormatTestSummary("Test Files", 2, 5, 1, 8)
+	expectedParts := []string{
+		"2 failed",
+		"5 passed",
+		"1 skipped",
+		"(8)",
+	}
 	for _, part := range expectedParts {
 		if !strings.Contains(got, part) {
-			t.Errorf("FormatSummary() = %q, should contain %q", got, part)
+			t.Errorf("FormatTestSummary() = %q, should contain %q", got, part)
 		}
 	}
 }
@@ -213,8 +211,12 @@ func TestStyle_Detect(t *testing.T) {
 	origForceColor := os.Getenv("FORCE_COLOR")
 	origNoColor := os.Getenv("NO_COLOR")
 	defer func() {
-		os.Setenv("FORCE_COLOR", origForceColor)
-		os.Setenv("NO_COLOR", origNoColor)
+		if err := os.Setenv("FORCE_COLOR", origForceColor); err != nil {
+			t.Errorf("Failed to restore FORCE_COLOR: %v", err)
+		}
+		if err := os.Setenv("NO_COLOR", origNoColor); err != nil {
+			t.Errorf("Failed to restore NO_COLOR: %v", err)
+		}
 	}()
 
 	tests := []struct {
@@ -250,24 +252,37 @@ func TestStyle_Detect(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Set up environment
 			if tt.forceColor {
-				os.Setenv("FORCE_COLOR", "1")
+				if err := os.Setenv("FORCE_COLOR", "1"); err != nil {
+					t.Fatalf("Failed to set FORCE_COLOR: %v", err)
+				}
 			} else {
-				os.Unsetenv("FORCE_COLOR")
+				if err := os.Unsetenv("FORCE_COLOR"); err != nil {
+					t.Fatalf("Failed to unset FORCE_COLOR: %v", err)
+				}
 			}
 			if tt.noColor {
-				os.Setenv("NO_COLOR", "1")
+				if err := os.Setenv("NO_COLOR", "1"); err != nil {
+					t.Fatalf("Failed to set NO_COLOR: %v", err)
+				}
 			} else {
-				os.Unsetenv("NO_COLOR")
+				if err := os.Unsetenv("NO_COLOR"); err != nil {
+					t.Fatalf("Failed to unset NO_COLOR: %v", err)
+				}
 			}
 
-			s := &Style{isWindows: tt.isWindows}
-			s.detect()
+			s := &Style{
+				useColors: true,
+				useIcons:  true,
+				isWindows: tt.isWindows,
+			}
+
+			s.Detect()
 
 			if s.useColors != tt.wantColors {
-				t.Errorf("useColors = %v, want %v", s.useColors, tt.wantColors)
+				t.Errorf("Detect() useColors = %v, want %v", s.useColors, tt.wantColors)
 			}
 			if s.useIcons != tt.wantIcons {
-				t.Errorf("useIcons = %v, want %v", s.useIcons, tt.wantIcons)
+				t.Errorf("Detect() useIcons = %v, want %v", s.useIcons, tt.wantIcons)
 			}
 		})
 	}

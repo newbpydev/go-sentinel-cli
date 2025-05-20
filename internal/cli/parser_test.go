@@ -187,28 +187,34 @@ func TestParser_ProcessEvent_Timing(t *testing.T) {
 	}
 
 	// Start package test
-	parser.processEvent(&GoTestEvent{
+	if err := parser.processEvent(&GoTestEvent{
 		Time:    now,
 		Action:  "start",
 		Package: "example/pkg",
-	})
+	}); err != nil {
+		t.Fatalf("Failed to process start event: %v", err)
+	}
 
 	// Start test
-	parser.processEvent(&GoTestEvent{
+	if err := parser.processEvent(&GoTestEvent{
 		Time:    now.Add(100 * time.Millisecond),
 		Action:  "run",
 		Package: "example/pkg",
 		Test:    "TestExample",
-	})
+	}); err != nil {
+		t.Fatalf("Failed to process run event: %v", err)
+	}
 
 	// Pass test
-	parser.processEvent(&GoTestEvent{
+	if err := parser.processEvent(&GoTestEvent{
 		Time:    now.Add(200 * time.Millisecond),
 		Action:  "pass",
 		Package: "example/pkg",
 		Test:    "TestExample",
 		Elapsed: 0.1,
-	})
+	}); err != nil {
+		t.Fatalf("Failed to process pass event: %v", err)
+	}
 
 	// Verify timing
 	test := parser.findTest("TestExample")

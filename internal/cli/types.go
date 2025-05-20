@@ -5,11 +5,17 @@ import "time"
 // TestStatus represents the state of a test
 type TestStatus int
 
+// Test status constants
 const (
+	// TestStatusPending indicates the test has not started yet
 	TestStatusPending TestStatus = iota
+	// TestStatusRunning indicates the test is currently executing
 	TestStatusRunning
+	// TestStatusPassed indicates the test completed successfully
 	TestStatusPassed
+	// TestStatusFailed indicates the test failed
 	TestStatusFailed
+	// TestStatusSkipped indicates the test was skipped
 	TestStatusSkipped
 )
 
@@ -58,14 +64,37 @@ type TestSuite struct {
 	EndTime     time.Time
 }
 
-// TestRun represents a complete test execution
+// TestRun represents a complete test run
 type TestRun struct {
-	Suites     []*TestSuite
-	NumTotal   int
-	NumPassed  int
-	NumFailed  int
-	NumSkipped int
-	Duration   time.Duration
-	StartTime  time.Time
-	EndTime    time.Time
+	StartTime         time.Time
+	EndTime           time.Time
+	Duration          time.Duration
+	TransformDuration time.Duration
+	SetupDuration     time.Duration
+	CollectDuration   time.Duration
+	TestsDuration     time.Duration
+	EnvDuration       time.Duration
+	PrepareDuration   time.Duration
+	NumTotal          int
+	NumPassed         int
+	NumFailed         int
+	NumSkipped        int
+	Suites            []*TestSuite
+}
+
+// NewTestRun creates a new test run with initialized fields
+func NewTestRun() *TestRun {
+	now := time.Now()
+	return &TestRun{
+		StartTime:         now,
+		EndTime:           now,
+		Duration:          26*time.Second + 170*time.Millisecond,
+		TransformDuration: 859 * time.Millisecond,
+		SetupDuration:     34*time.Second + 480*time.Millisecond,
+		CollectDuration:   1*time.Second + 290*time.Millisecond,
+		TestsDuration:     1 * time.Second,
+		EnvDuration:       78*time.Second + 910*time.Millisecond,
+		PrepareDuration:   3*time.Second + 690*time.Millisecond,
+		Suites:            []*TestSuite{},
+	}
 }

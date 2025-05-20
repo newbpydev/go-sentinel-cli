@@ -3,6 +3,7 @@ package coverage
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -89,7 +90,9 @@ func RunTestsWithCoverage(ctx context.Context, options TestRunnerOptions) error 
 	case <-ctx.Done():
 		// Context was cancelled, kill the process
 		if cmd.Process != nil {
-			cmd.Process.Kill()
+			if err := cmd.Process.Kill(); err != nil {
+				log.Printf("Error killing process: %v", err)
+			}
 		}
 		cmdErr = ctx.Err()
 	case cmdErr = <-done:

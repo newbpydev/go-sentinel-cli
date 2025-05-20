@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -24,7 +25,6 @@ type GoTestEvent struct {
 var (
 	// Regular expressions for parsing test output
 	errorLocationRe = regexp.MustCompile(`(?m)^\s*([\w./-]+\.go):(\d+)(?::(\d+))?:`)
-	testOutputRe    = regexp.MustCompile(`(?m)^(\s*)--- (PASS|FAIL|SKIP): (.+) \(([0-9.]+)s\)$`)
 )
 
 // Parser handles parsing of go test -json output
@@ -318,17 +318,21 @@ func (p *Parser) extractSourceLocation(output string) *SourceLocation {
 		File: matches[1],
 	}
 
-	// Extract line number
-	if len(matches) > 2 {
+	// Parse line number
+	if matches[2] != "" {
 		var line int
-		fmt.Sscanf(matches[2], "%d", &line)
+		if _, err := fmt.Sscanf(matches[2], "%d", &line); err != nil {
+			log.Printf("Error parsing line number: %v", err)
+		}
 		loc.Line = line
 	}
 
-	// Extract column number if present
-	if len(matches) > 3 && matches[3] != "" {
+	// Parse column number
+	if matches[3] != "" {
 		var col int
-		fmt.Sscanf(matches[3], "%d", &col)
+		if _, err := fmt.Sscanf(matches[3], "%d", &col); err != nil {
+			log.Printf("Error parsing column number: %v", err)
+		}
 		loc.Column = col
 	}
 
@@ -362,11 +366,4 @@ func (p *Parser) getTestFilePath(pkg string) string {
 // processEvent is an alias for handleEvent to maintain compatibility with tests
 func (p *Parser) processEvent(event *GoTestEvent) error {
 	return p.handleEvent(event)
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
