@@ -155,17 +155,110 @@ func SummarizeTestResults(grouped map[string]map[string][]TestEvent) []TestResul
 func ParseTestOutput(r io.Reader) []TestEvent {
 	var events []TestEvent
 	var currentPkg string
-	var testStack []string
-	var lastTime = time.Now().UTC()
-	var lastStatusTest string
-	var bufferedOrder []string
-	var bufferedRunEvents = make(map[string]TestEvent)
-	var bufferedStatusEvents = make(map[string]TestEvent)
-	var bufferedOutputs = make(map[string][]string)
+	var testOrder []string
+	var runEvents = make(map[string]TestEvent)
+	var statusEvents = make(map[string]TestEvent)
+	var outputs = make(map[string][]string)
 	var seenTest = make(map[string]bool)
-	var lastStatusEvent *TestEvent // NEW: track last status event for indented output
+	var lastTime = time.Now().UTC()
 
 	scanner := bufio.NewScanner(r)
+	flushEvents := func(pkg string) {
+		// Build a map of parent to subtests
+		parentToSubtests := make(map[string][]string)
+		isSubtest := make(map[string]bool)
+		for _, testName := range testOrder {
+			if idx := strings.LastIndex(testName, "/"); idx != -1 {
+				parent := testName[:idx]
+				parentToSubtests[parent] = append(parentToSubtests[parent], testName)
+				isSubtest[testName] = true
+			}
+		}
+		visited := make(map[string]bool)
+		for _, testName := range testOrder {
+			if visited[testName] {
+				continue
+			}
+			if isSubtest[testName] {
+				continue // subtests are handled with their parent
+			}
+			re, hasRun := runEvents[testName]
+			if hasRun {
+				if re.Package == "" {
+					re.Package = pkg
+				}
+				lastTime = lastTime.Add(time.Millisecond)
+				re.Time = lastTime.Format(time.RFC3339Nano)
+				events = append(events, re)
+			}
+			// Emit subtests (run, status) in order
+			if subtests, ok := parentToSubtests[testName]; ok {
+				for _, sub := range subtests {
+					sre, shasRun := runEvents[sub]
+					if shasRun {
+						if sre.Package == "" {
+							sre.Package = pkg
+						}
+						lastTime = lastTime.Add(time.Millisecond)
+						sre.Time = lastTime.Format(time.RFC3339Nano)
+						events = append(events, sre)
+					}
+					ss, shasStatus := statusEvents[sub]
+					if shasStatus {
+						if ss.Package == "" {
+							ss.Package = pkg
+						}
+						if outs, ok := outputs[sub]; ok && len(outs) > 0 {
+							ss.Output = strings.Join(outs, "\n")
+						}
+						lastTime = lastTime.Add(time.Millisecond)
+						ss.Time = lastTime.Format(time.RFC3339Nano)
+						events = append(events, ss)
+					}
+					visited[sub] = true
+				}
+			}
+			// Emit parent status after subtests
+			se, hasStatus := statusEvents[testName]
+			if hasStatus {
+				// Build the status event to append from the latest values
+				output := ""
+				if outs, ok := outputs[testName]; ok && len(outs) > 0 {
+					if se.Action == "fail" || se.Action == "skip" {
+						output = strings.Join(outs, "\n")
+					}
+					if se.Action == "pass" {
+						for _, l := range outs {
+							if strings.Contains(l, "coverage:") {
+								output = strings.Join(outs, "\n")
+								break
+							}
+						}
+					}
+				}
+				finalStatus := TestEvent{
+					Action:  se.Action,
+					Test:    se.Test,
+					Elapsed: se.Elapsed,
+					Package: se.Package,
+					Output:  output,
+				}
+				if finalStatus.Package == "" {
+					finalStatus.Package = pkg
+				}
+				lastTime = lastTime.Add(time.Millisecond)
+				finalStatus.Time = lastTime.Format(time.RFC3339Nano)
+				events = append(events, finalStatus)
+			}
+			visited[testName] = true
+		}
+		testOrder = nil
+		runEvents = make(map[string]TestEvent)
+		statusEvents = make(map[string]TestEvent)
+		outputs = make(map[string][]string)
+		seenTest = make(map[string]bool)
+	}
+
 	for scanner.Scan() {
 		line := scanner.Text()
 		trimmed := strings.TrimSpace(line)
@@ -173,87 +266,40 @@ func ParseTestOutput(r io.Reader) []TestEvent {
 			continue
 		}
 
-		// Skip summary lines
 		if trimmed == "PASS" || trimmed == "FAIL" || strings.HasPrefix(trimmed, "exit status") {
 			continue
 		}
 
-		// Package status line
 		if (strings.HasPrefix(trimmed, "ok  ") || strings.HasPrefix(trimmed, "FAIL")) && len(strings.Fields(trimmed)) >= 2 {
 			parts := strings.Fields(trimmed)
-			currentPkg = parts[1]
-			// Assign package to all buffered events and flush them in order
-			for _, testName := range bufferedOrder {
-				re, hasRun := bufferedRunEvents[testName]
-				se, hasStatus := bufferedStatusEvents[testName]
-				if hasRun {
-					re.Package = currentPkg
-					lastTime = lastTime.Add(time.Nanosecond)
-					re.Time = lastTime.Format(time.RFC3339)
-					events = append(events, re)
-				}
-				if hasStatus {
-					se.Package = currentPkg
-					if outs, ok := bufferedOutputs[testName]; ok && len(outs) > 0 {
-						if se.Output != "" {
-							se.Output += "\n" + strings.Join(outs, "\n")
-						} else {
-							se.Output = strings.Join(outs, "\n")
-						}
-					}
-					lastTime = lastTime.Add(time.Nanosecond)
-					se.Time = lastTime.Format(time.RFC3339)
-					// Only set Output if non-empty for status events
-					if se.Output == "" {
-						// Omit Output field by using struct literal
-						events = append(events, TestEvent{
-							Time:    se.Time,
-							Action:  se.Action,
-							Package: se.Package,
-							Test:    se.Test,
-							Elapsed: se.Elapsed,
-						})
-					} else {
-						events = append(events, se)
-					}
-				}
-			}
-			bufferedOrder = nil
-			bufferedRunEvents = make(map[string]TestEvent)
-			bufferedStatusEvents = make(map[string]TestEvent)
-			bufferedOutputs = make(map[string][]string)
-			seenTest = make(map[string]bool)
+			pkg := parts[1]
+			flushEvents(pkg)
+			currentPkg = pkg
 			continue
 		}
 
-		// RUN marker
 		if strings.HasPrefix(trimmed, "=== RUN") {
 			testName := strings.TrimSpace(strings.TrimPrefix(trimmed, "=== RUN"))
-			lastTime = lastTime.Add(time.Millisecond)
+			if !seenTest[testName] {
+				testOrder = append(testOrder, testName)
+				seenTest[testName] = true
+			}
 			re := TestEvent{
-				Time:   lastTime.Format(time.RFC3339),
 				Action: "run",
 				Test:   testName,
 			}
-			bufferedRunEvents[testName] = re
-			if !seenTest[testName] {
-				bufferedOrder = append(bufferedOrder, testName)
-				seenTest[testName] = true
-			}
-			// Maintain testStack for subtest ordering
-			if len(testStack) == 0 || !strings.HasPrefix(testName, testStack[len(testStack)-1]+"/") {
-				testStack = append(testStack, testName)
-			}
+			runEvents[testName] = re
 			continue
 		}
 
-		// Indented subtest status line (e.g., '    --- PASS: TestParent/SubtestA (0.10s)')
 		if strings.HasPrefix(line, "    --- ") {
 			parts := strings.Fields(trimmed)
 			if len(parts) < 4 {
 				continue
 			}
 			status := strings.ToLower(parts[1])
+			status = strings.TrimSuffix(status, ":")
+			status = strings.TrimSpace(status)
 			testName := parts[2]
 			duration := 0.0
 			if len(parts) > 3 && strings.HasPrefix(parts[3], "(") && strings.HasSuffix(parts[3], ")") {
@@ -262,55 +308,57 @@ func ParseTestOutput(r io.Reader) []TestEvent {
 					duration = 0.0
 				}
 			}
-			lastTime = lastTime.Add(time.Millisecond)
-			se := TestEvent{
-				Time:    lastTime.Format(time.RFC3339),
-				Action:  status,
-				Test:    testName,
-				Elapsed: duration,
-			}
-			bufferedStatusEvents[testName] = se
-			lastStatusTest = testName
-			lastStatusEvent = &se
 			if !seenTest[testName] {
-				// Insert subtest run/status after parent run
 				parent := ""
 				if idx := strings.LastIndex(testName, "/"); idx != -1 {
 					parent = testName[:idx]
 				}
-				insertIdx := 0
-				for i, name := range bufferedOrder {
+				insertIdx := len(testOrder)
+				for i, name := range testOrder {
 					if name == parent {
 						insertIdx = i + 1
 						break
 					}
 				}
-				// Insert run and status for subtest in order
-				bufferedOrder = append(bufferedOrder[:insertIdx], append([]string{testName}, bufferedOrder[insertIdx:]...)...)
+				testOrder = append(testOrder[:insertIdx], append([]string{testName}, testOrder[insertIdx:]...)...)
 				seenTest[testName] = true
 			}
+			se := TestEvent{
+				Action:  status,
+				Test:    testName,
+				Elapsed: duration,
+			}
+			statusEvents[testName] = se
 			continue
 		}
 
 		// Indented output line (e.g., error/skip message)
-		if strings.HasPrefix(line, "    ") && lastStatusEvent != nil {
+		if strings.HasPrefix(line, "    ") {
 			msg := strings.TrimSpace(line)
-			if lastStatusEvent.Output != "" {
-				lastStatusEvent.Output += "\n" + msg
-			} else {
-				lastStatusEvent.Output = msg
+			attached := false
+			// Attach to the most recent subtest in testOrder
+			for i := len(testOrder) - 1; i >= 0; i-- {
+				if strings.Contains(testOrder[i], "/") {
+					outputs[testOrder[i]] = append(outputs[testOrder[i]], msg)
+					attached = true
+					break
+				}
 			}
-			bufferedStatusEvents[lastStatusEvent.Test] = *lastStatusEvent
+			// If no subtest found, attach to the most recent test (parent)
+			if !attached && len(testOrder) > 0 {
+				outputs[testOrder[len(testOrder)-1]] = append(outputs[testOrder[len(testOrder)-1]], msg)
+			}
 			continue
 		}
 
-		// PASS/FAIL/SKIP marker
 		if strings.HasPrefix(trimmed, "--- ") {
 			parts := strings.Fields(trimmed)
 			if len(parts) < 4 {
 				continue
 			}
 			status := strings.ToLower(parts[1])
+			status = strings.TrimSuffix(status, ":")
+			status = strings.TrimSpace(status)
 			testName := parts[2]
 			duration := 0.0
 			if len(parts) > 3 && strings.HasPrefix(parts[3], "(") && strings.HasSuffix(parts[3], ")") {
@@ -319,88 +367,35 @@ func ParseTestOutput(r io.Reader) []TestEvent {
 					duration = 0.0
 				}
 			}
-			lastTime = lastTime.Add(time.Millisecond)
+			if !seenTest[testName] {
+				testOrder = append(testOrder, testName)
+				seenTest[testName] = true
+			}
 			se := TestEvent{
-				Time:    lastTime.Format(time.RFC3339),
 				Action:  status,
 				Test:    testName,
 				Elapsed: duration,
 			}
-			// Attach output to status event and clear buffer
-			if outs, ok := bufferedOutputs[testName]; ok && len(outs) > 0 {
-				se.Output = strings.Join(outs, "\n")
-				bufferedOutputs[testName] = nil
-			}
-			bufferedStatusEvents[testName] = se
-			lastStatusTest = testName
-			lastStatusEvent = &se
-			if !seenTest[testName] {
-				bufferedOrder = append(bufferedOrder, testName)
-				seenTest[testName] = true
-			}
-			// Remove from stack if present
-			if len(testStack) > 0 && testStack[len(testStack)-1] == testName {
-				testStack = testStack[:len(testStack)-1]
-			}
+			statusEvents[testName] = se
 			continue
 		}
 
-		// Coverage line
 		if strings.Contains(trimmed, "coverage:") {
-			// Attach to last status event for the package
-			if lastStatusTest != "" {
-				if bufferedOutputs[lastStatusTest] == nil {
-					bufferedOutputs[lastStatusTest] = []string{trimmed}
-				} else {
-					bufferedOutputs[lastStatusTest] = append(bufferedOutputs[lastStatusTest], trimmed)
-				}
+			if len(testOrder) > 0 {
+				lastTest := testOrder[len(testOrder)-1]
+				outputs[lastTest] = append(outputs[lastTest], trimmed)
 			}
 			continue
 		}
 
-		// Output line (attach to last test in stack)
-		if len(testStack) > 0 {
-			lastTest := testStack[len(testStack)-1]
-			bufferedOutputs[lastTest] = append(bufferedOutputs[lastTest], trimmed)
+		// Non-indented output line (attach to most recent test in testOrder)
+		if len(testOrder) > 0 && !strings.HasPrefix(trimmed, "ok  ") && !strings.HasPrefix(trimmed, "FAIL") {
+			lastTest := testOrder[len(testOrder)-1]
+			outputs[lastTest] = append(outputs[lastTest], trimmed)
 		}
 	}
 
-	// Flush any remaining buffered events (for the last package)
-	for _, testName := range bufferedOrder {
-		re, hasRun := bufferedRunEvents[testName]
-		se, hasStatus := bufferedStatusEvents[testName]
-		if hasRun {
-			if re.Package == "" {
-				re.Package = currentPkg
-			}
-			events = append(events, re)
-		}
-		if hasStatus {
-			if se.Package == "" {
-				se.Package = currentPkg
-			}
-			if outs, ok := bufferedOutputs[testName]; ok && len(outs) > 0 {
-				if se.Output != "" {
-					se.Output += "\n" + strings.Join(outs, "\n")
-				} else {
-					se.Output = strings.Join(outs, "\n")
-				}
-			}
-			// Only set Output if non-empty for status events
-			if se.Output == "" {
-				// Omit Output field by using struct literal
-				events = append(events, TestEvent{
-					Time:    se.Time,
-					Action:  se.Action,
-					Package: se.Package,
-					Test:    se.Test,
-					Elapsed: se.Elapsed,
-				})
-			} else {
-				events = append(events, se)
-			}
-		}
-	}
+	flushEvents(currentPkg)
 
 	return events
 }

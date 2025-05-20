@@ -94,8 +94,16 @@ func TestExtractErrorContext_FileLineExtraction(t *testing.T) {
 func TestExtractErrorContext_NoFileLine(t *testing.T) {
 	events := []TestEvent{{Action: "output", Output: "no file info here"}}
 	errCtx := ExtractErrorContext(events)
+	if errCtx == nil {
+		t.Errorf("expected non-nil error context for non-file output, got nil")
+	}
 	if errCtx != nil {
-		t.Errorf("expected nil error context for non-file output, got %+v", errCtx)
+		if errCtx.FileLocation != nil {
+			t.Errorf("expected nil file location for non-file output, got %+v", errCtx.FileLocation)
+		}
+		if errCtx.Message != "no file info here" {
+			t.Errorf("expected message 'no file info here', got '%s'", errCtx.Message)
+		}
 	}
 }
 

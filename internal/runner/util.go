@@ -77,23 +77,21 @@ func RunGoFmt(paths ...string) (string, error) {
 		}
 	}
 
-	// Convert relative paths to absolute paths
-	var absPaths []string
-	for _, path := range paths {
-		if strings.HasPrefix(path, ".") {
-			absPath, err := filepath.Abs(path)
-			if err != nil {
-				return "", fmt.Errorf("failed to resolve absolute path for %s: %v", path, err)
-			}
-			absPaths = append(absPaths, absPath)
-		} else {
-			absPaths = append(absPaths, path)
-		}
-	}
-
-	cmd := exec.Command("go", append([]string{"fmt"}, absPaths...)...) // #nosec G204
+	cmd := exec.Command("go", append([]string{"fmt"}, paths...)...) // #nosec G204
 	out, err := cmd.CombinedOutput()
-	return string(out), err
+	if err != nil {
+		// Check if this is a validation error
+		if strings.Contains(string(out), "invalid package path") {
+			return string(out), err
+		}
+		// If there's output, it means some files were formatted
+		if len(out) > 0 {
+			return string(out), nil
+		}
+		// If there's no output but there's an error, return the error
+		return string(out), err
+	}
+	return string(out), nil
 }
 
 // isValidGoCommandArg checks if an argument is safe to pass to go commands.
@@ -122,10 +120,21 @@ func isValidGoCommandArg(arg string) bool {
 
 // isValidPackagePath checks if a package path is safe to pass to go commands.
 func isValidPackagePath(path string) bool {
-	// Allow relative paths starting with .
-	if strings.HasPrefix(path, ".") {
-		return !strings.ContainsAny(path, ";|><$`\\")
+	// Disallow paths containing command injection characters
+	if strings.ContainsAny(path, ";|><$`\\") {
+		return false
 	}
+
+	// Allow relative paths starting with ./
+	if strings.HasPrefix(path, "./") {
+		return true
+	}
+
+	// Allow single dot for current directory
+	if path == "." {
+		return true
+	}
+
 	// Allow absolute paths within the workspace
 	if strings.HasPrefix(path, "/") {
 		wd, err := os.Getwd()
@@ -138,5 +147,6 @@ func isValidPackagePath(path string) bool {
 		}
 		return strings.HasPrefix(absPath, wd)
 	}
+
 	return false
 }
