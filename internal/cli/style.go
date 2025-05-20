@@ -32,62 +32,75 @@ const (
 var (
 	titleStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.Color("#ffffff"))
+			Foreground(lipgloss.Color("#888888"))
 
 	subtitleStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#666666"))
 
 	successStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#16a34a")) // Vitest green
+			Foreground(lipgloss.Color("#00FF00")) // Brighter green for numbers
 
 	errorStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#dc2626")) // Vitest red
+			Foreground(lipgloss.Color("#FF0000")) // Brighter red for numbers
 
 	warningStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#ca8a04")) // Vitest yellow
+			Foreground(lipgloss.Color("#FFA500"))
 
 	dimStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#6E7681"))
+			Foreground(lipgloss.Color("#666666"))
 
 	// Test status styles
 	passedStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#16a34a")).
+			Foreground(lipgloss.Color("#00FF00")).
 			SetString("✓")
 
 	failedStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#dc2626")).
+			Foreground(lipgloss.Color("#FF0000")).
 			SetString("✕")
 
 	skippedStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#ca8a04")).
+			Foreground(lipgloss.Color("#FFA500")).
 			SetString("○")
 
 	runningStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#3b82f6")).
 			SetString("⠋")
 
-	// Vitest-like summary styles
+	// Summary styles
+	summaryLabelStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#666666"))
+
 	summaryFailedStyle = lipgloss.NewStyle().
 				Bold(true).
-				Foreground(lipgloss.Color("#E03E3E"))
+				Foreground(lipgloss.Color("#FF0000"))
 
 	summaryPassedStyle = lipgloss.NewStyle().
 				Bold(true).
-				Foreground(lipgloss.Color("#4ACA70"))
+				Foreground(lipgloss.Color("#00FF00"))
 
 	summarySkippedStyle = lipgloss.NewStyle().
 				Bold(true).
 				Foreground(lipgloss.Color("#FFA500"))
 
-	summaryLabelStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#6E7681"))
-
 	summaryValueStyle = lipgloss.NewStyle().
 				Bold(true).
-				Foreground(lipgloss.Color("#ffffff"))
+				Foreground(lipgloss.Color("#888888"))
 
 	breakdownTextStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#7D8590"))
+				Foreground(lipgloss.Color("#666666"))
+
+	// Error formatting styles
+	errorMessageStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#FF0000"))
+
+	errorLocationStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#666666"))
+
+	errorSnippetStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#888888"))
+
+	errorValueStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#888888"))
 )
 
 // Style handles terminal styling and formatting
@@ -135,35 +148,52 @@ func (s *Style) FormatTestName(result *TestResult) string {
 
 // FormatTestSummary formats a test summary line with colors
 func (s *Style) FormatTestSummary(label string, failed, passed, skipped, total int) string {
-	// Right-align the label with proper spacing
-	labelPart := fmt.Sprintf("%12s  ", summaryLabelStyle.Render(label))
+	// Right-align label with 12 characters padding
+	formattedLabel := fmt.Sprintf("%-12s", label)
+	if s.useColors {
+		formattedLabel = summaryLabelStyle.Render(formattedLabel)
+	}
 
-	// Build the summary parts
-	var stats []string
-
-	// Always show failed count when > 0
+	var parts []string
 	if failed > 0 {
-		stats = append(stats, fmt.Sprintf("%s failed", summaryFailedStyle.Render(fmt.Sprintf("%d", failed))))
+		failedStr := fmt.Sprintf("%d failed", failed)
+		if s.useColors {
+			failedStr = summaryFailedStyle.Render(failedStr)
+		}
+		parts = append(parts, failedStr)
 	}
-
-	// Add passed count
 	if passed > 0 {
-		stats = append(stats, fmt.Sprintf("%s passed", summaryPassedStyle.Render(fmt.Sprintf("%d", passed))))
+		passedStr := fmt.Sprintf("%d passed", passed)
+		if s.useColors {
+			passedStr = summaryPassedStyle.Render(passedStr)
+		}
+		parts = append(parts, passedStr)
 	}
-
-	// Add skipped count if any
 	if skipped > 0 {
-		stats = append(stats, fmt.Sprintf("%s skipped", summarySkippedStyle.Render(fmt.Sprintf("%d", skipped))))
+		skippedStr := fmt.Sprintf("%d skipped", skipped)
+		if s.useColors {
+			skippedStr = summarySkippedStyle.Render(skippedStr)
+		}
+		parts = append(parts, skippedStr)
 	}
 
-	// Join all parts with proper spacing and add total in parentheses
-	summary := strings.Join(stats, " | ")
+	summary := strings.Join(parts, " | ")
+	totalStr := fmt.Sprintf("(%d)", total)
+	if s.useColors {
+		totalStr = summaryValueStyle.Render(totalStr)
+	}
+
 	if summary != "" {
-		summary += " "
+		summary = fmt.Sprintf("%s %s", summary, totalStr)
+	} else if total > 0 {
+		passedStr := fmt.Sprintf("%d passed", total)
+		if s.useColors {
+			passedStr = summaryPassedStyle.Render(passedStr)
+		}
+		summary = fmt.Sprintf("%s %s", passedStr, totalStr)
 	}
-	summary += breakdownTextStyle.Render(fmt.Sprintf("(%d)", total))
 
-	return fmt.Sprintf("%s%s", labelPart, summary)
+	return fmt.Sprintf("%s %s", formattedLabel, summary)
 }
 
 // FormatTimestamp formats a timestamp line with consistent padding
@@ -176,8 +206,8 @@ func (s *Style) FormatTimestamp(label string, t time.Time) string {
 // FormatDuration formats the main duration value and breakdown
 func (s *Style) FormatDuration(label string, mainDuration string) string {
 	labelPart := fmt.Sprintf("%12s  ", summaryLabelStyle.Render(label))
-	durationPart := summaryValueStyle.Render(mainDuration)
-	return fmt.Sprintf("%s%s", labelPart, durationPart)
+	durationStr := summaryValueStyle.Render(mainDuration)
+	return fmt.Sprintf("%s%s", labelPart, durationStr)
 }
 
 // FormatHeader formats a header line
@@ -190,7 +220,10 @@ func (s *Style) FormatHeader(text string) string {
 
 // FormatErrorHeader formats an error header
 func (s *Style) FormatErrorHeader(text string) string {
-	return errorStyle.Bold(true).Render(text)
+	if s.useColors {
+		return errorStyle.Bold(true).Render("FAILED Tests")
+	}
+	return "FAILED Tests"
 }
 
 // FormatFailedSuite formats a failed test suite path
@@ -204,32 +237,45 @@ func (s *Style) FormatFailedTest(name string) string {
 }
 
 // FormatErrorMessage formats an error message
-func (s *Style) FormatErrorMessage(message string) string {
-	return fmt.Sprintf("    %s", dimStyle.Render(message))
+func (s *Style) FormatErrorMessage(msg string) string {
+	if s.useColors {
+		return errorMessageStyle.Render(msg)
+	}
+	return msg
 }
 
-// FormatErrorLocation formats a test error location
+// FormatErrorLocation formats a source location
 func (s *Style) FormatErrorLocation(loc *SourceLocation) string {
 	if s.useColors {
-		return subtitleStyle.Render(fmt.Sprintf("at %s:%d", loc.File, loc.Line))
+		return errorLocationStyle.Render(fmt.Sprintf("at %s:%d", loc.File, loc.Line))
 	}
 	return fmt.Sprintf("at %s:%d", loc.File, loc.Line)
 }
 
-// FormatErrorSnippet formats a test error code snippet
+// FormatErrorSnippet formats a code snippet
 func (s *Style) FormatErrorSnippet(snippet string, line int) string {
-	lines := strings.Split(snippet, "\n")
+	lines := strings.Split(strings.TrimSpace(snippet), "\n")
 	var formattedLines []string
 
 	for i, l := range lines {
+		lineNum := line + i
+		lineStr := fmt.Sprintf("  %d | %s", lineNum, strings.TrimSpace(l))
 		if s.useColors {
-			formattedLines = append(formattedLines, subtitleStyle.Render(fmt.Sprintf("  %d | %s", line+i, l)))
+			formattedLines = append(formattedLines, errorSnippetStyle.Render(lineStr))
 		} else {
-			formattedLines = append(formattedLines, fmt.Sprintf("  %d | %s", line+i, l))
+			formattedLines = append(formattedLines, lineStr)
 		}
 	}
 
 	return strings.Join(formattedLines, "\n")
+}
+
+// FormatErrorValue formats an expected or actual value
+func (s *Style) FormatErrorValue(value string) string {
+	if s.useColors {
+		return errorValueStyle.Render(value)
+	}
+	return value
 }
 
 // StatusIcon returns the appropriate icon for a test status
@@ -308,4 +354,12 @@ func (s *Style) Detect() {
 	if s.isWindows {
 		s.useEmoji = false
 	}
+}
+
+// FormatBreakdownText formats the breakdown text in the duration line
+func (s *Style) FormatBreakdownText(text string) string {
+	if s.useColors {
+		return breakdownTextStyle.Render(text)
+	}
+	return text
 }

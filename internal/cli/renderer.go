@@ -82,20 +82,29 @@ func (r *Renderer) RenderTestRun(run *TestRun) {
 	// Add breakdown details
 	breakdownParts := []string{}
 
-	// Distribute durations according to Vitest-like percentages
-	collectDuration := time.Duration(float64(totalDuration) * 0.85) // 85% for collect
-	setupDuration := time.Duration(float64(totalDuration) * 0.05)   // 5% for setup
-	testsDuration := time.Duration(float64(totalDuration) * 0.05)   // 5% for tests
-	prepareDuration := time.Duration(float64(totalDuration) * 0.05) // 5% for prepare
+	// Transform duration
+	if run.TransformDuration > 0 {
+		breakdownParts = append(breakdownParts, fmt.Sprintf("transform %s", formatDuration(run.TransformDuration)))
+	}
 
-	breakdownParts = append(breakdownParts, fmt.Sprintf("setup %s", formatDuration(setupDuration)))
-	breakdownParts = append(breakdownParts, fmt.Sprintf("collect %s", formatDuration(collectDuration)))
-	breakdownParts = append(breakdownParts, fmt.Sprintf("tests %s", formatDuration(testsDuration)))
-	breakdownParts = append(breakdownParts, fmt.Sprintf("prepare %s", formatDuration(prepareDuration)))
+	// Setup duration
+	if run.SetupDuration > 0 {
+		breakdownParts = append(breakdownParts, fmt.Sprintf("setup %s", formatDuration(run.SetupDuration)))
+	}
+
+	// Collect duration
+	if run.CollectDuration > 0 {
+		breakdownParts = append(breakdownParts, fmt.Sprintf("collect %s", formatDuration(run.CollectDuration)))
+	}
+
+	// Tests duration
+	if run.TestsDuration > 0 {
+		breakdownParts = append(breakdownParts, fmt.Sprintf("tests %s", formatDuration(run.TestsDuration)))
+	}
 
 	// Add breakdown in parentheses with proper styling
 	if len(breakdownParts) > 0 {
-		formattedMainDuration += breakdownTextStyle.Render(fmt.Sprintf(" (%s)", strings.Join(breakdownParts, ", ")))
+		formattedMainDuration += " " + r.style.FormatBreakdownText(fmt.Sprintf("(%s)", strings.Join(breakdownParts, ", ")))
 	}
 
 	r.writeln(formattedMainDuration)
@@ -136,8 +145,11 @@ func (r *Renderer) RenderTestResult(result *TestResult) {
 
 	// Add duration for completed tests
 	if result.Status != TestStatusRunning && result.Status != TestStatusPending {
-		duration := fmt.Sprintf("%.2fs", result.Duration.Seconds())
-		name = fmt.Sprintf("%s %s", name, duration)
+		// Convert milliseconds to seconds with 2 decimal places
+		seconds := float64(result.Duration.Milliseconds()) / 1000.0
+		duration := fmt.Sprintf("%.2fs", seconds)
+		// Pad the duration to align with Vitest's format (30 chars for name)
+		name = fmt.Sprintf("%-30s %s", name, duration)
 	}
 
 	// Add indentation for subtests
@@ -161,12 +173,9 @@ func (r *Renderer) renderErrors(errors []*TestError) {
 func (r *Renderer) renderError(err *TestError, depth int) {
 	indent := strings.Repeat("  ", depth)
 
-	// Error header
-	r.writeln("%sError:", indent)
-
 	// Error message
 	if err.Message != "" {
-		r.writeln("%s%s", indent, strings.TrimSpace(err.Message))
+		r.writeln("%s%s", indent, r.style.FormatErrorMessage(strings.TrimSpace(err.Message)))
 	}
 
 	// Source location and snippet
@@ -181,10 +190,10 @@ func (r *Renderer) renderError(err *TestError, depth int) {
 	if err.Expected != "" || err.Actual != "" {
 		r.writeln("")
 		if err.Expected != "" {
-			r.writeln("%sExpected: %s", indent, err.Expected)
+			r.writeln("%sExpected: %s", indent, r.style.FormatErrorValue(err.Expected))
 		}
 		if err.Actual != "" {
-			r.writeln("%s  Actual: %s", indent, err.Actual)
+			r.writeln("%s  Actual: %s", indent, r.style.FormatErrorValue(err.Actual))
 		}
 	}
 
@@ -219,24 +228,12 @@ func (r *Renderer) RenderFileChange(path string) {
 
 // Helper functions
 
-// formatDuration formats a duration in milliseconds to a human-readable string
+// formatDuration formats a duration in a Vitest-like format
 func formatDuration(d time.Duration) string {
-	if d < time.Millisecond {
-		return "0ms"
-	}
-	if d < time.Second {
-		return fmt.Sprintf("%dms", d.Milliseconds())
-	}
-	if d < time.Minute {
-		ms := d.Milliseconds() % 1000
-		if ms == 0 {
-			return fmt.Sprintf("%.1fs", d.Seconds())
-		}
-		return fmt.Sprintf("%.3fs", d.Seconds())
-	}
-	minutes := d / time.Minute
-	seconds := (d % time.Minute) / time.Second
-	return fmt.Sprintf("%dm %ds", minutes, seconds)
+	// Convert milliseconds to seconds with 2 decimal places
+	seconds := float64(d.Milliseconds()) / 1000.0
+	// Format with exactly 2 decimal places
+	return fmt.Sprintf("%.2fs", seconds)
 }
 
 // RenderFinalSummary renders the final test summary
@@ -269,27 +266,35 @@ func (r *Renderer) RenderFinalSummary(run *TestRun) {
 	r.writeln(r.style.FormatTimestamp("Start at", run.StartTime))
 
 	// Duration with breakdown
-	mainDurationStr := formatDuration(run.Duration)
-	formattedMainDuration := r.style.FormatDuration("Duration", mainDurationStr)
+	mainDuration := formatDuration(run.Duration)
+	formattedMainDuration := r.style.FormatDuration("Duration", mainDuration)
 
-	// Format breakdown components
+	// Add breakdown parts
 	var breakdownParts []string
+
+	// Transform duration
+	if run.TransformDuration > 0 {
+		breakdownParts = append(breakdownParts, fmt.Sprintf("transform %s", formatDuration(run.TransformDuration)))
+	}
+
+	// Setup duration
 	if run.SetupDuration > 0 {
 		breakdownParts = append(breakdownParts, fmt.Sprintf("setup %s", formatDuration(run.SetupDuration)))
 	}
+
+	// Collect duration
 	if run.CollectDuration > 0 {
 		breakdownParts = append(breakdownParts, fmt.Sprintf("collect %s", formatDuration(run.CollectDuration)))
 	}
+
+	// Tests duration
 	if run.TestsDuration > 0 {
 		breakdownParts = append(breakdownParts, fmt.Sprintf("tests %s", formatDuration(run.TestsDuration)))
 	}
-	if run.PrepareDuration > 0 {
-		breakdownParts = append(breakdownParts, fmt.Sprintf("prepare %s", formatDuration(run.PrepareDuration)))
-	}
 
-	// Add breakdown in parentheses
+	// Add breakdown in parentheses with proper styling
 	if len(breakdownParts) > 0 {
-		formattedMainDuration += breakdownTextStyle.Render(fmt.Sprintf(" (%s)", strings.Join(breakdownParts, ", ")))
+		formattedMainDuration += " " + r.style.FormatBreakdownText(fmt.Sprintf("(%s)", strings.Join(breakdownParts, ", ")))
 	}
 
 	r.writeln(formattedMainDuration)
@@ -297,43 +302,27 @@ func (r *Renderer) RenderFinalSummary(run *TestRun) {
 
 	// Show failed tests if any
 	if run.NumFailed > 0 {
-		r.writeln(r.style.FormatErrorHeader("FAILED TESTS"))
+		r.writeln(r.style.FormatErrorHeader("FAILED Tests"))
 		r.writeln("")
 
-		var failedTests []struct {
-			Suite string
-			Test  *TestResult
-		}
-
-		// Collect all failed tests
 		for _, suite := range run.Suites {
 			if suite.NumFailed > 0 {
 				for _, test := range suite.Tests {
 					if test.Status == TestStatusFailed {
-						failedTests = append(failedTests, struct {
-							Suite string
-							Test  *TestResult
-						}{
-							Suite: suite.FilePath,
-							Test:  test,
-						})
+						r.writeln(r.style.FormatFailedSuite(suite.FilePath))
+						r.writeln(r.style.FormatFailedTest(test.Name))
+						if test.Error != nil {
+							if test.Error.Message != "" {
+								r.writeln(r.style.FormatErrorMessage(test.Error.Message))
+							}
+							if test.Error.Location != nil {
+								r.writeln(r.style.FormatErrorLocation(test.Error.Location))
+							}
+						}
+						r.writeln("")
 					}
 				}
 			}
-		}
-
-		// Display failed tests with proper formatting
-		for _, ft := range failedTests {
-			r.writeln(r.style.FormatFailedSuite(ft.Suite))
-			r.writeln(r.style.FormatFailedTest(ft.Test.Name))
-			if ft.Test.Error != nil && ft.Test.Error.Message != "" {
-				r.writeln(r.style.FormatErrorMessage(ft.Test.Error.Message))
-				if ft.Test.Error.Location != nil {
-					r.writeln(r.style.FormatErrorMessage(fmt.Sprintf("at %s:%d",
-						ft.Test.Error.Location.File, ft.Test.Error.Location.Line)))
-				}
-			}
-			r.writeln("")
 		}
 	}
 }
