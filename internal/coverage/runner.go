@@ -1,8 +1,10 @@
 package coverage
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -16,8 +18,9 @@ type TestRunnerOptions struct {
 	PackagePaths        []string // List of packages to run tests for
 	OutputPath          string   // Where to save the coverage profile
 	Timeout             time.Duration
-	IncludeCoveredFiles bool // Include files with 100% coverage
-	CleanupTempFiles    bool // Whether to clean up temporary coverage files
+	IncludeCoveredFiles bool   // Include files with 100% coverage
+	CleanupTempFiles    bool   // Whether to clean up temporary coverage files
+	WorkingDirectory    string // Directory from which to run the go test command
 }
 
 // RunTestsWithCoverage runs tests for the specified packages with coverage enabled
@@ -70,13 +73,18 @@ func RunTestsWithCoverage(ctx context.Context, options TestRunnerOptions) error 
 	// Add packages to test
 	args = append(args, options.PackagePaths...)
 
-	// Run the command with a timeout context
-	cmdCtx, cancel := context.WithTimeout(ctx, options.Timeout+5*time.Second)
-	defer cancel()
+	// Run the command with the provided context directly
+	cmd := exec.CommandContext(ctx, "go", args...)
 
-	cmd := exec.CommandContext(cmdCtx, "go", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	if options.WorkingDirectory != "" {
+		cmd.Dir = options.WorkingDirectory
+	}
+
+	var stdoutBuf, stderrBuf bytes.Buffer
+	cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuf)
+	cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf)
+
+	setProcessGroupID(cmd) // Platform-specific process group setting
 
 	// Create a channel to signal command completion
 	done := make(chan error, 1)
@@ -87,16 +95,17 @@ func RunTestsWithCoverage(ctx context.Context, options TestRunnerOptions) error 
 	// Wait for either command completion or context cancellation
 	var cmdErr error
 	select {
-	case <-ctx.Done():
-		// Context was cancelled, kill the process
-		if cmd.Process != nil {
-			if err := cmd.Process.Kill(); err != nil {
-				log.Printf("Error killing process: %v", err)
-			}
-		}
+	case <-ctx.Done(): // This case will now be primarily for the main test context timeout
+		// Context was cancelled, kill the process group
+		killProcessGroup(cmd) // Platform-specific process group killing
 		cmdErr = ctx.Err()
+		if cmdErr != nil {
+			log.Printf("Coverage test runner context error: %v. Stderr: %s", cmdErr, stderrBuf.String())
+		}
 	case cmdErr = <-done:
-		// Command completed normally
+		if cmdErr != nil {
+			log.Printf("Coverage test command failed: %v. Stderr: %s", cmdErr, stderrBuf.String())
+		}
 	}
 
 	// Check if we have coverage data regardless of test success/failure

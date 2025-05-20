@@ -27,16 +27,36 @@ func validateCoveragePath(path string) error {
 		return fmt.Errorf("path contains directory traversal attempt: %s", path)
 	}
 
-	// Check for absolute paths
+	// Allow absolute paths only if they are within the system's temp directory
 	if filepath.IsAbs(cleanPath) {
-		return fmt.Errorf("absolute paths are not allowed: %s", path)
+		sysTempDir := os.TempDir()
+		if !strings.HasPrefix(cleanPath, filepath.Clean(sysTempDir)) {
+			return fmt.Errorf("absolute paths are only allowed within the system temp directory: %s", path)
+		}
 	}
 
 	// Check for suspicious characters
-	invalidChars := "<>:\"|?*"
+	invalidChars := "<>\"|?*" // Removed colon for now
 	if runtime.GOOS != "windows" {
 		invalidChars += "\\" // Only treat backslash as invalid on non-Windows
 	}
+
+	// Special handling for colon on Windows: allow if it's part of a drive letter
+	if runtime.GOOS == "windows" {
+		if strings.Count(cleanPath, ":") == 1 {
+			if !filepath.IsAbs(cleanPath) || len(cleanPath) < 2 || cleanPath[1] != ':' {
+				// If it's not an absolute path with a drive letter like C:, then colon is invalid
+				invalidChars += ":"
+			}
+		} else if strings.Count(cleanPath, ":") > 1 {
+			// More than one colon is always invalid
+			invalidChars += ":"
+		}
+	} else {
+		// On non-Windows, colon is generally invalid in paths
+		invalidChars += ":"
+	}
+
 	if strings.ContainsAny(cleanPath, invalidChars) {
 		return fmt.Errorf("path contains invalid characters: %s", path)
 	}

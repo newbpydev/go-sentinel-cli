@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -125,47 +126,73 @@ func TestRunner_ShouldRunTests(t *testing.T) {
 
 func TestRunner_WatchMode(t *testing.T) {
 	// Create a temporary directory for test files
-	dir := t.TempDir()
+	dir, err := os.MkdirTemp("", "test-watch-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer func() {
+		if err := os.RemoveAll(dir); err != nil {
+			t.Logf("Warning: failed to remove temp dir %s: %v", dir, err)
+		}
+	}()
+
+	// Initialize Go module
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example\n\ngo 1.23\n"), 0600); err != nil {
+		t.Fatalf("Failed to create go.mod: %v", err)
+	}
 
 	// Create a test file
-	testFile := filepath.Join(dir, "test.go")
-	err := os.WriteFile(testFile, []byte(`package test
-func Add(a, b int) int { return a + b }`), 0600)
-	if err != nil {
+	testFile := filepath.Join(dir, "example_test.go")
+	if err := os.WriteFile(testFile, []byte(`package example
+
+import "testing"
+
+func TestPass(t *testing.T) {
+	// This test should pass
+}
+`), 0600); err != nil {
 		t.Fatalf("Failed to write test file: %v", err)
 	}
 
-	// Create a test runner with watch mode enabled
+	// Create a runner with watch mode enabled
 	runner, err := NewRunner(dir)
 	if err != nil {
 		t.Fatalf("Failed to create runner: %v", err)
 	}
 
-	// Start the runner in a goroutine
-	done := make(chan bool)
+	// Create a context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Run tests in watch mode
+	errChan := make(chan error, 1)
 	go func() {
-		if err := runner.Run(context.Background(), RunOptions{Watch: true}); err != nil {
-			t.Errorf("Failed to run tests in watch mode: %v", err)
-		}
-		done <- true
+		errChan <- runner.Run(ctx, RunOptions{Watch: true})
 	}()
 
-	// Wait for a short time to let the runner start
-	time.Sleep(100 * time.Millisecond)
+	// Wait for a short time to let the watcher start
+	time.Sleep(500 * time.Millisecond)
 
 	// Modify the test file
-	err = os.WriteFile(testFile, []byte(`package test
-func Add(a, b int) int { return a + b + 1 }`), 0600)
-	if err != nil {
+	if err := os.WriteFile(testFile, []byte(`package example
+
+import "testing"
+
+func TestPass(t *testing.T) {
+	// Modified test
+}
+`), 0600); err != nil {
 		t.Fatalf("Failed to modify test file: %v", err)
 	}
 
-	// Wait for up to 10 seconds for the runner to complete
+	// Wait for the test run to complete or context to be canceled
 	select {
-	case <-done:
-		// Success
-	case <-time.After(10 * time.Second):
-		t.Fatal("Watch mode test timed out")
+	case err := <-errChan:
+		if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+			t.Errorf("Run() error = %v", err)
+		}
+	case <-time.After(6 * time.Second):
+		t.Error("Test timed out")
 	}
 }
 

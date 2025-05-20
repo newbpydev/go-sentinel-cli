@@ -219,10 +219,18 @@ func (s *Style) FormatErrorLocation(loc *SourceLocation) string {
 
 // FormatErrorSnippet formats a test error code snippet
 func (s *Style) FormatErrorSnippet(snippet string, line int) string {
-	if s.useColors {
-		return subtitleStyle.Render(fmt.Sprintf("  %d | %s", line, snippet))
+	lines := strings.Split(snippet, "\n")
+	var formattedLines []string
+
+	for i, l := range lines {
+		if s.useColors {
+			formattedLines = append(formattedLines, subtitleStyle.Render(fmt.Sprintf("  %d | %s", line+i, l)))
+		} else {
+			formattedLines = append(formattedLines, fmt.Sprintf("  %d | %s", line+i, l))
+		}
 	}
-	return fmt.Sprintf("  %d | %s", line, snippet)
+
+	return strings.Join(formattedLines, "\n")
 }
 
 // StatusIcon returns the appropriate icon for a test status
@@ -276,14 +284,25 @@ func (s *Style) StatusIcon(status TestStatus) string {
 
 // Detect checks terminal capabilities and adjusts settings accordingly
 func (s *Style) Detect() {
-	// Check if colors are supported
-	if !s.useColors {
+	// Check if colors are forced
+	if os.Getenv("FORCE_COLOR") != "" {
+		s.useColors = true
+		s.useIcons = true
+		return
+	}
+
+	// Check if colors are disabled
+	if os.Getenv("NO_COLOR") != "" {
+		s.useColors = false
+		s.useIcons = false
 		return
 	}
 
 	// Check if terminal supports colors
 	if !isatty.IsTerminal(os.Stdout.Fd()) && !isatty.IsCygwinTerminal(os.Stdout.Fd()) {
 		s.useColors = false
+		s.useIcons = false
+		return
 	}
 
 	// Check if terminal supports Unicode

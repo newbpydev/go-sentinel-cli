@@ -30,47 +30,61 @@ func TestRunTestsWithCoverage(t *testing.T) {
 	// Define the coverage output path
 	coverageFile := filepath.Join(tempDir, "coverage.out")
 
-	// Set up test context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// Set up test context with a longer timeout than the go test command's timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second) // Main test timeout
 	defer cancel()
 
-	// IMPORTANT FIX: Only test this package instead of all packages
-	// This prevents timeout by limiting the scope
-	currentPkg := "github.com/newbpydev/go-sentinel/internal/coverage"
+	// Resolve the absolute path to the dummy package
+	wd, err := os.Getwd() // Should be internal/coverage
+	if err != nil {
+		t.Fatalf("Failed to get current working directory: %v", err)
+	}
+	dummyPkgDir := filepath.Join(wd, "testdata", "samplepkg")
 
-	// Run tests with coverage on only the current package
+	// Run tests with coverage on the dummy package
 	options := TestRunnerOptions{
-		PackagePaths: []string{currentPkg},
-		OutputPath:   coverageFile,
-		Timeout:      3 * time.Second, // Shorter timeout
+		PackagePaths:     []string{"."}, // Test current dir within dummyPkgDir
+		OutputPath:       coverageFile,
+		Timeout:          10 * time.Second, // Timeout for the 'go test' command itself
+		WorkingDirectory: dummyPkgDir,
 	}
 
-	// Run the tests - we ignore the error as we're just testing if the function runs without hanging
-	// and we don't care about test failures (they might be expected)
-	_ = RunTestsWithCoverage(ctx, options)
+	// Run the tests
+	if err := RunTestsWithCoverage(ctx, options); err != nil {
+		// It's possible the error is just "exit status 1" if tests failed,
+		// which is okay for this test as long as coverage is generated.
+		// However, if the error indicates a more fundamental problem with the runner,
+		// we should fail. For now, we'll log it and proceed to check coverage file.
+		t.Logf("RunTestsWithCoverage returned an error: %v. Checking if coverage file was still generated.", err)
+	}
 
-	// Check if the coverage file was created or log why it failed
+	// Check if the coverage file was created
 	if _, err := os.Stat(coverageFile); os.IsNotExist(err) {
-		t.Log("Coverage file wasn't created, but this could be due to test failures")
-		// Don't fail the test just for this
-	} else {
-		// Only try to parse the coverage file if it exists
-		// Check if we can create a collector from the coverage file
-		collector, err := NewCollector(coverageFile)
-		if err != nil {
-			t.Logf("Note: Couldn't create collector from coverage file: %v", err)
-		} else {
-			// Check if we can calculate metrics
-			metrics, err := collector.CalculateMetrics()
-			if err != nil {
-				t.Logf("Note: Couldn't calculate metrics: %v", err)
-			} else if metrics == nil {
-				t.Log("Note: Metrics were nil")
-			}
-		}
+		t.Fatalf("Coverage file %s was not created: %v", coverageFile, err)
 	}
 
-	// Test passes as long as it doesn't hang/timeout
+	// Check if we can create a collector from the coverage file
+	collector, err := NewCollector(coverageFile)
+	if err != nil {
+		t.Fatalf("Failed to create collector from coverage file %s: %v", coverageFile, err)
+	}
+	if collector == nil {
+		t.Fatalf("NewCollector returned nil for coverage file %s without an error", coverageFile)
+	}
+
+	// Check if we can calculate metrics
+	metrics, err := collector.CalculateMetrics()
+	if err != nil {
+		// If "no coverage profiles available", it means the .out file was likely empty or invalid
+		// This often happens if the tests themselves had compilation errors or panicked early.
+		t.Fatalf("Failed to calculate metrics from coverage file %s: %v", coverageFile, err)
+	}
+	if metrics == nil {
+		t.Fatalf("CalculateMetrics returned nil for coverage file %s without an error", coverageFile)
+	}
+
+	t.Logf("Successfully processed coverage file. Overall Line Coverage: %.2f%%", metrics.LineCoverage)
+	// Test passes if it reaches here without a hang and processes the coverage file.
 }
 
 func TestFindAllPackages(t *testing.T) {

@@ -51,15 +51,6 @@ func (r *Runner) Run(ctx context.Context, opts RunOptions) error {
 	}
 
 	if opts.Watch {
-		// Close any existing watcher before starting watch mode
-		if err := r.watcher.Close(); err != nil {
-			log.Printf("Error closing watcher: %v", err)
-		}
-		defer func() {
-			if err := r.watcher.Close(); err != nil {
-				log.Printf("Error closing watcher: %v", err)
-			}
-		}()
 		return r.Watch(ctx, opts)
 	}
 	_, err := r.RunOnce(opts)

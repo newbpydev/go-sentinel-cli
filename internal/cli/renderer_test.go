@@ -160,7 +160,7 @@ func TestRenderer_RenderWatchHeader(t *testing.T) {
 	output := buf.String()
 
 	expectedParts := []string{
-		"Watch Mode",
+		"WATCH MODE",
 		"Press 'a' to run all tests",
 		"Press 'f' to run only failed tests",
 		"Press 'q' to quit",

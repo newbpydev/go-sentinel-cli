@@ -157,15 +157,15 @@ func TestStyle_FormatTestName(t *testing.T) {
 }
 
 func TestStyle_FormatErrorSnippet(t *testing.T) {
-	snippet := "func TestExample() {\n\tresult := compute()\n\tassert.Equal(t, 42, result)\n}"
+	snippet := "result := compute()\nassert.Equal(t, 42, result)"
 	errorLine := 2
 
 	s := &Style{useColors: false}
 	got := s.FormatErrorSnippet(snippet, errorLine)
 
-	// Without colors, should return the original snippet
-	if got != snippet {
-		t.Errorf("FormatErrorSnippet() without colors = %q, want %q", got, snippet)
+	want := "  2 | result := compute()\n  3 | assert.Equal(t, 42, result)"
+	if got != want {
+		t.Errorf("FormatErrorSnippet() without colors = %q, want %q", got, want)
 	}
 
 	// With colors, should contain the original lines
