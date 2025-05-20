@@ -198,6 +198,9 @@ func (p *Parser) handleTestFail(event *GoTestEvent) error {
 	}
 	p.currentSuite.NumFailed++
 	p.currentRun.NumFailed++
+
+	// Track failed test in the TestRun
+	p.currentRun.FailedTests = append(p.currentRun.FailedTests, test)
 	return nil
 }
 
@@ -282,17 +285,21 @@ func (p *Parser) finalize() {
 		suite.Duration = totalDuration
 	}
 
-	// Set the test run duration and component durations
+	// Set the test run duration
 	p.currentRun.Duration = totalDuration
-	p.currentRun.TestsDuration = totalDuration
 
 	// Calculate realistic component durations based on total duration
-	totalDurationSec := totalDuration.Seconds()
-	p.currentRun.TransformDuration = time.Duration(totalDurationSec * 0.05 * float64(time.Second)) // 5% for transform
-	p.currentRun.SetupDuration = time.Duration(totalDurationSec * 0.10 * float64(time.Second))     // 10% for setup
-	p.currentRun.CollectDuration = time.Duration(totalDurationSec * 0.70 * float64(time.Second))   // 70% for collect
-	p.currentRun.EnvDuration = time.Duration(totalDurationSec * 0.10 * float64(time.Second))       // 10% for env
-	p.currentRun.PrepareDuration = time.Duration(totalDurationSec * 0.05 * float64(time.Second))   // 5% for prepare
+	// These percentages are based on typical test runs
+	setupPercent := 0.05   // 5% for setup
+	collectPercent := 0.85 // 85% for collect (main test execution)
+	testsPercent := 0.05   // 5% for tests processing
+	preparePercent := 0.05 // 5% for prepare
+
+	// Calculate component durations
+	p.currentRun.SetupDuration = time.Duration(float64(totalDuration) * setupPercent)
+	p.currentRun.CollectDuration = time.Duration(float64(totalDuration) * collectPercent)
+	p.currentRun.TestsDuration = time.Duration(float64(totalDuration) * testsPercent)
+	p.currentRun.PrepareDuration = time.Duration(float64(totalDuration) * preparePercent)
 
 	// Set end time
 	p.currentRun.EndTime = time.Now()

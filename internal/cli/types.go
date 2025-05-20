@@ -80,6 +80,7 @@ type TestRun struct {
 	NumFailed         int
 	NumSkipped        int
 	Suites            []*TestSuite
+	FailedTests       []*TestResult // Track failed tests for later use
 }
 
 // NewTestRun creates a new test run with initialized fields
@@ -96,5 +97,6 @@ func NewTestRun() *TestRun {
 		EnvDuration:       78*time.Second + 910*time.Millisecond,
 		PrepareDuration:   3*time.Second + 690*time.Millisecond,
 		Suites:            []*TestSuite{},
+		FailedTests:       []*TestResult{},
 	}
 }

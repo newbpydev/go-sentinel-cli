@@ -68,16 +68,21 @@ var (
 
 	// Vitest-like summary styles
 	summaryFailedStyle = lipgloss.NewStyle().
+				Bold(true).
 				Foreground(lipgloss.Color("#E03E3E"))
 
 	summaryPassedStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("#2EA043"))
 
+	summarySkippedStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#ca8a04"))
+
 	summaryLabelStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("#6E7681"))
 
 	summaryValueStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#7D8590"))
+				Bold(true).
+				Foreground(lipgloss.Color("#ffffff"))
 
 	breakdownTextStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("#7D8590"))
@@ -128,12 +133,8 @@ func (s *Style) FormatTestName(result *TestResult) string {
 
 // FormatTestSummary formats a test summary line with colors
 func (s *Style) FormatTestSummary(label string, failed, passed, skipped, total int) string {
-	// Add label with consistent padding and indentation
-	prefix := ""
-	if label == "Tests" {
-		prefix = "  " // Add indentation for Tests line
-	}
-	labelPart := fmt.Sprintf("%s%-12s", prefix, summaryLabelStyle.Render(label))
+	// Right-align the label with proper spacing
+	labelPart := fmt.Sprintf("%12s  ", summaryLabelStyle.Render(label))
 
 	// Build the summary parts
 	var stats []string
@@ -143,44 +144,36 @@ func (s *Style) FormatTestSummary(label string, failed, passed, skipped, total i
 		stats = append(stats, fmt.Sprintf("%s failed", summaryFailedStyle.Render(fmt.Sprintf("%d", failed))))
 	}
 
-	// Add separator bar if we have both failed and passed
-	if failed > 0 && passed > 0 {
-		stats = append(stats, "|")
-	}
-
 	// Add passed count
 	if passed > 0 {
-		stats = append(stats, fmt.Sprintf("%s passed", summaryPassedStyle.Render(fmt.Sprintf("%d", passed))))
+		stats = append(stats, fmt.Sprintf("%s passed", summaryValueStyle.Render(fmt.Sprintf("%d", passed))))
 	}
 
 	// Add skipped count if any
 	if skipped > 0 {
-		if len(stats) > 0 {
-			stats = append(stats, "|")
-		}
-		stats = append(stats, fmt.Sprintf("%s skipped", warningStyle.Render(fmt.Sprintf("%d", skipped))))
+		stats = append(stats, fmt.Sprintf("%s skipped", summaryValueStyle.Render(fmt.Sprintf("%d", skipped))))
 	}
 
-	// Add total count
-	if len(stats) > 0 {
-		stats = append(stats, fmt.Sprintf("(%d)", total))
-	} else {
-		stats = append(stats, fmt.Sprintf("%d", total))
+	// Join all parts with proper spacing and add total in parentheses
+	summary := strings.Join(stats, " | ")
+	if summary != "" {
+		summary += " "
 	}
+	summary += breakdownTextStyle.Render(fmt.Sprintf("(%d)", total))
 
-	return fmt.Sprintf("%s%s", labelPart, strings.Join(stats, " "))
+	return fmt.Sprintf("%s%s", labelPart, summary)
 }
 
 // FormatTimestamp formats a timestamp line with consistent padding
 func (s *Style) FormatTimestamp(label string, t time.Time) string {
-	labelPart := fmt.Sprintf("  %-12s", summaryLabelStyle.Render(label))
+	labelPart := fmt.Sprintf("%12s  ", summaryLabelStyle.Render(label))
 	timeStr := summaryValueStyle.Render(t.Format("15:04:05"))
 	return fmt.Sprintf("%s%s", labelPart, timeStr)
 }
 
-// FormatDuration formats the main duration value, expecting breakdown to be handled separately for styling
+// FormatDuration formats the main duration value and breakdown
 func (s *Style) FormatDuration(label string, mainDuration string) string {
-	labelPart := fmt.Sprintf("  %-12s", summaryLabelStyle.Render(label))
+	labelPart := fmt.Sprintf("%12s  ", summaryLabelStyle.Render(label))
 	durationPart := summaryValueStyle.Render(mainDuration)
 	return fmt.Sprintf("%s%s", labelPart, durationPart)
 }
@@ -195,33 +188,21 @@ func (s *Style) FormatHeader(text string) string {
 
 // FormatErrorHeader formats an error header
 func (s *Style) FormatErrorHeader(text string) string {
-	if s.useColors {
-		return errorStyle.Render(text)
-	}
-	return text
+	return errorStyle.Render(text)
 }
 
-// FormatFailedSuite formats a failed suite path
+// FormatFailedSuite formats a failed test suite path
 func (s *Style) FormatFailedSuite(path string) string {
-	if s.useColors {
-		return errorStyle.Render(fmt.Sprintf("  %s", path))
-	}
 	return fmt.Sprintf("  %s", path)
 }
 
 // FormatFailedTest formats a failed test name
 func (s *Style) FormatFailedTest(name string) string {
-	if s.useColors {
-		return errorStyle.Render(fmt.Sprintf("    %s", name))
-	}
-	return fmt.Sprintf("    %s", name)
+	return fmt.Sprintf("    %s", errorStyle.Render(name))
 }
 
 // FormatErrorMessage formats an error message
 func (s *Style) FormatErrorMessage(message string) string {
-	if s.useColors {
-		return errorStyle.Render(fmt.Sprintf("      %s", message))
-	}
 	return fmt.Sprintf("      %s", message)
 }
 
