@@ -70,14 +70,14 @@ func (r *Renderer) RenderTestRun(run *TestRun) {
 
 	// Format summaries with consistent spacing
 	r.writeln(r.style.FormatTestSummary("Test Files", failedFiles, passedFiles, 0, len(run.Suites)))
-	r.writeln(r.style.FormatTestSummary("Tests", run.NumFailed, run.NumPassed, run.NumSkipped, run.NumTotal))
+	r.writeln(r.style.FormatTestSummary("Tests     ", run.NumFailed, run.NumPassed, run.NumSkipped, run.NumTotal))
 	r.writeln("")
-	r.writeln(r.style.FormatTimestamp("Start at", run.StartTime))
+	r.writeln(r.style.FormatTimestamp("Start at  ", run.StartTime))
 
 	// Calculate total duration from all components
 	totalDuration := run.Duration
 	mainDurationStr := formatDuration(totalDuration)
-	formattedMainDuration := r.style.FormatDuration("Duration", mainDurationStr)
+	formattedMainDuration := r.style.FormatDuration("Duration  ", mainDurationStr)
 
 	// Add breakdown details
 	breakdownParts := []string{}
@@ -261,13 +261,13 @@ func (r *Renderer) RenderFinalSummary(run *TestRun) {
 	}
 
 	r.writeln(r.style.FormatTestSummary("Test Files", failedFiles, passedFiles, 0, len(run.Suites)))
-	r.writeln(r.style.FormatTestSummary("Tests", run.NumFailed, run.NumPassed, run.NumSkipped, run.NumTotal))
+	r.writeln(r.style.FormatTestSummary("Tests     ", run.NumFailed, run.NumPassed, run.NumSkipped, run.NumTotal))
 	r.writeln("")
-	r.writeln(r.style.FormatTimestamp("Start at", run.StartTime))
+	r.writeln(r.style.FormatTimestamp("Start at   ", run.StartTime))
 
 	// Duration with breakdown
 	mainDuration := formatDuration(run.Duration)
-	formattedMainDuration := r.style.FormatDuration("Duration", mainDuration)
+	formattedMainDuration := r.style.FormatDuration("Duration   ", mainDuration)
 
 	// Add breakdown parts
 	var breakdownParts []string
