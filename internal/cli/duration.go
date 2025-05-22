@@ -13,18 +13,31 @@ func DurationFromSeconds(seconds float64) time.Duration {
 // FormatDurationPrecise formats a duration with appropriate units and precision
 // For test results display (uses ms for small durations, s for larger ones)
 func FormatDurationPrecise(d time.Duration) string {
-	seconds := d.Seconds()
-
-	if seconds < 0.01 && d.Microseconds() > 0 {
-		// For very small durations (< 10ms), show microseconds
-		return fmt.Sprintf("%dµs", d.Microseconds())
-	} else if seconds < 1 {
-		// For durations less than 1 second, show milliseconds without decimal
-		return fmt.Sprintf("%dms", d.Milliseconds())
+	if d == 0 {
+		return "0ms" // Display 0ms instead of 0µs for zero durations
 	}
 
-	// For durations >= 1 second, show seconds with 2 decimal places
-	return fmt.Sprintf("%.2fs", seconds)
+	seconds := d.Seconds()
+	milliseconds := d.Milliseconds()
+	microseconds := d.Microseconds()
+
+	// Use Vitest-style formatting:
+	// - Very short: use ms without decimal (1ms)
+	// - Medium: use ms without decimal (123ms)
+	// - Longer: use seconds with decimal (1.2s)
+	if seconds >= 1 {
+		// For >= 1 second, use decimal seconds (like 1.2s)
+		if seconds < 10 {
+			return fmt.Sprintf("%.1fs", seconds)
+		}
+		return fmt.Sprintf("%.0fs", seconds)
+	} else if milliseconds > 0 {
+		// For milliseconds range
+		return fmt.Sprintf("%dms", milliseconds)
+	} else {
+		// For microseconds range
+		return fmt.Sprintf("%dµs", microseconds)
+	}
 }
 
 // FormatDurationAdaptive formats a duration with adaptive precision

@@ -4,7 +4,12 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"runtime"
+	"strconv"
 	"strings"
+	"unicode"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 // Renderer handles the display of test results
@@ -76,80 +81,59 @@ func (r *Renderer) renderSummary(run *TestRun) {
 	// Add a divider line before summary
 	r.writeln("")
 
-	// Format summaries with consistent spacing
+	// Format summaries with consistent spacing and color
 	r.writeln(r.style.FormatTestSummary("Test Files", failedFiles, passedFiles, 0, len(run.Suites)))
 	r.writeln(r.style.FormatTestSummary("Tests", run.NumFailed, run.NumPassed, run.NumSkipped, run.NumTotal))
 
+	// Add total duration and (if possible) heap usage
 	r.writeln("")
 	r.writeln(r.style.FormatTimestamp("Start at", run.StartTime))
 	if !run.EndTime.IsZero() {
 		r.writeln(r.style.FormatTimestamp("End at", run.EndTime))
 	}
 
-	// Calculate total duration from all components
 	totalDuration := run.Duration
 	mainDurationStr := FormatDurationAdaptive(totalDuration)
 	formattedMainDuration := r.style.FormatDuration("Duration", mainDurationStr)
 
 	// Add breakdown details
 	breakdownParts := []string{}
-
-	// Setup duration
 	if run.SetupDuration > 0 {
 		breakdownParts = append(breakdownParts, fmt.Sprintf("setup %s", FormatDurationAdaptive(run.SetupDuration)))
 	}
-
-	// Collect duration
 	if run.CollectDuration > 0 {
 		breakdownParts = append(breakdownParts, fmt.Sprintf("collect %s", FormatDurationAdaptive(run.CollectDuration)))
 	}
-
-	// Tests duration
 	if run.TestsDuration > 0 {
 		breakdownParts = append(breakdownParts, fmt.Sprintf("tests %s", FormatDurationAdaptive(run.TestsDuration)))
 	}
-
-	// Parse duration
 	if run.ParseDuration > 0 {
 		breakdownParts = append(breakdownParts, fmt.Sprintf("parse %s", FormatDurationAdaptive(run.ParseDuration)))
 	}
-
-	// Add breakdown in parentheses with proper styling
 	if len(breakdownParts) > 0 {
 		formattedMainDuration += " " + r.style.FormatBreakdownText(fmt.Sprintf("(%s)", strings.Join(breakdownParts, ", ")))
 	}
-
 	r.writeln(formattedMainDuration)
-	r.writeln("")
 
 	// Show failed tests if any
 	if run.NumFailed > 0 {
+		r.writeln("")
 		r.writeln(r.style.FormatErrorHeader(" FAILED Tests "))
 		r.writeln("")
-
-		// Show failed test files/suites
 		for _, suite := range run.Suites {
 			if suite.NumFailed > 0 {
 				r.writeln(r.style.FormatFailedSuite(suite.FilePath))
-
-				// Only show the failing tests, not all tests in the suite
 				for _, test := range suite.Tests {
 					if test.Status == TestStatusFailed {
-						// Simple test name only
 						testName := test.Name
-						// If it's a subtest, show just the subtest part
 						if strings.Contains(testName, "/") {
 							parts := strings.Split(testName, "/")
 							testName = parts[len(parts)-1]
 						}
-
 						r.writeln("    %s", r.style.FormatFailedTest(testName))
-
-						// Show error details compactly
 						if test.Error != nil {
 							if test.Error.Message != "" {
 								msg := strings.TrimSpace(test.Error.Message)
-								// Extract just the first line of the error message
 								if idx := strings.Index(msg, "\n"); idx > 0 {
 									msg = msg[:idx]
 								}
@@ -159,7 +143,6 @@ func (r *Renderer) renderSummary(run *TestRun) {
 								r.writeln("    %s", r.style.FormatErrorLocation(test.Error.Location))
 							}
 						}
-
 						r.writeln("")
 					}
 				}
@@ -177,52 +160,386 @@ func (r *Renderer) renderHeader() {
 
 // renderSuite renders a test suite
 func (r *Renderer) renderSuite(suite *TestSuite) {
-	// Suite header
-	if suite.Package != "" {
-		r.writeln("%s", r.style.FormatHeader(fmt.Sprintf(" %s ", suite.Package)))
+	// Measure heap before
+	var memBefore, memAfter runtime.MemStats
+	runtime.ReadMemStats(&memBefore)
+
+	// Format file path to be more readable
+	filePath := formatFilePath(suite.FilePath)
+	// Convert _test.go to .test.ts for visual consistency with Vitest
+	filePath = strings.TrimSuffix(filePath, "_test.go") + ".test.ts"
+
+	// Format suite header
+	totalTests := suite.NumTotal
+	var headerParts []string
+
+	// Add file path
+	headerParts = append(headerParts, filePath)
+
+	// Add test count and failed count if any
+	testCountStr := fmt.Sprintf("%d tests", totalTests)
+	if suite.NumFailed > 0 {
+		testCountStr = fmt.Sprintf("%d tests | %d failed", totalTests, suite.NumFailed)
+	}
+	headerParts = append(headerParts, testCountStr)
+
+	// Add duration
+	if suite.Duration > 0 {
+		headerParts = append(headerParts, FormatDurationPrecise(suite.Duration))
 	}
 
-	// Test results
-	for _, result := range suite.Tests {
-		r.RenderTestResult(result)
+	// Add heap info if available
+	var heapInfo string
+	if runtime.GOOS != "js" {
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
+		heapInfo = fmt.Sprintf("%d MB heap used", m.HeapAlloc/1024/1024)
+		headerParts = append(headerParts, heapInfo)
 	}
 
-	// Suite errors
-	if len(suite.Errors) > 0 {
-		r.renderErrors(suite.Errors)
+	headerText := strings.Join(headerParts, " | ")
+
+	// Determine suite status
+	status := TestStatusPassed
+	if suite.NumFailed > 0 {
+		status = TestStatusFailed
+	} else if suite.NumSkipped > 0 && suite.NumPassed == 0 {
+		status = TestStatusSkipped
 	}
 
-	r.writeln("")
+	// Style header based on status
+	var headerStyle lipgloss.Style
+	switch status {
+	case TestStatusFailed:
+		headerStyle = errorStyle.Copy()
+	case TestStatusSkipped:
+		headerStyle = warningStyle.Copy()
+	default:
+		headerStyle = successStyle.Copy()
+	}
+
+	// Add padding and render header
+	headerStyle = headerStyle.PaddingLeft(1)
+	fmt.Fprintln(r.out, headerStyle.Render(headerText))
+
+	// Render test results
+	for _, test := range suite.Tests {
+		r.RenderTestResult(test)
+	}
+
+	// Add spacing after test results
+	if len(suite.Tests) > 0 {
+		fmt.Fprintln(r.out)
+	}
+
+	// Measure heap after
+	runtime.ReadMemStats(&memAfter)
+}
+
+// pluralize returns the plural form of a word if count != 1
+func pluralize(word string, count int) string {
+	if count == 1 {
+		return word
+	}
+	return word + "s"
+}
+
+// formatBytes formats bytes into human readable string
+func formatBytes(bytes uint64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := uint64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %ciB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
+// formatFilePath formats a file path to be more readable
+func formatFilePath(path string) string {
+	// Remove common prefixes
+	prefixes := []string{
+		"github.com/",
+		"internal/",
+		"cmd/",
+		"pkg/",
+		"test/",
+	}
+
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(path, prefix) {
+			path = strings.TrimPrefix(path, prefix)
+		}
+	}
+
+	// Split the path into parts
+	parts := strings.Split(path, "/")
+
+	// Handle special cases
+	if len(parts) > 0 {
+		lastPart := parts[len(parts)-1]
+
+		// Convert _test.go to .test.ts for better visual alignment with Vitest
+		if strings.HasSuffix(lastPart, "_test.go") {
+			lastPart = strings.TrimSuffix(lastPart, "_test.go") + ".test.ts"
+			parts[len(parts)-1] = lastPart
+		}
+
+		// If it's a package path, use the last meaningful part
+		if strings.Contains(path, "/") && !strings.HasSuffix(lastPart, ".go") && !strings.HasSuffix(lastPart, ".ts") {
+			// Find the last meaningful part (not "pkg", "internal", etc.)
+			for i := len(parts) - 1; i >= 0; i-- {
+				if !isCommonDir(parts[i]) {
+					parts = parts[i:]
+					break
+				}
+			}
+		}
+	}
+
+	return strings.Join(parts, "/")
+}
+
+// isCommonDir checks if a directory name is a common one that should be trimmed
+func isCommonDir(dir string) bool {
+	commonDirs := map[string]bool{
+		"pkg":      true,
+		"internal": true,
+		"cmd":      true,
+		"test":     true,
+		"tests":    true,
+		"src":      true,
+	}
+	return commonDirs[dir]
 }
 
 // RenderTestResult renders a single test result
 func (r *Renderer) RenderTestResult(result *TestResult) {
 	// Format test name with icon and color
-	name := r.style.FormatTestName(result)
+	icon := r.style.StatusIcon(result.Status)
 
-	// Add duration for completed tests
+	// Format the test name
+	name := formatTestName(result.Name)
+
+	// Format duration with right alignment
+	duration := ""
 	if result.Status != TestStatusRunning && result.Status != TestStatusPending {
-		duration := FormatDurationPrecise(result.Duration)
-		// Pad name and duration for better alignment, matching the example in the image
-		// Use 30 chars for the name like in the example
-		name = fmt.Sprintf("%-30s %s", name, duration)
+		duration = FormatDurationPrecise(result.Duration)
 	}
 
-	// Add indentation for subtests
-	indent := strings.Repeat("  ", result.Depth)
-	r.writeln("%s%s", indent, name)
+	// Choose color for test name and icon
+	var style lipgloss.Style
+	switch result.Status {
+	case TestStatusPassed:
+		style = successStyle.Copy()
+	case TestStatusFailed:
+		style = errorStyle.Copy()
+	case TestStatusSkipped:
+		style = warningStyle.Copy()
+	default:
+		style = dimStyle.Copy()
+	}
 
-	// Show error details for failed tests
-	if result.Status == TestStatusFailed && result.Error != nil {
-		// If we have a source location, show it on a new line
-		if result.Error.Location != nil {
-			r.writeln("%s  at %s", indent, r.style.FormatErrorLocation(result.Error.Location))
+	// Calculate indentation based on test hierarchy
+	indent := "  "
+	if strings.Contains(result.Name, "/") {
+		parts := strings.Split(result.Name, "/")
+		indent = strings.Repeat("  ", len(parts))
+	}
+
+	// Format the line with proper spacing and indentation
+	line := fmt.Sprintf("%s%s %s %s", indent, icon, name, duration)
+	r.out.Write([]byte(style.Render(line) + "\n"))
+
+	// Format error if present
+	if result.Error != nil {
+		r.renderError(result.Error, strings.Count(result.Name, "/")+1)
+	}
+}
+
+// formatTestName formats a test name to be more readable
+func formatTestName(name string) string {
+	// Remove Test prefix if present
+	name = strings.TrimPrefix(name, "Test")
+
+	// Handle subtests
+	if strings.Contains(name, "/") {
+		parts := strings.Split(name, "/")
+		// Format each part
+		for i, part := range parts {
+			// For subtest parts, keep the original casing if it looks intentional
+			if i > 0 && (strings.Contains(part, "_") || strings.Contains(part, " ")) {
+				parts[i] = formatTestPart(part)
+			} else if i > 0 {
+				// For clean subtest names, just trim Test prefix
+				parts[i] = strings.TrimPrefix(part, "Test")
+			} else {
+				// Format the main test name
+				parts[i] = formatTestPart(part)
+			}
 		}
-		// Only show error message details if there's a message
-		if result.Error.Message != "" && strings.TrimSpace(result.Error.Message) != "" {
-			r.renderError(result.Error, result.Depth+1)
+		// Join with Vitest-style separator
+		return strings.Join(parts, " › ")
+	}
+
+	return formatTestPart(name)
+}
+
+// formatTestPart formats a single part of a test name
+func formatTestPart(part string) string {
+	// Handle empty parts
+	if part == "" {
+		return ""
+	}
+
+	// Remove Test prefix if present
+	part = strings.TrimPrefix(part, "Test")
+
+	// Split on underscores, spaces, and numbers
+	words := splitTestName(part)
+
+	// Format each word
+	for i, word := range words {
+		if word == "" {
+			continue
+		}
+
+		// Keep common abbreviations uppercase
+		if isCommonAbbreviation(word) {
+			words[i] = strings.ToUpper(word)
+			continue
+		}
+
+		// Handle numbers
+		if isNumeric(word) {
+			continue
+		}
+
+		// Convert first word to title case, rest to lower
+		if i == 0 {
+			words[i] = strings.Title(strings.ToLower(word))
+		} else {
+			words[i] = strings.ToLower(word)
 		}
 	}
+
+	// Join words with a single space
+	return strings.Join(words, " ")
+}
+
+// splitTestName splits a test name into words based on common patterns
+func splitTestName(name string) []string {
+	var words []string
+	var current string
+	var lastType rune
+
+	// Character types
+	const (
+		lower = 'a'
+		upper = 'A'
+		digit = '0'
+		other = '_'
+	)
+
+	getType := func(r rune) rune {
+		switch {
+		case unicode.IsLower(r):
+			return lower
+		case unicode.IsUpper(r):
+			return upper
+		case unicode.IsDigit(r):
+			return digit
+		default:
+			return other
+		}
+	}
+
+	for i, r := range name {
+		t := getType(r)
+
+		// Start a new word on type changes
+		if i > 0 {
+			newWord := false
+
+			switch {
+			case t == other:
+				// Always split on special characters
+				newWord = true
+			case lastType == lower && t == upper:
+				// camelCase to Camel
+				newWord = true
+			case lastType == upper && t == lower && len(current) > 1:
+				// HTTPRequest to HTTP Request
+				words = append(words, current[:len(current)-1])
+				current = string(name[i-1]) + string(r)
+			case lastType != digit && t == digit:
+				// Word2 to Word 2
+				newWord = true
+			case lastType == digit && t != digit:
+				// 2Word to 2 Word
+				newWord = true
+			}
+
+			if newWord && current != "" {
+				words = append(words, current)
+				current = ""
+			}
+		}
+
+		current += string(r)
+		lastType = t
+	}
+
+	if current != "" {
+		words = append(words, current)
+	}
+
+	return words
+}
+
+// isNumeric checks if a string is a number
+func isNumeric(s string) bool {
+	_, err := strconv.Atoi(s)
+	return err == nil
+}
+
+// isCommonAbbreviation checks if a string is a common abbreviation
+func isCommonAbbreviation(s string) bool {
+	// Add more common abbreviations as needed
+	commonAbbreviations := map[string]bool{
+		"HTTP":      true,
+		"HTTPS":     true,
+		"API":       true,
+		"REST":      true,
+		"URL":       true,
+		"URI":       true,
+		"SQL":       true,
+		"XML":       true,
+		"JSON":      true,
+		"HTML":      true,
+		"CSS":       true,
+		"JS":        true,
+		"ID":        true,
+		"UUID":      true,
+		"TCP":       true,
+		"UDP":       true,
+		"IP":        true,
+		"FTP":       true,
+		"SMTP":      true,
+		"SSH":       true,
+		"SSL":       true,
+		"TLS":       true,
+		"JWT":       true,
+		"OAuth":     true,
+		"OAuth2":    true,
+		"WebSocket": true,
+		"WS":        true,
+		"WSS":       true,
+	}
+	return commonAbbreviations[strings.ToUpper(s)]
 }
 
 // renderErrors renders a list of test errors
@@ -232,35 +549,60 @@ func (r *Renderer) renderErrors(errors []*TestError) {
 	}
 }
 
-// renderError renders a single test error
+// renderError renders a test error in Vitest style
 func (r *Renderer) renderError(err *TestError, depth int) {
 	indent := strings.Repeat("  ", depth)
 
-	// Error message
+	// Format error message with arrow
 	if err.Message != "" {
-		r.writeln("%s%s", indent, r.style.FormatErrorMessage(strings.TrimSpace(err.Message)))
-	}
-
-	// Source location and snippet
-	if err.Location != nil {
-		r.writeln("%s%s", indent, r.style.FormatErrorLocation(err.Location))
-		if err.Location.Snippet != "" {
-			r.writeln("%s%s", indent, r.style.FormatErrorSnippet(err.Location.Snippet, err.Location.Line))
+		msg := strings.TrimSpace(err.Message)
+		// Split on newlines and format each line
+		for _, line := range strings.Split(msg, "\n") {
+			if line != "" {
+				errorLine := fmt.Sprintf("%s→ %s", indent, line)
+				r.out.Write([]byte(errorStyle.Render(errorLine) + "\n"))
+			}
 		}
 	}
 
-	// Expected/Actual values if present
+	// Show location with file and line
+	if err.Location != nil {
+		// Format location in Vitest style
+		locLine := fmt.Sprintf("%s  at %s:%d", indent, err.Location.File, err.Location.Line)
+		r.out.Write([]byte(dimStyle.Render(locLine) + "\n"))
+
+		// Show code snippet if available
+		if err.Location.Snippet != "" {
+			// Format snippet with line numbers and highlighting
+			snippetLines := strings.Split(strings.TrimSpace(err.Location.Snippet), "\n")
+			startLine := err.Location.StartLine
+			for i, line := range snippetLines {
+				lineNum := startLine + i
+				// Highlight the error line
+				if lineNum == err.Location.Line {
+					snippetLine := fmt.Sprintf("%s    %d │ %s", indent, lineNum, line)
+					r.out.Write([]byte(errorStyle.Render(snippetLine) + "\n"))
+				} else {
+					snippetLine := fmt.Sprintf("%s    %d │ %s", indent, lineNum, line)
+					r.out.Write([]byte(dimStyle.Render(snippetLine) + "\n"))
+				}
+			}
+		}
+	}
+
+	// Show expected/actual values in a clean format
 	if err.Expected != "" || err.Actual != "" {
-		r.writeln("")
+		r.out.Write([]byte("\n")) // Add spacing
 		if err.Expected != "" {
-			r.writeln("%sExpected: %s", indent, r.style.FormatErrorValue(err.Expected))
+			r.out.Write([]byte(dimStyle.Render(fmt.Sprintf("%s  Expected", indent)) + "\n"))
+			r.out.Write([]byte(errorStyle.Render(fmt.Sprintf("%s    %s", indent, err.Expected)) + "\n"))
 		}
 		if err.Actual != "" {
-			r.writeln("%s  Actual: %s", indent, r.style.FormatErrorValue(err.Actual))
+			r.out.Write([]byte(dimStyle.Render(fmt.Sprintf("%s  Actual", indent)) + "\n"))
+			r.out.Write([]byte(errorStyle.Render(fmt.Sprintf("%s    %s", indent, err.Actual)) + "\n"))
 		}
+		r.out.Write([]byte("\n")) // Add spacing
 	}
-
-	r.writeln("")
 }
 
 // RenderTestStart renders the start of a test run
@@ -362,4 +704,12 @@ func (r *Renderer) RenderTest(test *TestResult, indent string) {
 		r.write("%sError:\n", indent)
 		// ... rest of the error handling ...
 	}
+}
+
+// formatLocation formats a location to be more readable
+func formatLocation(loc *SourceLocation) string {
+	if loc.File == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s:%d", formatFilePath(loc.File), loc.Line)
 }

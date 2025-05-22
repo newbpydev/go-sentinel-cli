@@ -21,7 +21,7 @@ func TestStyle_StatusIcon(t *testing.T) {
 			useIcons:   true,
 			status:     TestStatusPassed,
 			wantIcon:   IconPass,
-			wantASCII:  ASCIIIconPass,
+			wantASCII:  WinIconPass,
 			wantWinFmt: WinIconPass,
 		},
 		{
@@ -29,7 +29,7 @@ func TestStyle_StatusIcon(t *testing.T) {
 			useIcons:   true,
 			status:     TestStatusFailed,
 			wantIcon:   IconFail,
-			wantASCII:  ASCIIIconFail,
+			wantASCII:  WinIconFail,
 			wantWinFmt: WinIconFail,
 		},
 		{
@@ -37,7 +37,7 @@ func TestStyle_StatusIcon(t *testing.T) {
 			useIcons:   true,
 			status:     TestStatusSkipped,
 			wantIcon:   IconSkip,
-			wantASCII:  ASCIIIconSkip,
+			wantASCII:  WinIconSkip,
 			wantWinFmt: WinIconSkip,
 		},
 		{
@@ -45,7 +45,7 @@ func TestStyle_StatusIcon(t *testing.T) {
 			useIcons:   true,
 			status:     TestStatusRunning,
 			wantIcon:   IconRunning,
-			wantASCII:  ASCIIIconRunning,
+			wantASCII:  WinIconRunning,
 			wantWinFmt: WinIconRunning,
 		},
 	}

@@ -11,59 +11,119 @@ func TestRenderer_RenderTestResult(t *testing.T) {
 	var buf bytes.Buffer
 	r := NewRenderer(&buf)
 	r.style.useColors = false // Disable colors for predictable output
-	r.style.useIcons = false  // Use ASCII icons for predictable output
+	r.style.useIcons = false  // Use Windows icons for predictable output
+	r.style.isWindows = true  // Force Windows mode
 
-	// Test passing test
-	result := &TestResult{
-		Name:     "TestPass",
-		Status:   TestStatusPassed,
-		Duration: 100 * time.Millisecond,
-	}
-	r.RenderTestResult(result)
-	output := buf.String()
-	buf.Reset()
-
-	if !strings.Contains(output, "TestPass") {
-		t.Errorf("Output should contain test name: %s", output)
-	}
-	if !strings.Contains(output, "100ms") {
-		t.Errorf("Output should contain duration: %s", output)
-	}
-
-	// Test failing test with error
-	result = &TestResult{
-		Name:     "TestFail",
-		Status:   TestStatusFailed,
-		Duration: 200 * time.Millisecond,
-		Error: &TestError{
-			Message: "assertion failed",
-			Location: &SourceLocation{
-				File:      "test_file.go",
-				Line:      42,
-				Snippet:   "assert.Equal(t, want, got)",
-				StartLine: 40,
+	tests := []struct {
+		name           string
+		result         *TestResult
+		expectedParts  []string
+		notExpectParts []string
+	}{
+		{
+			name: "simple passing test",
+			result: &TestResult{
+				Name:     "TestWebSocketClient_Connect",
+				Status:   TestStatusPassed,
+				Duration: 100 * time.Millisecond,
 			},
-			Expected: "5",
-			Actual:   "3",
+			expectedParts: []string{
+				"+ Web socket client connect  100ms",
+			},
+		},
+		{
+			name: "nested test with parent",
+			result: &TestResult{
+				Name:     "TestWebSocketClient/Connect_WithURL",
+				Status:   TestStatusPassed,
+				Duration: 150 * time.Millisecond,
+			},
+			expectedParts: []string{
+				"Web socket client › Connect with URL  150ms",
+			},
+		},
+		{
+			name: "deeply nested test",
+			result: &TestResult{
+				Name:     "TestWebSocketClient/Connect/WithURL/AndHeaders",
+				Status:   TestStatusPassed,
+				Duration: 200 * time.Millisecond,
+			},
+			expectedParts: []string{
+				"Web socket client › Connect › With URL › And headers  200ms",
+			},
+		},
+		{
+			name: "failing test with error",
+			result: &TestResult{
+				Name:     "TestWebSocketClient_SendMethod",
+				Status:   TestStatusFailed,
+				Duration: 200 * time.Millisecond,
+				Error: &TestError{
+					Message: "wsClient.connect is not a function",
+					Location: &SourceLocation{
+						File:      "test_file.go",
+						Line:      42,
+						Snippet:   "assert.Equal(t, want, got)",
+						StartLine: 40,
+					},
+					Expected: "5",
+					Actual:   "3",
+				},
+			},
+			expectedParts: []string{
+				"x Web socket client send method  200ms",
+				"→ wsClient.connect is not a function",
+				"at test_file.go:42",
+				"40 │ assert.Equal(t, want, got)",
+				"Expected",
+				"5",
+				"Actual",
+				"3",
+			},
+		},
+		{
+			name: "test with numbers",
+			result: &TestResult{
+				Name:     "TestHTTP2_Request",
+				Status:   TestStatusPassed,
+				Duration: 100 * time.Millisecond,
+			},
+			expectedParts: []string{
+				"+ HTTP2 request  100ms",
+			},
+		},
+		{
+			name: "test with common abbreviations",
+			result: &TestResult{
+				Name:     "TestParseJSON_WithURLAndSSL",
+				Status:   TestStatusPassed,
+				Duration: 100 * time.Millisecond,
+			},
+			expectedParts: []string{
+				"+ Parse JSON with URL and SSL  100ms",
+			},
 		},
 	}
-	r.RenderTestResult(result)
-	output = buf.String()
-	buf.Reset()
 
-	expectedParts := []string{
-		"TestFail",
-		"200ms",
-		"assertion failed",
-		"test_file.go:42",
-		"assert.Equal",
-		"Expected: 5",
-		"Actual: 3",
-	}
-	for _, part := range expectedParts {
-		if !strings.Contains(output, part) {
-			t.Errorf("Output should contain %q: %s", part, output)
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			buf.Reset()
+			r.RenderTestResult(tt.result)
+			output := buf.String()
+
+			for _, expected := range tt.expectedParts {
+				if !strings.Contains(output, expected) {
+					t.Errorf("Expected output to contain %q, but got:\n%s", expected, output)
+				}
+			}
+
+			for _, notExpected := range tt.notExpectParts {
+				if strings.Contains(output, notExpected) {
+					t.Errorf("Expected output to NOT contain %q, but got:\n%s", notExpected, output)
+				}
+			}
+		})
 	}
 }
 
@@ -212,7 +272,7 @@ func TestRenderer_RenderSuiteSummary(t *testing.T) {
 		"Passed: 1",
 		"Failed: 1",
 		"Skipped: 1",
-		"Time: 2.00s",
+		"Time: 2.0s",
 	}
 
 	for _, part := range expectedParts {

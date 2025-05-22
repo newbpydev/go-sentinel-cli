@@ -14,13 +14,15 @@ import (
 
 // Test status icons
 const (
-	IconPass         = "✓"
-	IconFail         = "✕"
-	IconSkip         = "○"
-	IconRunning      = "⠋"
-	ASCIIIconPass    = "+"
-	ASCIIIconFail    = "x"
-	ASCIIIconSkip    = "o"
+	IconPass    = "✓"
+	IconFail    = "✕"
+	IconSkip    = "○"
+	IconRunning = "⠋"
+
+	// ASCII fallbacks for environments that don't support Unicode
+	ASCIIIconPass    = "√"
+	ASCIIIconFail    = "×"
+	ASCIIIconSkip    = "○"
 	ASCIIIconRunning = "*"
 	WinIconPass      = "+"
 	WinIconFail      = "x"
@@ -30,7 +32,7 @@ const (
 
 // Colors using the more vibrant palette seen in the example
 const (
-	// Bright, modern colors like in the provided image
+	// Bright, modern colors like in Vitest
 	ColorSuccess   = "#4ADE80" // Bright green for passing tests
 	ColorError     = "#F87171" // Bright red for failing tests
 	ColorWarning   = "#FBBF24" // Amber yellow for skipped tests
@@ -117,6 +119,12 @@ var (
 
 	errorValueStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color(ColorDim))
+
+	// Header styles
+	headerStyle = lipgloss.NewStyle().
+			Background(lipgloss.Color(ColorHeaderBg)).
+			Foreground(lipgloss.Color(ColorText)).
+			Padding(0, 1)
 )
 
 // Style handles terminal styling and formatting
@@ -266,7 +274,9 @@ func (s *Style) FormatFailedTest(name string) string {
 // FormatErrorMessage formats an error message
 func (s *Style) FormatErrorMessage(msg string) string {
 	if s.useColors {
-		return errorMessageStyle.Render(msg)
+		return errorStyle.Copy().
+			Foreground(lipgloss.Color(ColorError)).
+			Render(msg)
 	}
 	return msg
 }
@@ -274,7 +284,9 @@ func (s *Style) FormatErrorMessage(msg string) string {
 // FormatErrorLocation formats a source location
 func (s *Style) FormatErrorLocation(loc *SourceLocation) string {
 	if s.useColors {
-		return errorLocationStyle.Render(fmt.Sprintf("at %s:%d", loc.File, loc.Line))
+		return dimStyle.Copy().
+			Foreground(lipgloss.Color(ColorDim)).
+			Render(fmt.Sprintf("at %s:%d", loc.File, loc.Line))
 	}
 	return fmt.Sprintf("at %s:%d", loc.File, loc.Line)
 }
@@ -288,7 +300,9 @@ func (s *Style) FormatErrorSnippet(snippet string, line int) string {
 		lineNum := line + i
 		lineStr := fmt.Sprintf("  %d | %s", lineNum, strings.TrimSpace(l))
 		if s.useColors {
-			formattedLines = append(formattedLines, errorSnippetStyle.Render(lineStr))
+			formattedLines = append(formattedLines, dimStyle.Copy().
+				Foreground(lipgloss.Color(ColorText)).
+				Render(lineStr))
 		} else {
 			formattedLines = append(formattedLines, lineStr)
 		}
@@ -307,50 +321,32 @@ func (s *Style) FormatErrorValue(value string) string {
 
 // StatusIcon returns an icon for the test status
 func (s *Style) StatusIcon(status TestStatus) string {
-	if s.useIcons {
-		if s.isWindows && !s.useEmoji {
-			// Windows without emoji support
-			switch status {
-			case TestStatusPassed:
-				return WinIconPass
-			case TestStatusFailed:
-				return WinIconFail
-			case TestStatusSkipped:
-				return WinIconSkip
-			case TestStatusRunning:
-				return WinIconRunning
-			default:
-				return " "
-			}
-		} else {
-			// Modern terminals or emoji-compatible Windows
-			switch status {
-			case TestStatusPassed:
-				return IconPass
-			case TestStatusFailed:
-				return IconFail
-			case TestStatusSkipped:
-				return IconSkip
-			case TestStatusRunning:
-				return IconRunning
-			default:
-				return " "
-			}
-		}
-	} else {
-		// ASCII mode
+	if !s.useIcons || s.isWindows {
 		switch status {
 		case TestStatusPassed:
-			return ASCIIIconPass
+			return WinIconPass
 		case TestStatusFailed:
-			return ASCIIIconFail
+			return WinIconFail
 		case TestStatusSkipped:
-			return ASCIIIconSkip
+			return WinIconSkip
 		case TestStatusRunning:
-			return ASCIIIconRunning
+			return WinIconRunning
 		default:
 			return " "
 		}
+	}
+
+	switch status {
+	case TestStatusPassed:
+		return IconPass
+	case TestStatusFailed:
+		return IconFail
+	case TestStatusSkipped:
+		return IconSkip
+	case TestStatusRunning:
+		return IconRunning
+	default:
+		return " "
 	}
 }
 
