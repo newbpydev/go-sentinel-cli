@@ -7,7 +7,15 @@ This roadmap outlines the comprehensive development plan for building a Vitest-l
 - Completed Phase 1: Core Architecture & Data Structures (100%)
 - Completed Phase 2: Test Suite Display (100%) 
 - Current code coverage: 67.1%
-- Next phase: Phase 3 - Failed Test Details Section
+- Next phase: Phase 2-D - Demonstration and Validation of Test Suite Display
+
+## Development Approach
+
+We will follow a prototype-first approach where:
+1. Each major feature is first implemented in a demo/prototype version
+2. The prototype is validated against actual Vitest output for visual and functional parity
+3. After validation, the feature is incorporated into the main application
+4. Each phase has a corresponding demonstration phase (marked as Phase X-D)
 
 ## Overview
 
@@ -48,6 +56,19 @@ Go Sentinel CLI v2 will offer:
   - [x] 1.4.2. Create helpers for ANSI color output
   - [x] 1.4.3. Implement terminal capability detection
   - [x] 1.4.4. Add emoji/icon support with fallbacks
+
+## Phase 1-D: Demonstration of Core Architecture
+
+- [ ] **1-D.1. Create Core Demo Application**
+  - [ ] 1-D.1.1. Implement minimal CLI to run basic tests
+  - [ ] 1-D.1.2. Add test cases that exercise data structures
+  - [ ] 1-D.1.3. Output raw parsed results to validate data structure correctness
+
+- [ ] **1-D.2. Validate Core Architecture**
+  - [ ] 1-D.2.1. Verify test output is correctly parsed into data structures
+  - [ ] 1-D.2.2. Validate terminal color support detection
+  - [ ] 1-D.2.3. Confirm correct emoji/icon display based on terminal capabilities
+  - [ ] 1-D.2.4. Document any discrepancies or issues found during validation
 
 ---
 
@@ -93,6 +114,22 @@ Go Sentinel CLI v2 will offer:
   - [x] 2.6.3. Add icons for test status indication
   - [x] 2.6.4. Ensure proper padding and spacing for all components
 
+## Phase 2-D: Demonstration of Test Suite Display
+
+- [ ] **2-D.1. Create Test Suite Display Demo**
+  - [ ] 2-D.1.1. Implement CLI command to run and display test suites
+  - [ ] 2-D.1.2. Create sample test suites with various test outcomes (pass, fail, skip)
+  - [ ] 2-D.1.3. Ensure demo accurately displays file paths with correct coloring
+  - [ ] 2-D.1.4. Validate test count display with proper highlighting of failed tests
+  - [ ] 2-D.1.5. Verify duration and memory usage formatting
+
+- [ ] **2-D.2. Visual Validation Against Vitest**
+  - [ ] 2-D.2.1. Compare output side-by-side with Vitest screenshot
+  - [ ] 2-D.2.2. Verify color scheme matches Vitest style (green checks, red Xs)
+  - [ ] 2-D.2.3. Confirm indentation and spacing match Vitest output
+  - [ ] 2-D.2.4. Ensure collapse/expand behavior matches Vitest expectations
+  - [ ] 2-D.2.5. Document any visual discrepancies and adjust as needed
+
 ---
 
 ## Phase 3: Failed Test Details Section (TDD)
@@ -137,6 +174,21 @@ Go Sentinel CLI v2 will offer:
   - [ ] 3.6.4. Add fallback handling for missing source files
   - [ ] 3.6.5. Create special formatting for common error types
 
+## Phase 3-D: Demonstration of Failed Test Details
+
+- [ ] **3-D.1. Create Failed Test Details Demo**
+  - [ ] 3-D.1.1. Develop test suite with various failure types
+  - [ ] 3-D.1.2. Implement CLI command to display detailed failure information
+  - [ ] 3-D.1.3. Validate error message formatting against Vitest style
+  - [ ] 3-D.1.4. Verify source code context display with line highlighting
+
+- [ ] **3-D.2. Validate Error Reporting**
+  - [ ] 3-D.2.1. Compare failed test display with Vitest screenshot
+  - [ ] 3-D.2.2. Verify stack trace formatting is readable and helpful
+  - [ ] 3-D.2.3. Confirm error types are displayed correctly
+  - [ ] 3-D.2.4. Test with various error scenarios (assertion errors, panics, timeouts)
+  - [ ] 3-D.2.5. Document any formatting improvements needed
+
 ---
 
 ## Phase 4: Real-time Processing & Summary (TDD)
@@ -179,6 +231,20 @@ Go Sentinel CLI v2 will offer:
   - [ ] 4.6.3. Add progress bar/indicator
   - [ ] 4.6.4. Implement terminal resize handling
 
+## Phase 4-D: Demonstration of Real-time Processing
+
+- [ ] **4-D.1. Create Real-time Processing Demo**
+  - [ ] 4-D.1.1. Implement interactive CLI with real-time updates
+  - [ ] 4-D.1.2. Run test suites with varying execution times
+  - [ ] 4-D.1.3. Validate progress indicators and spinners
+  - [ ] 4-D.1.4. Test with large test suites to verify performance
+
+- [ ] **4-D.2. Validate User Experience**
+  - [ ] 4-D.2.1. Compare real-time updates with Vitest behavior
+  - [ ] 4-D.2.2. Verify summary section accuracy and formatting
+  - [ ] 4-D.2.3. Assess readability and clarity of real-time information
+  - [ ] 4-D.2.4. Document any UX improvements needed
+
 ---
 
 ## Phase 5: Watch Mode & Integration (TDD)
@@ -219,6 +285,21 @@ Go Sentinel CLI v2 will offer:
   - [ ] 5.6.3. Add file change notification display
   - [ ] 5.6.4. Implement key command display and handling
 
+## Phase 5-D: Demonstration of Watch Mode
+
+- [ ] **5-D.1. Create Watch Mode Demo**
+  - [ ] 5-D.1.1. Implement interactive watch mode CLI
+  - [ ] 5-D.1.2. Develop test cases with files that can be modified
+  - [ ] 5-D.1.3. Create demonstration script that modifies files
+  - [ ] 5-D.1.4. Validate selective test running behavior
+
+- [ ] **5-D.2. Validate Developer Experience**
+  - [ ] 5-D.2.1. Assess file change detection performance
+  - [ ] 5-D.2.2. Verify accuracy of related test identification
+  - [ ] 5-D.2.3. Evaluate UX of watch mode interface
+  - [ ] 5-D.2.4. Compare with Vitest watch mode behavior
+  - [ ] 5-D.2.5. Document any DX improvements needed
+
 ---
 
 ## Phase 6: Performance & Error Handling (TDD)
@@ -246,6 +327,20 @@ Go Sentinel CLI v2 will offer:
   - [ ] 6.4.2. Implement filesystem error handling
   - [ ] 6.4.3. Create syntax error recovery mechanism
   - [ ] 6.4.4. Add corrupted file detection and handling
+
+## Phase 6-D: Demonstration of Performance & Stability
+
+- [ ] **6-D.1. Create Performance & Stability Demo**
+  - [ ] 6-D.1.1. Develop benchmark suite with large number of tests
+  - [ ] 6-D.1.2. Implement error simulation and recovery demonstrations
+  - [ ] 6-D.1.3. Create long-running test to validate memory usage
+  - [ ] 6-D.1.4. Compare performance with and without optimizations
+
+- [ ] **6-D.2. Validate Production Readiness**
+  - [ ] 6-D.2.1. Measure performance metrics against baseline
+  - [ ] 6-D.2.2. Verify stability under error conditions
+  - [ ] 6-D.2.3. Assess memory usage over extended runtime
+  - [ ] 6-D.2.4. Document performance characteristics and limits
 
 ---
 
@@ -275,21 +370,43 @@ Go Sentinel CLI v2 will offer:
   - [ ] 7.4.3. Add path pattern processor
   - [ ] 7.4.4. Implement watch behavior configuration
 
+## Phase 7-D: Demonstration of CLI Options & Configuration
+
+- [ ] **7-D.1. Create CLI Options & Configuration Demo**
+  - [ ] 7-D.1.1. Implement CLI with all supported arguments
+  - [ ] 7-D.1.2. Create sample configuration files
+  - [ ] 7-D.1.3. Develop demonstration script showing various CLI options
+  - [ ] 7-D.1.4. Validate configuration file loading and precedence
+
+- [ ] **7-D.2. Validate User Configuration Experience**
+  - [ ] 7-D.2.1. Assess CLI argument usability
+  - [ ] 7-D.2.2. Verify configuration file documentation clarity
+  - [ ] 7-D.2.3. Test configuration with various terminal types
+  - [ ] 7-D.2.4. Document configuration recommendations
+
 ---
 
-## Phase 8: Documentation & Final Polish
+## Phase 8: Integration & Final Implementation
 
-- [ ] **8.1. Documentation**
-  - [ ] 8.1.1. Create comprehensive README with CLI usage instructions
-  - [ ] 8.1.2. Document example configurations
-  - [ ] 8.1.3. Document key commands and features
-  - [ ] 8.1.4. Add screenshots of CLI output
+- [ ] **8.1. Main Application Integration**
+  - [ ] 8.1.1. Merge all validated components into main application
+  - [ ] 8.1.2. Ensure consistent behavior between demo and production
+  - [ ] 8.1.3. Implement any remaining edge cases identified during demos
+  - [ ] 8.1.4. Resolve any integration issues between components
 
-- [ ] **8.2. Final User Experience Polish**
-  - [ ] 8.2.1. Collect user feedback on early versions
-  - [ ] 8.2.2. Refine visual elements based on feedback
-  - [ ] 8.2.3. Optimize performance for common use cases
-  - [ ] 8.2.4. Final QA testing across different environments
+- [ ] **8.2. Final Documentation**
+  - [ ] 8.2.1. Create comprehensive README with CLI usage instructions
+  - [ ] 8.2.2. Document example configurations
+  - [ ] 8.2.3. Document key commands and features
+  - [ ] 8.2.4. Add screenshots of CLI output
+  - [ ] 8.2.5. Create examples for common use cases
+
+- [ ] **8.3. Final Testing & Validation**
+  - [ ] 8.3.1. Conduct end-to-end testing of all features
+  - [ ] 8.3.2. Verify cross-platform support (Windows, macOS, Linux)
+  - [ ] 8.3.3. Validate performance with large codebases
+  - [ ] 8.3.4. Collect and incorporate user feedback
+  - [ ] 8.3.5. Final QA testing across different environments
 
 ---
 
