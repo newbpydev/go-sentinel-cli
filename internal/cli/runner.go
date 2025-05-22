@@ -73,7 +73,7 @@ func (r *Runner) RunOnce(opts RunOptions) (string, error) {
 	// Transform phase
 	transformStart := time.Now()
 	args := []string{"test"}
-	args = append(args, "-json")
+	args = append(args, "-json", "-v") // Add -v for verbose output
 	if opts.FailFast {
 		args = append(args, "-failfast")
 	}
@@ -117,6 +117,13 @@ func (r *Runner) RunOnce(opts RunOptions) (string, error) {
 		run.CollectDuration = collectDuration
 		run.TestsDuration = testsDuration
 		run.EnvDuration = time.Since(envStart)
+
+		// Render test results as they come in
+		if opts.Renderer != nil {
+			for _, suite := range run.Suites {
+				opts.Renderer.RenderSuite(suite)
+			}
+		}
 	}
 
 	// Prepare phase

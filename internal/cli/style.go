@@ -158,7 +158,7 @@ func (s *Style) FormatTestSummary(label string, failed, passed, skipped, total i
 	if failed > 0 {
 		failedStr := fmt.Sprintf("%d failed", failed)
 		if s.useColors {
-			failedStr = summaryFailedStyle.Render(failedStr)
+			failedStr = summaryFailedStyle.Bold(true).Render(failedStr)
 		}
 		parts = append(parts, failedStr)
 	}

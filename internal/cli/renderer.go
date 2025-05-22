@@ -57,7 +57,13 @@ func (r *Renderer) RenderTestRun(run *TestRun) {
 	// Add a newline before summary
 	r.writeln("")
 
-	// Test Files summary
+	// Render the summary
+	r.renderSummary(run)
+}
+
+// renderSummary is the single source of truth for rendering test summaries
+func (r *Renderer) renderSummary(run *TestRun) {
+	// Calculate file statistics
 	passedFiles := 0
 	failedFiles := 0
 	for _, suite := range run.Suites {
@@ -109,6 +115,33 @@ func (r *Renderer) RenderTestRun(run *TestRun) {
 
 	r.writeln(formattedMainDuration)
 	r.writeln("")
+
+	// Show failed tests if any
+	if run.NumFailed > 0 {
+		r.writeln(r.style.FormatErrorHeader(" FAILED TESTS "))
+		r.writeln("")
+
+		// First show failed suites
+		for _, suite := range run.Suites {
+			if suite.NumFailed > 0 {
+				r.writeln(r.style.FormatFailedSuite(suite.FilePath))
+				for _, test := range suite.Tests {
+					if test.Status == TestStatusFailed {
+						r.writeln(r.style.FormatFailedTest("  " + test.Name))
+						if test.Error != nil {
+							if test.Error.Message != "" {
+								r.writeln(r.style.FormatErrorMessage("    " + test.Error.Message))
+							}
+							if test.Error.Location != nil {
+								r.writeln("    " + r.style.FormatErrorLocation(test.Error.Location))
+							}
+						}
+						r.writeln("")
+					}
+				}
+			}
+		}
+	}
 }
 
 // renderHeader renders the test run header
@@ -238,93 +271,14 @@ func formatDuration(d time.Duration) string {
 
 // RenderFinalSummary renders the final test summary
 func (r *Renderer) RenderFinalSummary(run *TestRun) {
-	// Header
-	r.renderHeader()
+	// Use the consolidated summary rendering
+	r.renderSummary(run)
+}
 
-	// Test results
-	for _, suite := range run.Suites {
-		r.renderSuite(suite)
-	}
-
-	// Add a newline before summary
-	r.writeln("")
-
-	// Test Files summary
-	passedFiles := 0
-	failedFiles := 0
-	for _, suite := range run.Suites {
-		if suite.NumFailed > 0 {
-			failedFiles++
-		} else {
-			passedFiles++
-		}
-	}
-
-	r.writeln(r.style.FormatTestSummary("Test Files", failedFiles, passedFiles, 0, len(run.Suites)))
-	r.writeln(r.style.FormatTestSummary("Tests     ", run.NumFailed, run.NumPassed, run.NumSkipped, run.NumTotal))
-	r.writeln("")
-	r.writeln(r.style.FormatTimestamp("Start at   ", run.StartTime))
-
-	// Duration with breakdown
-	mainDuration := formatDuration(run.Duration)
-	formattedMainDuration := r.style.FormatDuration("Duration   ", mainDuration)
-
-	// Add breakdown parts
-	var breakdownParts []string
-
-	// Transform duration
-	if run.TransformDuration > 0 {
-		breakdownParts = append(breakdownParts, fmt.Sprintf("transform %s", formatDuration(run.TransformDuration)))
-	}
-
-	// Setup duration
-	if run.SetupDuration > 0 {
-		breakdownParts = append(breakdownParts, fmt.Sprintf("setup %s", formatDuration(run.SetupDuration)))
-	}
-
-	// Collect duration
-	if run.CollectDuration > 0 {
-		breakdownParts = append(breakdownParts, fmt.Sprintf("collect %s", formatDuration(run.CollectDuration)))
-	}
-
-	// Tests duration
-	if run.TestsDuration > 0 {
-		breakdownParts = append(breakdownParts, fmt.Sprintf("tests %s", formatDuration(run.TestsDuration)))
-	}
-
-	// Add breakdown in parentheses with proper styling
-	if len(breakdownParts) > 0 {
-		formattedMainDuration += " " + r.style.FormatBreakdownText(fmt.Sprintf("(%s)", strings.Join(breakdownParts, ", ")))
-	}
-
-	r.writeln(formattedMainDuration)
-	r.writeln("")
-
-	// Show failed tests if any
-	if run.NumFailed > 0 {
-		r.writeln(r.style.FormatErrorHeader("FAILED Tests"))
-		r.writeln("")
-
-		for _, suite := range run.Suites {
-			if suite.NumFailed > 0 {
-				for _, test := range suite.Tests {
-					if test.Status == TestStatusFailed {
-						r.writeln(r.style.FormatFailedSuite(suite.FilePath))
-						r.writeln(r.style.FormatFailedTest(test.Name))
-						if test.Error != nil {
-							if test.Error.Message != "" {
-								r.writeln(r.style.FormatErrorMessage(test.Error.Message))
-							}
-							if test.Error.Location != nil {
-								r.writeln(r.style.FormatErrorLocation(test.Error.Location))
-							}
-						}
-						r.writeln("")
-					}
-				}
-			}
-		}
-	}
+// RenderTestSummary is deprecated and should not be used
+func (r *Renderer) RenderTestSummary(run *TestRun) {
+	// This function is deprecated and should not be used
+	// Use RenderFinalSummary instead
 }
 
 // RenderProgress renders the current test progress
@@ -353,30 +307,6 @@ func (r *Renderer) RenderSuiteSummary(suite *TestSuite) {
 	r.writeln("  Skipped: %d", suite.NumSkipped)
 	r.writeln("  Time: %.2fs", suite.Duration.Seconds())
 	r.writeln("")
-}
-
-// RenderTestSummary renders a test run summary
-func (r *Renderer) RenderTestSummary(run *TestRun) {
-	// Count passed and failed files
-	passedFiles := 0
-	failedFiles := 0
-	for _, suite := range run.Suites {
-		if suite.NumFailed > 0 {
-			failedFiles++
-		} else {
-			passedFiles++
-		}
-	}
-
-	// Print test file summary
-	if _, err := fmt.Fprintln(r.out, r.style.FormatTestSummary("Test Files", failedFiles, passedFiles, 0, len(run.Suites))); err != nil {
-		log.Printf("Error writing test file summary: %v", err)
-	}
-
-	// Print test summary
-	if _, err := fmt.Fprintln(r.out, r.style.FormatTestSummary("Tests", run.NumFailed, run.NumPassed, run.NumSkipped, run.NumTotal)); err != nil {
-		log.Printf("Error writing test summary: %v", err)
-	}
 }
 
 // RenderSuite renders a test suite

@@ -78,8 +78,8 @@ func (r *Runner) SetInactivityThreshold(threshold time.Duration) {
 
 // buildTestArgs creates the argument slice for the go test command
 func (r *Runner) buildTestArgs(pkg string, testName string, timeout time.Duration) []string {
-	// CRITICAL FIX: Use both -json for machine parsing AND -v for human-readable verbose output
-	args := []string{"test", "-json", "-v"}
+	// Use -json for machine parsing and -v for human-readable output
+	args := []string{"test", "-json", "-v", "-failfast"}
 
 	// Add timeout flag
 	if timeout > 0 {
@@ -155,8 +155,9 @@ func (r *Runner) RunWithContext(ctx context.Context, pkg string, testName string
 		return startErr
 	}
 
-	// Set up channels for detecting inactivity
+	// Set up channels for detecting inactivity and completion
 	activityCh := make(chan struct{}, 10)
+	completionCh := make(chan struct{})
 
 	// Set up inactivity detection
 	ctxWithCancel, cancel := context.WithCancel(ctx)
@@ -172,6 +173,8 @@ func (r *Runner) RunWithContext(ctx context.Context, pkg string, testName string
 			select {
 			case <-ctxWithCancel.Done():
 				return
+			case <-completionCh:
+				return
 			case <-activityCh:
 				lastActivity = time.Now()
 			case <-ticker.C:
@@ -180,6 +183,11 @@ func (r *Runner) RunWithContext(ctx context.Context, pkg string, testName string
 					// Log the inactivity warning
 					warning := fmt.Sprintf("[runner warning] No activity detected for %v, possible hanging test in package %s", inactiveDuration.Round(time.Second), pkg)
 					out <- []byte(warning)
+					// Force completion after double the inactivity threshold
+					if inactiveDuration > r.inactivityThreshold*2 {
+						cancel()
+						return
+					}
 				}
 			}
 		}
@@ -220,6 +228,7 @@ func (r *Runner) RunWithContext(ctx context.Context, pkg string, testName string
 	go func() {
 		wg.Wait()
 		close(done)
+		close(completionCh)
 	}()
 
 	select {

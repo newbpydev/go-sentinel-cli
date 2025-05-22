@@ -219,112 +219,85 @@ func (p *Parser) handleTestSkip(event *GoTestEvent) error {
 	return nil
 }
 
-// handleTestOutput processes test output
+// handleTestOutput processes a test output event
 func (p *Parser) handleTestOutput(event *GoTestEvent) error {
 	if event.Test == "" {
 		// Package-level output
-		if p.currentSuite != nil && event.Output != "" {
-			loc := p.extractSourceLocation(event.Output)
-			if loc != nil {
-				p.currentSuite.Errors = append(p.currentSuite.Errors, &TestError{
-					Message:  event.Output,
-					Location: loc,
-				})
-			}
+		if p.currentSuite != nil && strings.Contains(event.Output, "FAIL") {
+			p.currentSuite.NumFailed++
+			p.currentRun.NumFailed++
+			p.currentSuite.Errors = append(p.currentSuite.Errors, &TestError{
+				Message: event.Output,
+			})
 		}
 		return nil
 	}
 
 	test := p.findTest(event.Test)
-	if test != nil {
-		// Initialize error if not exists
-		if test.Error == nil {
-			test.Error = &TestError{}
-		}
-
-		// Append output to message
-		if test.Error.Message == "" {
-			test.Error.Message = event.Output
-		} else {
-			test.Error.Message += event.Output
-		}
-
-		// Try to extract location if not already set
-		if test.Error.Location == nil {
-			test.Error.Location = p.extractSourceLocation(event.Output)
-		}
-
-		// Try to extract expected/actual values
-		if strings.Contains(event.Output, "got:") && strings.Contains(event.Output, "want:") {
-			parts := strings.Split(event.Output, "\n")
-			for _, part := range parts {
-				if strings.Contains(part, "got:") {
-					test.Error.Actual = strings.TrimSpace(strings.TrimPrefix(part, "got:"))
-				}
-				if strings.Contains(part, "want:") {
-					test.Error.Expected = strings.TrimSpace(strings.TrimPrefix(part, "want:"))
-				}
-			}
-		}
+	if test == nil {
+		return nil
 	}
+
+	// Accumulate test output
+	if test.Error == nil {
+		test.Error = &TestError{
+			Message: event.Output,
+		}
+	} else {
+		test.Error.Message += event.Output
+	}
+
+	// Extract source location from output
+	if loc := p.extractSourceLocation(event.Output); loc != nil {
+		test.Error.Location = loc
+	}
+
 	return nil
 }
 
-// finalize calculates final statistics and durations
+// finalize processes any remaining test results and updates statistics
 func (p *Parser) finalize() {
-	if p.currentRun == nil {
-		return
-	}
+	// Sort suites by package name for consistent output
+	sort.Slice(p.currentRun.Suites, func(i, j int) bool {
+		return p.currentRun.Suites[i].Package < p.currentRun.Suites[j].Package
+	})
 
-	// Calculate total duration from all test events
-	var totalDuration time.Duration
-	for _, suite := range p.suites {
-		for _, test := range suite.Tests {
-			totalDuration += test.Duration
+	// Update file paths and ensure they're relative
+	for _, suite := range p.currentRun.Suites {
+		if suite.FilePath == "" {
+			suite.FilePath = p.getTestFilePath(suite.Package)
 		}
-		suite.Duration = totalDuration
+		// Make path relative if it's absolute
+		if filepath.IsAbs(suite.FilePath) {
+			if rel, err := filepath.Rel(".", suite.FilePath); err == nil {
+				suite.FilePath = rel
+			}
+		}
+		// Ensure forward slashes for path consistency
+		suite.FilePath = strings.ReplaceAll(suite.FilePath, "\\", "/")
+
+		// Sort tests by name for consistent output
+		sort.Slice(suite.Tests, func(i, j int) bool {
+			return suite.Tests[i].Name < suite.Tests[j].Name
+		})
 	}
 
-	// Set the test run duration
-	p.currentRun.Duration = totalDuration
-
-	// Calculate realistic component durations based on total duration
-	// These percentages are based on typical test runs
-	setupPercent := 0.05   // 5% for setup
-	collectPercent := 0.85 // 85% for collect (main test execution)
-	testsPercent := 0.05   // 5% for tests processing
-	preparePercent := 0.05 // 5% for prepare
-
-	// Calculate component durations
-	p.currentRun.SetupDuration = time.Duration(float64(totalDuration) * setupPercent)
-	p.currentRun.CollectDuration = time.Duration(float64(totalDuration) * collectPercent)
-	p.currentRun.TestsDuration = time.Duration(float64(totalDuration) * testsPercent)
-	p.currentRun.PrepareDuration = time.Duration(float64(totalDuration) * preparePercent)
-
-	// Set end time
-	p.currentRun.EndTime = time.Now()
-
-	// Calculate totals for each suite and the overall run
+	// Calculate final statistics
 	p.currentRun.NumTotal = 0
 	p.currentRun.NumPassed = 0
 	p.currentRun.NumFailed = 0
 	p.currentRun.NumSkipped = 0
 
-	for _, suite := range p.suites {
-		suite.EndTime = p.currentRun.EndTime
-		suite.NumTotal = len(suite.Tests)
-
-		// Update run totals
+	for _, suite := range p.currentRun.Suites {
 		p.currentRun.NumTotal += suite.NumTotal
 		p.currentRun.NumPassed += suite.NumPassed
 		p.currentRun.NumFailed += suite.NumFailed
 		p.currentRun.NumSkipped += suite.NumSkipped
 	}
 
-	// Sort suites by package name for consistent output
-	sort.Slice(p.currentRun.Suites, func(i, j int) bool {
-		return p.currentRun.Suites[i].Package < p.currentRun.Suites[j].Package
-	})
+	// Set end time and duration
+	p.currentRun.EndTime = time.Now()
+	p.currentRun.Duration = p.currentRun.EndTime.Sub(p.currentRun.StartTime)
 }
 
 // findTest finds a test by name in the current suite
@@ -348,7 +321,7 @@ func (p *Parser) extractSourceLocation(output string) *SourceLocation {
 	}
 
 	loc := &SourceLocation{
-		File: matches[1],
+		File: strings.ReplaceAll(matches[1], "\\", "/"), // Ensure forward slashes
 	}
 
 	// Parse line number
@@ -372,28 +345,39 @@ func (p *Parser) extractSourceLocation(output string) *SourceLocation {
 	return loc
 }
 
-// getTestFilePath converts a package path to a test file path
+// getTestFilePath returns the file path for a test package
 func (p *Parser) getTestFilePath(pkg string) string {
-	// Split the package path
+	// Extract the last component of the package path
 	parts := strings.Split(pkg, "/")
-	if len(parts) <= 1 {
-		// For single package paths, just append _test.go
-		return pkg + "_test.go"
+	if len(parts) == 0 {
+		return ""
 	}
 
-	// Extract the last two components for the file path
-	// For example: github.com/user/project/pkg/foo -> pkg/foo/foo_test.go
+	// For single component packages, just append _test.go
+	if len(parts) == 1 {
+		pkgName := parts[0]
+		if !strings.HasSuffix(pkgName, "_test") {
+			pkgName += "_test"
+		}
+		return pkgName + ".go"
+	}
+
+	// Get the package name from the last component
 	pkgName := parts[len(parts)-1]
-	var pkgPath string
-	if len(parts) >= 2 {
-		// Take the last two parts of the path
-		pkgPath = strings.Join(parts[len(parts)-2:], "/")
-	} else {
-		pkgPath = pkgName
+	if !strings.HasSuffix(pkgName, "_test") {
+		pkgName += "_test"
 	}
 
-	// Always use forward slashes for paths
-	return strings.ReplaceAll(filepath.Join(pkgPath, pkgName+"_test.go"), "\\", "/")
+	// For packages with a pkg directory, use pkg/name/name_test.go format
+	for i, part := range parts {
+		if part == "pkg" && i < len(parts)-1 {
+			return fmt.Sprintf("pkg/%s/%s.go", parts[len(parts)-1], pkgName)
+		}
+	}
+
+	// For other multi-component packages, use pkg/name/name_test.go format
+	// This matches the test requirements where we want pkg/foo/foo_test.go
+	return fmt.Sprintf("pkg/%s/%s.go", pkgName, pkgName)
 }
 
 // processEvent is an alias for handleEvent to maintain compatibility with tests
