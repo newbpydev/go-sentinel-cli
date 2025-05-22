@@ -9,14 +9,9 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.5
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/go-chi/chi/v5 v5.2.1
-	github.com/gorilla/mux v1.8.1
-	github.com/gorilla/websocket v1.5.3
-	github.com/joho/godotenv v1.5.1
 	github.com/mattn/go-isatty v0.0.20
 	github.com/spf13/cobra v1.8.0
-	golang.org/x/net v0.40.0
-	golang.org/x/tools v0.33.0
+	golang.org/x/term v0.32.0
 )
 
 require (

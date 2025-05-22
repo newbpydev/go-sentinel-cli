@@ -23,14 +23,23 @@
 
 Go Sentinel is an open-source, Go-native CLI utility that supercharges your test-driven development (TDD) workflow. It automatically watches your Go source files, reruns tests on changes, and presents concise, actionable feedback in your terminal. Built with concurrency and resilience at its core, Go Sentinel helps you maintain an uninterrupted TDD flow.
 
+The revamped CLI interface now provides a beautiful, Vitest-style output with clear test suite information, detailed failure reporting, and comprehensive summary statistics.
+
 ## ✨ Features
 
 - **Real-time Test Execution**: Automatically runs tests when files change
 - **Smart Debouncing**: Coalesces rapid file system events to prevent redundant test runs
 - **Rich Terminal UI**: Color-coded output with clear pass/fail indicators
+- **Beautiful Test Output**:
+  - Test suite information with pass/fail status
+  - Detailed failure reports with code context and line highlighting
+  - Memory usage tracking
+  - Animated progress indicators
 - **Interactive Controls**:
   - `Enter`: Rerun all tests
-  - `f`: Filter to show only failing tests
+  - `f`: Toggle filter for failed tests
+  - `p`: Toggle filter for passed tests
+  - `s`: Toggle filter for skipped tests
   - `c/C`: Copy test information (current/all failures)
   - `q`: Quit the application
 - **Robust Error Handling**:
@@ -112,10 +121,26 @@ make build
 ## 🚦 Quick Start
 
 1. Navigate to your Go project directory
-2. Run:
+2. Run the standard watcher:
    ```bash
    go-sentinel-cli
    ```
+   Or use the revamped CLI with beautiful output:
+   ```bash
+   go-sentinel-cli test
+   ```
+   With watch mode:
+   ```bash
+   go-sentinel-cli test -w
+   ```
+   
+   If you encounter stability issues, try the simplified versions:
+   ```bash
+   go-sentinel-cli minimaltest  # Simplified but styled version
+   go-sentinel-cli basictest    # Basic output with minimal styling
+   go-sentinel-cli simpletest   # Standard go test output
+   ```
+
 3. Start editing your files - tests will run automatically on save
 
 ## ⚙️ Configuration

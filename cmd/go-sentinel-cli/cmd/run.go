@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/newbpydev/go-sentinel/internal/cli"
 	"github.com/spf13/cobra"
 )
 
