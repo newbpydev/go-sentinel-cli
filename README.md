@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>Go Sentinel</h1>
+  <h1>Go Sentinel CLI</h1>
   <p>
     <strong>Accelerate your Go test-driven development workflow with real-time feedback</strong>
   </p>
