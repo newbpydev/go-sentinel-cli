@@ -1,17 +1,17 @@
 <div align="center">
-  <h1>Go Sentinel CLI</h1>
+  <h1>Go Sentinel</h1>
   <p>
     <strong>Accelerate your Go test-driven development workflow with real-time feedback</strong>
   </p>
   <p>
-    <a href="https://github.com/yourusername/go-sentinel/actions">
-      <img src="https://github.com/yourusername/go-sentinel/actions/workflows/test.yml/badge.svg" alt="Build Status">
+    <a href="https://github.com/newbpydev/go-sentinel/actions">
+      <img src="https://github.com/newbpydev/go-sentinel/actions/workflows/test.yml/badge.svg" alt="Build Status">
     </a>
-    <a href="https://goreportcard.com/report/github.com/yourusername/go-sentinel">
-      <img src="https://goreportcard.com/badge/github.com/yourusername/go-sentinel" alt="Go Report Card">
+    <a href="https://goreportcard.com/report/github.com/newbpydev/go-sentinel">
+      <img src="https://goreportcard.com/badge/github.com/newbpydev/go-sentinel" alt="Go Report Card">
     </a>
-    <a href="https://pkg.go.dev/github.com/yourusername/go-sentinel">
-      <img src="https://pkg.go.dev/badge/github.com/yourusername/go-sentinel" alt="Go Reference">
+    <a href="https://pkg.go.dev/github.com/newbpydev/go-sentinel">
+      <img src="https://pkg.go.dev/badge/github.com/newbpydev/go-sentinel" alt="Go Reference">
     </a>
     <a href="LICENSE">
       <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT">
@@ -99,12 +99,12 @@ Go Sentinel is an open-source, Go-native CLI utility that supercharges your test
 
 ### Using Go Install
 ```bash
-go install github.com/yourusername/go-sentinel/cmd/go-sentinel@latest
+go install github.com/newbpydev/go-sentinel/cmd/go-sentinel-cli@latest
 ```
 
 ### Building from Source
 ```bash
-git clone https://github.com/yourusername/go-sentinel.git
+git clone https://github.com/newbpydev/go-sentinel-cli.git
 cd go-sentinel
 make build
 ```
@@ -114,7 +114,7 @@ make build
 1. Navigate to your Go project directory
 2. Run:
    ```bash
-   go-sentinel
+   go-sentinel-cli
    ```
 3. Start editing your files - tests will run automatically on save
 
@@ -123,7 +123,7 @@ make build
 Create a `watcher.yaml` file in your project root:
 
 ```yaml
-# Default configuration for Go Sentinel
+# Default configuration for Go Sentinel CLI
 watch:
   # Directories to watch (default: ["."])
   dirs: ["."]
