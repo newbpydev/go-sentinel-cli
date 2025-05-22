@@ -4,14 +4,14 @@
     <strong>Accelerate your Go test-driven development workflow with real-time feedback</strong>
   </p>
   <p>
-    <a href="https://github.com/newbpydev/go-sentinel/actions">
-      <img src="https://github.com/newbpydev/go-sentinel/actions/workflows/test.yml/badge.svg" alt="Build Status">
+    <a href="https://github.com/newbpydev/go-sentinel-cli/actions">
+      <img src="https://github.com/newbpydev/go-sentinel-cli/actions/workflows/test.yml/badge.svg" alt="Build Status">
     </a>
-    <a href="https://goreportcard.com/report/github.com/newbpydev/go-sentinel">
-      <img src="https://goreportcard.com/badge/github.com/newbpydev/go-sentinel" alt="Go Report Card">
+    <a href="https://goreportcard.com/report/github.com/newbpydev/go-sentinel-cli">
+      <img src="https://goreportcard.com/badge/github.com/newbpydev/go-sentinel-cli" alt="Go Report Card">
     </a>
-    <a href="https://pkg.go.dev/github.com/newbpydev/go-sentinel">
-      <img src="https://pkg.go.dev/badge/github.com/newbpydev/go-sentinel" alt="Go Reference">
+    <a href="https://pkg.go.dev/github.com/newbpydev/go-sentinel-cli">
+      <img src="https://pkg.go.dev/badge/github.com/newbpydev/go-sentinel-cli" alt="Go Reference">
     </a>
     <a href="LICENSE">
       <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT">
@@ -45,7 +45,7 @@ Go Sentinel is an open-source, Go-native CLI utility that supercharges your test
 ## 🏗️ Project Structure
 
 ```
-/go-sentinel
+/go-sentinel-cli
 ├── cmd/                  # Command-line applications
 │   ├── go-sentinel-api/  # Web API server with WebSocket support
 │   └── go-sentinel-web/  # Web interface server
@@ -99,13 +99,13 @@ Go Sentinel is an open-source, Go-native CLI utility that supercharges your test
 
 ### Using Go Install
 ```bash
-go install github.com/newbpydev/go-sentinel/cmd/go-sentinel-cli@latest
+go install github.com/newbpydev/go-sentinel-cli/cmd/go-sentinel-cli@latest
 ```
 
 ### Building from Source
 ```bash
 git clone https://github.com/newbpydev/go-sentinel-cli.git
-cd go-sentinel
+cd go-sentinel-cli
 make build
 ```
 
@@ -304,7 +304,7 @@ This approach keeps the sidebar uncluttered and focused, while providing full de
 ### Installation
 ```bash
 # Install from source
-go install github.com/your-org/go-sentinel/cmd/go-sentinel@latest
+go install github.com/newbpydev/go-sentinel-cli/cmd/go-sentinel-cli@latest
 
 # Or download binary from releases (future)
 ```
@@ -312,10 +312,10 @@ go install github.com/your-org/go-sentinel/cmd/go-sentinel@latest
 ### Basic Usage
 ```bash
 # Run in your Go project root
-go-sentinel
+go-sentinel-cli
 
 # With custom options
-go-sentinel --debounce 200ms --no-color --exclude "vendor,generated"
+go-sentinel-cli --debounce 200ms --no-color --exclude "vendor,generated"
 ```
 
 ### Configuration File
@@ -338,4 +338,4 @@ verbosity: info
   - `Esc`: Cancel and return to main view
 - `q`: Quit the watcher
 
-See `go-sentinel --help` for all options.
+See `go-sentinel-cli --help` for all options.
