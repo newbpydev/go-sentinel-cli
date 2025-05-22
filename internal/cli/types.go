@@ -72,8 +72,8 @@ type TestRun struct {
 	TransformDuration time.Duration
 	SetupDuration     time.Duration
 	CollectDuration   time.Duration
-	TestsDuration     time.Duration
-	EnvDuration       time.Duration
+	TestsDuration     time.Duration // Sum of individual test execution times
+	ParseDuration     time.Duration // Time taken to parse test output
 	PrepareDuration   time.Duration
 	NumTotal          int
 	NumPassed         int
@@ -90,12 +90,12 @@ func NewTestRun() *TestRun {
 		StartTime:         now,
 		EndTime:           now,
 		Duration:          0,
-		TransformDuration: 859 * time.Millisecond,
-		SetupDuration:     34*time.Second + 480*time.Millisecond,
-		CollectDuration:   1*time.Second + 290*time.Millisecond,
+		TransformDuration: 0,
+		SetupDuration:     0,
+		CollectDuration:   0,
 		TestsDuration:     0,
-		EnvDuration:       78*time.Second + 910*time.Millisecond,
-		PrepareDuration:   3*time.Second + 690*time.Millisecond,
+		ParseDuration:     0,
+		PrepareDuration:   0,
 		Suites:            []*TestSuite{},
 		FailedTests:       []*TestResult{},
 	}

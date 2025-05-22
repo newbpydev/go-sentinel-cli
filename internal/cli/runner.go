@@ -100,14 +100,12 @@ func (r *Runner) RunOnce(opts RunOptions) (string, error) {
 	outputStr := string(output)
 	collectDuration := time.Since(collectStart)
 
-	// Test execution phase
-	testsStart := time.Now()
+	// Test execution phase (parsing)
+	parseStart := time.Now()
 	parser := NewParser()
 	run, parseErr := parser.Parse(strings.NewReader(outputStr))
-	testsDuration := time.Since(testsStart)
+	parseDuration := time.Since(parseStart)
 
-	// Environment phase
-	envStart := time.Now()
 	if run != nil {
 		run.StartTime = startTime
 		run.EndTime = time.Now()
@@ -115,8 +113,7 @@ func (r *Runner) RunOnce(opts RunOptions) (string, error) {
 		run.TransformDuration = transformDuration
 		run.SetupDuration = setupDuration
 		run.CollectDuration = collectDuration
-		run.TestsDuration = testsDuration
-		run.EnvDuration = time.Since(envStart)
+		run.ParseDuration = parseDuration
 
 		// Render test results as they come in
 		if opts.Renderer != nil {

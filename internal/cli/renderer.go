@@ -108,6 +108,11 @@ func (r *Renderer) renderSummary(run *TestRun) {
 		breakdownParts = append(breakdownParts, fmt.Sprintf("tests %s", formatDuration(run.TestsDuration)))
 	}
 
+	// Parse duration
+	if run.ParseDuration > 0 {
+		breakdownParts = append(breakdownParts, fmt.Sprintf("parse %s", formatDuration(run.ParseDuration)))
+	}
+
 	// Add breakdown in parentheses with proper styling
 	if len(breakdownParts) > 0 {
 		formattedMainDuration += " " + r.style.FormatBreakdownText(fmt.Sprintf("(%s)", strings.Join(breakdownParts, ", ")))

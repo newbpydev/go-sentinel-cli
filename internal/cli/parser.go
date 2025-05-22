@@ -176,6 +176,9 @@ func (p *Parser) handleTestPass(event *GoTestEvent) error {
 	test.Status = TestStatusPassed
 	test.Duration = time.Duration(event.Elapsed * float64(time.Second))
 	test.EndTime = event.Time
+	if test.Duration == 0 && !test.StartTime.IsZero() {
+		test.Duration = test.EndTime.Sub(test.StartTime)
+	}
 	p.currentSuite.NumPassed++
 	p.currentRun.NumPassed++
 	return nil
@@ -191,6 +194,9 @@ func (p *Parser) handleTestFail(event *GoTestEvent) error {
 	test.Status = TestStatusFailed
 	test.Duration = time.Duration(event.Elapsed * float64(time.Second))
 	test.EndTime = event.Time
+	if test.Duration == 0 && !test.StartTime.IsZero() {
+		test.Duration = test.EndTime.Sub(test.StartTime)
+	}
 	if test.Error == nil {
 		test.Error = &TestError{
 			Message: event.Output,
@@ -214,6 +220,9 @@ func (p *Parser) handleTestSkip(event *GoTestEvent) error {
 	test.Status = TestStatusSkipped
 	test.Duration = time.Duration(event.Elapsed * float64(time.Second))
 	test.EndTime = event.Time
+	if test.Duration == 0 && !test.StartTime.IsZero() {
+		test.Duration = test.EndTime.Sub(test.StartTime)
+	}
 	p.currentSuite.NumSkipped++
 	p.currentRun.NumSkipped++
 	return nil
@@ -280,6 +289,17 @@ func (p *Parser) finalize() {
 		sort.Slice(suite.Tests, func(i, j int) bool {
 			return suite.Tests[i].Name < suite.Tests[j].Name
 		})
+
+		// Calculate suite duration from test durations
+		var totalDuration time.Duration
+		for _, test := range suite.Tests {
+			totalDuration += test.Duration
+		}
+		if totalDuration > 0 {
+			suite.Duration = totalDuration
+		} else if !suite.StartTime.IsZero() && !suite.EndTime.IsZero() {
+			suite.Duration = suite.EndTime.Sub(suite.StartTime)
+		}
 	}
 
 	// Calculate final statistics
@@ -288,16 +308,22 @@ func (p *Parser) finalize() {
 	p.currentRun.NumFailed = 0
 	p.currentRun.NumSkipped = 0
 
+	// Calculate total test duration
+	var totalTestDuration time.Duration
 	for _, suite := range p.currentRun.Suites {
 		p.currentRun.NumTotal += suite.NumTotal
 		p.currentRun.NumPassed += suite.NumPassed
 		p.currentRun.NumFailed += suite.NumFailed
 		p.currentRun.NumSkipped += suite.NumSkipped
+		totalTestDuration += suite.Duration
 	}
 
 	// Set end time and duration
 	p.currentRun.EndTime = time.Now()
 	p.currentRun.Duration = p.currentRun.EndTime.Sub(p.currentRun.StartTime)
+	if totalTestDuration > 0 {
+		p.currentRun.TestsDuration = totalTestDuration
+	}
 }
 
 // findTest finds a test by name in the current suite
