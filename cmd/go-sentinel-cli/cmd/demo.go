@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -33,8 +34,10 @@ This command is used for development and validation.`,
 			runPhase3Demo()
 		case "4d":
 			runPhase4Demo()
+		case "5d":
+			runPhase5Demo()
 		default:
-			fmt.Println("Please specify a valid phase to demo (1d, 2d, 3d, or 4d)")
+			fmt.Println("Please specify a valid phase to demo (1d, 2d, 3d, 4d, or 5d)")
 			fmt.Println("Example: go-sentinel-cli demo --phase=1d")
 		}
 	},
@@ -44,8 +47,11 @@ func init() {
 	rootCmd.AddCommand(demoCmd)
 
 	// Add flags
-	demoCmd.Flags().StringP("phase", "p", "", "Phase to demo (1d, 2d, or 3d)")
-	demoCmd.MarkFlagRequired("phase")
+	demoCmd.Flags().StringP("phase", "p", "", "Phase to run (1-5)")
+	if err := demoCmd.MarkFlagRequired("phase"); err != nil {
+		fmt.Printf("Error marking phase flag as required: %v\n", err)
+		os.Exit(1)
+	}
 }
 
 // runPhase1Demo runs the Phase 1-D demonstration (Core Architecture)
@@ -836,4 +842,184 @@ func createMockFailedTestsWithSourceContext() []*cli.TestResult {
 			},
 		},
 	}
+}
+
+// runPhase5Demo runs the Phase 5 demonstration (Watch Mode)
+func runPhase5Demo() {
+	fmt.Println("=== Phase 5: Watch Mode Demonstration ===")
+	fmt.Println()
+
+	// Create a temporary test project
+	projectDir, err := createDemoProject()
+	if err != nil {
+		fmt.Printf("Error creating demo project: %v\n", err)
+		return
+	}
+	defer func() {
+		if err := os.RemoveAll(projectDir); err != nil {
+			fmt.Printf("Error removing demo project: %v\n", err)
+		}
+	}()
+
+	fmt.Printf("Created demo project in %s\n", projectDir)
+	fmt.Println()
+
+	// Simulate watch mode
+	fmt.Println("Watch mode started")
+	fmt.Println("Press 'q' to quit, 'a' to run all tests, 'c' to run changed tests")
+	fmt.Println()
+
+	// Simulate file changes
+	fmt.Println("Detected changes in project files")
+	fmt.Println("Running tests...")
+	fmt.Println()
+
+	// Simulate test run
+	time.Sleep(500 * time.Millisecond)
+	fmt.Println("✓ pkg/math_test.go - 2 passed")
+	time.Sleep(300 * time.Millisecond)
+	fmt.Println("✓ pkg/string_test.go - 1 passed")
+	fmt.Println()
+
+	// Simulate another file change
+	fmt.Println("Detected changes in math.go")
+	fmt.Println("Running related tests...")
+	fmt.Println()
+
+	// Simulate test run
+	time.Sleep(500 * time.Millisecond)
+	fmt.Println("✓ pkg/math_test.go - 3 passed")
+	fmt.Println()
+
+	// Simulate test failure
+	fmt.Println("Detected changes in string_test.go")
+	fmt.Println("Running tests...")
+	fmt.Println()
+
+	time.Sleep(500 * time.Millisecond)
+	fmt.Println("✗ pkg/string_test.go - 1 failed, 1 passed")
+	fmt.Println("  ↳ TestReverse/failing_test - Expected 'tset', got 'test'")
+	fmt.Println()
+
+	// Summary
+	fmt.Println("Test Summary:")
+	fmt.Println("Test Files: 2 passed, 1 failed (total: 3)")
+	fmt.Println("Tests: 6 passed, 1 failed (total: 7)")
+	fmt.Println("Duration: 1.35s")
+	fmt.Println()
+
+	fmt.Println("Watch mode demonstration completed.")
+}
+
+// createDemoProject creates a temporary project with test files
+func createDemoProject() (string, error) {
+	// Create a temporary directory
+	tempDir, err := os.MkdirTemp("", "watch-demo")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp dir: %w", err)
+	}
+
+	// Create a package directory
+	pkgDir := filepath.Join(tempDir, "pkg")
+	if err := os.Mkdir(pkgDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create package dir: %w", err)
+	}
+
+	// Create implementation file
+	mathFile := filepath.Join(pkgDir, "math.go")
+	mathContent := `package pkg
+
+// Add adds two integers and returns the result
+func Add(a, b int) int {
+	return a + b
+}
+
+// Subtract subtracts b from a and returns the result
+func Subtract(a, b int) int {
+	return a - b
+}
+`
+	if err := os.WriteFile(mathFile, []byte(mathContent), 0644); err != nil {
+		return "", fmt.Errorf("failed to create math.go: %w", err)
+	}
+
+	// Create test file
+	mathTestFile := filepath.Join(pkgDir, "math_test.go")
+	mathTestContent := `package pkg
+
+import "testing"
+
+func TestAdd(t *testing.T) {
+	tests := []struct {
+		name     string
+		a, b     int
+		expected int
+	}{
+		{"positive numbers", 2, 3, 5},
+		{"negative numbers", -2, -3, -5},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := Add(tt.a, tt.b)
+			if result != tt.expected {
+				t.Errorf("Add(%d, %d) = %d, want %d", tt.a, tt.b, result, tt.expected)
+			}
+		})
+	}
+}
+`
+	if err := os.WriteFile(mathTestFile, []byte(mathTestContent), 0644); err != nil {
+		return "", fmt.Errorf("failed to create math_test.go: %w", err)
+	}
+
+	// Create another implementation file
+	stringFile := filepath.Join(pkgDir, "string.go")
+	stringContent := `package pkg
+
+// Reverse returns the string reversed
+func Reverse(s string) string {
+	runes := []rune(s)
+	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+		runes[i], runes[j] = runes[j], runes[i]
+	}
+	return string(runes)
+}
+`
+	if err := os.WriteFile(stringFile, []byte(stringContent), 0644); err != nil {
+		return "", fmt.Errorf("failed to create string.go: %w", err)
+	}
+
+	// Create test file for string
+	stringTestFile := filepath.Join(pkgDir, "string_test.go")
+	stringTestContent := `package pkg
+
+import "testing"
+
+func TestReverse(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"empty string", "", ""},
+		{"single character", "a", "a"},
+		{"normal string", "hello", "olleh"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := Reverse(tt.input)
+			if result != tt.expected {
+				t.Errorf("Reverse(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+`
+	if err := os.WriteFile(stringTestFile, []byte(stringTestContent), 0644); err != nil {
+		return "", fmt.Errorf("failed to create string_test.go: %w", err)
+	}
+
+	return tempDir, nil
 }

@@ -20,156 +20,110 @@ type TestRunStats struct {
 	FailedTests  int
 	SkippedTests int
 
-	// Timing information
-	StartTime     time.Time
-	Duration      time.Duration
-	PhaseDuration map[string]time.Duration
+	// Timing
+	StartTime time.Time
+	EndTime   time.Time
+	Duration  time.Duration
+	Phases    map[string]time.Duration
 }
 
-// SummaryRenderer renders the test run summary
+// SummaryRenderer renders a summary of test results
 type SummaryRenderer struct {
 	writer    io.Writer
 	formatter *ColorFormatter
+	icons     *IconProvider
+	width     int
 }
 
 // NewSummaryRenderer creates a new SummaryRenderer
-func NewSummaryRenderer(writer io.Writer, formatter *ColorFormatter) *SummaryRenderer {
+func NewSummaryRenderer(writer io.Writer, formatter *ColorFormatter, icons *IconProvider, width int) *SummaryRenderer {
 	return &SummaryRenderer{
 		writer:    writer,
 		formatter: formatter,
+		icons:     icons,
+		width:     width,
 	}
 }
 
-// RenderSummary renders the summary of a test run
+// RenderSummary renders a summary of test results
 func (r *SummaryRenderer) RenderSummary(stats *TestRunStats) error {
-	// Skip if we don't have any stats
-	if stats == nil {
-		return nil
+	// Add separator line before summary
+	fmt.Fprintln(r.writer, r.formatter.Dim(strings.Repeat("─", r.width)))
+
+	// Display summary header
+	fmt.Fprintln(r.writer, r.formatter.Bold("Test Summary:"))
+
+	// Test files
+	fileStats := fmt.Sprintf("Test Files: %s",
+		r.formatter.Green(fmt.Sprintf("%d passed", stats.PassedFiles)))
+
+	if stats.FailedFiles > 0 {
+		fileStats += fmt.Sprintf(", %s",
+			r.formatter.Red(fmt.Sprintf("%d failed", stats.FailedFiles)))
 	}
 
-	// Format and render the test files line
-	filesLine := r.formatTestFilesLine(stats)
-	if _, err := fmt.Fprintln(r.writer, filesLine); err != nil {
-		return err
+	fileStats += fmt.Sprintf(" (total: %d)", stats.TotalFiles)
+	fmt.Fprintln(r.writer, fileStats)
+
+	// Tests
+	testStats := fmt.Sprintf("Tests: %s",
+		r.formatter.Green(fmt.Sprintf("%d passed", stats.PassedTests)))
+
+	if stats.FailedTests > 0 {
+		testStats += fmt.Sprintf(", %s",
+			r.formatter.Red(fmt.Sprintf("%d failed", stats.FailedTests)))
 	}
 
-	// Format and render the tests line
-	testsLine := r.formatTestsLine(stats)
-	if _, err := fmt.Fprintln(r.writer, testsLine); err != nil {
-		return err
+	if stats.SkippedTests > 0 {
+		testStats += fmt.Sprintf(", %s",
+			r.formatter.Yellow(fmt.Sprintf("%d skipped", stats.SkippedTests)))
 	}
 
-	// Format and render the start time line
-	startLine := r.formatStartTimeLine(stats)
-	if _, err := fmt.Fprintln(r.writer, startLine); err != nil {
-		return err
+	testStats += fmt.Sprintf(" (total: %d)", stats.TotalTests)
+	fmt.Fprintln(r.writer, testStats)
+
+	// Start time
+	fmt.Fprintf(r.writer, "Start at: %s\n",
+		r.formatter.Gray(stats.StartTime.Format("15:04:05")))
+
+	// Duration
+	durationText := fmt.Sprintf("Duration: %s",
+		r.formatter.Gray(formatDuration(stats.Duration)))
+
+	// Add phase timing if available
+	if len(stats.Phases) > 0 {
+		durationText += " ("
+		first := true
+
+		for name, duration := range stats.Phases {
+			if !first {
+				durationText += ", "
+			}
+			durationText += fmt.Sprintf("%s: %s",
+				name, r.formatter.Gray(formatDuration(duration)))
+			first = false
+		}
+
+		durationText += ")"
 	}
 
-	// Format and render the duration line
-	durationLine := r.formatDurationLine(stats)
-	if _, err := fmt.Fprintln(r.writer, durationLine); err != nil {
-		return err
-	}
+	fmt.Fprintln(r.writer, durationText)
+
+	// Add another separator for clarity
+	fmt.Fprintln(r.writer, r.formatter.Dim(strings.Repeat("─", r.width)))
 
 	return nil
 }
 
-// formatTestFilesLine formats the "Test Files" line
-func (r *SummaryRenderer) formatTestFilesLine(stats *TestRunStats) string {
-	var parts []string
-
-	// Add the failed files count if any
-	if stats.FailedFiles > 0 {
-		failed := fmt.Sprintf("%d failed", stats.FailedFiles)
-		parts = append(parts, r.formatter.Red(failed))
-	}
-
-	// Add the passed files count if any
-	if stats.PassedFiles > 0 {
-		passed := fmt.Sprintf("%d passed", stats.PassedFiles)
-		parts = append(parts, r.formatter.Green(passed))
-	}
-
-	// Format with totals
-	total := ""
-	if stats.TotalFiles > 0 {
-		total = fmt.Sprintf("(%d)", stats.TotalFiles)
-	}
-
-	// Format the final line
-	return fmt.Sprintf("Test Files %s %s",
-		strings.Join(parts, " | "),
-		r.formatter.Dim(total),
-	)
-}
-
-// formatTestsLine formats the "Tests" line
-func (r *SummaryRenderer) formatTestsLine(stats *TestRunStats) string {
-	var parts []string
-
-	// Add the failed tests count if any
-	if stats.FailedTests > 0 {
-		failed := fmt.Sprintf("%d failed", stats.FailedTests)
-		parts = append(parts, r.formatter.Red(failed))
-	}
-
-	// Add the passed tests count if any
-	if stats.PassedTests > 0 {
-		passed := fmt.Sprintf("%d passed", stats.PassedTests)
-		parts = append(parts, r.formatter.Green(passed))
-	}
-
-	// Add the skipped tests count if any
-	if stats.SkippedTests > 0 {
-		skipped := fmt.Sprintf("%d skipped", stats.SkippedTests)
-		parts = append(parts, r.formatter.Yellow(skipped))
-	}
-
-	// Format with totals
-	total := ""
-	if stats.TotalTests > 0 {
-		total = fmt.Sprintf("(%d)", stats.TotalTests)
-	}
-
-	// Format the final line
-	return fmt.Sprintf("     Tests %s %s",
-		strings.Join(parts, " | "),
-		r.formatter.Dim(total),
-	)
-}
-
-// formatStartTimeLine formats the "Start at" line
-func (r *SummaryRenderer) formatStartTimeLine(stats *TestRunStats) string {
-	// Format the start time
-	timeStr := stats.StartTime.Format("15:04:05")
-	return fmt.Sprintf("  Start at %s", timeStr)
-}
-
-// formatDurationLine formats the "Duration" line with phase timing
-func (r *SummaryRenderer) formatDurationLine(stats *TestRunStats) string {
-	// Format the total duration
-	durationStr := formatDuration(stats.Duration)
-
-	// Format the phase timings if any
-	phaseStr := ""
-	if len(stats.PhaseDuration) > 0 {
-		var phases []string
-		for phase, duration := range stats.PhaseDuration {
-			phases = append(phases, fmt.Sprintf("%s %s", phase, formatDuration(duration)))
-		}
-		phaseStr = fmt.Sprintf(" (%s)", strings.Join(phases, ", "))
-	}
-
-	return fmt.Sprintf("  Duration %s%s", durationStr, r.formatter.Dim(phaseStr))
-}
-
-// formatDuration formats a duration in a human-readable format
+// formatDuration formats a duration in a human-readable way
 func formatDuration(d time.Duration) string {
-	if d < time.Second {
-		return fmt.Sprintf("%dms", d.Milliseconds())
+	// Round to milliseconds for display
+	ms := d.Milliseconds()
+
+	if ms < 1000 {
+		return fmt.Sprintf("%dms", ms)
 	}
 
-	// Format as seconds with 2 decimal places
-	seconds := float64(d) / float64(time.Second)
-	return fmt.Sprintf("%.2fs", seconds)
+	sec := float64(ms) / 1000.0
+	return fmt.Sprintf("%.2fs", sec)
 }

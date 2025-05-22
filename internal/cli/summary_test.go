@@ -74,19 +74,20 @@ func TestSummaryRenderer(t *testing.T) {
 			// Setup
 			var buf bytes.Buffer
 			formatter := NewColorFormatter(false) // No colors for testing
-			renderer := NewSummaryRenderer(&buf, formatter)
+			icons := NewIconProvider(false)
+			renderer := NewSummaryRenderer(&buf, formatter, icons, 80)
 
 			// Create test stats
 			stats := &TestRunStats{
-				TotalFiles:    tt.testFiles,
-				PassedFiles:   tt.filesPassed,
-				FailedFiles:   tt.filesFailed,
-				TotalTests:    tt.testsTotal,
-				PassedTests:   tt.testsPassed,
-				FailedTests:   tt.testsFailed,
-				StartTime:     tt.startTime,
-				Duration:      tt.duration,
-				PhaseDuration: tt.phaseTiming,
+				TotalFiles:  tt.testFiles,
+				PassedFiles: tt.filesPassed,
+				FailedFiles: tt.filesFailed,
+				TotalTests:  tt.testsTotal,
+				PassedTests: tt.testsPassed,
+				FailedTests: tt.testsFailed,
+				StartTime:   tt.startTime,
+				Duration:    tt.duration,
+				Phases:      tt.phaseTiming,
 			}
 
 			// Execute
@@ -198,6 +199,5 @@ func formatExpectedDuration(d time.Duration) string {
 	if d < time.Second {
 		return fmt.Sprintf("%dms", d.Milliseconds())
 	}
-	seconds := float64(d) / float64(time.Second)
-	return fmt.Sprintf("%.2fs", seconds)
+	return fmt.Sprintf("%.2fs", d.Seconds())
 }

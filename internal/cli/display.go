@@ -164,19 +164,3 @@ func pluralize(word string, count int) string {
 	}
 	return word + "s"
 }
-
-// truncateString truncates a string to a given width
-func truncateString(s string, width int) string {
-	if len(s) <= width {
-		return s
-	}
-
-	// Show the start and end with ... in the middle
-	if width > 5 {
-		half := (width - 3) / 2
-		return s[:half] + "..." + s[len(s)-half:]
-	}
-
-	// Very small width, just truncate
-	return s[:width]
-}

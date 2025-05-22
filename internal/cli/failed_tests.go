@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"io"
-	"strconv"
 	"strings"
 )
 
@@ -112,8 +111,8 @@ func (r *FailedTestRenderer) RenderFailedTest(test *TestResult) error {
 		}
 
 		// Display source code context if available
-		if test.Error.SourceContext != nil && len(test.Error.SourceContext) > 0 {
-			err = r.renderSourceContext(test.Error)
+		if len(test.Error.SourceContext) > 0 {
+			err = r.renderSourceContext(test)
 			if err != nil {
 				return err
 			}
@@ -126,58 +125,59 @@ func (r *FailedTestRenderer) RenderFailedTest(test *TestResult) error {
 }
 
 // renderSourceContext renders source code around the error with line numbers and highlighting
-func (r *FailedTestRenderer) renderSourceContext(err *TestError) error {
-	// Only proceed if we have source context and location
-	if err.SourceContext == nil || len(err.SourceContext) == 0 || err.Location == nil {
+func (r *FailedTestRenderer) renderSourceContext(test *TestResult) error {
+	if test.Error == nil || test.Error.Location == nil {
 		return nil
 	}
 
-	// Calculate the starting line number
-	startLine := err.Location.Line - err.HighlightedLine
+	// Print source context if available
+	if len(test.Error.SourceContext) > 0 {
+		// Calculate the starting line number
+		startLine := test.Error.Location.Line - test.Error.HighlightedLine
 
-	// Format each line of source code
-	for i, line := range err.SourceContext {
-		// Calculate the actual line number
-		lineNum := startLine + i
+		// Format each line of source code
+		for i, line := range test.Error.SourceContext {
+			// Calculate the actual line number
+			lineNum := startLine + i
 
-		// Format line number and source code
-		var lineStr string
-		if i == err.HighlightedLine {
-			// Highlight the error line (red)
-			lineStr = fmt.Sprintf("  %s| %s",
-				r.formatter.Dim(fmt.Sprintf("%2d", lineNum)),
-				r.formatter.Red(line),
-			)
-		} else {
-			// Regular line (dimmed)
-			lineStr = fmt.Sprintf("  %s| %s",
-				r.formatter.Dim(fmt.Sprintf("%2d", lineNum)),
-				line,
-			)
-		}
-
-		// Write the line
-		_, err2 := fmt.Fprintln(r.writer, lineStr)
-		if err2 != nil {
-			return err2
-		}
-
-		// If this is the error line, add the error indicator
-		if i == err.HighlightedLine {
-			// Find position of the error within the line
-			errorPos := 0
-			if err.Location.Column > 0 {
-				errorPos = err.Location.Column - 1
+			// Format line number and source code
+			var lineStr string
+			if i == test.Error.HighlightedLine {
+				// Highlight the error line (red)
+				lineStr = fmt.Sprintf("  %s| %s",
+					r.formatter.Gray(fmt.Sprintf("%4d", lineNum)),
+					r.formatter.Red(line),
+				)
+			} else {
+				// Normal line
+				lineStr = fmt.Sprintf("  %s| %s",
+					r.formatter.Gray(fmt.Sprintf("%4d", lineNum)),
+					line,
+				)
 			}
 
-			// Create the indicator line with an arrow pointing to the error
-			indicator := fmt.Sprintf("  %s%s",
-				strings.Repeat(" ", 3+errorPos), // Padding + line number width
-				r.formatter.Red("^"),            // Error indicator arrow
-			)
-			_, err2 := fmt.Fprintln(r.writer, indicator)
-			if err2 != nil {
-				return err2
+			// Write the line
+			if _, err := fmt.Fprintln(r.writer, lineStr); err != nil {
+				return err
+			}
+
+			// If this is the error line, add the error indicator
+			if i == test.Error.HighlightedLine {
+				// Find position of the error within the line
+				errorPos := 0
+				if test.Error.Location.Column > 0 {
+					errorPos = test.Error.Location.Column - 1
+				}
+
+				// Create the error indicator line
+				indicator := fmt.Sprintf("  %s  %s%s",
+					strings.Repeat(" ", 4),        // Line number width
+					strings.Repeat(" ", errorPos), // Spaces up to error position
+					r.formatter.Red("^"),          // Error indicator arrow
+				)
+				if _, err := fmt.Fprintln(r.writer, indicator); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -202,38 +202,64 @@ func (r *FailedTestRenderer) formatFailHeader(test *TestResult) string {
 	return fmt.Sprintf("%s %s > %s", failBadge, testPath, testName)
 }
 
-// Helper function to convert int to string
-func intToString(i int) string {
-	return strconv.Itoa(i)
+// formatTestHeader formats the header for a failed test
+func (r *FailedTestRenderer) formatTestHeader(test *TestResult) string {
+	// Create a red "FAIL" badge
+	failBadge := r.formatter.Red("FAIL")
+
+	// Format the test path and name
+	testPath := test.Package
+	testName := test.Name
+
+	// Return the formatted header
+	return fmt.Sprintf("%s %s > %s", failBadge, testPath, testName)
 }
 
 // RenderFailedTests renders a section with all failed tests
 func (r *FailedTestRenderer) RenderFailedTests(tests []*TestResult) error {
-	// Filter out non-failed tests
-	var failedTests []*TestResult
-	for _, test := range tests {
-		if test.Status == StatusFailed && test.Error != nil {
-			failedTests = append(failedTests, test)
-		}
-	}
-
-	// If no failed tests, don't show anything
-	if len(failedTests) == 0 {
+	// Skip if no failed tests
+	if len(tests) == 0 {
 		return nil
 	}
 
+	// Count failed tests
+	failedCount := 0
+	for _, test := range tests {
+		if test.Status == StatusFailed {
+			failedCount++
+		}
+	}
+
 	// Render the header
-	err := r.RenderFailedTestsHeader(len(failedTests))
-	if err != nil {
+	if err := r.RenderFailedTestsHeader(failedCount); err != nil {
 		return err
 	}
 
-	// Render each failed test
-	for _, test := range failedTests {
-		err = r.RenderFailedTest(test)
-		if err != nil {
-			return err
+	// Print each failed test
+	for _, test := range tests {
+		// Skip if not failed
+		if test.Status != StatusFailed {
+			continue
 		}
+
+		// Print test header
+		fmt.Fprintln(r.writer, r.formatTestHeader(test))
+
+		// Print error message if available
+		if test.Error != nil {
+			fmt.Fprintln(r.writer, r.formatter.Red("  "+test.Error.Message))
+
+			// Display source code context if available
+			if len(test.Error.SourceContext) > 0 {
+				err := r.renderSourceContext(test)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		// Add a blank line between tests
+		fmt.Fprintln(r.writer)
 	}
 
 	return nil

@@ -2,7 +2,6 @@ package cli
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -31,7 +30,7 @@ func TestFormatTestFilePath(t *testing.T) {
 	winFormatted := FormatFilePath(formatter, winPath)
 
 	// Should contain the original file name
-	if !containsString(winFormatted, "example_test.go") {
+	if !containsSubstringWithCase(winFormatted, "example_test.go") {
 		t.Errorf("Formatted Windows path does not contain the file name")
 	}
 
@@ -40,7 +39,7 @@ func TestFormatTestFilePath(t *testing.T) {
 	relFormatted := FormatFilePath(formatter, relPath)
 
 	// Should contain the original file name
-	if !containsString(relFormatted, "example_test.go") {
+	if !containsSubstringWithCase(relFormatted, "example_test.go") {
 		t.Errorf("Formatted relative path does not contain the file name")
 	}
 
@@ -49,7 +48,7 @@ func TestFormatTestFilePath(t *testing.T) {
 	plainFormatted := FormatFilePath(noColorFormatter, filePath)
 
 	// Should be the same as the original path or at least contain all parts
-	if !containsString(plainFormatted, "example_test.go") {
+	if !containsSubstringWithCase(plainFormatted, "example_test.go") {
 		t.Errorf("Formatted path without colors does not contain the file name")
 	}
 }
@@ -60,30 +59,30 @@ func TestDisplayTestCounts(t *testing.T) {
 
 	// Test with all tests passing
 	allPassed := formatTestCounts(formatter, 10, 10, 0, 0)
-	if !containsString(allPassed, "10") || !containsString(allPassed, "pass") {
+	if !containsSubstringWithCase(allPassed, "10") || !containsSubstringWithCase(allPassed, "pass") {
 		t.Errorf("Expected test count to show 10 passed tests, got: %s", allPassed)
 	}
 
 	// Test with some tests failing
 	someFailed := formatTestCounts(formatter, 10, 7, 3, 0)
-	if !containsString(someFailed, "7") || !containsString(someFailed, "pass") ||
-		!containsString(someFailed, "3") || !containsString(someFailed, "fail") {
+	if !containsSubstringWithCase(someFailed, "7") || !containsSubstringWithCase(someFailed, "pass") ||
+		!containsSubstringWithCase(someFailed, "3") || !containsSubstringWithCase(someFailed, "fail") {
 		t.Errorf("Expected test count to show 7 passed and 3 failed tests, got: %s", someFailed)
 	}
 
 	// Test with skipped tests
 	withSkipped := formatTestCounts(formatter, 12, 8, 2, 2)
-	if !containsString(withSkipped, "8") || !containsString(withSkipped, "pass") ||
-		!containsString(withSkipped, "2") || !containsString(withSkipped, "fail") ||
-		!containsString(withSkipped, "skip") {
+	if !containsSubstringWithCase(withSkipped, "8") || !containsSubstringWithCase(withSkipped, "pass") ||
+		!containsSubstringWithCase(withSkipped, "2") || !containsSubstringWithCase(withSkipped, "fail") ||
+		!containsSubstringWithCase(withSkipped, "skip") {
 		t.Errorf("Expected test count to show passed, failed, and skipped tests, got: %s", withSkipped)
 	}
 
 	// Test with colors disabled
 	noColorFormatter := NewColorFormatter(false)
 	plainFormatted := formatTestCounts(noColorFormatter, 10, 7, 3, 0)
-	if !containsString(plainFormatted, "7") || !containsString(plainFormatted, "pass") ||
-		!containsString(plainFormatted, "3") || !containsString(plainFormatted, "fail") {
+	if !containsSubstringWithCase(plainFormatted, "7") || !containsSubstringWithCase(plainFormatted, "pass") ||
+		!containsSubstringWithCase(plainFormatted, "3") || !containsSubstringWithCase(plainFormatted, "fail") {
 		t.Errorf("Expected plain test count to show passed and failed tests, got: %s", plainFormatted)
 	}
 }
@@ -94,13 +93,13 @@ func TestFormatTestDuration(t *testing.T) {
 
 	// Test millisecond formatting
 	ms := FormatDuration(formatter, 50*time.Millisecond)
-	if !containsString(ms, "50ms") {
+	if !containsSubstringWithCase(ms, "50ms") {
 		t.Errorf("Expected duration to be formatted as '50ms', got: %s", ms)
 	}
 
 	// Test second formatting
 	sec := FormatDuration(formatter, 1500*time.Millisecond)
-	if !containsString(sec, "1.5s") {
+	if !containsSubstringWithCase(sec, "1.5s") {
 		t.Errorf("Expected duration to be formatted as '1.5s', got: %s", sec)
 	}
 
@@ -220,7 +219,14 @@ func TestMultilineHeaders(t *testing.T) {
 
 // Helper function to check if a string contains a substring
 func containsString(s, substr string) bool {
-	return fmt.Sprintf("%s", s) != "" && fmt.Sprintf("%s", substr) != "" &&
-		fmt.Sprintf("%s", s) != fmt.Sprintf("%s", substr) &&
-		strings.Contains(fmt.Sprintf("%s", s), fmt.Sprintf("%s", substr))
+	return s != "" && substr != "" &&
+		s != substr &&
+		strings.Contains(s, substr)
+}
+
+// Helper function to check if a string contains a substring
+func containsSubstringWithCase(s, substr string) bool {
+	return s != "" && substr != "" &&
+		s != substr &&
+		strings.Contains(s, substr)
 }

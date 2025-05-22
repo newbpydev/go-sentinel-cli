@@ -12,16 +12,6 @@ import (
 	"time"
 )
 
-// TestEvent represents a single event from go test -json output
-type TestEvent struct {
-	Time    time.Time // Time when the event occurred
-	Action  string    // Action is the action type ("run", "pause", "pass", "fail", etc.)
-	Package string    // Package is the package being tested
-	Test    string    // Test is the test being run (may be empty for package events)
-	Output  string    // Output is the output of the test or package (may be empty)
-	Elapsed float64   // Elapsed is the time elapsed for the test or package (in seconds)
-}
-
 // Parser parses go test output into structured test results
 type Parser struct {
 	// testEvents maps package+test to slice of events
@@ -141,7 +131,9 @@ func (p *Parser) processEvents() ([]*TestPackage, error) {
 
 		// Sort events by time to ensure correct processing order
 		sort.Slice(events, func(i, j int) bool {
-			return events[i].Time.Before(events[j].Time)
+			timeI, _ := time.Parse(time.RFC3339Nano, events[i].Time)
+			timeJ, _ := time.Parse(time.RFC3339Nano, events[j].Time)
+			return timeI.Before(timeJ)
 		})
 
 		for _, event := range events {
@@ -202,10 +194,16 @@ func (p *Parser) processEvents() ([]*TestPackage, error) {
 					}
 				}
 
-				// If parent not found yet, create placeholder and add later
 				if !found {
-					// This is a top-level test for now, will be reorganized
-					pkg.Tests = append(pkg.Tests, result)
+					// Parent test hasn't been processed yet, create a placeholder
+					parent := &TestResult{
+						Name:     parentName,
+						Package:  pkgName,
+						Test:     parentName,
+						Status:   StatusRunning,
+						Subtests: []*TestResult{result},
+					}
+					pkg.Tests = append(pkg.Tests, parent)
 				}
 			} else {
 				// This is a top-level test
@@ -214,138 +212,38 @@ func (p *Parser) processEvents() ([]*TestPackage, error) {
 		}
 	}
 
-	// Reorganize subtests if needed
+	// Convert map to slice
+	var results []*TestPackage
 	for _, pkg := range packages {
-		// Create a map of test names to their indices for quick lookup
-		testIndices := make(map[string]int)
-		for i, test := range pkg.Tests {
-			testIndices[test.Name] = i
-		}
-
-		// Go through tests again, moving subtests to their parents
-		var i int
-		for i < len(pkg.Tests) {
-			test := pkg.Tests[i]
-			if test.Parent != "" && testIndices[test.Parent] != i { // It's a subtest and not parent
-				// Find parent and move this test as a subtest
-				parentIdx, exists := testIndices[test.Parent]
-				if exists {
-					// Add as subtest
-					pkg.Tests[parentIdx].Subtests = append(pkg.Tests[parentIdx].Subtests, test)
-					// Remove from top level
-					pkg.Tests = append(pkg.Tests[:i], pkg.Tests[i+1:]...)
-					// Update indices
-					for j := i; j < len(pkg.Tests); j++ {
-						testIndices[pkg.Tests[j].Name] = j
-					}
-					continue // Don't increment i since we removed a test
-				}
-			}
-			i++
-		}
-
-		// Count total tests
-		pkg.TestCount = pkg.PassedCount + pkg.FailedCount + pkg.SkippedCount
+		results = append(results, pkg)
 	}
 
-	// Convert map to slice, preserving package order from the test
-	var result []*TestPackage
-	var packageNames []string
-	for name := range packages {
-		packageNames = append(packageNames, name)
-	}
+	// Sort packages by name for consistent output
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Package < results[j].Package
+	})
 
-	// Sort by package name to ensure consistent ordering
-	sort.Strings(packageNames)
-
-	for _, name := range packageNames {
-		result = append(result, packages[name])
-	}
-
-	return result, nil
+	return results, nil
 }
 
-// determineErrorType determines the type of error from the error message
+// determineErrorType determines the type of error from the test output
 func (p *Parser) determineErrorType(output string) string {
 	if strings.Contains(output, "panic:") {
-		return "Panic"
+		return "panic"
 	}
-	if strings.Contains(output, "timed out") {
-		return "Timeout"
+	if strings.Contains(output, "Expected") {
+		return "assertion"
 	}
-	if strings.Contains(output, "assertion") || strings.Contains(output, "expected") || strings.Contains(output, "Expected") {
-		return "AssertionError"
-	}
-	return "Error"
+	return "error"
 }
 
-// extractSourceLocation extracts file and line information from error output
+// extractSourceLocation extracts file and line information from test output
 func (p *Parser) extractSourceLocation(output string) *SourceLocation {
-	// Special case for panic stack traces
-	if strings.Contains(output, "panic:") || strings.Contains(output, "PANIC:") {
-		// Try to find a stack trace line
-		lines := strings.Split(output, "\n")
-		for _, line := range lines {
-			// Look for specific stack trace patterns
-			// Pattern 1: file.go:42 +0x39
-			if strings.Contains(line, ".go:") {
-				re := regexp.MustCompile(`\s*([^:\s]+\.go):(\d+)`)
-				matches := re.FindStringSubmatch(line)
-				if len(matches) >= 3 {
-					file := matches[1]
-					lineNum, err := strconv.Atoi(matches[2])
-					if err == nil {
-						return &SourceLocation{
-							File: file,
-							Line: lineNum,
-						}
-					}
-				}
-			}
-
-			// Pattern 2: .TestFunc in file.go:42
-			if strings.Contains(line, ".Test") && strings.Contains(line, ".go:") {
-				parts := strings.Split(line, ".go:")
-				if len(parts) >= 2 {
-					// Extract the file path
-					fileParts := strings.Split(parts[0], " ")
-					file := fileParts[len(fileParts)-1] + ".go"
-
-					// Extract line number
-					lineStr := ""
-					for i, c := range parts[1] {
-						if c >= '0' && c <= '9' {
-							lineStr += string(c)
-						} else if lineStr != "" {
-							break
-						}
-
-						// Avoid very long lines
-						if i > 10 {
-							break
-						}
-					}
-
-					if lineStr != "" {
-						lineNum, err := strconv.Atoi(lineStr)
-						if err == nil {
-							return &SourceLocation{
-								File: file,
-								Line: lineNum,
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	// Standard extraction for other error types
+	// Extract file path
 	fileMatches := p.filePath.FindStringSubmatch(output)
 	if len(fileMatches) == 0 {
 		return nil
 	}
-
 	file := fileMatches[0]
 
 	// Extract line number
@@ -354,13 +252,12 @@ func (p *Parser) extractSourceLocation(output string) *SourceLocation {
 		return nil
 	}
 
+	// Line number could be in group 1 or 2
 	var lineStr string
 	if lineMatches[1] != "" {
 		lineStr = lineMatches[1]
-	} else if len(lineMatches) > 2 && lineMatches[2] != "" {
-		lineStr = lineMatches[2]
 	} else {
-		return nil
+		lineStr = lineMatches[2]
 	}
 
 	line, err := strconv.Atoi(lineStr)

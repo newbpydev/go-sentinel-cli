@@ -10,15 +10,6 @@ import (
 	"time"
 )
 
-// GoTestEvent represents a test event from the Go test JSON output
-type GoTestEvent struct {
-	Action  string  `json:"Action"`
-	Test    string  `json:"Test"`
-	Package string  `json:"Package"`
-	Output  string  `json:"Output"`
-	Elapsed float64 `json:"Elapsed"`
-}
-
 // StreamParser parses Go test JSON output as it arrives
 type StreamParser struct {
 	testResults map[string]*TestResult
@@ -41,7 +32,7 @@ func (p *StreamParser) Parse(r io.Reader, results chan<- *TestResult) error {
 			continue
 		}
 
-		var event GoTestEvent
+		var event TestEvent
 		if err := json.Unmarshal([]byte(line), &event); err != nil {
 			return fmt.Errorf("error parsing JSON: %w", err)
 		}
@@ -54,7 +45,7 @@ func (p *StreamParser) Parse(r io.Reader, results chan<- *TestResult) error {
 }
 
 // processEvent processes a single test event
-func (p *StreamParser) processEvent(event *GoTestEvent, results chan<- *TestResult) {
+func (p *StreamParser) processEvent(event *TestEvent, results chan<- *TestResult) {
 	// Skip events without a test name
 	if event.Test == "" {
 		return
@@ -148,40 +139,6 @@ func (p *StreamParser) processOutput(result *TestResult, output string) {
 	}
 }
 
-// TestProgress represents real-time progress information
-type TestProgress struct {
-	CompletedTests int
-	TotalTests     int
-	CurrentFile    string
-	Status         TestStatus
-}
-
-// TestProcessor processes test output and tracks statistics
-type TestProcessor struct {
-	writer     io.Writer
-	formatter  *ColorFormatter
-	icons      *IconProvider
-	width      int
-	suites     map[string]*TestSuite
-	statistics *TestRunStats
-	startTime  time.Time
-}
-
-// NewTestProcessor creates a new TestProcessor
-func NewTestProcessor(writer io.Writer, formatter *ColorFormatter, icons *IconProvider, width int) *TestProcessor {
-	return &TestProcessor{
-		writer:    writer,
-		formatter: formatter,
-		icons:     icons,
-		width:     width,
-		suites:    make(map[string]*TestSuite),
-		statistics: &TestRunStats{
-			StartTime:     time.Now(),
-			PhaseDuration: make(map[string]time.Duration),
-		},
-	}
-}
-
 // ProcessStream processes a stream of test output
 func (p *TestProcessor) ProcessStream(r io.Reader, progress chan<- TestProgress) error {
 	p.startTime = time.Now()
@@ -265,73 +222,4 @@ func (p *TestProcessor) ProcessStream(r io.Reader, progress chan<- TestProgress)
 	}
 
 	return nil
-}
-
-// GetStats returns the current test run statistics
-func (p *TestProcessor) GetStats() *TestRunStats {
-	return p.statistics
-}
-
-// RenderResults renders the current test results
-func (p *TestProcessor) RenderResults(showSummary bool) error {
-	// Render each test suite
-	suiteRenderer := NewSuiteRenderer(p.writer, p.formatter, p.icons, p.width)
-
-	for _, suite := range p.suites {
-		if err := suiteRenderer.RenderSuite(suite, true); err != nil {
-			return err
-		}
-		_, _ = fmt.Fprintln(p.writer)
-	}
-
-	// Collect failed tests
-	var failedTests []*TestResult
-	for _, suite := range p.suites {
-		for _, test := range suite.Tests {
-			if test.Status == StatusFailed {
-				failedTests = append(failedTests, test)
-			}
-		}
-	}
-
-	// Render failed tests section if any
-	if len(failedTests) > 0 {
-		failedRenderer := NewFailedTestRenderer(p.writer, p.formatter, p.icons, p.width)
-		if err := failedRenderer.RenderFailedTests(failedTests); err != nil {
-			return err
-		}
-	}
-
-	// Render summary if requested
-	if showSummary {
-		summaryRenderer := NewSummaryRenderer(p.writer, p.formatter)
-		if err := summaryRenderer.RenderSummary(p.statistics); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// AddTestSuite adds a test suite to the processor's state
-func (p *TestProcessor) AddTestSuite(suite *TestSuite) {
-	if suite == nil {
-		return
-	}
-
-	p.suites[suite.FilePath] = suite
-
-	// Update statistics
-	p.statistics.TotalTests += suite.TestCount
-	p.statistics.PassedTests += suite.PassedCount
-	p.statistics.FailedTests += suite.FailedCount
-	p.statistics.SkippedTests += suite.SkippedCount
-
-	// Update file statistics
-	p.statistics.TotalFiles++
-	if suite.FailedCount > 0 {
-		p.statistics.FailedFiles++
-	} else {
-		p.statistics.PassedFiles++
-	}
 }

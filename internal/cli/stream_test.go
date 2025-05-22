@@ -8,14 +8,6 @@ import (
 	"testing"
 )
 
-type mockTestEvent struct {
-	Action  string  `json:"Action"`
-	Test    string  `json:"Test"`
-	Package string  `json:"Package"`
-	Output  string  `json:"Output"`
-	Elapsed float64 `json:"Elapsed"`
-}
-
 func TestStreamParser(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -106,7 +98,7 @@ func TestStreamParser(t *testing.T) {
 func TestTestProcessor(t *testing.T) {
 	tests := []struct {
 		name           string
-		events         []mockTestEvent
+		events         []TestEvent
 		expectSuites   int
 		expectPassed   int
 		expectFailed   int
@@ -114,7 +106,7 @@ func TestTestProcessor(t *testing.T) {
 	}{
 		{
 			name: "processes complete test output",
-			events: []mockTestEvent{
+			events: []TestEvent{
 				{Action: "run", Test: "TestExample", Package: "github.com/test/example"},
 				{Action: "output", Test: "TestExample", Package: "github.com/test/example", Output: "=== RUN   TestExample\n"},
 				{Action: "output", Test: "TestExample", Package: "github.com/test/example", Output: "--- PASS: TestExample (0.10s)\n"},
@@ -132,7 +124,7 @@ func TestTestProcessor(t *testing.T) {
 		},
 		{
 			name:           "handles empty events",
-			events:         []mockTestEvent{},
+			events:         []TestEvent{},
 			expectSuites:   0,
 			expectPassed:   0,
 			expectFailed:   0,
