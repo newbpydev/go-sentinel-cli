@@ -849,6 +849,11 @@ func runPhase5Demo() {
 	fmt.Println("=== Phase 5: Watch Mode Demonstration ===")
 	fmt.Println()
 
+	// Create formatters for proper styling
+	isColorSupported := isColorTerminal()
+	formatter := cli.NewColorFormatter(isColorSupported)
+	icons := cli.NewIconProvider(true) // Use Unicode icons
+
 	// Create a temporary test project
 	projectDir, err := createDemoProject()
 	if err != nil {
@@ -861,54 +866,119 @@ func runPhase5Demo() {
 		}
 	}()
 
-	fmt.Printf("Created demo project in %s\n", projectDir)
+	fmt.Printf("Created demo project in %s\n", formatter.Dim(projectDir))
 	fmt.Println()
 
-	// Simulate watch mode
-	fmt.Println("Watch mode started")
-	fmt.Println("Press 'q' to quit, 'a' to run all tests, 'c' to run changed tests")
+	// Simulate watch mode with proper styling
+	fmt.Printf("%s %s\n",
+		formatter.Cyan("Watch mode started"),
+		formatter.Dim("- watching for file changes"))
+	fmt.Printf("Press %s to quit, %s to run all tests, %s to run changed tests\n",
+		formatter.Bold("'q'"),
+		formatter.Bold("'a'"),
+		formatter.Bold("'c'"))
 	fmt.Println()
 
-	// Simulate file changes
-	fmt.Println("Detected changes in project files")
-	fmt.Println("Running tests...")
+	// Simulate file changes with styled output
+	fmt.Printf("%s %s\n",
+		formatter.Yellow("→"),
+		"Detected changes in project files")
+	fmt.Printf("%s %s\n",
+		formatter.Blue("Running tests..."),
+		formatter.Dim("(2 files)"))
 	fmt.Println()
 
-	// Simulate test run
+	// Simulate test run with proper file formatting and icons
 	time.Sleep(500 * time.Millisecond)
-	fmt.Println("✓ pkg/math_test.go - 2 passed")
+
+	// Format like Vitest test suite output
+	fmt.Printf(" %s %s %s %s %s\n",
+		formatter.Green(icons.CheckMark()),
+		formatter.Bold(formatter.Cyan("pkg/math_test.go")),
+		formatter.Green("(2 tests)"),
+		formatter.Dim("119ms"),
+		formatter.Dim("12 MB heap used"))
+
 	time.Sleep(300 * time.Millisecond)
-	fmt.Println("✓ pkg/string_test.go - 1 passed")
+	fmt.Printf(" %s %s %s %s %s\n",
+		formatter.Green(icons.CheckMark()),
+		formatter.Bold(formatter.Cyan("pkg/string_test.go")),
+		formatter.Green("(1 test)"),
+		formatter.Dim("45ms"),
+		formatter.Dim("8 MB heap used"))
 	fmt.Println()
 
 	// Simulate another file change
-	fmt.Println("Detected changes in math.go")
-	fmt.Println("Running related tests...")
+	fmt.Printf("%s %s\n",
+		formatter.Yellow("→"),
+		"Detected changes in math.go")
+	fmt.Printf("%s %s\n",
+		formatter.Blue("Running related tests..."),
+		formatter.Dim("(1 file)"))
 	fmt.Println()
 
 	// Simulate test run
 	time.Sleep(500 * time.Millisecond)
-	fmt.Println("✓ pkg/math_test.go - 3 passed")
+	fmt.Printf(" %s %s %s %s %s\n",
+		formatter.Green(icons.CheckMark()),
+		formatter.Bold(formatter.Cyan("pkg/math_test.go")),
+		formatter.Green("(3 tests)"),
+		formatter.Dim("156ms"),
+		formatter.Dim("14 MB heap used"))
 	fmt.Println()
 
-	// Simulate test failure
-	fmt.Println("Detected changes in string_test.go")
-	fmt.Println("Running tests...")
+	// Simulate test failure with proper styling
+	fmt.Printf("%s %s\n",
+		formatter.Yellow("→"),
+		"Detected changes in string_test.go")
+	fmt.Printf("%s %s\n",
+		formatter.Blue("Running tests..."),
+		formatter.Dim("(1 file)"))
 	fmt.Println()
 
 	time.Sleep(500 * time.Millisecond)
-	fmt.Println("✗ pkg/string_test.go - 1 failed, 1 passed")
-	fmt.Println("  ↳ TestReverse/failing_test - Expected 'tset', got 'test'")
+	fmt.Printf(" %s %s %s %s %s\n",
+		formatter.Red(icons.Cross()),
+		formatter.Bold(formatter.Cyan("pkg/string_test.go")),
+		formatter.Red("(1 failed)")+" | "+formatter.Green("1 passed"),
+		formatter.Dim("73ms"),
+		formatter.Dim("9 MB heap used"))
+
+	// Show the failing test detail
+	fmt.Printf("   %s %s\n",
+		formatter.Red(icons.Cross()),
+		formatter.Red("TestReverse/failing_test"))
+	fmt.Printf("     %s %s\n",
+		formatter.Dim("→"),
+		formatter.Red("Expected 'tset', got 'test'"))
 	fmt.Println()
 
-	// Summary
-	fmt.Println("Test Summary:")
-	fmt.Println("Test Files: 2 passed, 1 failed (total: 3)")
-	fmt.Println("Tests: 6 passed, 1 failed (total: 7)")
-	fmt.Println("Duration: 1.35s")
+	// Add separator line before summary (like Vitest)
+	fmt.Println(formatter.Dim(strings.Repeat("─", 60)))
+
+	// Summary with proper styling
+	fmt.Println(formatter.Bold("Test Summary:"))
+
+	// Test Files line
+	fmt.Printf("Test Files: %s, %s %s\n",
+		formatter.Green("2 passed"),
+		formatter.Red("1 failed"),
+		formatter.Dim("(total: 3)"))
+
+	// Tests line
+	fmt.Printf("Tests: %s, %s %s\n",
+		formatter.Green("6 passed"),
+		formatter.Red("1 failed"),
+		formatter.Dim("(total: 7)"))
+
+	// Time line
+	fmt.Printf("Start at: %s\n", formatter.Dim(time.Now().Format("15:04:05")))
+	fmt.Printf("Duration: %s\n", formatter.Dim("1.35s"))
 	fmt.Println()
 
-	fmt.Println("Watch mode demonstration completed.")
+	fmt.Printf("%s %s\n",
+		formatter.Cyan("Watch mode demonstration completed."),
+		formatter.Dim("Press Ctrl+C to exit watch mode"))
 }
 
 // createDemoProject creates a temporary project with test files
