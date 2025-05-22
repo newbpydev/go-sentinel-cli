@@ -79,6 +79,9 @@ func (r *Renderer) renderSummary(run *TestRun) {
 	r.writeln(r.style.FormatTestSummary("Tests     ", run.NumFailed, run.NumPassed, run.NumSkipped, run.NumTotal))
 	r.writeln("")
 	r.writeln(r.style.FormatTimestamp("Start at  ", run.StartTime))
+	if !run.EndTime.IsZero() {
+		r.writeln(r.style.FormatTimestamp("End at    ", run.EndTime))
+	}
 
 	// Calculate total duration from all components
 	totalDuration := run.Duration
@@ -266,12 +269,19 @@ func (r *Renderer) RenderFileChange(path string) {
 
 // Helper functions
 
-// formatDuration formats a duration in a Vitest-like format
+// formatDuration formats a duration adaptively (ms for sub-second, s for >=1s)
 func formatDuration(d time.Duration) string {
-	// Convert milliseconds to seconds with 2 decimal places
-	seconds := float64(d.Milliseconds()) / 1000.0
-	// Format with exactly 2 decimal places
-	return fmt.Sprintf("%.2fs", seconds)
+	if d < 0 {
+		d = -d // Use absolute duration for formatting, prefix with '-' if needed
+	}
+
+	if d < time.Millisecond {
+		return fmt.Sprintf("%.2fms", float64(d.Nanoseconds())/1e6)
+	}
+	if d < time.Second {
+		return fmt.Sprintf("%dms", d.Milliseconds())
+	}
+	return fmt.Sprintf("%.2fs", d.Seconds())
 }
 
 // RenderFinalSummary renders the final test summary
