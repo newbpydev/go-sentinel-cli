@@ -174,9 +174,9 @@ func (p *Parser) handleTestPass(event *GoTestEvent) error {
 	}
 
 	test.Status = TestStatusPassed
-	test.Duration = time.Duration(event.Elapsed * float64(time.Second))
+	test.Duration = DurationFromSeconds(event.Elapsed)
 	test.EndTime = event.Time
-	if test.Duration == 0 && !test.StartTime.IsZero() {
+	if test.Duration == 0 && !test.StartTime.IsZero() && !test.EndTime.IsZero() {
 		test.Duration = test.EndTime.Sub(test.StartTime)
 	}
 	p.currentSuite.NumPassed++
@@ -192,9 +192,9 @@ func (p *Parser) handleTestFail(event *GoTestEvent) error {
 	}
 
 	test.Status = TestStatusFailed
-	test.Duration = time.Duration(event.Elapsed * float64(time.Second))
+	test.Duration = DurationFromSeconds(event.Elapsed)
 	test.EndTime = event.Time
-	if test.Duration == 0 && !test.StartTime.IsZero() {
+	if test.Duration == 0 && !test.StartTime.IsZero() && !test.EndTime.IsZero() {
 		test.Duration = test.EndTime.Sub(test.StartTime)
 	}
 	if test.Error == nil {
@@ -218,9 +218,9 @@ func (p *Parser) handleTestSkip(event *GoTestEvent) error {
 	}
 
 	test.Status = TestStatusSkipped
-	test.Duration = time.Duration(event.Elapsed * float64(time.Second))
+	test.Duration = DurationFromSeconds(event.Elapsed)
 	test.EndTime = event.Time
-	if test.Duration == 0 && !test.StartTime.IsZero() {
+	if test.Duration == 0 && !test.StartTime.IsZero() && !test.EndTime.IsZero() {
 		test.Duration = test.EndTime.Sub(test.StartTime)
 	}
 	p.currentSuite.NumSkipped++
@@ -290,15 +290,18 @@ func (p *Parser) finalize() {
 			return suite.Tests[i].Name < suite.Tests[j].Name
 		})
 
-		// Calculate suite duration from test durations
-		var totalDuration time.Duration
-		for _, test := range suite.Tests {
-			totalDuration += test.Duration
-		}
-		if totalDuration > 0 {
-			suite.Duration = totalDuration
-		} else if !suite.StartTime.IsZero() && !suite.EndTime.IsZero() {
+		// Calculate suite duration from test start/end times
+		if !suite.StartTime.IsZero() && !suite.EndTime.IsZero() {
 			suite.Duration = suite.EndTime.Sub(suite.StartTime)
+		} else {
+			// Fallback to max test duration if start/end times not available
+			var maxDuration time.Duration
+			for _, test := range suite.Tests {
+				if test.Duration > maxDuration {
+					maxDuration = test.Duration
+				}
+			}
+			suite.Duration = maxDuration
 		}
 	}
 
@@ -308,21 +311,35 @@ func (p *Parser) finalize() {
 	p.currentRun.NumFailed = 0
 	p.currentRun.NumSkipped = 0
 
-	// Calculate total test duration
-	var totalTestDuration time.Duration
+	// Calculate total duration and test duration
+	var maxTestDuration time.Duration
 	for _, suite := range p.currentRun.Suites {
 		p.currentRun.NumTotal += suite.NumTotal
 		p.currentRun.NumPassed += suite.NumPassed
 		p.currentRun.NumFailed += suite.NumFailed
 		p.currentRun.NumSkipped += suite.NumSkipped
-		totalTestDuration += suite.Duration
+
+		// Track the longest test duration across all suites
+		if suite.Duration > maxTestDuration {
+			maxTestDuration = suite.Duration
+		}
 	}
 
-	// Set end time and duration
+	// Set end time and durations
 	p.currentRun.EndTime = time.Now()
 	p.currentRun.Duration = p.currentRun.EndTime.Sub(p.currentRun.StartTime)
-	if totalTestDuration > 0 {
-		p.currentRun.TestsDuration = totalTestDuration
+
+	// TestsDuration should be the maximum duration of any test suite
+	// since tests can run in parallel
+	p.currentRun.TestsDuration = maxTestDuration
+
+	// CollectDuration is the time spent collecting test results
+	// which is the total duration minus test execution time
+	p.currentRun.CollectDuration = p.currentRun.Duration - p.currentRun.TestsDuration
+
+	// If setup duration wasn't explicitly set, use a small default
+	if p.currentRun.SetupDuration == 0 {
+		p.currentRun.SetupDuration = time.Millisecond
 	}
 }
 

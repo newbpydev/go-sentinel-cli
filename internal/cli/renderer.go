@@ -5,7 +5,6 @@ import (
 	"io"
 	"log"
 	"strings"
-	"time"
 )
 
 // Renderer handles the display of test results
@@ -85,7 +84,7 @@ func (r *Renderer) renderSummary(run *TestRun) {
 
 	// Calculate total duration from all components
 	totalDuration := run.Duration
-	mainDurationStr := formatDuration(totalDuration)
+	mainDurationStr := FormatDurationAdaptive(totalDuration)
 	formattedMainDuration := r.style.FormatDuration("Duration  ", mainDurationStr)
 
 	// Add breakdown details
@@ -93,27 +92,27 @@ func (r *Renderer) renderSummary(run *TestRun) {
 
 	// Transform duration
 	if run.TransformDuration > 0 {
-		breakdownParts = append(breakdownParts, fmt.Sprintf("transform %s", formatDuration(run.TransformDuration)))
+		breakdownParts = append(breakdownParts, fmt.Sprintf("transform %s", FormatDurationAdaptive(run.TransformDuration)))
 	}
 
 	// Setup duration
 	if run.SetupDuration > 0 {
-		breakdownParts = append(breakdownParts, fmt.Sprintf("setup %s", formatDuration(run.SetupDuration)))
+		breakdownParts = append(breakdownParts, fmt.Sprintf("setup %s", FormatDurationAdaptive(run.SetupDuration)))
 	}
 
 	// Collect duration
 	if run.CollectDuration > 0 {
-		breakdownParts = append(breakdownParts, fmt.Sprintf("collect %s", formatDuration(run.CollectDuration)))
+		breakdownParts = append(breakdownParts, fmt.Sprintf("collect %s", FormatDurationAdaptive(run.CollectDuration)))
 	}
 
 	// Tests duration
 	if run.TestsDuration > 0 {
-		breakdownParts = append(breakdownParts, fmt.Sprintf("tests %s", formatDuration(run.TestsDuration)))
+		breakdownParts = append(breakdownParts, fmt.Sprintf("tests %s", FormatDurationAdaptive(run.TestsDuration)))
 	}
 
 	// Parse duration
 	if run.ParseDuration > 0 {
-		breakdownParts = append(breakdownParts, fmt.Sprintf("parse %s", formatDuration(run.ParseDuration)))
+		breakdownParts = append(breakdownParts, fmt.Sprintf("parse %s", FormatDurationAdaptive(run.ParseDuration)))
 	}
 
 	// Add breakdown in parentheses with proper styling
@@ -186,11 +185,9 @@ func (r *Renderer) RenderTestResult(result *TestResult) {
 
 	// Add duration for completed tests
 	if result.Status != TestStatusRunning && result.Status != TestStatusPending {
-		// Convert milliseconds to seconds with 2 decimal places
-		seconds := float64(result.Duration.Milliseconds()) / 1000.0
-		duration := fmt.Sprintf("%.2fs", seconds)
-		// Pad the duration to align with Vitest's format (30 chars for name)
-		name = fmt.Sprintf("%-30s %s", name, duration)
+		duration := FormatDurationPrecise(result.Duration)
+		// Pad both the name and duration for consistent alignment
+		name = fmt.Sprintf("%-40s %8s", name, duration)
 	}
 
 	// Add indentation for subtests
@@ -269,21 +266,6 @@ func (r *Renderer) RenderFileChange(path string) {
 
 // Helper functions
 
-// formatDuration formats a duration adaptively (ms for sub-second, s for >=1s)
-func formatDuration(d time.Duration) string {
-	if d < 0 {
-		d = -d // Use absolute duration for formatting, prefix with '-' if needed
-	}
-
-	if d < time.Millisecond {
-		return fmt.Sprintf("%.2fms", float64(d.Nanoseconds())/1e6)
-	}
-	if d < time.Second {
-		return fmt.Sprintf("%dms", d.Milliseconds())
-	}
-	return fmt.Sprintf("%.2fs", d.Seconds())
-}
-
 // RenderFinalSummary renders the final test summary
 func (r *Renderer) RenderFinalSummary(run *TestRun) {
 	// Use the consolidated summary rendering
@@ -320,7 +302,7 @@ func (r *Renderer) RenderSuiteSummary(suite *TestSuite) {
 	r.writeln("  Passed: %d", suite.NumPassed)
 	r.writeln("  Failed: %d", suite.NumFailed)
 	r.writeln("  Skipped: %d", suite.NumSkipped)
-	r.writeln("  Time: %.2fs", suite.Duration.Seconds())
+	r.writeln("  Time: %s", FormatDurationPrecise(suite.Duration))
 	r.writeln("")
 }
 
