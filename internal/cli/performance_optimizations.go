@@ -12,6 +12,7 @@ import (
 // OptimizedTestProcessor provides thread-safe test processing with performance optimizations
 type OptimizedTestProcessor struct {
 	mu              sync.RWMutex
+	outputMu        sync.Mutex // Separate mutex for output synchronization
 	output          io.Writer
 	formatter       *ColorFormatter
 	icons           *IconProvider
@@ -69,18 +70,20 @@ func (p *OptimizedTestProcessor) updateStats(suite *TestSuite) {
 
 // RenderResultsOptimized renders results with performance optimizations
 func (p *OptimizedTestProcessor) RenderResultsOptimized(autoCollapse bool) error {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
 	// Create context for cancellation
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Use worker pool for parallel rendering if we have many suites
-	suites := make([]*TestSuite, 0, len(p.testSuites))
-	for _, suite := range p.testSuites {
-		suites = append(suites, suite)
-	}
+	// Get a snapshot of suites with minimal lock time
+	var suites []*TestSuite
+	func() {
+		p.mu.RLock()
+		defer p.mu.RUnlock()
+		suites = make([]*TestSuite, 0, len(p.testSuites))
+		for _, suite := range p.testSuites {
+			suites = append(suites, suite)
+		}
+	}()
 
 	if len(suites) > 10 {
 		return p.renderWithWorkerPool(ctx, suites, autoCollapse)
@@ -118,11 +121,11 @@ func (p *OptimizedTestProcessor) renderWithWorkerPool(ctx context.Context, suite
 					// Note: This is a simplified approach - in practice we'd need
 					// a more sophisticated buffering mechanism
 
-					// For now, render directly to output with synchronization
-					// This ensures thread safety but reduces parallelism benefit
+					// Render with output synchronization only
+					// This ensures thread safety for output while allowing parallel processing
 					func() {
-						p.mu.Lock()
-						defer p.mu.Unlock()
+						p.outputMu.Lock()
+						defer p.outputMu.Unlock()
 						renderer := NewSuiteRenderer(p.output, p.formatter, p.icons, p.terminalWidth)
 						if err := renderer.RenderSuite(suite, autoCollapse); err != nil {
 							results <- err

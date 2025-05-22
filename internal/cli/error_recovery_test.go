@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -200,9 +201,181 @@ func TestStableBehaviorWithCorruptedFiles(t *testing.T) {
 	}
 }
 
-// TestConcurrentProcessing tests stability under concurrent processingfunc TestConcurrentProcessing(t *testing.T) {	processor := NewOptimizedTestProcessor(io.Discard, NewColorFormatter(false), NewIconProvider(false), 80)	// Number of concurrent goroutines	const numGoroutines = 10	const suitsPerGoroutine = 5	// Channel to collect errors	errorChan := make(chan error, numGoroutines)	done := make(chan bool, numGoroutines)	// Start multiple goroutines adding test suites	for i := 0; i < numGoroutines; i++ {		go func(routineID int) {			defer func() { done <- true }()			for j := 0; j < suitsPerGoroutine; j++ {				suite := &TestSuite{					FilePath:     "test/concurrent_test.go",					TestCount:    10,					PassedCount:  8,					FailedCount:  2,					SkippedCount: 0,					Duration:     time.Millisecond * time.Duration(j+1),				}				// Add tests to suite				for k := 0; k < 10; k++ {					status := StatusPassed					if k%5 == 0 {						status = StatusFailed					}					test := &TestResult{						Name:     "TestConcurrent" + string(rune('0'+k)),						Status:   status,						Duration: time.Millisecond,						Package:  "github.com/test/concurrent",					}					if status == StatusFailed {						test.Error = &TestError{							Message: "Concurrent test failed",							Type:    "AssertionError",						}					}					suite.Tests = append(suite.Tests, test)				}				processor.AddTestSuite(suite)				// Try to render results				err := processor.RenderResultsOptimized(false)				if err != nil {					errorChan <- err					return				}			}		}(i)	}	// Wait for all goroutines to complete	for i := 0; i < numGoroutines; i++ {		select {		case <-done:			// Goroutine completed successfully		case err := <-errorChan:			t.Errorf("Concurrent processing error: %v", err)		case <-time.After(10 * time.Second):			t.Fatal("Concurrent processing timed out")		}	}	// Check for any remaining errors	select {	case err := <-errorChan:		t.Errorf("Additional concurrent processing error: %v", err)	default:		// No errors	}}
+// TestConcurrentProcessing tests stability under concurrent processing
+func TestConcurrentProcessing(t *testing.T) {
+	processor := NewOptimizedTestProcessor(io.Discard, NewColorFormatter(false), NewIconProvider(false), 80)
 
-// TestWatchModeStability tests stability of watch mode under various conditionsfunc TestWatchModeStability(t *testing.T) {	// Create a temporary directory for testing	tempDir, err := os.MkdirTemp("", "watch_stability_test")	if err != nil {		t.Fatalf("Failed to create temp dir: %v", err)	}	defer os.RemoveAll(tempDir)	// Create initial test file	testFile := filepath.Join(tempDir, "watch_test.go")	initialContent := `package mainimport "testing"func TestWatch(t *testing.T) {	t.Log("Initial test")}`	err = os.WriteFile(testFile, []byte(initialContent), 0644)	if err != nil {		t.Fatalf("Failed to create initial test file: %v", err)	}	// Create file watcher	watcher, err := NewFileWatcher([]string{tempDir}, []string{})	if err != nil {		t.Fatalf("Failed to create file watcher: %v", err)	}	defer watcher.Close()	// Start watching in background	changes := make(chan FileEvent, 10)	go func() {		_ = watcher.Watch(changes)	}()	// Test rapid file changes	for i := 0; i < 5; i++ {		modifiedContent := initialContent + "// Modification " + string(rune('0'+i)) + "\n"		err = os.WriteFile(testFile, []byte(modifiedContent), 0644)		if err != nil {			t.Errorf("Failed to modify test file: %v", err)		}		// Short delay between modifications		time.Sleep(10 * time.Millisecond)	}	// Collect changes with timeout	var collectedChanges []FileEvent	timeout := time.After(2 * time.Second)collectLoop:	for {		select {		case change := <-changes:			collectedChanges = append(collectedChanges, change)			if len(collectedChanges) >= 3 { // Expect at least some changes				break collectLoop			}		case <-timeout:			break collectLoop		}	}	if len(collectedChanges) == 0 {		t.Error("Expected file change events, got none")	}	// Test file deletion	err = os.Remove(testFile)	if err != nil {		t.Errorf("Failed to remove test file: %v", err)	}	// Should handle file deletion gracefully	select {	case change := <-changes:		t.Logf("Received change event after deletion: %+v", change)	case <-time.After(1 * time.Second):		// May or may not receive deletion event depending on system	}}
+	// Number of concurrent goroutines
+	const numGoroutines = 10
+	const suitsPerGoroutine = 5
+
+	// Channel to collect errors
+	errorChan := make(chan error, numGoroutines*suitsPerGoroutine)
+	done := make(chan bool, numGoroutines)
+
+	// Start multiple goroutines adding test suites
+	for i := 0; i < numGoroutines; i++ {
+		go func(routineID int) {
+			defer func() { done <- true }()
+
+			for j := 0; j < suitsPerGoroutine; j++ {
+				suite := &TestSuite{
+					FilePath:     fmt.Sprintf("test/concurrent_test_%d_%d.go", routineID, j),
+					TestCount:    10,
+					PassedCount:  8,
+					FailedCount:  2,
+					SkippedCount: 0,
+					Duration:     time.Millisecond * time.Duration(j+1),
+				}
+
+				// Add tests to suite
+				for k := 0; k < 10; k++ {
+					status := StatusPassed
+					if k%5 == 0 {
+						status = StatusFailed
+					}
+					test := &TestResult{
+						Name:     fmt.Sprintf("TestConcurrent_%d_%d_%d", routineID, j, k),
+						Status:   status,
+						Duration: time.Millisecond,
+						Package:  "github.com/test/concurrent",
+					}
+					if status == StatusFailed {
+						test.Error = &TestError{
+							Message: "Concurrent test failed",
+							Type:    "AssertionError",
+						}
+					}
+					suite.Tests = append(suite.Tests, test)
+				}
+
+				processor.AddTestSuite(suite)
+
+				// Try to render results with timeout to prevent deadlocks
+				renderDone := make(chan error, 1)
+				go func() {
+					renderDone <- processor.RenderResultsOptimized(false)
+				}()
+
+				select {
+				case err := <-renderDone:
+					if err != nil {
+						errorChan <- err
+						return
+					}
+				case <-time.After(5 * time.Second):
+					errorChan <- fmt.Errorf("render operation timed out - possible deadlock")
+					return
+				}
+			}
+		}(i)
+	}
+
+	// Wait for all goroutines to complete with overall timeout
+	completedGoroutines := 0
+	overallTimeout := time.After(30 * time.Second)
+
+	for completedGoroutines < numGoroutines {
+		select {
+		case <-done:
+			completedGoroutines++
+		case err := <-errorChan:
+			t.Errorf("Concurrent processing error: %v", err)
+		case <-overallTimeout:
+			t.Fatal("Overall concurrent processing timed out - possible deadlock")
+		}
+	}
+
+	// Check for any remaining errors
+	select {
+	case err := <-errorChan:
+		t.Errorf("Additional concurrent processing error: %v", err)
+	default:
+		// No errors
+	}
+}
+
+// TestWatchModeStability tests stability of watch mode under various conditions
+func TestWatchModeStability(t *testing.T) {
+	// Create a temporary directory for testing
+	tempDir, err := os.MkdirTemp("", "watch_stability_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create initial test file
+	testFile := filepath.Join(tempDir, "watch_test.go")
+	initialContent := `package main
+
+import "testing"
+
+func TestWatch(t *testing.T) {
+	t.Log("Initial test")
+}`
+	err = os.WriteFile(testFile, []byte(initialContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create initial test file: %v", err)
+	}
+
+	// Create file watcher
+	watcher, err := NewFileWatcher([]string{tempDir}, []string{})
+	if err != nil {
+		t.Fatalf("Failed to create file watcher: %v", err)
+	}
+	defer watcher.Close()
+
+	// Start watching in background
+	changes := make(chan FileEvent, 10)
+	go func() {
+		_ = watcher.Watch(changes)
+	}()
+
+	// Test rapid file changes
+	for i := 0; i < 5; i++ {
+		modifiedContent := initialContent + fmt.Sprintf("// Modification %d\n", i)
+		err = os.WriteFile(testFile, []byte(modifiedContent), 0644)
+		if err != nil {
+			t.Errorf("Failed to modify test file: %v", err)
+		}
+		// Short delay between modifications
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	// Collect changes with timeout
+	var collectedChanges []FileEvent
+	timeout := time.After(2 * time.Second)
+collectLoop:
+	for {
+		select {
+		case change := <-changes:
+			collectedChanges = append(collectedChanges, change)
+			if len(collectedChanges) >= 3 { // Expect at least some changes
+				break collectLoop
+			}
+		case <-timeout:
+			break collectLoop
+		}
+	}
+
+	if len(collectedChanges) == 0 {
+		t.Error("Expected file change events, got none")
+	}
+
+	// Test file deletion
+	err = os.Remove(testFile)
+	if err != nil {
+		t.Errorf("Failed to remove test file: %v", err)
+	}
+
+	// Should handle file deletion gracefully
+	select {
+	case change := <-changes:
+		t.Logf("Received change event after deletion: %+v", change)
+	case <-time.After(1 * time.Second):
+		// May or may not receive deletion event depending on system
+	}
+}
 
 // TestLargeOutputHandling tests handling of very large test outputs
 func TestLargeOutputHandling(t *testing.T) {
