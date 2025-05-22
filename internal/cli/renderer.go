@@ -68,32 +68,31 @@ func (r *Renderer) renderSummary(run *TestRun) {
 	for _, suite := range run.Suites {
 		if suite.NumFailed > 0 {
 			failedFiles++
-		} else {
+		} else if suite.NumTotal > 0 {
 			passedFiles++
 		}
 	}
 
+	// Add a divider line before summary
+	r.writeln("")
+
 	// Format summaries with consistent spacing
 	r.writeln(r.style.FormatTestSummary("Test Files", failedFiles, passedFiles, 0, len(run.Suites)))
-	r.writeln(r.style.FormatTestSummary("Tests     ", run.NumFailed, run.NumPassed, run.NumSkipped, run.NumTotal))
+	r.writeln(r.style.FormatTestSummary("Tests", run.NumFailed, run.NumPassed, run.NumSkipped, run.NumTotal))
+
 	r.writeln("")
-	r.writeln(r.style.FormatTimestamp("Start at  ", run.StartTime))
+	r.writeln(r.style.FormatTimestamp("Start at", run.StartTime))
 	if !run.EndTime.IsZero() {
-		r.writeln(r.style.FormatTimestamp("End at    ", run.EndTime))
+		r.writeln(r.style.FormatTimestamp("End at", run.EndTime))
 	}
 
 	// Calculate total duration from all components
 	totalDuration := run.Duration
 	mainDurationStr := FormatDurationAdaptive(totalDuration)
-	formattedMainDuration := r.style.FormatDuration("Duration  ", mainDurationStr)
+	formattedMainDuration := r.style.FormatDuration("Duration", mainDurationStr)
 
 	// Add breakdown details
 	breakdownParts := []string{}
-
-	// Transform duration
-	if run.TransformDuration > 0 {
-		breakdownParts = append(breakdownParts, fmt.Sprintf("transform %s", FormatDurationAdaptive(run.TransformDuration)))
-	}
 
 	// Setup duration
 	if run.SetupDuration > 0 {
@@ -125,24 +124,42 @@ func (r *Renderer) renderSummary(run *TestRun) {
 
 	// Show failed tests if any
 	if run.NumFailed > 0 {
-		r.writeln(r.style.FormatErrorHeader(" FAILED TESTS "))
+		r.writeln(r.style.FormatErrorHeader(" FAILED Tests "))
 		r.writeln("")
 
-		// First show failed suites
+		// Show failed test files/suites
 		for _, suite := range run.Suites {
 			if suite.NumFailed > 0 {
 				r.writeln(r.style.FormatFailedSuite(suite.FilePath))
+
+				// Only show the failing tests, not all tests in the suite
 				for _, test := range suite.Tests {
 					if test.Status == TestStatusFailed {
-						r.writeln(r.style.FormatFailedTest("  " + test.Name))
+						// Simple test name only
+						testName := test.Name
+						// If it's a subtest, show just the subtest part
+						if strings.Contains(testName, "/") {
+							parts := strings.Split(testName, "/")
+							testName = parts[len(parts)-1]
+						}
+
+						r.writeln("    %s", r.style.FormatFailedTest(testName))
+
+						// Show error details compactly
 						if test.Error != nil {
 							if test.Error.Message != "" {
-								r.writeln(r.style.FormatErrorMessage("    " + test.Error.Message))
+								msg := strings.TrimSpace(test.Error.Message)
+								// Extract just the first line of the error message
+								if idx := strings.Index(msg, "\n"); idx > 0 {
+									msg = msg[:idx]
+								}
+								r.writeln("    %s", r.style.FormatErrorMessage(msg))
 							}
 							if test.Error.Location != nil {
-								r.writeln("    " + r.style.FormatErrorLocation(test.Error.Location))
+								r.writeln("    %s", r.style.FormatErrorLocation(test.Error.Location))
 							}
 						}
+
 						r.writeln("")
 					}
 				}
@@ -186,8 +203,9 @@ func (r *Renderer) RenderTestResult(result *TestResult) {
 	// Add duration for completed tests
 	if result.Status != TestStatusRunning && result.Status != TestStatusPending {
 		duration := FormatDurationPrecise(result.Duration)
-		// Pad both the name and duration for consistent alignment
-		name = fmt.Sprintf("%-40s %8s", name, duration)
+		// Pad name and duration for better alignment, matching the example in the image
+		// Use 30 chars for the name like in the example
+		name = fmt.Sprintf("%-30s %s", name, duration)
 	}
 
 	// Add indentation for subtests
@@ -196,7 +214,14 @@ func (r *Renderer) RenderTestResult(result *TestResult) {
 
 	// Show error details for failed tests
 	if result.Status == TestStatusFailed && result.Error != nil {
-		r.renderError(result.Error, result.Depth+1)
+		// If we have a source location, show it on a new line
+		if result.Error.Location != nil {
+			r.writeln("%s  at %s", indent, r.style.FormatErrorLocation(result.Error.Location))
+		}
+		// Only show error message details if there's a message
+		if result.Error.Message != "" && strings.TrimSpace(result.Error.Message) != "" {
+			r.renderError(result.Error, result.Depth+1)
+		}
 	}
 }
 

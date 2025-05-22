@@ -26,7 +26,7 @@ func TestRenderer_RenderTestResult(t *testing.T) {
 	if !strings.Contains(output, "TestPass") {
 		t.Errorf("Output should contain test name: %s", output)
 	}
-	if !strings.Contains(output, "0.10s") {
+	if !strings.Contains(output, "100ms") {
 		t.Errorf("Output should contain duration: %s", output)
 	}
 
@@ -53,7 +53,7 @@ func TestRenderer_RenderTestResult(t *testing.T) {
 
 	expectedParts := []string{
 		"TestFail",
-		"0.20s",
+		"200ms",
 		"assertion failed",
 		"test_file.go:42",
 		"assert.Equal",

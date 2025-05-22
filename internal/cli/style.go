@@ -28,79 +28,95 @@ const (
 	WinIconRunning   = "*"
 )
 
+// Colors using the more vibrant palette seen in the example
+const (
+	// Bright, modern colors like in the provided image
+	ColorSuccess   = "#4ADE80" // Bright green for passing tests
+	ColorError     = "#F87171" // Bright red for failing tests
+	ColorWarning   = "#FBBF24" // Amber yellow for skipped tests
+	ColorRunning   = "#60A5FA" // Bright blue for running tests
+	ColorDim       = "#94A3B8" // Slate gray for dimmed text
+	ColorHeaderBg  = "#1E293B" // Dark slate blue for header backgrounds
+	ColorText      = "#E2E8F0" // Light gray for normal text
+	ColorLabelText = "#94A3B8" // Slate gray for labels
+	ColorTimeText  = "#CBD5E1" // Light slate for timestamps
+)
+
 // Styles for test output
 var (
 	titleStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.Color("#888888"))
+			Foreground(lipgloss.Color(ColorText)).
+			Background(lipgloss.Color(ColorHeaderBg)).
+			Padding(0, 1)
 
 	subtitleStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#666666"))
+			Foreground(lipgloss.Color(ColorLabelText))
 
 	successStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#00FF00")) // Brighter green for numbers
+			Foreground(lipgloss.Color(ColorSuccess))
 
 	errorStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FF0000")) // Brighter red for numbers
+			Foreground(lipgloss.Color(ColorError))
 
 	warningStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFA500"))
+			Foreground(lipgloss.Color(ColorWarning))
 
 	dimStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#666666"))
+			Foreground(lipgloss.Color(ColorDim))
 
 	// Test status styles
 	passedStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#00FF00")).
+			Foreground(lipgloss.Color(ColorSuccess)).
 			SetString("✓")
 
 	failedStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FF0000")).
+			Foreground(lipgloss.Color(ColorError)).
 			SetString("✕")
 
 	skippedStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFA500")).
+			Foreground(lipgloss.Color(ColorWarning)).
 			SetString("○")
 
 	runningStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#3b82f6")).
+			Foreground(lipgloss.Color(ColorRunning)).
 			SetString("⠋")
 
 	// Summary styles
 	summaryLabelStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#666666"))
+				Foreground(lipgloss.Color(ColorLabelText))
 
 	summaryFailedStyle = lipgloss.NewStyle().
 				Bold(true).
-				Foreground(lipgloss.Color("#FF0000"))
+				Foreground(lipgloss.Color(ColorError))
 
 	summaryPassedStyle = lipgloss.NewStyle().
 				Bold(true).
-				Foreground(lipgloss.Color("#00FF00"))
+				Foreground(lipgloss.Color(ColorSuccess))
 
 	summarySkippedStyle = lipgloss.NewStyle().
 				Bold(true).
-				Foreground(lipgloss.Color("#FFA500"))
+				Foreground(lipgloss.Color(ColorWarning))
 
 	summaryValueStyle = lipgloss.NewStyle().
 				Bold(true).
-				Foreground(lipgloss.Color("#888888"))
+				Foreground(lipgloss.Color(ColorTimeText))
 
 	breakdownTextStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#666666"))
+				Foreground(lipgloss.Color(ColorDim))
 
 	// Error formatting styles
 	errorMessageStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#FF0000"))
+				Foreground(lipgloss.Color(ColorError))
 
 	errorLocationStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#666666"))
+				Foreground(lipgloss.Color(ColorDim))
 
 	errorSnippetStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#888888"))
+				Foreground(lipgloss.Color(ColorText))
 
 	errorValueStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#888888"))
+			Foreground(lipgloss.Color(ColorDim))
 )
 
 // Style handles terminal styling and formatting
@@ -213,7 +229,13 @@ func (s *Style) FormatDuration(label string, mainDuration string) string {
 // FormatHeader formats a header line
 func (s *Style) FormatHeader(text string) string {
 	if s.useColors {
-		return titleStyle.Render(text)
+		// Create a modern header with background color and padding
+		return titleStyle.Copy().
+			Padding(0, 1).
+			Background(lipgloss.Color(ColorHeaderBg)).
+			Foreground(lipgloss.Color(ColorText)).
+			Bold(true).
+			Render(text)
 	}
 	return text
 }
@@ -221,7 +243,12 @@ func (s *Style) FormatHeader(text string) string {
 // FormatErrorHeader formats an error header
 func (s *Style) FormatErrorHeader(text string) string {
 	if s.useColors {
-		return errorStyle.Bold(true).Render("FAILED Tests")
+		// Create a bold red header with background for the error section
+		return errorStyle.Copy().
+			Bold(true).
+			Padding(0, 1).
+			Background(lipgloss.Color("#2D1414")). // Dark red background
+			Render(text)
 	}
 	return "FAILED Tests"
 }
@@ -278,10 +305,40 @@ func (s *Style) FormatErrorValue(value string) string {
 	return value
 }
 
-// StatusIcon returns the appropriate icon for a test status
+// StatusIcon returns an icon for the test status
 func (s *Style) StatusIcon(status TestStatus) string {
-	if !s.useIcons {
-		// Use ASCII icons when Unicode is not supported
+	if s.useIcons {
+		if s.isWindows && !s.useEmoji {
+			// Windows without emoji support
+			switch status {
+			case TestStatusPassed:
+				return WinIconPass
+			case TestStatusFailed:
+				return WinIconFail
+			case TestStatusSkipped:
+				return WinIconSkip
+			case TestStatusRunning:
+				return WinIconRunning
+			default:
+				return " "
+			}
+		} else {
+			// Modern terminals or emoji-compatible Windows
+			switch status {
+			case TestStatusPassed:
+				return IconPass
+			case TestStatusFailed:
+				return IconFail
+			case TestStatusSkipped:
+				return IconSkip
+			case TestStatusRunning:
+				return IconRunning
+			default:
+				return " "
+			}
+		}
+	} else {
+		// ASCII mode
 		switch status {
 		case TestStatusPassed:
 			return ASCIIIconPass
@@ -294,36 +351,6 @@ func (s *Style) StatusIcon(status TestStatus) string {
 		default:
 			return " "
 		}
-	}
-
-	if s.isWindows && !s.useEmoji {
-		// Use Windows-compatible icons
-		switch status {
-		case TestStatusPassed:
-			return WinIconPass
-		case TestStatusFailed:
-			return WinIconFail
-		case TestStatusSkipped:
-			return WinIconSkip
-		case TestStatusRunning:
-			return WinIconRunning
-		default:
-			return " "
-		}
-	}
-
-	// Use Unicode icons
-	switch status {
-	case TestStatusPassed:
-		return IconPass
-	case TestStatusFailed:
-		return IconFail
-	case TestStatusSkipped:
-		return IconSkip
-	case TestStatusRunning:
-		return IconRunning
-	default:
-		return " "
 	}
 }
 

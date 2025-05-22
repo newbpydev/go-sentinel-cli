@@ -11,10 +11,19 @@ func DurationFromSeconds(seconds float64) time.Duration {
 }
 
 // FormatDurationPrecise formats a duration with appropriate units and precision
-// For test results display (always shows 2 decimal places)
+// For test results display (uses ms for small durations, s for larger ones)
 func FormatDurationPrecise(d time.Duration) string {
 	seconds := d.Seconds()
-	// Always show seconds with 2 decimal places for consistency
+
+	if seconds < 0.01 && d.Microseconds() > 0 {
+		// For very small durations (< 10ms), show microseconds
+		return fmt.Sprintf("%dµs", d.Microseconds())
+	} else if seconds < 1 {
+		// For durations less than 1 second, show milliseconds without decimal
+		return fmt.Sprintf("%dms", d.Milliseconds())
+	}
+
+	// For durations >= 1 second, show seconds with 2 decimal places
 	return fmt.Sprintf("%.2fs", seconds)
 }
 
