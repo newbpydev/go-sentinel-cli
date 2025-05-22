@@ -29,8 +29,10 @@ This command is used for development and validation.`,
 			runPhase1Demo()
 		case "2d":
 			runPhase2Demo()
+		case "3d":
+			runPhase3Demo()
 		default:
-			fmt.Println("Please specify a valid phase to demo (1d or 2d)")
+			fmt.Println("Please specify a valid phase to demo (1d, 2d, or 3d)")
 			fmt.Println("Example: go-sentinel-cli demo --phase=1d")
 		}
 	},
@@ -40,7 +42,7 @@ func init() {
 	rootCmd.AddCommand(demoCmd)
 
 	// Add flags
-	demoCmd.Flags().StringP("phase", "p", "", "Phase to demo (1d, 2d)")
+	demoCmd.Flags().StringP("phase", "p", "", "Phase to demo (1d, 2d, or 3d)")
 	demoCmd.MarkFlagRequired("phase")
 }
 
@@ -127,6 +129,42 @@ func runPhase2Demo() {
 	fmt.Println("3. Duration and memory usage match Vitest format ✓")
 	fmt.Println("4. Passing suites are collapsed, failing suites expanded ✓")
 	fmt.Println("5. Indentation of nested tests matches Vitest ✓")
+}
+
+// runPhase3Demo runs the Phase 3-D demonstration (Failed Test Renderer)
+func runPhase3Demo() {
+	fmt.Println("=== Phase 3-D: Failed Test Details Section Demonstration ===")
+	fmt.Println()
+
+	// Get terminal properties
+	isColorSupported := isColorTerminal()
+	terminalWidth := 80 // Fixed width for demo purposes
+
+	// Create formatters
+	formatter := cli.NewColorFormatter(isColorSupported)
+	icons := cli.NewIconProvider(true) // Always use Unicode icons for demo
+
+	// Create a renderer for detailed failed test rendering
+	failedRenderer := cli.NewFailedTestRenderer(os.Stdout, formatter, icons, terminalWidth)
+
+	// Create sample failed tests with source context
+	failedTests := createMockFailedTestsWithSourceContext()
+
+	// Render the failed tests section
+	err := failedRenderer.RenderFailedTests(failedTests)
+	if err != nil {
+		fmt.Printf("Error rendering failed tests: %v\n", err)
+	}
+
+	// Add a summary and comparison
+	fmt.Println("\nComparison with Vitest Failed Tests Display:")
+	fmt.Println("1. Distinctive red separator lines above and below failed tests section ✓")
+	fmt.Println("2. Red background with white 'Failed Tests X' header ✓")
+	fmt.Println("3. Red FAIL badge at the beginning of each test ✓")
+	fmt.Println("4. Error type and message displayed in red ✓")
+	fmt.Println("5. File path and line numbers displayed with detailed context ✓")
+	fmt.Println("6. Source code displayed with line numbers and highlighted error line ✓")
+	fmt.Println("7. Error position marked with ^ character under the error location ✓")
 }
 
 // createSampleTestResult creates a sample test result for demonstration
@@ -612,4 +650,79 @@ func displaySummary(suites []*cli.TestSuite, formatter *cli.ColorFormatter) {
 	fmt.Printf("Time: %s\n", formatter.Gray(time.Now().Format("15:04:05")))
 
 	fmt.Println()
+}
+
+// createMockFailedTestsWithSourceContext creates sample failed tests with source context
+func createMockFailedTestsWithSourceContext() []*cli.TestResult {
+	// Create failed tests similar to the Vitest screenshot
+	return []*cli.TestResult{
+		{
+			Name:   "WebSocketClient - connect method - should create a WebSocket with the given URL",
+			Status: cli.StatusFailed,
+			Error: &cli.TestError{
+				Type:    "TypeError",
+				Message: "wsClient.connect is not a function",
+				Location: &cli.SourceLocation{
+					File:   "test/websocket.test.ts",
+					Line:   61,
+					Column: 16,
+				},
+				SourceContext: []string{
+					"it('should create a WebSocket with the given URL', () => {",
+					"  // When",
+					"  wsClient.connect(testUrl);",
+					"",
+					"  // Then",
+				},
+				HighlightedLine: 2, // 0-based index to the wsClient.connect line
+			},
+		},
+		{
+			Name:   "WebSocketClient - event handlers - should register open event handlers",
+			Status: cli.StatusFailed,
+			Error: &cli.TestError{
+				Type:    "TypeError",
+				Message: "wsClient.connect is not a function",
+				Location: &cli.SourceLocation{
+					File:   "test/websocket.test.ts",
+					Line:   72,
+					Column: 16,
+				},
+				SourceContext: []string{
+					"  // Connect to ensure the socket is initialized, but don't await it",
+					"  // since we're mocking the implementation",
+					"  wsClient.connect(testUrl);",
+					"",
+					"  // Resolve the promise by simulating open event",
+				},
+				HighlightedLine: 2, // 0-based index to the wsClient.connect line
+			},
+		},
+		{
+			Name:   "WebSocketClient - event handlers - should register close event handlers",
+			Status: cli.StatusFailed,
+			Error: &cli.TestError{
+				Type:    "TypeError",
+				Message: "wsClient.connect is not a function",
+				Location: &cli.SourceLocation{
+					File:   "test/websocket.test.ts",
+					Line:   72,
+					Column: 16,
+				},
+			},
+		},
+		{
+			Name:   "WebSocketClient - event handlers - should register and handle message events",
+			Status: cli.StatusFailed,
+			Error: &cli.TestError{
+				Type:    "TypeError",
+				Message: "wsClient.connect is not a function",
+				Location: &cli.SourceLocation{
+					File:   "test/websocket.test.ts",
+					Line:   72,
+					Column: 16,
+				},
+			},
+		},
+	}
 }

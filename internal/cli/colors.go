@@ -51,19 +51,19 @@ const (
 
 // ColorFormatter formats text with ANSI colors
 type ColorFormatter struct {
-	colorsEnabled bool
+	useColors bool
 }
 
 // NewColorFormatter creates a new ColorFormatter
-func NewColorFormatter(colorsEnabled bool) *ColorFormatter {
+func NewColorFormatter(useColors bool) *ColorFormatter {
 	return &ColorFormatter{
-		colorsEnabled: colorsEnabled,
+		useColors: useColors,
 	}
 }
 
 // colorize applies a color to text if colors are enabled
 func (f *ColorFormatter) colorize(text, color string) string {
-	if !f.colorsEnabled {
+	if !f.useColors {
 		return text
 	}
 	return color + text + ColorReset
@@ -114,9 +114,20 @@ func (f *ColorFormatter) Dim(text string) string {
 	return f.colorize(text, ColorDim)
 }
 
-// BgRed formats text with red background
+// BgRed returns text with a red background
 func (f *ColorFormatter) BgRed(text string) string {
-	return f.colorize(text, ColorBgRed)
+	if !f.useColors {
+		return text
+	}
+	return fmt.Sprintf("\033[41m%s\033[0m", text)
+}
+
+// White returns white colored text
+func (f *ColorFormatter) White(text string) string {
+	if !f.useColors {
+		return text
+	}
+	return fmt.Sprintf("\033[37m%s\033[0m", text)
 }
 
 // TerminalDetector detects terminal capabilities

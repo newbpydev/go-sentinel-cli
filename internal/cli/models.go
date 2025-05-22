@@ -55,6 +55,10 @@ type TestError struct {
 	Actual string
 	// Location information
 	Location *SourceLocation
+	// SourceContext contains lines of source code around the error
+	SourceContext []string
+	// HighlightedLine is the index in SourceContext that contains the error
+	HighlightedLine int
 }
 
 // SourceLocation represents a location in source code
