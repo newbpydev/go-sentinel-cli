@@ -88,35 +88,35 @@ func (r *TestRenderer) formatTestLine(result *TestResult, indent string) string 
 		testName = result.Name
 	}
 
-	// Format duration
-	duration := FormatDuration(r.formatter, result.Duration)
+	// Format duration - matching Vitest's spacing
+	duration := r.formatter.Dim(fmt.Sprintf("%dms", result.Duration.Milliseconds()))
 
-	// Combine all parts
-	return fmt.Sprintf("%s %s %s %s", indent, icon, testName, duration)
+	// Combine with Vitest-like spacing - note that in Vitest, the duration appears at the end with a space
+	return fmt.Sprintf("%s%s %s %s", indent, icon, testName, duration)
 }
 
 // formatErrorLines formats error messages for failed tests
 func (r *TestRenderer) formatErrorLines(err *TestError, indent string) []string {
 	lines := []string{}
 
-	// Format error type and message
-	errorTypeMessage := fmt.Sprintf("%s%s: %s",
+	// Format error type and message - using a consistent spacing pattern to match Vitest
+	// Vitest format: "→ wsClient.connect is not a function"
+	errorMessage := fmt.Sprintf("%s→ %s",
 		indent,
-		r.formatter.Red(err.Type),
 		r.formatter.Red(err.Message),
 	)
-	lines = append(lines, errorTypeMessage)
+	lines = append(lines, errorMessage)
 
 	// Add expected/actual for assertion errors
 	if err.Type == "AssertionError" && err.Expected != "" && err.Actual != "" {
-		expected := fmt.Sprintf("%s%s %s",
+		expected := fmt.Sprintf("%s  %s %s",
 			indent,
 			r.formatter.Dim("Expected:"),
 			r.formatter.Green(err.Expected),
 		)
 		lines = append(lines, expected)
 
-		actual := fmt.Sprintf("%s%s %s",
+		actual := fmt.Sprintf("%s  %s %s",
 			indent,
 			r.formatter.Dim("Received:"),
 			r.formatter.Red(err.Actual),

@@ -27,67 +27,77 @@ func NewSuiteRenderer(writer io.Writer, formatter *ColorFormatter, icons *IconPr
 	}
 }
 
-// RenderSuite renders a test suite with appropriate collapsing/expanding
+// RenderSuite renders a test suite to the output writer
 func (r *SuiteRenderer) RenderSuite(suite *TestSuite, autoCollapse bool) error {
-	// Always render the header
-	if err := r.header.RenderSuiteHeader(suite); err != nil {
+	// Determine if we should collapse this suite
+	shouldCollapse := autoCollapse && suite.FailedCount == 0
+
+	// Format and write the suite header
+	header := r.formatSuiteHeader(suite)
+	_, err := fmt.Fprintln(r.writer, header)
+	if err != nil {
 		return err
 	}
 
-	// Determine if suite should be collapsed
-	collapsed := autoCollapse && suite.FailedCount == 0 && suite.TestCount > 0
-
-	// If collapsed, show summary line
-	if collapsed {
-		return r.renderCollapsedSummary(suite)
-	}
-
-	// Otherwise show expanded tests
-	return r.renderExpandedTests(suite)
-}
-
-// renderCollapsedSummary renders a summary line for collapsed suites
-func (r *SuiteRenderer) renderCollapsedSummary(suite *TestSuite) error {
-	var summary string
-
-	if suite.SkippedCount == suite.TestCount {
-		// All tests skipped
-		summary = fmt.Sprintf("  %s All tests skipped (%d %s)",
-			r.formatter.Yellow(r.icons.Skipped()),
-			suite.SkippedCount,
-			pluralize("test", suite.SkippedCount),
-		)
-	} else {
-		// Passing tests
-		summary = fmt.Sprintf("  %s Suite %s (%d %s)",
-			r.formatter.Green(r.icons.CheckMark()),
-			r.formatter.Green("passed"),
-			suite.TestCount,
-			pluralize("test", suite.TestCount),
-		)
-	}
-
-	_, err := fmt.Fprintln(r.writer, summary)
-	return err
-}
-
-// renderExpandedTests renders all tests in a suite
-func (r *SuiteRenderer) renderExpandedTests(suite *TestSuite) error {
-	// For empty suites, show special message
-	if suite.TestCount == 0 {
-		emptyMsg := fmt.Sprintf("  %s No tests found",
-			r.formatter.Yellow("•"),
-		)
-		_, err := fmt.Fprintln(r.writer, emptyMsg)
+	// If collapsed, just show a summary line
+	if shouldCollapse {
+		statusIcon := r.formatter.Green(r.icons.CheckMark())
+		_, err = fmt.Fprintf(r.writer, "  %s %s\n", statusIcon, r.formatter.Green(fmt.Sprintf("Suite passed (%d tests)", suite.TestCount)))
 		return err
 	}
 
-	// Render each test (only top-level tests, subtests are handled by TestRenderer)
+	// If not collapsed, render each test
+	testRenderer := NewTestRenderer(r.writer, r.formatter, r.icons)
 	for _, test := range suite.Tests {
-		if err := r.test.RenderTestResult(test, 1); err != nil {
+		err := testRenderer.RenderTestResult(test, 1)
+		if err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+// formatSuiteHeader creates a header line for a test suite
+func (r *SuiteRenderer) formatSuiteHeader(suite *TestSuite) string {
+	// Get file path
+	formattedPath := FormatFilePath(r.formatter, suite.FilePath)
+
+	// Format test counts
+	var testCountStr string
+	if suite.FailedCount > 0 {
+		// Red if any tests failed
+		testCountStr = fmt.Sprintf("(%d tests | %s)",
+			suite.TestCount,
+			r.formatter.Red(fmt.Sprintf("%d failed", suite.FailedCount)),
+		)
+	} else if suite.SkippedCount > 0 && suite.SkippedCount == suite.TestCount {
+		// Yellow if all tests skipped
+		testCountStr = fmt.Sprintf("(%d tests | %s)",
+			suite.TestCount,
+			r.formatter.Yellow(fmt.Sprintf("%d skipped", suite.SkippedCount)),
+		)
+	} else {
+		// Just green count if all passed
+		skippedPart := ""
+		if suite.SkippedCount > 0 {
+			skippedPart = " | " + r.formatter.Yellow(fmt.Sprintf("%d skipped", suite.SkippedCount))
+		}
+		testCountStr = fmt.Sprintf("(%d tests%s)",
+			suite.TestCount,
+			skippedPart,
+		)
+	}
+
+	// Format duration and memory
+	durationStr := r.formatter.Dim(fmt.Sprintf("%dms", suite.Duration.Milliseconds()))
+	memoryStr := r.formatter.Dim(fmt.Sprintf("%d MB heap used", suite.MemoryUsage/(1024*1024)))
+
+	// Combine all parts
+	return fmt.Sprintf("%s %s %s %s",
+		formattedPath,
+		testCountStr,
+		durationStr,
+		memoryStr,
+	)
 }

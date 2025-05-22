@@ -6,8 +6,10 @@ This roadmap outlines the comprehensive development plan for building a Vitest-l
 
 - Completed Phase 1: Core Architecture & Data Structures (100%)
 - Completed Phase 2: Test Suite Display (100%) 
+- Completed Phase 1-D: Demonstration of Core Architecture (100%)
+- Completed Phase 2-D: Demonstration of Test Suite Display (100%)
 - Current code coverage: 67.1%
-- Next phase: Phase 2-D - Demonstration and Validation of Test Suite Display
+- Next phase: Phase 3 - Failed Test Details Section
 
 ## Development Approach
 
@@ -59,16 +61,16 @@ Go Sentinel CLI v2 will offer:
 
 ## Phase 1-D: Demonstration of Core Architecture
 
-- [ ] **1-D.1. Create Core Demo Application**
-  - [ ] 1-D.1.1. Implement minimal CLI to run basic tests
-  - [ ] 1-D.1.2. Add test cases that exercise data structures
-  - [ ] 1-D.1.3. Output raw parsed results to validate data structure correctness
+- [x] **1-D.1. Create Core Demo Application**
+  - [x] 1-D.1.1. Implement minimal CLI to run basic tests
+  - [x] 1-D.1.2. Add test cases that exercise data structures
+  - [x] 1-D.1.3. Output raw parsed results to validate data structure correctness
 
-- [ ] **1-D.2. Validate Core Architecture**
-  - [ ] 1-D.2.1. Verify test output is correctly parsed into data structures
-  - [ ] 1-D.2.2. Validate terminal color support detection
-  - [ ] 1-D.2.3. Confirm correct emoji/icon display based on terminal capabilities
-  - [ ] 1-D.2.4. Document any discrepancies or issues found during validation
+- [x] **1-D.2. Validate Core Architecture**
+  - [x] 1-D.2.1. Verify test output is correctly parsed into data structures
+  - [x] 1-D.2.2. Validate terminal color support detection
+  - [x] 1-D.2.3. Confirm correct emoji/icon display based on terminal capabilities
+  - [x] 1-D.2.4. Document any discrepancies or issues found during validation
 
 ---
 
@@ -116,19 +118,19 @@ Go Sentinel CLI v2 will offer:
 
 ## Phase 2-D: Demonstration of Test Suite Display
 
-- [ ] **2-D.1. Create Test Suite Display Demo**
-  - [ ] 2-D.1.1. Implement CLI command to run and display test suites
-  - [ ] 2-D.1.2. Create sample test suites with various test outcomes (pass, fail, skip)
-  - [ ] 2-D.1.3. Ensure demo accurately displays file paths with correct coloring
-  - [ ] 2-D.1.4. Validate test count display with proper highlighting of failed tests
-  - [ ] 2-D.1.5. Verify duration and memory usage formatting
+- [x] **2-D.1. Create Test Suite Display Demo**
+  - [x] 2-D.1.1. Implement CLI command to run and display test suites
+  - [x] 2-D.1.2. Create sample test suites with various test outcomes (pass, fail, skip)
+  - [x] 2-D.1.3. Ensure demo accurately displays file paths with correct coloring
+  - [x] 2-D.1.4. Validate test count display with proper highlighting of failed tests
+  - [x] 2-D.1.5. Verify duration and memory usage formatting
 
-- [ ] **2-D.2. Visual Validation Against Vitest**
-  - [ ] 2-D.2.1. Compare output side-by-side with Vitest screenshot
-  - [ ] 2-D.2.2. Verify color scheme matches Vitest style (green checks, red Xs)
-  - [ ] 2-D.2.3. Confirm indentation and spacing match Vitest output
-  - [ ] 2-D.2.4. Ensure collapse/expand behavior matches Vitest expectations
-  - [ ] 2-D.2.5. Document any visual discrepancies and adjust as needed
+- [x] **2-D.2. Visual Validation Against Vitest**
+  - [x] 2-D.2.1. Compare output side-by-side with Vitest screenshot
+  - [x] 2-D.2.2. Verify color scheme matches Vitest style (green checks, red Xs)
+  - [x] 2-D.2.3. Confirm indentation and spacing match Vitest output
+  - [x] 2-D.2.4. Ensure collapse/expand behavior matches Vitest expectations
+  - [x] 2-D.2.5. Document any visual discrepancies and adjust as needed
 
 ---
 

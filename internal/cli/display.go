@@ -57,8 +57,12 @@ func FormatFilePath(formatter *ColorFormatter, path string) string {
 	// Get directory and file name
 	dir, file := filepath.Split(path)
 
+	// Normalize path separators to forward slashes for consistent display
+	dir = strings.ReplaceAll(dir, "\\", "/")
+
 	// Clean up directory
 	dir = strings.TrimSuffix(dir, string(filepath.Separator))
+	dir = strings.TrimSuffix(dir, "/")
 
 	// Format with colors
 	formattedDir := formatter.Dim(dir)
@@ -69,7 +73,7 @@ func FormatFilePath(formatter *ColorFormatter, path string) string {
 		return formattedFile
 	}
 
-	return fmt.Sprintf("%s%s%s", formattedDir, formatter.Dim(string(filepath.Separator)), formattedFile)
+	return fmt.Sprintf("%s/%s", formattedDir, formattedFile)
 }
 
 // formatTestCounts formats test counts with color-coded results
