@@ -404,6 +404,9 @@ func (p *TestProcessor) createTestError(test *TestResult, event TestEvent) *Test
 	var sourceFile string
 	var sourceLine int
 
+	// Check if this is a parent test that failed due to subtest failures
+	isParentTestFailure := p.isParentTestFailure(test, output)
+
 	// Parse output to extract error information
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
@@ -435,9 +438,9 @@ func (p *TestProcessor) createTestError(test *TestResult, event TestEvent) *Test
 		}
 
 		// Look for test function calls in output (alternative approach)
-		if sourceFile == "" && strings.Contains(trimmed, "t.Error") ||
+		if sourceFile == "" && (strings.Contains(trimmed, "t.Error") ||
 			strings.Contains(trimmed, "t.Fail") ||
-			strings.Contains(trimmed, "panic") {
+			strings.Contains(trimmed, "panic")) {
 			// Try to find a reference to the test file in surrounding context
 			for i, contextLine := range lines {
 				if strings.Contains(contextLine, ".go:") {
@@ -462,11 +465,25 @@ func (p *TestProcessor) createTestError(test *TestResult, event TestEvent) *Test
 		}
 	}
 
-	// Fallback: try to infer source location from test name and package
-	if sourceFile == "" {
-		sourceFile = p.inferSourceFileFromTest(test, event)
-		if sourceFile != "" {
+	// For parent test failures, always try to infer source location
+	if sourceFile == "" || isParentTestFailure {
+		inferredFile := p.inferSourceFileFromTest(test, event)
+		if inferredFile != "" {
+			sourceFile = inferredFile
 			sourceLine = p.findTestFunctionLine(sourceFile, test.Name)
+		}
+	}
+
+	// Improve error message for parent test failures
+	if isParentTestFailure && (errorMessage == "" || errorMessage == "Test failed") {
+		failedSubtestCount := p.countFailedSubtests(test)
+		if failedSubtestCount > 0 {
+			if failedSubtestCount == 1 {
+				errorMessage = "Test failed due to 1 failed subtest"
+			} else {
+				errorMessage = fmt.Sprintf("Test failed due to %d failed subtests", failedSubtestCount)
+			}
+			errorType = "SubtestFailure"
 		}
 	}
 
@@ -512,6 +529,55 @@ func (p *TestProcessor) createTestError(test *TestResult, event TestEvent) *Test
 		SourceContext:   sourceContext,
 		HighlightedLine: highlightedLine,
 	}
+}
+
+// isParentTestFailure determines if a test failed because of subtest failures rather than its own error
+func (p *TestProcessor) isParentTestFailure(test *TestResult, output string) bool {
+	// Check if this test has subtests
+	hasSubtests := len(test.Subtests) > 0 || strings.Contains(test.Name, "/")
+
+	// Check if the output indicates subtest failures rather than direct failures
+	lines := strings.Split(output, "\n")
+	hasDirectError := false
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		// Look for direct error indicators (t.Error, t.Fail, panic, etc.)
+		if strings.Contains(trimmed, "t.Error") ||
+			strings.Contains(trimmed, "t.Fail") ||
+			strings.Contains(trimmed, "panic") ||
+			(strings.Contains(trimmed, ".go:") && strings.Contains(trimmed, ": ")) {
+			hasDirectError = true
+			break
+		}
+	}
+
+	// It's a parent test failure if it has subtests but no direct error
+	return hasSubtests && !hasDirectError
+}
+
+// countFailedSubtests counts how many subtests failed for a given test
+func (p *TestProcessor) countFailedSubtests(test *TestResult) int {
+	failedCount := 0
+
+	// Count direct subtests
+	for _, subtest := range test.Subtests {
+		if subtest.Status == StatusFailed {
+			failedCount++
+		}
+	}
+
+	// For nested tests, also search through all suites for related failures
+	testPrefix := test.Name + "/"
+	for _, suite := range p.suites {
+		for _, suiteTest := range suite.Tests {
+			if strings.HasPrefix(suiteTest.Name, testPrefix) && suiteTest.Status == StatusFailed {
+				failedCount++
+			}
+		}
+	}
+
+	return failedCount
 }
 
 // Helper struct for file location extraction
