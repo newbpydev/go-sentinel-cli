@@ -269,8 +269,9 @@ func (p *TestProcessor) RenderResults(showSummary bool) error {
 	suiteRenderer := NewSuiteRenderer(p.writer, p.formatter, p.icons, p.width)
 
 	for _, suite := range p.suites {
-		// FIXED: Don't auto-collapse by default to show individual tests
-		if err := suiteRenderer.RenderSuite(suite, false); err != nil {
+		// Only expand suites with failures; collapse passing suites by default
+		shouldExpand := suite.FailedCount > 0
+		if err := suiteRenderer.RenderSuite(suite, !shouldExpand); err != nil {
 			return err
 		}
 		_, _ = fmt.Fprintln(p.writer)

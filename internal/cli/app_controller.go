@@ -228,14 +228,27 @@ func (a *AppController) runPackageTests(pkg string, config *Config) error {
 		defer cancel()
 	}
 
-	// Run the tests
-	output, err := a.testRunner.Run(ctx, testPaths)
+	// Use streaming approach for real-time output
+	stream, err := a.testRunner.RunStream(ctx, testPaths)
 	if err != nil {
-		return fmt.Errorf("test execution failed: %w", err)
+		return fmt.Errorf("failed to start test stream: %w", err)
 	}
+	defer stream.Close()
 
-	// Process the JSON output
-	return a.processor.ProcessJSONOutput(output)
+	// Create progress channel
+	progress := make(chan TestProgress, 10)
+	defer close(progress)
+
+	// Start progress monitoring in background (optional)
+	go func() {
+		for p := range progress {
+			// Could add progress bar or other indicators here
+			_ = p // Currently just consume the progress updates
+		}
+	}()
+
+	// Process the stream in real-time
+	return a.processor.ProcessStream(stream, progress)
 }
 
 // determineTestsToRun determines which tests should run based on a changed file

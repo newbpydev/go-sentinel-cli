@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os/exec"
 	"strings"
 )
@@ -11,6 +12,7 @@ import (
 // TestRunnerInterface defines the interface for test runners
 type TestRunnerInterface interface {
 	Run(ctx context.Context, testPaths []string) (string, error)
+	RunStream(ctx context.Context, testPaths []string) (io.ReadCloser, error)
 }
 
 // TestRunner executes Go tests
@@ -65,6 +67,80 @@ func (r *TestRunner) Run(ctx context.Context, testPaths []string) (string, error
 	}
 
 	return stdout.String(), nil
+}
+
+// RunStream executes the specified tests and returns a stream of JSON output
+func (r *TestRunner) RunStream(ctx context.Context, testPaths []string) (io.ReadCloser, error) {
+	// Build the command arguments
+	args := []string{"test"}
+
+	// Add verbose flag if required
+	if r.Verbose {
+		args = append(args, "-v")
+	}
+
+	// Add JSON output flag - required for streaming
+	args = append(args, "-json")
+
+	// Add the test paths
+	args = append(args, testPaths...)
+
+	// Create the command
+	cmd := exec.CommandContext(ctx, "go", args...)
+
+	// Get stdout pipe for streaming
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
+	}
+
+	// Capture stderr for error reporting
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	// Start the command
+	if err := cmd.Start(); err != nil {
+		stdout.Close()
+		return nil, fmt.Errorf("failed to start test command: %w", err)
+	}
+
+	// Return a reader that will close the process when done
+	return &streamReader{
+		reader: stdout,
+		cmd:    cmd,
+		stderr: &stderr,
+	}, nil
+}
+
+// streamReader wraps the stdout pipe and handles process cleanup
+type streamReader struct {
+	reader io.ReadCloser
+	cmd    *exec.Cmd
+	stderr *bytes.Buffer
+}
+
+func (sr *streamReader) Read(p []byte) (n int, err error) {
+	return sr.reader.Read(p)
+}
+
+func (sr *streamReader) Close() error {
+	// Close the reader first
+	sr.reader.Close()
+
+	// Wait for the command to finish
+	if err := sr.cmd.Wait(); err != nil {
+		// For test failures, this is expected
+		if _, ok := err.(*exec.ExitError); ok {
+			return nil // Test failures are not stream errors
+		}
+		// Check if there's stderr output
+		if sr.stderr.Len() > 0 {
+			return fmt.Errorf("test command error: %w: %s", err, sr.stderr.String())
+		}
+		return fmt.Errorf("test command error: %w", err)
+	}
+
+	return nil
 }
 
 // IsGoTestFile returns true if the file is a Go test file

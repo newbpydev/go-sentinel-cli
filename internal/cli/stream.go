@@ -174,6 +174,18 @@ func (p *TestProcessor) ProcessStream(r io.Reader, progress chan<- TestProgress)
 			p.suites[suitePath] = suite
 		}
 
+		// Enhance failed test errors with our advanced processing
+		if result.Status == StatusFailed && result.Error != nil {
+			// Create a mock event for our enhanced error processing
+			event := TestEvent{
+				Test:    result.Name,
+				Package: result.Package,
+				Action:  "fail",
+			}
+			// Replace simple error with enhanced error
+			result.Error = p.createTestError(result, event)
+		}
+
 		// Add the test to the suite
 		suite.Tests = append(suite.Tests, result)
 

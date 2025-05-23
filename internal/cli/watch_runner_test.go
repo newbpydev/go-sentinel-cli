@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -160,4 +161,13 @@ func (m *mockTestRunner) Run(ctx context.Context, testPaths []string) (string, e
 		return "", m.err
 	}
 	return m.output, nil
+}
+
+// RunStream implements TestRunnerInterface
+func (m *mockTestRunner) RunStream(ctx context.Context, testPaths []string) (io.ReadCloser, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	// Return a string reader that implements ReadCloser
+	return io.NopCloser(strings.NewReader(m.output)), nil
 }

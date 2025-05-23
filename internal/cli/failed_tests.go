@@ -235,17 +235,36 @@ func (r *FailedTestRenderer) RenderFailedTests(tests []*TestResult) error {
 		return err
 	}
 
-	// Print each failed test using the enhanced method
+	// Print each failed test using the enhanced method with separators
+	testNumber := 1
 	for _, test := range tests {
 		// Skip if not failed
 		if test.Status != StatusFailed {
 			continue
 		}
 
+		// Add red separator line before each test (except the first one)
+		if testNumber > 1 {
+			separator := strings.Repeat("─", r.width)
+			_, err := fmt.Fprintln(r.writer, r.formatter.Red(separator))
+			if err != nil {
+				return err
+			}
+		}
+
+		// Add test number indicator
+		testCounter := fmt.Sprintf("Test %d/%d", testNumber, failedCount)
+		_, err := fmt.Fprintln(r.writer, r.formatter.Gray(testCounter))
+		if err != nil {
+			return err
+		}
+
 		// Use the enhanced RenderFailedTest method that includes source context
 		if err := r.RenderFailedTest(test); err != nil {
 			return err
 		}
+
+		testNumber++
 	}
 
 	return nil
