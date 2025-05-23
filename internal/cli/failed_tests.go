@@ -140,18 +140,18 @@ func (r *FailedTestRenderer) renderSourceContext(test *TestResult) error {
 			// Calculate the actual line number
 			lineNum := startLine + i
 
-			// Format line number and source code
+			// Format line number and source code (fix duplicate line numbers)
 			var lineStr string
 			if i == test.Error.HighlightedLine {
-				// Highlight the error line (red)
-				lineStr = fmt.Sprintf("  %s| %s",
-					r.formatter.Gray(fmt.Sprintf("%4d", lineNum)),
+				// Highlight the error line (red background for the line number, red text)
+				lineStr = fmt.Sprintf("    %s| %s",
+					r.formatter.BgRed(r.formatter.White(fmt.Sprintf("%3d", lineNum))),
 					r.formatter.Red(line),
 				)
 			} else {
-				// Normal line
-				lineStr = fmt.Sprintf("  %s| %s",
-					r.formatter.Gray(fmt.Sprintf("%4d", lineNum)),
+				// Normal line (gray line number)
+				lineStr = fmt.Sprintf("    %s| %s",
+					r.formatter.Gray(fmt.Sprintf("%3d", lineNum)),
 					line,
 				)
 			}
@@ -169,11 +169,11 @@ func (r *FailedTestRenderer) renderSourceContext(test *TestResult) error {
 					errorPos = test.Error.Location.Column - 1
 				}
 
-				// Create the error indicator line
-				indicator := fmt.Sprintf("  %s  %s%s",
-					strings.Repeat(" ", 4),        // Line number width
-					strings.Repeat(" ", errorPos), // Spaces up to error position
-					r.formatter.Red("^"),          // Error indicator arrow
+				// Create the error indicator line with proper spacing
+				indicatorSpacing := 8 + errorPos // 4 for line number + 2 for "| " + column position
+				indicator := fmt.Sprintf("%s%s",
+					strings.Repeat(" ", indicatorSpacing),
+					r.formatter.Red("^"),
 				)
 				if _, err := fmt.Fprintln(r.writer, indicator); err != nil {
 					return err
@@ -242,15 +242,37 @@ func (r *FailedTestRenderer) RenderFailedTests(tests []*TestResult) error {
 			continue
 		}
 
-		// Print test header
-		fmt.Fprintln(r.writer, r.formatTestHeader(test))
+		// Print enhanced test header with FAIL badge
+		testHeader := r.formatTestHeader(test)
+		fmt.Fprintln(r.writer, testHeader)
 
-		// Print error message if available
+		// Print error information if available
 		if test.Error != nil {
-			fmt.Fprintln(r.writer, r.formatter.Red("  "+test.Error.Message))
+			// Show error type and message in Vitest style
+			if test.Error.Type != "" && test.Error.Type != "TestFailure" {
+				errorTypeLine := fmt.Sprintf("  %s: %s",
+					r.formatter.Red(test.Error.Type),
+					test.Error.Message)
+				fmt.Fprintln(r.writer, errorTypeLine)
+			} else {
+				// Just show the message if no specific error type
+				fmt.Fprintln(r.writer, r.formatter.Gray("  "+test.Error.Message))
+			}
+
+			// Show source location if available
+			if test.Error.Location != nil {
+				locationRef := fmt.Sprintf("    %s %s:%d:%d",
+					r.formatter.Gray("at"),
+					r.formatter.Cyan(test.Error.Location.File),
+					test.Error.Location.Line,
+					test.Error.Location.Column,
+				)
+				fmt.Fprintln(r.writer, locationRef)
+			}
 
 			// Display source code context if available
 			if len(test.Error.SourceContext) > 0 {
+				fmt.Fprintln(r.writer) // Add spacing before source context
 				err := r.renderSourceContext(test)
 				if err != nil {
 					return err

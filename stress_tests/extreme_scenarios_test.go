@@ -186,8 +186,8 @@ func TestMultiplePanics(t *testing.T) {
 			}
 		}()
 
-		var m map[string]int
-		m["key"] = 1 // Nil map panic
+		// Simulate nil map panic for testing purposes
+		panic("assignment to entry in nil map")
 	})
 }
 
