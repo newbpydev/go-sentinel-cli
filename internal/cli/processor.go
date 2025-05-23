@@ -26,6 +26,11 @@ func NewTestProcessor(writer io.Writer, formatter *ColorFormatter, icons *IconPr
 			Phases:    make(map[string]time.Duration),
 		},
 		startTime: time.Now(),
+		// Phase tracking timestamps
+		setupStartTime:  time.Now(),
+		firstTestTime:   time.Time{}, // Will be set when first test runs
+		lastTestTime:    time.Time{}, // Will be set when last test completes
+		teardownEndTime: time.Time{}, // Will be set at finalization
 	}
 }
 
@@ -87,14 +92,25 @@ func (p *TestProcessor) ProcessJSONOutput(output string) error {
 
 // Reset resets the processor state for a new test run
 func (p *TestProcessor) Reset() {
+	now := time.Now()
 	p.statistics = &TestRunStats{
-		StartTime: time.Now(),
+		StartTime: now,
+		Phases:    make(map[string]time.Duration),
 	}
 	p.suites = make(map[string]*TestSuite)
+	p.setupStartTime = now
+	p.firstTestTime = time.Time{}   // Will be set when first test runs
+	p.lastTestTime = time.Time{}    // Will be set when last test completes
+	p.teardownEndTime = time.Time{} // Will be set at finalization
 }
 
 // onTestRun handles a test run event
 func (p *TestProcessor) onTestRun(event TestEvent) {
+	// Track the first test start time (end of setup phase)
+	if p.firstTestTime.IsZero() {
+		p.firstTestTime = time.Now()
+	}
+
 	// Create a new test result
 	result := &TestResult{
 		Name:     event.Test,
@@ -137,6 +153,9 @@ func (p *TestProcessor) onTestRun(event TestEvent) {
 
 // onTestPass handles a test pass event
 func (p *TestProcessor) onTestPass(event TestEvent) {
+	// Update last test completion time
+	p.lastTestTime = time.Now()
+
 	// Find the test
 	for _, suite := range p.suites {
 		for _, test := range suite.Tests {
@@ -166,6 +185,9 @@ func (p *TestProcessor) onTestPass(event TestEvent) {
 
 // onTestFail handles a test fail event
 func (p *TestProcessor) onTestFail(event TestEvent) {
+	// Update last test completion time
+	p.lastTestTime = time.Now()
+
 	// Find the test
 	for _, suite := range p.suites {
 		for _, test := range suite.Tests {
@@ -203,6 +225,9 @@ func (p *TestProcessor) onTestFail(event TestEvent) {
 
 // onTestSkip handles a test skip event
 func (p *TestProcessor) onTestSkip(event TestEvent) {
+	// Update last test completion time
+	p.lastTestTime = time.Now()
+
 	// Find the test
 	for _, suite := range p.suites {
 		for _, test := range suite.Tests {
@@ -256,29 +281,30 @@ func (p *TestProcessor) finalize() {
 	// Set end time and calculate duration
 	p.statistics.EndTime = time.Now()
 	p.statistics.Duration = p.statistics.EndTime.Sub(p.statistics.StartTime)
+	p.teardownEndTime = p.statistics.EndTime
 
-	// Track different phases (similar to Vitest)
-	totalDuration := p.statistics.Duration
+	// Calculate real phase durations based on actual timestamps
+	if !p.firstTestTime.IsZero() {
+		// Setup phase: from start until first test begins
+		setupDuration := p.firstTestTime.Sub(p.setupStartTime)
+		if setupDuration > 0 {
+			p.statistics.Phases["setup"] = setupDuration
+		}
 
-	// Estimate phase durations based on typical test execution patterns
-	// In a real implementation, these would be tracked more precisely
-	setupTime := totalDuration / 20       // ~5% for setup
-	collectTime := totalDuration / 10     // ~10% for test discovery/collection
-	testsTime := totalDuration * 7 / 10   // ~70% for actual test execution
-	teardownTime := totalDuration / 20    // ~5% for teardown
-	environmentTime := totalDuration / 10 // ~10% for environment setup
+		// Tests phase: from first test until last test completes
+		if !p.lastTestTime.IsZero() {
+			testsDuration := p.lastTestTime.Sub(p.firstTestTime)
+			if testsDuration > 0 {
+				p.statistics.Phases["tests"] = testsDuration
+			}
 
-	// Ensure phases map is initialized before use
-	if p.statistics.Phases == nil {
-		p.statistics.Phases = make(map[string]time.Duration)
+			// Teardown phase: from last test completion until end
+			teardownDuration := p.teardownEndTime.Sub(p.lastTestTime)
+			if teardownDuration > 0 {
+				p.statistics.Phases["teardown"] = teardownDuration
+			}
+		}
 	}
-
-	// Store phases
-	p.statistics.Phases["setup"] = setupTime
-	p.statistics.Phases["collect"] = collectTime
-	p.statistics.Phases["tests"] = testsTime
-	p.statistics.Phases["teardown"] = teardownTime
-	p.statistics.Phases["environment"] = environmentTime
 
 	// Calculate suite statistics
 	for _, suite := range p.suites {

@@ -24,7 +24,9 @@ type TestRunStats struct {
 	StartTime time.Time
 	EndTime   time.Time
 	Duration  time.Duration
-	Phases    map[string]time.Duration
+
+	// Real phase durations (only populated with actual measurements)
+	Phases map[string]time.Duration
 }
 
 // SummaryRenderer renders a summary of test results
@@ -98,19 +100,23 @@ func (r *SummaryRenderer) RenderSummary(stats *TestRunStats) error {
 	fmt.Fprintf(r.writer, "Start at: %s\n", r.formatter.Gray(startTime))
 	fmt.Fprintf(r.writer, "End at: %s\n", r.formatter.Gray(endTime))
 
-	// Duration with phase breakdown (Vitest style)
+	// Duration with phase breakdown (only when real measurements are available)
 	durationText := fmt.Sprintf("Duration: %s", r.formatter.Gray(formatDuration(stats.Duration)))
 
-	// Add phase timing if available (similar to Vitest format)
+	// Add phase timing if we have real measurements (not estimates)
 	if len(stats.Phases) > 0 {
 		durationText += " ("
 		phaseTexts := []string{}
 
-		// Define order for consistent display
-		phaseOrder := []string{"setup", "collect", "tests", "teardown", "transform", "environment"}
+		// Define order for consistent display with what each phase represents:
+		// - setup: Time from start until first test begins
+		// - collect: Time spent discovering and preparing tests
+		// - tests: Time actually executing test code
+		// - teardown: Time after tests complete until end
+		phaseOrder := []string{"setup", "collect", "tests", "teardown"}
 
 		for _, phaseName := range phaseOrder {
-			if duration, exists := stats.Phases[phaseName]; exists {
+			if duration, exists := stats.Phases[phaseName]; exists && duration > 0 {
 				phaseTexts = append(phaseTexts, fmt.Sprintf("%s %s",
 					phaseName, r.formatter.Gray(formatDuration(duration))))
 			}
@@ -118,6 +124,9 @@ func (r *SummaryRenderer) RenderSummary(stats *TestRunStats) error {
 
 		// Add any other phases not in the predefined order
 		for phaseName, duration := range stats.Phases {
+			if duration <= 0 {
+				continue // Skip zero durations
+			}
 			found := false
 			for _, orderedPhase := range phaseOrder {
 				if orderedPhase == phaseName {
@@ -131,7 +140,9 @@ func (r *SummaryRenderer) RenderSummary(stats *TestRunStats) error {
 			}
 		}
 
-		durationText += strings.Join(phaseTexts, ", ") + ")"
+		if len(phaseTexts) > 0 {
+			durationText += strings.Join(phaseTexts, ", ") + ")"
+		}
 	}
 
 	fmt.Fprintln(r.writer, durationText)

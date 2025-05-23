@@ -24,6 +24,12 @@ type TestProcessor struct {
 	suites     map[string]*TestSuite
 	statistics *TestRunStats
 	startTime  time.Time
+
+	// Phase tracking timestamps for real duration measurement
+	setupStartTime  time.Time // When processing started
+	firstTestTime   time.Time // When first test began running
+	lastTestTime    time.Time // When last test completed
+	teardownEndTime time.Time // When processing ended
 }
 
 // TestProcessorInterface defines the interface for test processors

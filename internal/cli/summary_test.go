@@ -19,36 +19,25 @@ func TestSummaryRenderer(t *testing.T) {
 		testsFailed   int
 		startTime     time.Time
 		duration      time.Duration
-		phaseTiming   map[string]time.Duration
 		wantTestFiles bool
 		wantTests     bool
 		wantStartAt   bool
 		wantDuration  bool
-		wantPhases    bool
 	}{
 		{
-			name:        "renders complete summary",
-			testFiles:   8,
-			filesPassed: 7,
-			filesFailed: 1,
-			testsTotal:  78,
-			testsPassed: 70,
-			testsFailed: 8,
-			startTime:   time.Date(2023, 1, 1, 11, 39, 32, 0, time.Local),
-			duration:    26*time.Second + 170*time.Millisecond,
-			phaseTiming: map[string]time.Duration{
-				"transform":   859 * time.Millisecond,
-				"setup":       34*time.Second + 400*time.Millisecond,
-				"collect":     1*time.Second + 290*time.Millisecond,
-				"tests":       1 * time.Second,
-				"environment": 70*time.Second + 910*time.Millisecond,
-				"prepare":     3*time.Second + 690*time.Millisecond,
-			},
+			name:          "renders complete summary",
+			testFiles:     8,
+			filesPassed:   7,
+			filesFailed:   1,
+			testsTotal:    78,
+			testsPassed:   70,
+			testsFailed:   8,
+			startTime:     time.Date(2023, 1, 1, 11, 39, 32, 0, time.Local),
+			duration:      26*time.Second + 170*time.Millisecond,
 			wantTestFiles: true,
 			wantTests:     true,
 			wantStartAt:   true,
 			wantDuration:  true,
-			wantPhases:    true,
 		},
 		{
 			name:          "handles zero tests",
@@ -60,12 +49,10 @@ func TestSummaryRenderer(t *testing.T) {
 			testsFailed:   0,
 			startTime:     time.Date(2023, 1, 1, 11, 39, 32, 0, time.Local),
 			duration:      0,
-			phaseTiming:   map[string]time.Duration{},
 			wantTestFiles: true,
 			wantTests:     true,
 			wantStartAt:   true,
 			wantDuration:  true,
-			wantPhases:    false,
 		},
 	}
 
@@ -87,7 +74,6 @@ func TestSummaryRenderer(t *testing.T) {
 				FailedTests: tt.testsFailed,
 				StartTime:   tt.startTime,
 				Duration:    tt.duration,
-				Phases:      tt.phaseTiming,
 			}
 
 			// Execute
@@ -168,20 +154,6 @@ func TestSummaryRenderer(t *testing.T) {
 					expectedDuration := formatExpectedDuration(tt.duration)
 					if !strings.Contains(output, expectedDuration) {
 						t.Errorf("expected duration %q in output, but not found in: %s", expectedDuration, output)
-					}
-				}
-			}
-
-			// Check phases
-			if tt.wantPhases && len(tt.phaseTiming) > 0 {
-				for phase, duration := range tt.phaseTiming {
-					if !strings.Contains(output, phase) {
-						t.Errorf("expected phase %q in output, but not found in: %s", phase, output)
-					}
-
-					durationStr := formatExpectedDuration(duration)
-					if !strings.Contains(output, durationStr) {
-						t.Errorf("expected duration %q for phase %q, but not found in: %s", durationStr, phase, output)
 					}
 				}
 			}

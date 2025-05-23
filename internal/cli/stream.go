@@ -143,6 +143,8 @@ func (p *StreamParser) processOutput(result *TestResult, output string) {
 // ProcessStream processes a stream of test output
 func (p *TestProcessor) ProcessStream(r io.Reader, progress chan<- TestProgress) error {
 	p.startTime = time.Now()
+	setupStartTime := p.startTime
+	var firstTestTime, lastTestTime time.Time
 
 	// Create a stream parser
 	parser := NewStreamParser()
@@ -168,6 +170,16 @@ func (p *TestProcessor) ProcessStream(r io.Reader, progress chan<- TestProgress)
 
 	for result := range resultCh {
 		totalTests++
+
+		// Track first test time (end of setup phase)
+		if firstTestTime.IsZero() && result.Status != StatusRunning {
+			firstTestTime = time.Now()
+		}
+
+		// Track last test completion time
+		if result.Status != StatusRunning {
+			lastTestTime = time.Now()
+		}
 
 		// Determine proper suite name (use package path instead of test file name)
 		suiteName := p.formatSuiteName(result.Package)
@@ -245,25 +257,28 @@ func (p *TestProcessor) ProcessStream(r io.Reader, progress chan<- TestProgress)
 	p.statistics.EndTime = time.Now()
 	p.statistics.Duration = p.statistics.EndTime.Sub(p.statistics.StartTime)
 
-	// Track different phases (similar to Vitest)
-	totalDuration := p.statistics.Duration
+	// Calculate real phase durations based on actual timestamps
+	if !firstTestTime.IsZero() {
+		// Setup phase: from start until first test begins
+		setupDuration := firstTestTime.Sub(setupStartTime)
+		if setupDuration > 0 {
+			p.statistics.Phases["setup"] = setupDuration
+		}
 
-	// Estimate phase durations based on typical test execution patterns
-	setupTime := totalDuration / 20       // ~5% for setup
-	collectTime := totalDuration / 10     // ~10% for test discovery/collection
-	testsTime := totalDuration * 7 / 10   // ~70% for actual test execution
-	teardownTime := totalDuration / 20    // ~5% for teardown
-	environmentTime := totalDuration / 10 // ~10% for environment setup
+		// Tests phase: from first test until last test completes
+		if !lastTestTime.IsZero() {
+			testsDuration := lastTestTime.Sub(firstTestTime)
+			if testsDuration > 0 {
+				p.statistics.Phases["tests"] = testsDuration
+			}
 
-	// Store phases
-	if p.statistics.Phases == nil {
-		p.statistics.Phases = make(map[string]time.Duration)
+			// Teardown phase: from last test completion until end
+			teardownDuration := p.statistics.EndTime.Sub(lastTestTime)
+			if teardownDuration > 0 {
+				p.statistics.Phases["teardown"] = teardownDuration
+			}
+		}
 	}
-	p.statistics.Phases["setup"] = setupTime
-	p.statistics.Phases["collect"] = collectTime
-	p.statistics.Phases["tests"] = testsTime
-	p.statistics.Phases["teardown"] = teardownTime
-	p.statistics.Phases["environment"] = environmentTime
 
 	// Count passed and failed files
 	for _, suite := range p.suites {
