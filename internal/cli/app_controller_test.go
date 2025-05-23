@@ -75,17 +75,21 @@ func TestAppController_LoadConfiguration(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to get working directory: %v", err)
 			}
-			defer os.Chdir(oldWd)
+			defer func() {
+				if chdirErr := os.Chdir(oldWd); chdirErr != nil {
+					t.Errorf("Failed to restore working directory: %v", chdirErr)
+				}
+			}()
 
-			if err := os.Chdir(tempDir); err != nil {
-				t.Fatalf("Failed to change to temp directory: %v", err)
+			if chdirErr := os.Chdir(tempDir); chdirErr != nil {
+				t.Fatalf("Failed to change to temp directory: %v", chdirErr)
 			}
 
-			// Create config file if needed
-			if tt.setupConfig {
+			// Create config file if provided
+			if tt.configContent != "" {
 				configPath := filepath.Join(tempDir, "sentinel.config.json")
-				if err := os.WriteFile(configPath, []byte(tt.configContent), 0644); err != nil {
-					t.Fatalf("Failed to write config file: %v", err)
+				if writeErr := os.WriteFile(configPath, []byte(tt.configContent), 0644); writeErr != nil {
+					t.Fatalf("Failed to write config file: %v", writeErr)
 				}
 			}
 
@@ -164,10 +168,7 @@ func TestAppController_DetermineTestsToRun(t *testing.T) {
 			controller := NewAppController()
 			changedPath := filepath.Join(tempDir, tt.changedFile)
 
-			testsToRun, err := controller.determineTestsToRun(changedPath)
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
+			testsToRun := controller.determineTestsToRun(changedPath)
 
 			if len(testsToRun) != len(tt.expectedDirs) {
 				t.Fatalf("Expected %d test directories, got %d", len(tt.expectedDirs), len(testsToRun))
@@ -251,10 +252,14 @@ func TestSimple(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to get working directory: %v", err)
 		}
-		defer os.Chdir(oldWd)
+		defer func() {
+			if chdirErr := os.Chdir(oldWd); chdirErr != nil {
+				t.Errorf("Failed to restore working directory: %v", chdirErr)
+			}
+		}()
 
-		if err := os.Chdir(tempDir); err != nil {
-			t.Fatalf("Failed to change to temp directory: %v", err)
+		if chdirErr := os.Chdir(tempDir); chdirErr != nil {
+			t.Fatalf("Failed to change to temp directory: %v", chdirErr)
 		}
 
 		// Test the controller
@@ -284,10 +289,14 @@ func TestAppController_ConfigMerging(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to get working directory: %v", err)
 		}
-		defer os.Chdir(oldWd)
+		defer func() {
+			if chdirErr := os.Chdir(oldWd); chdirErr != nil {
+				t.Errorf("Failed to restore working directory: %v", chdirErr)
+			}
+		}()
 
-		if err := os.Chdir(tempDir); err != nil {
-			t.Fatalf("Failed to change to temp directory: %v", err)
+		if chdirErr := os.Chdir(tempDir); chdirErr != nil {
+			t.Fatalf("Failed to change to temp directory: %v", chdirErr)
 		}
 
 		// Create config file
@@ -297,8 +306,8 @@ func TestAppController_ConfigMerging(t *testing.T) {
 			"parallel": 2
 		}`
 		configPath := filepath.Join(tempDir, "sentinel.config.json")
-		if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
-			t.Fatalf("Failed to write config file: %v", err)
+		if writeErr := os.WriteFile(configPath, []byte(configContent), 0644); writeErr != nil {
+			t.Fatalf("Failed to write config file: %v", writeErr)
 		}
 
 		// Test argument parsing and merging
@@ -349,10 +358,14 @@ func TestAppController_WatchMode(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to get working directory: %v", err)
 		}
-		defer os.Chdir(oldWd)
+		defer func() {
+			if chdirErr := os.Chdir(oldWd); chdirErr != nil {
+				t.Errorf("Failed to restore working directory: %v", chdirErr)
+			}
+		}()
 
-		if err := os.Chdir(tempDir); err != nil {
-			t.Fatalf("Failed to change to temp directory: %v", err)
+		if chdirErr := os.Chdir(tempDir); chdirErr != nil {
+			t.Fatalf("Failed to change to temp directory: %v", chdirErr)
 		}
 
 		// Create a config with watch enabled
@@ -363,16 +376,16 @@ func TestAppController_WatchMode(t *testing.T) {
 			"clearOnRerun": true
 		}`
 		configPath := filepath.Join(tempDir, "sentinel.config.json")
-		if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
-			t.Fatalf("Failed to write config file: %v", err)
+		if writeErr := os.WriteFile(configPath, []byte(configContent), 0644); writeErr != nil {
+			t.Fatalf("Failed to write config file: %v", writeErr)
 		}
 
 		controller := NewAppController()
 
 		// Load and validate configuration
-		config, err := controller.loadConfiguration()
-		if err != nil {
-			t.Fatalf("Failed to load configuration: %v", err)
+		config, configErr := controller.loadConfiguration()
+		if configErr != nil {
+			t.Fatalf("Failed to load configuration: %v", configErr)
 		}
 
 		if !config.Watch.Enabled {
@@ -384,17 +397,17 @@ func TestAppController_WatchMode(t *testing.T) {
 		}
 
 		// Parse CLI args
-		cliArgs, err := controller.argParser.Parse([]string{"./..."})
-		if err != nil {
-			t.Fatalf("Failed to parse CLI args: %v", err)
+		cliArgs, parseErr := controller.argParser.Parse([]string{"./..."})
+		if parseErr != nil {
+			t.Fatalf("Failed to parse CLI args: %v", parseErr)
 		}
 
 		// Merge configuration
 		merged := config.MergeWithCLIArgs(cliArgs)
 
 		// Validate merged configuration
-		if err := ValidateConfig(merged); err != nil {
-			t.Errorf("Merged configuration should be valid: %v", err)
+		if validateErr := ValidateConfig(merged); validateErr != nil {
+			t.Errorf("Merged configuration should be valid: %v", validateErr)
 		}
 
 		// We can't easily test the actual watch functionality in unit tests
@@ -436,10 +449,14 @@ func BenchmarkAppController_ConfigLoad(b *testing.B) {
 	if err != nil {
 		b.Fatalf("Failed to get working directory: %v", err)
 	}
-	defer os.Chdir(oldWd)
+	defer func() {
+		if chdirErr := os.Chdir(oldWd); chdirErr != nil {
+			b.Errorf("Failed to restore working directory: %v", chdirErr)
+		}
+	}()
 
-	if err := os.Chdir(tempDir); err != nil {
-		b.Fatalf("Failed to change to temp directory: %v", err)
+	if chdirErr := os.Chdir(tempDir); chdirErr != nil {
+		b.Fatalf("Failed to change to temp directory: %v", chdirErr)
 	}
 
 	controller := NewAppController()

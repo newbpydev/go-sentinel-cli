@@ -348,7 +348,7 @@ func demonstrateConfigurationPrecedence(formatter *cli.ColorFormatter, icons *cl
 	time.Sleep(300 * time.Millisecond)
 
 	// Create CLI args that override config values
-	cliArgs := &cli.CLIArgs{
+	cliArgs := &cli.Args{
 		Watch:       false, // Override config (was true)
 		Colors:      false, // Override config (was true)
 		Verbosity:   3,     // Override config (was 1)

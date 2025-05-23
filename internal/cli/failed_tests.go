@@ -432,19 +432,6 @@ func (r *FailedTestRenderer) formatFailHeader(test *TestResult) string {
 	return fmt.Sprintf("%s %s > %s", failBadge, testPath, testName)
 }
 
-// formatTestHeader formats the header for a failed test
-func (r *FailedTestRenderer) formatTestHeader(test *TestResult) string {
-	// Create a red "FAIL" badge
-	failBadge := r.formatter.Red("FAIL")
-
-	// Format the test path and name
-	testPath := test.Package
-	testName := test.Name
-
-	// Return the formatted header
-	return fmt.Sprintf("%s %s > %s", failBadge, testPath, testName)
-}
-
 // RenderFailedTests renders a section with all failed tests
 func (r *FailedTestRenderer) RenderFailedTests(tests []*TestResult) error {
 	// Skip if no failed tests

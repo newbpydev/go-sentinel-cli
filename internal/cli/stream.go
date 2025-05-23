@@ -225,7 +225,7 @@ func (p *TestProcessor) ProcessStream(r io.Reader, progress chan<- TestProgress)
 			completedTests++
 
 			// Show live progress update
-			p.renderLiveUpdate(suite, result)
+			p.renderLiveUpdate(result)
 		}
 
 		// Send progress update
@@ -313,7 +313,7 @@ func (p *TestProcessor) renderSuiteHeader(suiteName string) {
 }
 
 // renderLiveUpdate shows real-time test results as they complete
-func (p *TestProcessor) renderLiveUpdate(suite *TestSuite, latestResult *TestResult) {
+func (p *TestProcessor) renderLiveUpdate(latestResult *TestResult) {
 	// Format test result with appropriate icon
 	var icon string
 	var color func(string) string

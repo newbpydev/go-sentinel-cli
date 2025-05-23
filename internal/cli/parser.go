@@ -213,7 +213,7 @@ func (p *Parser) processEvents() ([]*TestPackage, error) {
 	}
 
 	// Convert map to slice
-	var results []*TestPackage
+	results := make([]*TestPackage, 0, len(packages))
 	for _, pkg := range packages {
 		results = append(results, pkg)
 	}

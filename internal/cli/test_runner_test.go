@@ -55,8 +55,8 @@ func TestTestRunner(t *testing.T) {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
 	defer func() {
-		if err := os.RemoveAll(tempDir); err != nil {
-			t.Logf("failed to remove temp dir: %v", err)
+		if removeErr := os.RemoveAll(tempDir); removeErr != nil {
+			t.Logf("failed to remove temp dir: %v", removeErr)
 		}
 	}()
 
@@ -71,8 +71,8 @@ func TestPassing(t *testing.T) {
 }
 `
 	// #nosec G306 - Test file, permissions not important
-	if err := os.WriteFile(testFile, []byte(testContent), 0600); err != nil {
-		t.Fatalf("failed to create test file: %v", err)
+	if writeErr := os.WriteFile(testFile, []byte(testContent), 0600); writeErr != nil {
+		t.Fatalf("failed to create test file: %v", writeErr)
 	}
 
 	// Create a runner

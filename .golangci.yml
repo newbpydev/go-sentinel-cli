@@ -1,4 +1,3 @@
-version: "2"
 run:
   timeout: 5m
   # Include test files in linting
@@ -44,13 +43,18 @@ linters-settings:
     includes:
       - G101-G505
   govet:
-    # Report about shadowed variables
-    check-shadowing: true
+    # Enable specific checks (shadow detection not available in this version)
+    enable:
+      - atomicalign
+      - deepequalerrors
+      # Temporarily disable fieldalignment for now
+      # - fieldalignment
 
 # Output configuration options
 output:
-  # Format: colored-line-number|line-number|json|tab|checkstyle|code-climate|junit-xml|github-actions
-  format: colored-line-number
+  # Updated format for v1 compatibility
+  formats:
+    - format: colored-line-number
   # Print lines of code with issue
   print-issued-lines: true
   # Print linter name in the end of issue text

@@ -8,31 +8,31 @@ import (
 	"strings"
 )
 
-// CLIArgs represents the parsed command line arguments
-type CLIArgs struct {
-	Watch        bool
-	Packages     []string
-	TestPattern  string
-	Verbosity    int
-	FailFast     bool
-	Colors       bool
-	ConfigFile   string
-	Timeout      string
-	Parallel     int
-	CoverageMode string
+// Args represents command line arguments for the go-sentinel CLI tool
+type Args struct {
+	Colors       bool     `short:"c" long:"color" description:"Use colored output"`
+	Verbosity    int      `short:"v" long:"verbosity" description:"Set verbosity level (0-5)" default:"0"`
+	Watch        bool     `short:"w" long:"watch" description:"Enable watch mode"`
+	Parallel     int      `short:"j" long:"parallel" description:"Number of tests to run in parallel" default:"0"`
+	TestPattern  string   `short:"t" long:"test" description:"Run only tests matching pattern"`
+	FailFast     bool     `short:"f" long:"fail-fast" description:"Stop on first failure"`
+	ConfigFile   string   `long:"config" description:"Path to config file"`
+	Timeout      string   `long:"timeout" description:"Timeout for test execution"`
+	CoverageMode string   `long:"coverage" description:"Coverage mode"`
+	Packages     []string `positional-arg-name:"packages" description:"Packages to test"`
 }
 
 // ArgParser interface for parsing command line arguments
 type ArgParser interface {
-	Parse(args []string) (*CLIArgs, error)
-	ParseFromCobra(watchFlag, colorFlag, verboseFlag, failFastFlag bool, packages []string, testPattern string) *CLIArgs
+	Parse(args []string) (*Args, error)
+	ParseFromCobra(watchFlag, colorFlag, verboseFlag, failFastFlag bool, packages []string, testPattern string) *Args
 }
 
 // DefaultArgParser implements the ArgParser interface
 type DefaultArgParser struct{}
 
-// Parse parses command line arguments into CLIArgs structure
-func (p *DefaultArgParser) Parse(args []string) (*CLIArgs, error) {
+// Parse parses command line arguments into Args structure
+func (p *DefaultArgParser) Parse(args []string) (*Args, error) {
 	// First, handle multiple -v flags manually
 	verbosity := 0
 	filteredArgs := []string{}
@@ -109,7 +109,7 @@ func (p *DefaultArgParser) Parse(args []string) (*CLIArgs, error) {
 	// Get remaining arguments as packages
 	packages := fs.Args()
 
-	return &CLIArgs{
+	return &Args{
 		Watch:        watch,
 		Packages:     packages,
 		TestPattern:  pattern,
@@ -123,14 +123,14 @@ func (p *DefaultArgParser) Parse(args []string) (*CLIArgs, error) {
 	}, nil
 }
 
-// ParseFromCobra creates CLIArgs from Cobra command flags
-func (p *DefaultArgParser) ParseFromCobra(watchFlag, colorFlag, verboseFlag, failFastFlag bool, packages []string, testPattern string) *CLIArgs {
+// ParseFromCobra creates Args from Cobra command flags
+func (p *DefaultArgParser) ParseFromCobra(watchFlag, colorFlag, verboseFlag, failFastFlag bool, packages []string, testPattern string) *Args {
 	verbosity := 0
 	if verboseFlag {
 		verbosity = 1
 	}
 
-	return &CLIArgs{
+	return &Args{
 		Watch:       watchFlag,
 		Colors:      colorFlag,
 		Verbosity:   verbosity,
@@ -146,7 +146,7 @@ func NewArgParser() ArgParser {
 }
 
 // ValidateArgs validates the parsed CLI arguments
-func ValidateArgs(args *CLIArgs) error {
+func ValidateArgs(args *Args) error {
 	if args.Verbosity < 0 || args.Verbosity > 5 {
 		return errors.New("verbosity level must be between 0 and 5")
 	}
@@ -174,8 +174,8 @@ func ValidateArgs(args *CLIArgs) error {
 }
 
 // GetDefaultArgs returns default CLI arguments
-func GetDefaultArgs() *CLIArgs {
-	return &CLIArgs{
+func GetDefaultArgs() *Args {
+	return &Args{
 		Watch:        false,
 		Packages:     []string{},
 		TestPattern:  "",

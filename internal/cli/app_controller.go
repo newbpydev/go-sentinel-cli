@@ -78,7 +78,7 @@ func (a *AppController) loadConfiguration() (*Config, error) {
 }
 
 // runSingleMode executes tests once and exits
-func (a *AppController) runSingleMode(config *Config, cliArgs *CLIArgs) error {
+func (a *AppController) runSingleMode(config *Config, cliArgs *Args) error {
 	fmt.Printf("🚀 Running tests with go-sentinel...\n\n")
 
 	// Start timing
@@ -121,7 +121,7 @@ func (a *AppController) runSingleMode(config *Config, cliArgs *CLIArgs) error {
 }
 
 // runWatchMode executes tests in watch mode
-func (a *AppController) runWatchMode(config *Config, cliArgs *CLIArgs) error {
+func (a *AppController) runWatchMode(config *Config, cliArgs *Args) error {
 	fmt.Printf("👀 Starting watch mode...\n")
 	fmt.Printf("📁 Watching for changes in: %v\n", config.Paths.IncludePatterns)
 	fmt.Printf("🚫 Ignoring: %v\n", config.Paths.ExcludePatterns)
@@ -179,10 +179,7 @@ func (a *AppController) handleFileChange(event FileEvent, config *Config) error 
 	}
 
 	// Determine which tests to run based on the changed file
-	testsToRun, err := a.determineTestsToRun(event.Path)
-	if err != nil {
-		return fmt.Errorf("failed to determine tests to run: %w", err)
-	}
+	testsToRun := a.determineTestsToRun(event.Path)
 
 	if len(testsToRun) == 0 {
 		fmt.Printf("🔍 No tests found for changed file\n")
@@ -252,12 +249,12 @@ func (a *AppController) runPackageTests(pkg string, config *Config) error {
 }
 
 // determineTestsToRun determines which tests should run based on a changed file
-func (a *AppController) determineTestsToRun(changedFile string) ([]string, error) {
+func (a *AppController) determineTestsToRun(changedFile string) []string {
 	// Simple heuristic: if it's a test file, run it directly
 	if isTestFile(changedFile) {
 		// Get the package directory
 		dir := filepath.Dir(changedFile)
-		return []string{dir}, nil
+		return []string{dir}
 	}
 
 	// If it's a source file, find related test files
@@ -265,13 +262,13 @@ func (a *AppController) determineTestsToRun(changedFile string) ([]string, error
 	if testFile != "" {
 		if _, err := os.Stat(testFile); err == nil {
 			dir := filepath.Dir(testFile)
-			return []string{dir}, nil
+			return []string{dir}
 		}
 	}
 
 	// Fallback: run tests in the same directory
 	dir := filepath.Dir(changedFile)
-	return []string{dir}, nil
+	return []string{dir}
 }
 
 // Helper functions

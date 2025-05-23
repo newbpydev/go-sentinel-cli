@@ -114,7 +114,20 @@ func (p *OptimizedTestProcessor) renderWithWorkerPool(ctx context.Context, suite
 					return
 				default:
 					// Get buffer from pool
-					buffer := p.memoryPool.Get().([]byte)
+					bufferInterface := p.memoryPool.Get()
+					var buffer []byte
+					if bufferInterface != nil {
+						if buf, ok := bufferInterface.([]byte); ok {
+							buffer = buf
+						} else if bufPtr, ok := bufferInterface.(*[]byte); ok {
+							buffer = *bufPtr
+						} else {
+							// Fallback: create new buffer if type assertion fails
+							buffer = make([]byte, 0, 1024)
+						}
+					} else {
+						buffer = make([]byte, 0, 1024)
+					}
 					buffer = buffer[:0] // Reset length but keep capacity
 
 					// Create a temporary writer that writes to buffer
@@ -134,7 +147,7 @@ func (p *OptimizedTestProcessor) renderWithWorkerPool(ctx context.Context, suite
 					}()
 
 					// Return buffer to pool
-					p.memoryPool.Put(buffer)
+					p.memoryPool.Put(&buffer)
 					results <- nil
 				}
 			}

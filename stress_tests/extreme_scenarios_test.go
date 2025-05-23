@@ -100,8 +100,8 @@ func TestGoroutineLeaks(t *testing.T) {
 	// Start multiple goroutines that don't properly clean up
 	for i := 0; i < 10; i++ {
 		go func(id int) {
-			// Simulate work
-			time.Sleep(10 * time.Millisecond)
+			// Simulate work with the goroutine ID
+			time.Sleep(time.Duration(id+1) * time.Millisecond)
 			// Note: These goroutines don't have a way to be cancelled
 		}(i)
 	}
@@ -123,6 +123,8 @@ func TestMutexDeadlock(t *testing.T) {
 		mu1.Lock()
 		time.Sleep(10 * time.Millisecond)
 		mu2.Lock()
+		// Do some work while holding both locks
+		_ = "work"
 		mu2.Unlock()
 		mu1.Unlock()
 		done <- true
@@ -133,6 +135,8 @@ func TestMutexDeadlock(t *testing.T) {
 		mu2.Lock()
 		time.Sleep(10 * time.Millisecond)
 		mu1.Lock()
+		// Do some work while holding both locks
+		_ = "work"
 		mu1.Unlock()
 		mu2.Unlock()
 		done <- true

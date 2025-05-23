@@ -257,27 +257,21 @@ func TestConfig_WatchBehaviorConfiguration(t *testing.T) {
 }
 
 func TestConfig_MergeWithCLIArgs(t *testing.T) {
-	config := &Config{
-		Colors:    true,
-		Verbosity: 1,
-		Parallel:  2,
-		Visual: VisualConfig{
-			Colors: true,
-			Icons:  "unicode",
-		},
-	}
+	config := GetDefaultConfig()
 
-	cliArgs := &CLIArgs{
+	// Test merging with CLI args
+	cliArgs := &Args{
+		Colors:      false, // Override config (was true)
+		Verbosity:   3,     // Override config (was 0)
+		Parallel:    4,     // Override config (was 0)
 		Watch:       true,
-		Colors:      false, // Override config
-		Verbosity:   3,     // Override config
-		Parallel:    4,     // Override config
 		TestPattern: "TestUnit",
+		Packages:    []string{"./internal"},
 	}
 
 	mergedConfig := config.MergeWithCLIArgs(cliArgs)
 
-	// CLI args should override config values
+	// Verify CLI args override config values
 	if mergedConfig.Colors != false {
 		t.Errorf("expected colors=false (from CLI), got %t", mergedConfig.Colors)
 	}
@@ -287,18 +281,16 @@ func TestConfig_MergeWithCLIArgs(t *testing.T) {
 	if mergedConfig.Parallel != 4 {
 		t.Errorf("expected parallel=4 (from CLI), got %d", mergedConfig.Parallel)
 	}
-
-	// CLI-only values should be set
 	if !mergedConfig.Watch.Enabled {
-		t.Errorf("expected watch enabled=true (from CLI), got %t", mergedConfig.Watch.Enabled)
+		t.Error("expected watch=true (from CLI)")
 	}
 	if mergedConfig.TestPattern != "TestUnit" {
 		t.Errorf("expected test pattern='TestUnit' (from CLI), got '%s'", mergedConfig.TestPattern)
 	}
 
-	// Config-only values should be preserved
-	if mergedConfig.Visual.Icons != "unicode" {
-		t.Errorf("expected icons='unicode' (from config), got '%s'", mergedConfig.Visual.Icons)
+	// Verify config values that weren't overridden remain
+	if mergedConfig.Visual.Icons != config.Visual.Icons {
+		t.Errorf("expected icons to remain from config: %s", config.Visual.Icons)
 	}
 }
 

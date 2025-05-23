@@ -86,8 +86,8 @@ func (l *DefaultConfigLoader) LoadFromFile(path string) (*Config, error) {
 	}
 
 	var fileData configFileData
-	if err := json.Unmarshal(data, &fileData); err != nil {
-		return nil, fmt.Errorf("failed to parse config file: %w", err)
+	if unmarshalErr := json.Unmarshal(data, &fileData); unmarshalErr != nil {
+		return nil, fmt.Errorf("failed to parse config file: %w", unmarshalErr)
 	}
 
 	config, err := l.parseConfigData(&fileData)
@@ -200,7 +200,7 @@ func (l *DefaultConfigLoader) parseConfigData(data *configFileData) (*Config, er
 }
 
 // MergeWithCLIArgs merges configuration with CLI arguments, with CLI args taking precedence
-func (c *Config) MergeWithCLIArgs(args *CLIArgs) *Config {
+func (c *Config) MergeWithCLIArgs(args *Args) *Config {
 	merged := &Config{
 		// Copy config values
 		Colors:      c.Colors,
@@ -237,23 +237,10 @@ func (c *Config) MergeWithCLIArgs(args *CLIArgs) *Config {
 		merged.TestPattern = args.TestPattern
 	}
 
-	if args.FailFast {
-		// FailFast affects behavior but doesn't have a direct config equivalent
-		// Could be added to config in the future
-	}
-
-	if args.ConfigFile != "" {
-		// ConfigFile is used for loading, not stored in final config
-	}
-
 	if args.Timeout != "" {
 		if timeout, err := time.ParseDuration(args.Timeout); err == nil {
 			merged.Timeout = timeout
 		}
-	}
-
-	if args.CoverageMode != "" {
-		// CoverageMode could be added to config structure in the future
 	}
 
 	return merged

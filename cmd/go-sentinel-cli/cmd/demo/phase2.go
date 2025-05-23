@@ -41,7 +41,7 @@ func RunPhase2Demo() {
 	// Display failed tests section for the failing tests
 	failedTests := getMockFailedTests(suites)
 	if len(failedTests) > 0 {
-		displayFailedTestsSection(failedTests, formatter, icons, terminalWidth)
+		displayFailedTestsSection(failedTests, formatter, icons)
 	}
 
 	// Display summary
@@ -57,7 +57,7 @@ func RunPhase2Demo() {
 }
 
 // displayFailedTestsSection displays a detailed section about failed tests
-func displayFailedTestsSection(failedTests []*cli.TestResult, formatter *cli.ColorFormatter, icons *cli.IconProvider, width int) {
+func displayFailedTestsSection(failedTests []*cli.TestResult, formatter *cli.ColorFormatter, icons *cli.IconProvider) {
 	// This is a simplified version of what will be implemented in Phase 3
 	fmt.Println(formatter.Bold(formatter.Red("Failed Tests:")))
 
