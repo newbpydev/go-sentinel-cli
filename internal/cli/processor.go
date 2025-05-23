@@ -85,24 +85,7 @@ func (p *TestProcessor) onTestRun(event TestEvent) {
 		Duration: 0,
 	}
 
-	// Check if this is a subtest
-	if strings.Contains(event.Test, "/") {
-		// Extract parent test name
-		parts := strings.SplitN(event.Test, "/", 2)
-		result.Parent = parts[0]
-
-		// Add to parent test if it exists
-		for _, suite := range p.suites {
-			for _, test := range suite.Tests {
-				if test.Name == result.Parent {
-					test.Subtests = append(test.Subtests, result)
-					return
-				}
-			}
-		}
-	}
-
-	// Find or create the test suite
+	// Find or create the test suite first
 	suitePath := event.Package
 	suite, ok := p.suites[suitePath]
 	if !ok {
@@ -110,6 +93,23 @@ func (p *TestProcessor) onTestRun(event TestEvent) {
 			FilePath: suitePath,
 		}
 		p.suites[suitePath] = suite
+	}
+
+	// Check if this is a subtest
+	if strings.Contains(event.Test, "/") {
+		// Extract parent test name
+		parts := strings.SplitN(event.Test, "/", 2)
+		result.Parent = parts[0]
+
+		// Add to parent test if it exists
+		for _, test := range suite.Tests {
+			if test.Name == result.Parent {
+				test.Subtests = append(test.Subtests, result)
+				// FIXED: Count subtests in suite.TestCount too
+				suite.TestCount++
+				return
+			}
+		}
 	}
 
 	// Add the test to the suite
@@ -258,7 +258,8 @@ func (p *TestProcessor) RenderResults(showSummary bool) error {
 	suiteRenderer := NewSuiteRenderer(p.writer, p.formatter, p.icons, p.width)
 
 	for _, suite := range p.suites {
-		if err := suiteRenderer.RenderSuite(suite, true); err != nil {
+		// FIXED: Don't auto-collapse by default to show individual tests
+		if err := suiteRenderer.RenderSuite(suite, false); err != nil {
 			return err
 		}
 		_, _ = fmt.Fprintln(p.writer)
