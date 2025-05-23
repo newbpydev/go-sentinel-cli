@@ -11,19 +11,23 @@ import (
 
 // AppController orchestrates the main application flow
 type AppController struct {
-	argParser    ArgParser
-	configLoader ConfigLoader
-	testRunner   *TestRunner
-	processor    *TestProcessor
-	watcher      *FileWatcher
+	argParser           ArgParser
+	configLoader        ConfigLoader
+	testRunner          *TestRunner
+	processor           *TestProcessor
+	watcher             *FileWatcher
+	cache               *TestResultCache
+	incrementalRenderer *IncrementalRenderer
 }
 
 // NewAppController creates a new application controller
 func NewAppController() *AppController {
+	cache := NewTestResultCache()
 	return &AppController{
 		argParser:    &DefaultArgParser{},
 		configLoader: &DefaultConfigLoader{},
 		testRunner:   &TestRunner{JSONOutput: true}, // Enable JSON output for processing
+		cache:        cache,
 	}
 }
 
@@ -123,9 +127,9 @@ func (a *AppController) runSingleMode(config *Config, cliArgs *Args) error {
 // runWatchMode executes tests in watch mode
 func (a *AppController) runWatchMode(config *Config, cliArgs *Args) error {
 	fmt.Printf("👀 Starting watch mode...\n")
-	fmt.Printf("📁 Watching for changes in: %v\n", config.Paths.IncludePatterns)
-	fmt.Printf("🚫 Ignoring: %v\n", config.Paths.ExcludePatterns)
-	fmt.Printf("⌨️  Press Ctrl+C to exit\n\n")
+
+	// Display detailed watch configuration
+	a.displayWatchConfiguration(config)
 
 	// Initialize file watcher
 	watcher, err := NewFileWatcher(
@@ -139,54 +143,138 @@ func (a *AppController) runWatchMode(config *Config, cliArgs *Args) error {
 
 	a.watcher = watcher
 
-	// Create a channel for file events
-	events := make(chan FileEvent, 10)
+	// Create a buffered channel for file events to handle bursts
+	events := make(chan FileEvent, 50)
+
+	// Create error channel for watcher errors
+	watcherErrors := make(chan error, 1)
 
 	// Start the watcher in a goroutine
 	go func() {
+		defer close(events)
 		if err := watcher.Watch(events); err != nil {
-			fmt.Printf("🚨 Watcher error: %v\n", err)
+			watcherErrors <- fmt.Errorf("watcher error: %w", err)
 		}
 	}()
 
 	// Run tests initially if configured
 	if config.Watch.RunOnStart {
+		fmt.Printf("🏃 Running initial tests...\n\n")
 		if err := a.runSingleMode(config, cliArgs); err != nil {
 			fmt.Printf("❌ Initial test run failed: %v\n", err)
 		}
 	}
 
-	// Watch for file changes
-	for event := range events {
-		if err := a.handleFileChange(event, config); err != nil {
-			fmt.Printf("❌ Error handling file change: %v\n", err)
+	// Display watch mode help
+	a.displayWatchModeHelp()
+
+	// Watch for file changes with debouncing
+	debouncer := NewFileEventDebouncer(config.Watch.Debounce)
+	defer debouncer.Stop()
+
+	for {
+		select {
+		case event, ok := <-events:
+			if !ok {
+				fmt.Printf("\n👋 Watch mode stopped\n")
+				return nil
+			}
+
+			// Send to debouncer
+			debouncer.AddEvent(event)
+
+		case debouncedEvents := <-debouncer.Events():
+			if err := a.handleDebouncedFileChanges(debouncedEvents, config); err != nil {
+				fmt.Printf("❌ Error handling file changes: %v\n", err)
+			}
+
+		case err := <-watcherErrors:
+			fmt.Printf("🚨 Watcher error: %v\n", err)
+			return err
 		}
 	}
-
-	return nil
 }
 
-// handleFileChange processes a file change event and runs relevant tests
-func (a *AppController) handleFileChange(event FileEvent, config *Config) error {
-	fmt.Printf("📝 File changed: %s\n", event.Path)
+// displayWatchConfiguration shows what is being watched and ignored
+func (a *AppController) displayWatchConfiguration(config *Config) {
+	fmt.Printf("📁 Watching: ")
+	if len(config.Paths.IncludePatterns) == 0 {
+		fmt.Printf("%s\n", "current directory")
+	} else {
+		for i, path := range config.Paths.IncludePatterns {
+			if i > 0 {
+				fmt.Printf(", ")
+			}
+			fmt.Printf("%s", path)
+		}
+		fmt.Printf("\n")
+	}
 
-	// Wait for debounce period to handle rapid successive changes
-	time.Sleep(config.Watch.Debounce)
+	if len(config.Watch.IgnorePatterns) > 0 {
+		fmt.Printf("🚫 Ignoring: ")
+		for i, pattern := range config.Watch.IgnorePatterns {
+			if i > 0 {
+				fmt.Printf(", ")
+			}
+			fmt.Printf("%s", pattern)
+		}
+		fmt.Printf("\n")
+	}
+
+	fmt.Printf("⏱️  Debounce: %v\n", config.Watch.Debounce)
+	fmt.Printf("⌨️  Press Ctrl+C to exit\n\n")
+}
+
+// displayWatchModeHelp shows available commands in watch mode
+func (a *AppController) displayWatchModeHelp() {
+	fmt.Printf("📋 Watch mode active. File changes will trigger test runs.\n")
+	fmt.Printf("   • .go files: Runs tests for the package\n")
+	fmt.Printf("   • *_test.go files: Runs specific test file\n\n")
+}
+
+// handleDebouncedFileChanges processes multiple debounced file events efficiently
+func (a *AppController) handleDebouncedFileChanges(events []FileEvent, config *Config) error {
+	if len(events) == 0 {
+		return nil
+	}
+
+	// Analyze file changes for impact
+	var changes []*FileChange
+	for _, event := range events {
+		change, err := a.cache.AnalyzeChange(event.Path)
+		if err != nil {
+			fmt.Printf("⚠️ Failed to analyze change for %s: %v\n", event.Path, err)
+			continue
+		}
+		changes = append(changes, change)
+	}
+
+	if len(changes) == 0 {
+		return nil
+	}
 
 	// Clear terminal if configured
 	if config.Watch.ClearOnRerun {
 		clearTerminal()
 	}
 
-	// Determine which tests to run based on the changed file
-	testsToRun := a.determineTestsToRun(event.Path)
+	// Get stale tests based on change analysis
+	staleTests := a.cache.GetStaleTests(changes)
 
-	if len(testsToRun) == 0 {
-		fmt.Printf("🔍 No tests found for changed file\n")
-		return nil
+	if len(staleTests) == 0 {
+		// Use incremental renderer to show no changes
+		if a.incrementalRenderer == nil {
+			a.initializeIncrementalRenderer(config)
+		}
+		return a.incrementalRenderer.RenderIncrementalResults(
+			make(map[string]*TestSuite),
+			&TestRunStats{},
+			changes,
+		)
 	}
 
-	fmt.Printf("🏃 Running tests: %v\n\n", testsToRun)
+	fmt.Printf("⚡ Running tests for %d changed file(s) affecting %d test package(s)\n\n",
+		len(changes), len(staleTests))
 
 	// Reset processor for new test run
 	a.processor = NewTestProcessor(
@@ -196,16 +284,84 @@ func (a *AppController) handleFileChange(event FileEvent, config *Config) error 
 		80,
 	)
 
-	// Run the determined tests
-	for _, test := range testsToRun {
-		if err := a.runPackageTests(test, config); err != nil {
-			fmt.Printf("❌ Failed to run test %s: %v\n", test, err)
+	// Run tests efficiently - use parallel execution for multiple tests
+	if len(staleTests) > 1 && config.Parallel > 1 {
+		// Use parallel execution for multiple tests
+		parallelRunner := NewParallelTestRunner(config.Parallel, a.testRunner, a.cache)
+
+		results, err := parallelRunner.RunParallel(context.Background(), staleTests, config)
+		if err != nil {
+			return fmt.Errorf("parallel test execution failed: %w", err)
+		}
+
+		// Merge results into processor
+		MergeResults(a.processor, results)
+
+		// Report parallel execution metrics
+		var fromCache, fromExecution int
+		for _, result := range results {
+			if result.FromCache {
+				fromCache++
+			} else {
+				fromExecution++
+			}
+		}
+
+		if fromCache > 0 {
+			fmt.Printf("📋 Parallel execution: %d ran, %d from cache\n", fromExecution, fromCache)
+		}
+
+	} else {
+		// Sequential execution for single test or when parallel is disabled
+		for _, testPath := range staleTests {
+			if err := a.runPackageTests(testPath, config); err != nil {
+				fmt.Printf("❌ Failed to run test %s: %v\n", testPath, err)
+				continue
+			}
+
+			// Cache the results for this test
+			if suite, exists := a.processor.suites[testPath]; exists {
+				a.cache.CacheResult(testPath, suite)
+			}
 		}
 	}
 
-	// Finalize and render results
-	a.processor.finalize()
-	return a.processor.RenderResults(true)
+	// Initialize incremental renderer if needed
+	if a.incrementalRenderer == nil {
+		a.initializeIncrementalRenderer(config)
+	}
+
+	// Use incremental rendering for watch mode
+	if err := a.incrementalRenderer.RenderIncrementalResults(
+		a.processor.suites,
+		a.processor.GetStats(),
+		changes,
+	); err != nil {
+		return err
+	}
+
+	// Display performance metrics
+	stats := a.processor.GetStats()
+	cacheStats := a.cache.GetStats()
+	fmt.Printf("⏱️  Completed in %v | Cache: %d results, %d files tracked\n",
+		stats.Duration,
+		cacheStats["cached_results"],
+		cacheStats["tracked_files"])
+
+	fmt.Printf("👀 Watching for file changes...\n")
+
+	return nil
+}
+
+// initializeIncrementalRenderer creates and configures the incremental renderer
+func (a *AppController) initializeIncrementalRenderer(config *Config) {
+	a.incrementalRenderer = NewIncrementalRenderer(
+		os.Stdout,
+		NewColorFormatter(config.Colors),
+		NewIconProvider(config.Visual.Icons != "none"),
+		80,
+		a.cache,
+	)
 }
 
 // runPackageTests executes tests for a specific package

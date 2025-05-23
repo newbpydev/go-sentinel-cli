@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -243,7 +244,54 @@ func (c *Config) MergeWithCLIArgs(args *Args) *Config {
 		}
 	}
 
+	// Convert CLI packages to watch paths
+	if len(args.Packages) > 0 {
+		merged.Paths.IncludePatterns = convertPackagesToWatchPaths(args.Packages)
+	} else if len(merged.Paths.IncludePatterns) == 0 {
+		// Default to current directory if no packages specified and no config paths
+		merged.Paths.IncludePatterns = []string{"."}
+	}
+
 	return merged
+}
+
+// convertPackagesToWatchPaths converts Go package patterns to file system paths for watching
+func convertPackagesToWatchPaths(packages []string) []string {
+	var paths []string
+	for _, pkg := range packages {
+		switch pkg {
+		case "./...":
+			// Watch current directory and all subdirectories
+			paths = append(paths, ".")
+		case ".":
+			// Watch current directory only
+			paths = append(paths, ".")
+		default:
+			if strings.HasSuffix(pkg, "/...") {
+				// Package with recursive subdirectories
+				basePath := strings.TrimSuffix(pkg, "/...")
+				if basePath == "" {
+					basePath = "."
+				}
+				paths = append(paths, basePath)
+			} else {
+				// Specific package path
+				paths = append(paths, pkg)
+			}
+		}
+	}
+
+	// Remove duplicates
+	seen := make(map[string]bool)
+	uniquePaths := []string{}
+	for _, path := range paths {
+		if !seen[path] {
+			seen[path] = true
+			uniquePaths = append(uniquePaths, path)
+		}
+	}
+
+	return uniquePaths
 }
 
 // GetDefaultConfig returns the default configuration
@@ -265,11 +313,21 @@ func GetDefaultConfig() *Config {
 			ExcludePatterns: []string{},
 		},
 		Watch: WatchConfig{
-			Enabled:        false,
-			Debounce:       250 * time.Millisecond,
-			IgnorePatterns: []string{"*.log", "*.tmp", ".git/*", "node_modules/*"},
-			ClearOnRerun:   true,
-			RunOnStart:     true,
+			Enabled:  false,
+			Debounce: 250 * time.Millisecond,
+			IgnorePatterns: []string{
+				"*.log", "*.tmp", "*.swp", "*.bak", "*.orig",
+				".git/*", ".git/**",
+				"node_modules/*", "node_modules/**",
+				"vendor/*", "vendor/**",
+				".DS_Store", "Thumbs.db",
+				"*.exe", "*.dll", "*.so", "*.dylib",
+				"coverage.out", "*.prof", "*.test",
+				".vscode/*", ".idea/*", "*.sublime-*",
+				"bin/*", "dist/*", "build/*",
+			},
+			ClearOnRerun: true,
+			RunOnStart:   true,
 		},
 		Icons: "unicode", // Legacy field
 	}

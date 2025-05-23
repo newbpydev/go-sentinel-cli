@@ -130,6 +130,38 @@ func (f *ColorFormatter) White(text string) string {
 	return fmt.Sprintf("\033[37m%s\033[0m", text)
 }
 
+// Colorize applies a color name to text
+func (f *ColorFormatter) Colorize(text, colorName string) string {
+	if !f.useColors {
+		return text
+	}
+
+	switch colorName {
+	case "red":
+		return f.Red(text)
+	case "green":
+		return f.Green(text)
+	case "yellow":
+		return f.Yellow(text)
+	case "blue":
+		return f.Blue(text)
+	case "magenta":
+		return f.Magenta(text)
+	case "cyan":
+		return f.Cyan(text)
+	case "gray":
+		return f.Gray(text)
+	case "white":
+		return f.White(text)
+	case "bold":
+		return f.Bold(text)
+	case "dim":
+		return f.Dim(text)
+	default:
+		return text
+	}
+}
+
 // TerminalDetector detects terminal capabilities
 type TerminalDetector struct {
 	fd int
@@ -228,6 +260,112 @@ func (i *IconProvider) Running() string {
 		return IconRunning
 	}
 	return IconRunningASCII
+}
+
+// GetIcon returns an icon for various UI elements
+func (i *IconProvider) GetIcon(iconType string) string {
+	if !i.unicodeSupport {
+		return i.getAsciiIcon(iconType)
+	}
+	return i.getUnicodeIcon(iconType)
+}
+
+func (i *IconProvider) getUnicodeIcon(iconType string) string {
+	switch iconType {
+	// Basic test status icons
+	case "pass":
+		return "✓"
+	case "fail":
+		return "✗"
+	case "skip":
+		return "⊝"
+	case "running":
+		return "⟳"
+
+	// File change icons
+	case "watch":
+		return "👀"
+	case "test":
+		return "🧪"
+	case "code":
+		return "📝"
+	case "config":
+		return "⚙️"
+	case "dependency":
+		return "📦"
+	case "file":
+		return "📄"
+
+	// Change type icons
+	case "new":
+		return "✨"
+	case "change":
+		return "🔄"
+	case "unchanged":
+		return "➖"
+
+	// UI icons
+	case "package":
+		return "📁"
+	case "summary":
+		return "📊"
+	case "info":
+		return "ℹ️"
+	case "unknown":
+		return "❓"
+
+	default:
+		return "•"
+	}
+}
+
+func (i *IconProvider) getAsciiIcon(iconType string) string {
+	switch iconType {
+	// Basic test status icons
+	case "pass":
+		return "[PASS]"
+	case "fail":
+		return "[FAIL]"
+	case "skip":
+		return "[SKIP]"
+	case "running":
+		return "[RUN ]"
+
+	// File change icons
+	case "watch":
+		return "[WATCH]"
+	case "test":
+		return "[TEST]"
+	case "code":
+		return "[CODE]"
+	case "config":
+		return "[CONF]"
+	case "dependency":
+		return "[DEP ]"
+	case "file":
+		return "[FILE]"
+
+	// Change type icons
+	case "new":
+		return "[NEW ]"
+	case "change":
+		return "[CHG ]"
+	case "unchanged":
+		return "[----]"
+
+	// UI icons
+	case "package":
+		return "[PKG ]"
+	case "summary":
+		return "[SUM ]"
+	case "info":
+		return "[INFO]"
+	case "unknown":
+		return "[??? ]"
+
+	default:
+		return "[ • ]"
+	}
 }
 
 // FormatTestStatus formats a test status with appropriate coloring and icon

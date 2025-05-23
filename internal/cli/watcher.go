@@ -265,8 +265,15 @@ func (f *TestFileFinder) FindPackageTests(filePath string) ([]string, error) {
 
 // matchesAnyPattern checks if the path matches any of the given patterns
 func matchesAnyPattern(path string, patterns []string) bool {
+	// Normalize path for cross-platform compatibility
+	cleanPath := filepath.ToSlash(path)
+
 	for _, pattern := range patterns {
-		matched, err := filepath.Match(pattern, filepath.Base(path))
+		// Normalize pattern
+		pattern = filepath.ToSlash(pattern)
+
+		// Try exact filename match first (most common case)
+		matched, err := filepath.Match(pattern, filepath.Base(cleanPath))
 		if err == nil && matched {
 			return true
 		}
@@ -274,8 +281,28 @@ func matchesAnyPattern(path string, patterns []string) bool {
 		// Check for directory patterns with ** (recursive)
 		if strings.Contains(pattern, "**") {
 			parts := strings.Split(pattern, "**")
-			if len(parts) == 2 && strings.HasPrefix(path, parts[0]) {
+			if len(parts) == 2 && strings.HasPrefix(cleanPath, parts[0]) {
 				return true
+			}
+		}
+
+		// Check for exact directory matches
+		if strings.Contains(cleanPath, "/"+pattern+"/") || strings.HasPrefix(cleanPath, pattern+"/") {
+			return true
+		}
+
+		// Check for wildcard directory patterns (e.g., "*.log", ".git/*")
+		if strings.Contains(pattern, "*") {
+			if matched, err := filepath.Match(pattern, cleanPath); err == nil && matched {
+				return true
+			}
+
+			// Check if pattern matches any directory component
+			pathParts := strings.Split(cleanPath, "/")
+			for _, part := range pathParts {
+				if matched, err := filepath.Match(pattern, part); err == nil && matched {
+					return true
+				}
 			}
 		}
 	}
