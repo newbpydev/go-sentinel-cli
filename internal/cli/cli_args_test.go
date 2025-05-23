@@ -113,7 +113,7 @@ func TestCLIArgs_ParseVerbosityLevel(t *testing.T) {
 func TestCLIArgs_ParseFromCobra(t *testing.T) {
 	parser := &DefaultArgParser{}
 
-	cliArgs := parser.ParseFromCobra(true, true, false, false, []string{"./internal"}, "TestUnit")
+	cliArgs := parser.ParseFromCobra(true, true, false, false, true, []string{"./internal"}, "TestUnit", "aggressive")
 
 	if !cliArgs.Watch {
 		t.Errorf("expected watch=true, got watch=false")
@@ -126,6 +126,12 @@ func TestCLIArgs_ParseFromCobra(t *testing.T) {
 	}
 	if cliArgs.TestPattern != "TestUnit" {
 		t.Errorf("expected test pattern='TestUnit', got '%s'", cliArgs.TestPattern)
+	}
+	if !cliArgs.Optimized {
+		t.Errorf("expected optimized=true, got optimized=false")
+	}
+	if cliArgs.OptimizationMode != "aggressive" {
+		t.Errorf("expected optimization mode='aggressive', got '%s'", cliArgs.OptimizationMode)
 	}
 }
 

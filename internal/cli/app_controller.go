@@ -14,20 +14,23 @@ type AppController struct {
 	argParser           ArgParser
 	configLoader        ConfigLoader
 	testRunner          *TestRunner
+	optimizedRunner     *OptimizedTestRunner
 	processor           *TestProcessor
 	watcher             *FileWatcher
 	cache               *TestResultCache
 	incrementalRenderer *IncrementalRenderer
+	optimizedMode       *OptimizedWatchMode
 }
 
 // NewAppController creates a new application controller
 func NewAppController() *AppController {
 	cache := NewTestResultCache()
 	return &AppController{
-		argParser:    &DefaultArgParser{},
-		configLoader: &DefaultConfigLoader{},
-		testRunner:   &TestRunner{JSONOutput: true}, // Enable JSON output for processing
-		cache:        cache,
+		argParser:       &DefaultArgParser{},
+		configLoader:    &DefaultConfigLoader{},
+		testRunner:      &TestRunner{JSONOutput: true}, // Enable JSON output for processing
+		optimizedRunner: NewOptimizedTestRunner(),
+		cache:           cache,
 	}
 }
 
@@ -68,7 +71,10 @@ func (a *AppController) Run(args []string) error {
 		mergedConfig.Paths.IncludePatterns = watchPaths
 	}
 
-	// Step 6: Execute tests based on configuration
+	// Step 6: Configure optimization if enabled
+	a.configureOptimization(cliArgs)
+
+	// Step 7: Execute tests based on configuration
 	if mergedConfig.Watch.Enabled {
 		return a.runWatchMode(mergedConfig, cliArgs)
 	} else {
@@ -88,9 +94,42 @@ func (a *AppController) loadConfiguration() (*Config, error) {
 	return GetDefaultConfig(), nil
 }
 
+// configureOptimization sets up optimization based on CLI arguments
+func (a *AppController) configureOptimization(cliArgs *Args) {
+	// Check if optimization is enabled via CLI flags or environment variable
+	optimizationEnabled := cliArgs.Optimized || os.Getenv("GO_SENTINEL_OPTIMIZED") == "true"
+
+	if optimizationEnabled {
+		// Initialize optimized watch mode
+		a.optimizedMode = NewOptimizedWatchMode()
+		a.optimizedMode.EnableOptimization()
+
+		// Set optimization mode if specified
+		optimizationMode := cliArgs.OptimizationMode
+		if optimizationMode == "" {
+			// Check environment variable
+			if envMode := os.Getenv("GO_SENTINEL_OPTIMIZATION_MODE"); envMode != "" {
+				optimizationMode = envMode
+			} else {
+				// Default to balanced mode
+				optimizationMode = "balanced"
+			}
+		}
+
+		a.optimizedMode.SetOptimizationMode(optimizationMode)
+		fmt.Printf("🚀 Optimized mode enabled (%s) - leveraging Go's built-in caching!\n", optimizationMode)
+	}
+}
+
 // runSingleMode executes tests once and exits
 func (a *AppController) runSingleMode(config *Config, cliArgs *Args) error {
-	fmt.Printf("🚀 Running tests with go-sentinel...\n\n")
+	fmt.Printf("🚀 Running tests with go-sentinel...\n")
+
+	// Show optimization status
+	if a.optimizedMode != nil && a.optimizedMode.IsEnabled() {
+		fmt.Printf("⚡ Optimization enabled - leveraging Go's built-in caching\n")
+	}
+	fmt.Printf("\n")
 
 	// Start timing
 	startTime := time.Now()
@@ -265,10 +304,20 @@ func (a *AppController) handleDebouncedFileChanges(events []FileEvent, config *C
 		clearTerminal()
 	}
 
-	// Get stale tests based on change analysis
-	staleTests := a.cache.GetStaleTests(changes)
+	// Use optimized mode if enabled, otherwise fall back to standard processing
+	if a.optimizedMode != nil && a.optimizedMode.IsEnabled() {
+		return a.optimizedMode.HandleFileChanges(events, config)
+	}
 
-	if len(staleTests) == 0 {
+	// Fallback to standard optimized runner for backward compatibility
+	optimizedResult, err := a.optimizedRunner.RunOptimized(context.Background(), changes)
+	if err != nil {
+		return fmt.Errorf("optimized test execution failed: %w", err)
+	}
+
+	// Report efficiency gains
+	stats := optimizedResult.GetEfficiencyStats()
+	if optimizedResult.TestsRun == 0 {
 		// Initialize incremental renderer if needed
 		if a.incrementalRenderer == nil {
 			a.initializeIncrementalRenderer(config)
@@ -283,12 +332,17 @@ func (a *AppController) handleDebouncedFileChanges(events []FileEvent, config *C
 			return err
 		}
 
+		fmt.Printf("💨 %s (%.1f%% cache hit rate)\n",
+			optimizedResult.Message,
+			stats["cache_hit_rate"].(float64))
 		fmt.Printf("👀 Watching for file changes...\n")
-		return nil // Don't run any tests!
+		return nil
 	}
 
-	fmt.Printf("⚡ Running tests for %d changed file(s) affecting %d test package(s)\n\n",
-		len(changes), len(staleTests))
+	fmt.Printf("⚡ Running %d tests, %d from cache (%.1f%% efficiency)\n",
+		optimizedResult.TestsRun,
+		optimizedResult.CacheHits,
+		stats["cache_hit_rate"].(float64))
 
 	// Reset processor for new test run
 	a.processor = NewTestProcessor(
@@ -298,52 +352,23 @@ func (a *AppController) handleDebouncedFileChanges(events []FileEvent, config *C
 		80,
 	)
 
-	// Run tests efficiently - use parallel execution for multiple tests
-	if len(staleTests) > 1 && config.Parallel > 1 {
-		// Use parallel execution for multiple tests
-		parallelRunner := NewParallelTestRunner(config.Parallel, a.testRunner, a.cache)
+	// Tests have already been executed by optimizedRunner - parse the output
+	if optimizedResult.Output != "" {
+		// Process the test output through our processor for consistent rendering
+		reader := strings.NewReader(optimizedResult.Output)
+		progress := make(chan TestProgress, 10)
+		defer close(progress)
 
-		results, err := parallelRunner.RunParallel(context.Background(), staleTests, config)
-		if err != nil {
-			return fmt.Errorf("parallel test execution failed: %w", err)
-		}
-
-		// Merge results into processor
-		MergeResults(a.processor, results)
-
-		// Cache all results from parallel execution
-		for _, result := range results {
-			if result.Error == nil && result.Suite != nil {
-				a.cache.CacheResult(result.TestPath, result.Suite)
+		// Start progress monitoring in background
+		go func() {
+			for range progress {
+				// Consume progress updates
 			}
-		}
+		}()
 
-		// Report parallel execution metrics
-		var fromCache, fromExecution int
-		for _, result := range results {
-			if result.FromCache {
-				fromCache++
-			} else {
-				fromExecution++
-			}
-		}
-
-		if fromCache > 0 {
-			fmt.Printf("📋 Parallel execution: %d ran, %d from cache\n", fromExecution, fromCache)
-		}
-	} else {
-		// Sequential execution for single test or when parallel is disabled
-		for _, testPath := range staleTests {
-			if err := a.runPackageTests(testPath, config); err != nil {
-				fmt.Printf("❌ Failed to run test %s: %v\n", testPath, err)
-				continue
-			}
-
-			// Cache the results for this test - fix the suite key lookup
-			for suitePath, suite := range a.processor.suites {
-				// Use actual suite path instead of testPath
-				a.cache.CacheResult(suitePath, suite)
-			}
+		// Process the output
+		if err := a.processor.ProcessStream(reader, progress); err != nil {
+			fmt.Printf("⚠️ Warning: failed to process test output: %v\n", err)
 		}
 	}
 
@@ -362,12 +387,11 @@ func (a *AppController) handleDebouncedFileChanges(events []FileEvent, config *C
 	}
 
 	// Display performance metrics
-	stats := a.processor.GetStats()
 	cacheStats := a.cache.GetStats()
-	fmt.Printf("⏱️  Completed in %v | Cache: %d results, %d files tracked\n",
-		stats.Duration,
-		cacheStats["cached_results"],
-		cacheStats["tracked_files"])
+	fmt.Printf("⏱️  Completed in %v | Efficiency: %.1f%% | Cache: %d results\n",
+		optimizedResult.Duration,
+		stats["cache_hit_rate"].(float64),
+		cacheStats["cached_results"])
 
 	fmt.Printf("👀 Watching for file changes...\n")
 

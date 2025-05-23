@@ -10,22 +10,24 @@ import (
 
 // Args represents command line arguments for the go-sentinel CLI tool
 type Args struct {
-	Colors       bool     `short:"c" long:"color" description:"Use colored output"`
-	Verbosity    int      `short:"v" long:"verbosity" description:"Set verbosity level (0-5)" default:"0"`
-	Watch        bool     `short:"w" long:"watch" description:"Enable watch mode"`
-	Parallel     int      `short:"j" long:"parallel" description:"Number of tests to run in parallel" default:"0"`
-	TestPattern  string   `short:"t" long:"test" description:"Run only tests matching pattern"`
-	FailFast     bool     `short:"f" long:"fail-fast" description:"Stop on first failure"`
-	ConfigFile   string   `long:"config" description:"Path to config file"`
-	Timeout      string   `long:"timeout" description:"Timeout for test execution"`
-	CoverageMode string   `long:"coverage" description:"Coverage mode"`
-	Packages     []string `positional-arg-name:"packages" description:"Packages to test"`
+	Colors           bool     `short:"c" long:"color" description:"Use colored output"`
+	Verbosity        int      `short:"v" long:"verbosity" description:"Set verbosity level (0-5)" default:"0"`
+	Watch            bool     `short:"w" long:"watch" description:"Enable watch mode"`
+	Parallel         int      `short:"j" long:"parallel" description:"Number of tests to run in parallel" default:"0"`
+	TestPattern      string   `short:"t" long:"test" description:"Run only tests matching pattern"`
+	FailFast         bool     `short:"f" long:"fail-fast" description:"Stop on first failure"`
+	ConfigFile       string   `long:"config" description:"Path to config file"`
+	Timeout          string   `long:"timeout" description:"Timeout for test execution"`
+	CoverageMode     string   `long:"coverage" description:"Coverage mode"`
+	Optimized        bool     `long:"optimized" description:"Enable optimized test execution with Go's built-in caching"`
+	OptimizationMode string   `long:"optimization" description:"Set optimization mode (conservative, balanced, aggressive)"`
+	Packages         []string `positional-arg-name:"packages" description:"Packages to test"`
 }
 
 // ArgParser interface for parsing command line arguments
 type ArgParser interface {
 	Parse(args []string) (*Args, error)
-	ParseFromCobra(watchFlag, colorFlag, verboseFlag, failFastFlag bool, packages []string, testPattern string) *Args
+	ParseFromCobra(watchFlag, colorFlag, verboseFlag, failFastFlag, optimizedFlag bool, packages []string, testPattern, optimizationMode string) *Args
 }
 
 // DefaultArgParser implements the ArgParser interface
@@ -64,6 +66,8 @@ func (p *DefaultArgParser) Parse(args []string) (*Args, error) {
 	timeout := fs.String("timeout", "", "Test timeout duration")
 	parallel := fs.Int("parallel", 0, "Number of parallel test executions")
 	coverage := fs.String("covermode", "", "Set coverage mode")
+	optimized := fs.Bool("optimized", false, "Enable optimized test execution with Go's built-in caching")
+	optimizationMode := fs.String("optimization", "", "Set optimization mode (conservative, balanced, aggressive)")
 
 	// Parse the filtered arguments
 	err := fs.Parse(filteredArgs)
@@ -110,33 +114,37 @@ func (p *DefaultArgParser) Parse(args []string) (*Args, error) {
 	packages := fs.Args()
 
 	return &Args{
-		Watch:        watch,
-		Packages:     packages,
-		TestPattern:  pattern,
-		Verbosity:    verbosity,
-		FailFast:     *failFastFlag,
-		Colors:       colors,
-		ConfigFile:   *configFile,
-		Timeout:      *timeout,
-		Parallel:     *parallel,
-		CoverageMode: *coverage,
+		Watch:            watch,
+		Packages:         packages,
+		TestPattern:      pattern,
+		Verbosity:        verbosity,
+		FailFast:         *failFastFlag,
+		Colors:           colors,
+		ConfigFile:       *configFile,
+		Timeout:          *timeout,
+		Parallel:         *parallel,
+		CoverageMode:     *coverage,
+		Optimized:        *optimized,
+		OptimizationMode: *optimizationMode,
 	}, nil
 }
 
 // ParseFromCobra creates Args from Cobra command flags
-func (p *DefaultArgParser) ParseFromCobra(watchFlag, colorFlag, verboseFlag, failFastFlag bool, packages []string, testPattern string) *Args {
+func (p *DefaultArgParser) ParseFromCobra(watchFlag, colorFlag, verboseFlag, failFastFlag, optimizedFlag bool, packages []string, testPattern, optimizationMode string) *Args {
 	verbosity := 0
 	if verboseFlag {
 		verbosity = 1
 	}
 
 	return &Args{
-		Watch:       watchFlag,
-		Colors:      colorFlag,
-		Verbosity:   verbosity,
-		FailFast:    failFastFlag,
-		Packages:    packages,
-		TestPattern: testPattern,
+		Watch:            watchFlag,
+		Colors:           colorFlag,
+		Verbosity:        verbosity,
+		FailFast:         failFastFlag,
+		Packages:         packages,
+		TestPattern:      testPattern,
+		Optimized:        optimizedFlag,
+		OptimizationMode: optimizationMode,
 	}
 }
 
@@ -170,21 +178,38 @@ func ValidateArgs(args *Args) error {
 		}
 	}
 
+	// Validate optimization mode if specified
+	if args.OptimizationMode != "" {
+		validModes := []string{"conservative", "balanced", "aggressive"}
+		valid := false
+		for _, mode := range validModes {
+			if args.OptimizationMode == mode {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			return fmt.Errorf("invalid optimization mode: %s (valid options: conservative, balanced, aggressive)", args.OptimizationMode)
+		}
+	}
+
 	return nil
 }
 
 // GetDefaultArgs returns default CLI arguments
 func GetDefaultArgs() *Args {
 	return &Args{
-		Watch:        false,
-		Packages:     []string{},
-		TestPattern:  "",
-		Verbosity:    0,
-		FailFast:     false,
-		Colors:       true,
-		ConfigFile:   "",
-		Timeout:      "",
-		Parallel:     0,
-		CoverageMode: "",
+		Watch:            false,
+		Packages:         []string{},
+		TestPattern:      "",
+		Verbosity:        0,
+		FailFast:         false,
+		Colors:           true,
+		ConfigFile:       "",
+		Timeout:          "",
+		Parallel:         0,
+		CoverageMode:     "",
+		Optimized:        false,
+		OptimizationMode: "",
 	}
 }

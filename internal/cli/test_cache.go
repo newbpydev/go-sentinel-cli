@@ -77,12 +77,9 @@ func (c *TestResultCache) AnalyzeChange(filePath string) (*FileChange, error) {
 	// Determine change type
 	changeType := c.determineChangeType(filePath)
 
-	// Check if file is new
+	// Check if file is new or changed (DON'T update the time yet)
 	lastTime, exists := c.fileTimes[filePath]
 	isNew := !exists || info.ModTime().After(lastTime)
-
-	// Update file time
-	c.fileTimes[filePath] = info.ModTime()
 
 	change := &FileChange{
 		Path:      filePath,
@@ -96,6 +93,36 @@ func (c *TestResultCache) AnalyzeChange(filePath string) (*FileChange, error) {
 	change.AffectedTests = c.findAffectedTests(filePath, changeType)
 
 	return change, nil
+}
+
+// MarkFileAsProcessed updates the file time after processing is complete
+func (c *TestResultCache) MarkFileAsProcessed(filePath string, processTime time.Time) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.fileTimes[filePath] = processTime
+}
+
+// ShouldRunTests determines if tests should run based on changes
+func (c *TestResultCache) ShouldRunTests(changes []*FileChange) (bool, []string) {
+	if len(changes) == 0 {
+		return false, nil
+	}
+
+	staleTests := c.GetStaleTests(changes)
+
+	// If we have stale tests, we should run them
+	if len(staleTests) > 0 {
+		return true, staleTests
+	}
+
+	// Check if any change is actually new/modified
+	for _, change := range changes {
+		if change.IsNew {
+			return true, []string{filepath.Dir(change.Path)}
+		}
+	}
+
+	return false, nil
 }
 
 // GetStaleTests returns tests that need to be re-run based on changes
@@ -259,7 +286,7 @@ func (c *TestResultCache) findDependencies(testPath string) []string {
 	}
 
 	// Add source files in the same package
-	err := filepath.Walk(testPath, func(path string, info os.FileInfo, err error) error {
+	_ = filepath.Walk(testPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil // Skip errors
 		}
@@ -271,10 +298,7 @@ func (c *TestResultCache) findDependencies(testPath string) []string {
 		return nil
 	})
 
-	if err != nil {
-		// If walk fails, just return basic dependencies
-	}
-
+	// If walk fails, just return basic dependencies
 	return dependencies
 }
 
@@ -310,3 +334,7 @@ func (c *TestResultCache) GetStats() map[string]interface{} {
 		"tracked_tests":  len(c.testTimes),
 	}
 }
+
+// Test change for watch mode
+// Test change Fri, May 23, 2025  4:54:56 PM
+// Another test change Fri, May 23, 2025  4:54:59 PM
