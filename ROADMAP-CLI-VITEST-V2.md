@@ -382,29 +382,29 @@ Go Sentinel CLI v2 will offer:
 
 ## Phase 7: CLI Options & Configuration (TDD)
 
-- [ ] **7.1. Command Line Arguments Tests**
-  - [ ] 7.1.1. Test: Parse watch flag correctly
-  - [ ] 7.1.2. Test: Handle package/file patterns as arguments
-  - [ ] 7.1.3. Test: Support filtering by test name pattern
-  - [ ] 7.1.4. Test: Process verbosity level flags
+- [x] **7.1. Command Line Arguments Tests**
+  - [x] 7.1.1. Test: Parse watch flag correctly
+  - [x] 7.1.2. Test: Handle package/file patterns as arguments
+  - [x] 7.1.3. Test: Support filtering by test name pattern
+  - [x] 7.1.4. Test: Process verbosity level flags
 
-- [ ] **7.2. Implement Command Line Arguments**
-  - [ ] 7.2.1. Add watch mode flag
-  - [ ] 7.2.2. Implement package/file pattern support
-  - [ ] 7.2.3. Create test name pattern filtering
-  - [ ] 7.2.4. Add verbosity level control
+- [x] **7.2. Implement Command Line Arguments**
+  - [x] 7.2.1. Add watch mode flag
+  - [x] 7.2.2. Implement package/file pattern support
+  - [x] 7.2.3. Create test name pattern filtering
+  - [x] 7.2.4. Add verbosity level control
 
-- [ ] **7.3. Configuration File Tests**
-  - [ ] 7.3.1. Test: Load configuration from sentinel.config.json
-  - [ ] 7.3.2. Test: Support configuration for colors, icons, formatting
-  - [ ] 7.3.3. Test: Handle path inclusion/exclusion patterns
-  - [ ] 7.3.4. Test: Configure watch mode behavior
+- [x] **7.3. Configuration File Tests**
+  - [x] 7.3.1. Test: Load configuration from sentinel.config.json
+  - [x] 7.3.2. Test: Support configuration for colors, icons, formatting
+  - [x] 7.3.3. Test: Handle path inclusion/exclusion patterns
+  - [x] 7.3.4. Test: Configure watch mode behavior
 
-- [ ] **7.4. Implement Configuration File Support**
-  - [ ] 7.4.1. Create configuration file loader
-  - [ ] 7.4.2. Implement visual style configuration
-  - [ ] 7.4.3. Add path pattern processor
-  - [ ] 7.4.4. Implement watch behavior configuration
+- [x] **7.4. Implement Configuration File Support**
+  - [x] 7.4.1. Create configuration file loader
+  - [x] 7.4.2. Implement visual style configuration
+  - [x] 7.4.3. Add path pattern processor
+  - [x] 7.4.4. Implement watch behavior configuration
 
 ## Phase 7-D: Demonstration of CLI Options & Configuration
 
