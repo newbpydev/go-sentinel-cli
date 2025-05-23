@@ -1,0 +1,8 @@
+{
+  "colors": true,
+  "icons": "unicode",
+  "parallel": 4,
+  "testCommand": "go test",
+  "timeout": "30s",
+  "verbosity": 1
+}

@@ -1,0 +1,29 @@
+{
+  "clearOnRerun": true,
+  "colors": true,
+  "excludePatterns": [
+    "./vendor",
+    "./tmp",
+    ".*_test.go"
+  ],
+  "icons": "unicode",
+  "includePatterns": [
+    "./internal/...",
+    "./pkg/...",
+    "./cmd/..."
+  ],
+  "parallel": 8,
+  "runOnStart": false,
+  "testCommand": "go test -race",
+  "theme": "dark",
+  "timeout": "60s",
+  "verbosity": 2,
+  "watchDebounce": "500ms",
+  "watchIgnore": [
+    "*.log",
+    "*.tmp",
+    ".git/*",
+    "node_modules/*"
+  ],
+  "watchMode": true
+}

@@ -1,0 +1,8 @@
+{
+  "colors": true,
+  "icons": "minimal",
+  "parallel": 16,
+  "testCommand": "go test -benchmem -bench=.",
+  "timeout": "300s",
+  "verbosity": 0
+}

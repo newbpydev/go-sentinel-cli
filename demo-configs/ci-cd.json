@@ -1,0 +1,9 @@
+{
+  "colors": false,
+  "failFast": true,
+  "icons": "ascii",
+  "parallel": 8,
+  "timeout": "120s",
+  "verbosity": 0,
+  "watchMode": false
+}

@@ -33,9 +33,11 @@ This command is used for development and validation.`,
 			demo.RunPhase5Demo()
 		case "6d":
 			demo.RunPhase6DDemo()
+		case "7d":
+			demo.RunPhase7DDemo()
 		default:
-			fmt.Println("Please specify a valid phase to demo (1d, 2d, 3d, 4d, 5d, or 6d)")
-			fmt.Println("Example: go-sentinel-cli demo --phase=1d")
+			fmt.Println("Please specify a valid phase to demo (1d, 2d, 3d, 4d, 5d, 6d, or 7d)")
+			fmt.Println("Example: go-sentinel-cli demo --phase=7d")
 		}
 	},
 }
@@ -44,7 +46,7 @@ func init() {
 	rootCmd.AddCommand(demoCmd)
 
 	// Add flags
-	demoCmd.Flags().StringP("phase", "p", "", "Phase to run (1-6)")
+	demoCmd.Flags().StringP("phase", "p", "", "Phase to run (1-7)")
 	if err := demoCmd.MarkFlagRequired("phase"); err != nil {
 		fmt.Printf("Error marking phase flag as required: %v\n", err)
 		os.Exit(1)

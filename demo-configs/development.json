@@ -1,0 +1,9 @@
+{
+  "colors": true,
+  "icons": "unicode",
+  "parallel": 4,
+  "testCommand": "go test -race",
+  "timeout": "30s",
+  "verbosity": 1,
+  "watchMode": true
+}
