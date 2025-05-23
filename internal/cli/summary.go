@@ -53,7 +53,7 @@ func (r *SummaryRenderer) RenderSummary(stats *TestRunStats) error {
 	r.renderSummaryHeader()
 
 	// Test files
-	fileStats := fmt.Sprintf("Test Files: ")
+	fileStats := "Test Files: "
 
 	if stats.PassedFiles > 0 {
 		fileStats += r.formatter.Green(fmt.Sprintf("%d passed", stats.PassedFiles))
@@ -70,7 +70,7 @@ func (r *SummaryRenderer) RenderSummary(stats *TestRunStats) error {
 	fmt.Fprintln(r.writer, fileStats)
 
 	// Tests
-	testStats := fmt.Sprintf("Tests: ")
+	testStats := "Tests: "
 
 	if stats.PassedTests > 0 {
 		testStats += r.formatter.Green(fmt.Sprintf("%d passed", stats.PassedTests))

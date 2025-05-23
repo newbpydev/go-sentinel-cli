@@ -52,9 +52,10 @@ func TestParseGoTestOutput(t *testing.T) {
 	// Find tests by name
 	var testExample, testFailing *TestResult
 	for _, test := range pkg.Tests {
-		if test.Name == "TestExample" {
+		switch test.Name {
+		case "TestExample":
 			testExample = test
-		} else if test.Name == "TestFailing" {
+		case "TestFailing":
 			testFailing = test
 		}
 	}

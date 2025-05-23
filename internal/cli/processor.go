@@ -400,7 +400,7 @@ func (p *TestProcessor) createTestError(test *TestResult, event TestEvent) *Test
 	lines := strings.Split(output, "\n")
 
 	var errorMessage string
-	var errorType string = "TestFailure"
+	var errorType = "TestFailure"
 	var sourceFile string
 	var sourceLine int
 

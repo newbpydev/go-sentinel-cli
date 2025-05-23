@@ -32,10 +32,10 @@ jobs:
       - name: Install dependencies
         run: go mod tidy
       
-      # Install the latest stable golangci-lint (config version in .golangci.yml is not the same as binary version)
+      # Install specific version of golangci-lint v2.1.6 for consistency
       - name: Install golangci-lint
         run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.1.6
           echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
       
       - name: Lint
@@ -50,70 +50,20 @@ jobs:
           file: ./coverage.txt
           fail_ci_if_error: false
 
-  frontend:
-    name: Frontend
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./web/static/js
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Cache Node.js modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.npm
-            ~/.cache/Cypress
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      # ESLint configuration may be missing as per our test run
-      # Only enable linting when eslint.config.js or .eslintrc.* is available
-      - name: Check for ESLint config
-        id: check-eslint
-        run: |
-          if [ -f "eslint.config.js" ] || [ -f ".eslintrc.js" ] || [ -f ".eslintrc.json" ] || [ -f ".eslintrc.yml" ]; then
-            echo "eslint_config_exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "eslint_config_exists=false" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: Lint
-        if: steps.check-eslint.outputs.eslint_config_exists == 'true'
-        run: npm run lint
-      
-      - name: Run tests
-        run: npm test
-      
-      - name: Run type check
-        run: npm run type-check
-
   build:
     name: Build
-    needs: [go, frontend]
+    needs: [go]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
-      - name: Build Go binaries
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23'
+          cache: true
+      
+      - name: Build CLI binary
         run: |
           mkdir -p dist
-          go build -o dist/go-sentinel-api ./cmd/go-sentinel-api
-          go build -o dist/go-sentinel-web ./cmd/go-sentinel-web
-      
-      - name: Build frontend
-        working-directory: ./web/static/js
-        run: |
-          npm ci
-          npm run build
+          go build -o dist/go-sentinel-cli ./cmd/go-sentinel-cli
