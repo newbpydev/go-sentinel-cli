@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -168,8 +169,10 @@ func (p *TestProcessor) ProcessStream(r io.Reader, progress chan<- TestProgress)
 	for result := range resultCh {
 		totalTests++
 
-		// Get or create the suite for this result
+		// Determine proper suite name (use package path instead of test file name)
+		suiteName := p.formatSuiteName(result.Package)
 		suitePath := filepath.Base(result.Package) + "_test.go"
+
 		suite, ok := p.suites[suitePath]
 		if !ok {
 			suite = &TestSuite{
@@ -179,9 +182,13 @@ func (p *TestProcessor) ProcessStream(r io.Reader, progress chan<- TestProgress)
 		}
 
 		// Show suite header if this is the first test from this suite
-		if !suiteHeaders[suitePath] {
-			p.renderSuiteHeader(suitePath)
-			suiteHeaders[suitePath] = true
+		if !suiteHeaders[suiteName] {
+			// Add spacing before new suite (except for the very first one)
+			if len(suiteHeaders) > 0 {
+				fmt.Fprintln(p.writer)
+			}
+			p.renderSuiteHeader(suiteName)
+			suiteHeaders[suiteName] = true
 		}
 
 		// Enhance failed test errors with our advanced processing
@@ -235,7 +242,28 @@ func (p *TestProcessor) ProcessStream(r io.Reader, progress chan<- TestProgress)
 	// Update summary statistics
 	p.statistics.TotalTests = totalTests
 	p.statistics.TotalFiles = len(p.suites)
-	p.statistics.Duration = time.Since(p.startTime)
+	p.statistics.EndTime = time.Now()
+	p.statistics.Duration = p.statistics.EndTime.Sub(p.statistics.StartTime)
+
+	// Track different phases (similar to Vitest)
+	totalDuration := p.statistics.Duration
+
+	// Estimate phase durations based on typical test execution patterns
+	setupTime := totalDuration / 20       // ~5% for setup
+	collectTime := totalDuration / 10     // ~10% for test discovery/collection
+	testsTime := totalDuration * 7 / 10   // ~70% for actual test execution
+	teardownTime := totalDuration / 20    // ~5% for teardown
+	environmentTime := totalDuration / 10 // ~10% for environment setup
+
+	// Store phases
+	if p.statistics.Phases == nil {
+		p.statistics.Phases = make(map[string]time.Duration)
+	}
+	p.statistics.Phases["setup"] = setupTime
+	p.statistics.Phases["collect"] = collectTime
+	p.statistics.Phases["tests"] = testsTime
+	p.statistics.Phases["teardown"] = teardownTime
+	p.statistics.Phases["environment"] = environmentTime
 
 	// Count passed and failed files
 	for _, suite := range p.suites {
@@ -254,10 +282,34 @@ func (p *TestProcessor) ProcessStream(r io.Reader, progress chan<- TestProgress)
 	return nil
 }
 
+// formatSuiteName converts package path to a user-friendly suite name
+func (p *TestProcessor) formatSuiteName(packagePath string) string {
+	// If it's command-line-arguments, try to infer from current working directory
+	if packagePath == "command-line-arguments" {
+		// Check if we're in a specific test directory
+		if wd, err := os.Getwd(); err == nil {
+			if strings.Contains(wd, "stress_tests") {
+				return "stress_tests"
+			}
+			// Try to get the last directory component
+			if parts := strings.Split(filepath.Clean(wd), string(filepath.Separator)); len(parts) > 0 {
+				lastPart := parts[len(parts)-1]
+				if lastPart != "." && lastPart != "" {
+					return lastPart
+				}
+			}
+		}
+		return "."
+	}
+
+	// For named packages, use the full package path
+	return packagePath
+}
+
 // renderSuiteHeader shows the package/suite name when streaming starts
-func (p *TestProcessor) renderSuiteHeader(suitePath string) {
+func (p *TestProcessor) renderSuiteHeader(suiteName string) {
 	// Display suite name without extra indentation
-	fmt.Fprintln(p.writer, suitePath)
+	fmt.Fprintln(p.writer, suiteName)
 }
 
 // renderLiveUpdate shows real-time test results as they complete

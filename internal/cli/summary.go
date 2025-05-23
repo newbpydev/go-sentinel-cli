@@ -54,57 +54,87 @@ func (r *SummaryRenderer) RenderSummary(stats *TestRunStats) error {
 	fmt.Fprintln(r.writer, r.formatter.Bold("Test Summary:"))
 
 	// Test files
-	fileStats := fmt.Sprintf("Test Files: %s",
-		r.formatter.Green(fmt.Sprintf("%d passed", stats.PassedFiles)))
+	fileStats := fmt.Sprintf("Test Files: ")
 
-	if stats.FailedFiles > 0 {
-		fileStats += fmt.Sprintf(", %s",
-			r.formatter.Red(fmt.Sprintf("%d failed", stats.FailedFiles)))
+	if stats.PassedFiles > 0 {
+		fileStats += r.formatter.Green(fmt.Sprintf("%d passed", stats.PassedFiles))
 	}
 
-	fileStats += fmt.Sprintf(" (total: %d)", stats.TotalFiles)
+	if stats.FailedFiles > 0 {
+		if stats.PassedFiles > 0 {
+			fileStats += " | "
+		}
+		fileStats += r.formatter.Red(fmt.Sprintf("%d failed", stats.FailedFiles))
+	}
+
+	fileStats += fmt.Sprintf(" (%d)", stats.TotalFiles)
 	fmt.Fprintln(r.writer, fileStats)
 
 	// Tests
-	testStats := fmt.Sprintf("Tests: %s",
-		r.formatter.Green(fmt.Sprintf("%d passed", stats.PassedTests)))
+	testStats := fmt.Sprintf("Tests: ")
+
+	if stats.PassedTests > 0 {
+		testStats += r.formatter.Green(fmt.Sprintf("%d passed", stats.PassedTests))
+	}
 
 	if stats.FailedTests > 0 {
-		testStats += fmt.Sprintf(", %s",
-			r.formatter.Red(fmt.Sprintf("%d failed", stats.FailedTests)))
+		if stats.PassedTests > 0 {
+			testStats += " | "
+		}
+		testStats += r.formatter.Red(fmt.Sprintf("%d failed", stats.FailedTests))
 	}
 
 	if stats.SkippedTests > 0 {
-		testStats += fmt.Sprintf(", %s",
-			r.formatter.Yellow(fmt.Sprintf("%d skipped", stats.SkippedTests)))
+		if stats.PassedTests > 0 || stats.FailedTests > 0 {
+			testStats += " | "
+		}
+		testStats += r.formatter.Yellow(fmt.Sprintf("%d skipped", stats.SkippedTests))
 	}
 
-	testStats += fmt.Sprintf(" (total: %d)", stats.TotalTests)
+	testStats += fmt.Sprintf(" (%d)", stats.TotalTests)
 	fmt.Fprintln(r.writer, testStats)
 
-	// Start time
-	fmt.Fprintf(r.writer, "Start at: %s\n",
-		r.formatter.Gray(stats.StartTime.Format("15:04:05")))
+	// Start and End times
+	startTime := stats.StartTime.Format("15:04:05")
+	endTime := stats.EndTime.Format("15:04:05")
 
-	// Duration
-	durationText := fmt.Sprintf("Duration: %s",
-		r.formatter.Gray(formatDuration(stats.Duration)))
+	fmt.Fprintf(r.writer, "Start at: %s\n", r.formatter.Gray(startTime))
+	fmt.Fprintf(r.writer, "End at: %s\n", r.formatter.Gray(endTime))
 
-	// Add phase timing if available
+	// Duration with phase breakdown (Vitest style)
+	durationText := fmt.Sprintf("Duration: %s", r.formatter.Gray(formatDuration(stats.Duration)))
+
+	// Add phase timing if available (similar to Vitest format)
 	if len(stats.Phases) > 0 {
 		durationText += " ("
-		first := true
+		phaseTexts := []string{}
 
-		for name, duration := range stats.Phases {
-			if !first {
-				durationText += ", "
+		// Define order for consistent display
+		phaseOrder := []string{"setup", "collect", "tests", "teardown", "transform", "environment"}
+
+		for _, phaseName := range phaseOrder {
+			if duration, exists := stats.Phases[phaseName]; exists {
+				phaseTexts = append(phaseTexts, fmt.Sprintf("%s %s",
+					phaseName, r.formatter.Gray(formatDuration(duration))))
 			}
-			durationText += fmt.Sprintf("%s: %s",
-				name, r.formatter.Gray(formatDuration(duration)))
-			first = false
 		}
 
-		durationText += ")"
+		// Add any other phases not in the predefined order
+		for phaseName, duration := range stats.Phases {
+			found := false
+			for _, orderedPhase := range phaseOrder {
+				if orderedPhase == phaseName {
+					found = true
+					break
+				}
+			}
+			if !found {
+				phaseTexts = append(phaseTexts, fmt.Sprintf("%s %s",
+					phaseName, r.formatter.Gray(formatDuration(duration))))
+			}
+		}
+
+		durationText += strings.Join(phaseTexts, ", ") + ")"
 	}
 
 	fmt.Fprintln(r.writer, durationText)
