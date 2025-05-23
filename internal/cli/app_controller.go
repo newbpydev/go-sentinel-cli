@@ -98,19 +98,19 @@ func (a *AppController) runSingleMode(config *Config, cliArgs *CLIArgs) error {
 		}
 	}
 
-	// Finalize results
-	a.processor.finalize()
+	// Add separator before final results
+	fmt.Fprintln(a.processor.writer)
 
-	// Render final summary
+	// Render final summary (no need to call finalize again as ProcessStream does it)
 	if err := a.processor.RenderResults(true); err != nil {
 		return fmt.Errorf("failed to render results: %w", err)
 	}
 
-	// Calculate and display timing
-	duration := time.Since(startTime)
+	// Calculate and display timing using our actual duration
 	stats := a.processor.GetStats()
+	actualDuration := time.Since(startTime)
 
-	fmt.Printf("\n⏱️  Tests completed in %v\n", duration)
+	fmt.Printf("\n⏱️  Tests completed in %v\n", actualDuration)
 
 	// Exit with appropriate code
 	if stats.FailedTests > 0 {

@@ -157,9 +157,12 @@ func (p *TestProcessor) ProcessStream(r io.Reader, progress chan<- TestProgress)
 		close(resultCh)
 	}()
 
-	// Process test results as they arrive
+	// Process test results as they arrive with real-time updates
 	totalTests := 0
 	completedTests := 0
+
+	// Clear initial area for live updates
+	fmt.Fprint(p.writer, "\033[s") // Save cursor position
 
 	for result := range resultCh {
 		totalTests++
@@ -203,9 +206,12 @@ func (p *TestProcessor) ProcessStream(r io.Reader, progress chan<- TestProgress)
 			p.statistics.SkippedTests++
 		}
 
-		// If the test is completed, increment counter
+		// If the test is completed, increment counter and show live update
 		if result.Status != StatusRunning {
 			completedTests++
+
+			// Show live progress update
+			p.renderLiveUpdate(suite, result)
 		}
 
 		// Send progress update
@@ -233,5 +239,38 @@ func (p *TestProcessor) ProcessStream(r io.Reader, progress chan<- TestProgress)
 		}
 	}
 
+	// Add visual separation after live output
+	if completedTests > 0 {
+		fmt.Fprintln(p.writer)
+	}
+
 	return nil
+}
+
+// renderLiveUpdate shows real-time test results as they complete
+func (p *TestProcessor) renderLiveUpdate(suite *TestSuite, latestResult *TestResult) {
+	// Format test result with appropriate icon
+	var icon string
+	var color func(string) string
+
+	switch latestResult.Status {
+	case StatusPassed:
+		icon = "✓"
+		color = func(s string) string { return fmt.Sprintf("\033[32m%s\033[0m", s) } // Green
+	case StatusFailed:
+		icon = "✗"
+		color = func(s string) string { return fmt.Sprintf("\033[31m%s\033[0m", s) } // Red
+	case StatusSkipped:
+		icon = "⃠"
+		color = func(s string) string { return fmt.Sprintf("\033[33m%s\033[0m", s) } // Yellow
+	default:
+		icon = "○"
+		color = func(s string) string { return s }
+	}
+
+	// Show live test result
+	duration := fmt.Sprintf("%dms", latestResult.Duration.Milliseconds())
+	testLine := fmt.Sprintf("  %s %s %s", color(icon), latestResult.Name, color(duration))
+
+	fmt.Fprintln(p.writer, testLine)
 }

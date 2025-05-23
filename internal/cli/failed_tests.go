@@ -3,7 +3,10 @@ package cli
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
+
+	"golang.org/x/term"
 )
 
 // FailedTestRenderer renders detailed failure information
@@ -24,6 +27,20 @@ func NewFailedTestRenderer(writer io.Writer, formatter *ColorFormatter, icons *I
 	}
 }
 
+// getTerminalWidth returns the current terminal width or default
+func (r *FailedTestRenderer) getTerminalWidth() int {
+	if fd := int(os.Stdout.Fd()); term.IsTerminal(fd) {
+		if width, _, err := term.GetSize(fd); err == nil && width > 0 {
+			return width
+		}
+	}
+	// Fallback to configured width or default
+	if r.width > 0 {
+		return r.width
+	}
+	return 80
+}
+
 // RenderFailedTestsHeader renders the header for the failed tests section
 func (r *FailedTestRenderer) RenderFailedTestsHeader(failCount int) error {
 	// If no failed tests, don't show header
@@ -32,7 +49,7 @@ func (r *FailedTestRenderer) RenderFailedTestsHeader(failCount int) error {
 	}
 
 	// Create separator line before failed tests header
-	width := r.width
+	width := r.getTerminalWidth()
 	if width <= 0 {
 		width = 80 // Default width
 	}
@@ -90,7 +107,7 @@ func (r *FailedTestRenderer) RenderFailedTest(test *TestResult) error {
 		return err
 	}
 
-	// Display error type and message
+	// Display error type and message with better spacing
 	errorTypeLine := r.formatter.Red(test.Error.Type) + ": " + r.formatter.Red(test.Error.Message)
 	_, err = fmt.Fprintln(r.writer, errorTypeLine)
 	if err != nil {
@@ -110,8 +127,13 @@ func (r *FailedTestRenderer) RenderFailedTest(test *TestResult) error {
 			return err
 		}
 
-		// Display source code context if available
+		// Add spacing before source context
 		if len(test.Error.SourceContext) > 0 {
+			_, err = fmt.Fprintln(r.writer) // Extra spacing before source context
+			if err != nil {
+				return err
+			}
+
 			err = r.renderSourceContext(test)
 			if err != nil {
 				return err
@@ -119,7 +141,7 @@ func (r *FailedTestRenderer) RenderFailedTest(test *TestResult) error {
 		}
 	}
 
-	// Add a blank line after each failed test for better readability
+	// Add spacing after each failed test for better readability
 	_, err = fmt.Fprintln(r.writer)
 	return err
 }
@@ -243,20 +265,11 @@ func (r *FailedTestRenderer) RenderFailedTests(tests []*TestResult) error {
 			continue
 		}
 
-		// Add red separator line before each test (except the first one)
+		// Add separator line with embedded test number (except for first test)
 		if testNumber > 1 {
-			separator := strings.Repeat("─", r.width)
-			_, err := fmt.Fprintln(r.writer, r.formatter.Red(separator))
-			if err != nil {
+			if err := r.renderTestSeparator(testNumber, failedCount); err != nil {
 				return err
 			}
-		}
-
-		// Add test number indicator
-		testCounter := fmt.Sprintf("Test %d/%d", testNumber, failedCount)
-		_, err := fmt.Fprintln(r.writer, r.formatter.Gray(testCounter))
-		if err != nil {
-			return err
 		}
 
 		// Use the enhanced RenderFailedTest method that includes source context
@@ -268,4 +281,33 @@ func (r *FailedTestRenderer) RenderFailedTests(tests []*TestResult) error {
 	}
 
 	return nil
+}
+
+// renderTestSeparator renders a separator line with embedded test number
+func (r *FailedTestRenderer) renderTestSeparator(testNumber, totalTests int) error {
+	width := r.getTerminalWidth()
+
+	// Create the test indicator text
+	testText := fmt.Sprintf(" Test %d/%d ", testNumber, totalTests)
+	textLen := len(testText)
+
+	// Calculate padding for centering
+	padding := (width - textLen) / 2
+	if padding < 3 {
+		padding = 3 // Minimum padding
+	}
+
+	// Create left and right parts of the separator
+	leftSeparator := strings.Repeat("─", padding)
+	rightSeparator := strings.Repeat("─", width-padding-textLen)
+
+	// Combine into full separator with darker red color
+	fullSeparator := leftSeparator + testText + rightSeparator
+
+	// Use a darker red color (RGB: 139,0,0 - DarkRed)
+	darkRed := "\033[38;2;139;0;0m" // Dark red color
+	reset := "\033[0m"
+
+	_, err := fmt.Fprintln(r.writer, darkRed+fullSeparator+reset)
+	return err
 }

@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/term"
 )
 
 // NewTestProcessor creates a new TestProcessor
@@ -17,11 +19,21 @@ func NewTestProcessor(writer io.Writer, formatter *ColorFormatter, icons *IconPr
 		writer:     writer,
 		formatter:  formatter,
 		icons:      icons,
-		width:      width,
+		width:      getTerminalWidthForProcessor(),
 		suites:     make(map[string]*TestSuite),
 		statistics: &TestRunStats{},
 		startTime:  time.Now(),
 	}
+}
+
+// getTerminalWidthForProcessor returns the current terminal width or default
+func getTerminalWidthForProcessor() int {
+	if fd := int(os.Stdout.Fd()); term.IsTerminal(fd) {
+		if width, _, err := term.GetSize(fd); err == nil && width > 0 {
+			return width
+		}
+	}
+	return 80 // Default fallback
 }
 
 // ProcessJSONOutput processes the JSON output from Go test and updates the processor state
