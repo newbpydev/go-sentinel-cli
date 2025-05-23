@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -387,21 +389,161 @@ func (p *TestProcessor) createTestError(test *TestResult, event TestEvent) *Test
 		errorType = "AssertionError"
 	}
 
-	// Create location if we have file info
+	// Create location and extract source context
 	var location *SourceLocation
+	var sourceContext []string
+	var highlightedLine int
+
 	if sourceFile != "" && sourceLine > 0 {
+		// Try to determine column position from error message context
+		column := p.determineErrorColumn(errorMessage, sourceFile, sourceLine)
+
 		location = &SourceLocation{
 			File:     sourceFile,
 			Line:     sourceLine,
-			Column:   1,
+			Column:   column,
 			Function: test.Name,
 		}
+
+		// Extract source context from the actual file
+		sourceContext, highlightedLine = p.extractSourceContext(sourceFile, sourceLine)
 	}
 
 	return &TestError{
-		Message:  errorMessage,
-		Type:     errorType,
-		Stack:    output, // Store full output as stack trace
-		Location: location,
+		Message:         errorMessage,
+		Type:            errorType,
+		Stack:           output, // Store full output as stack trace
+		Location:        location,
+		SourceContext:   sourceContext,
+		HighlightedLine: highlightedLine,
 	}
+}
+
+// extractSourceContext reads the source file and extracts context around the error line
+func (p *TestProcessor) extractSourceContext(filename string, errorLine int) ([]string, int) {
+	// Try multiple possible paths for the source file
+	possiblePaths := []string{
+		filename,                                // Direct filename
+		filepath.Join("stress_tests", filename), // In stress_tests directory
+		filepath.Join(".", filename),            // Current directory
+	}
+
+	// Also try checking known suite paths
+	for _, suite := range p.suites {
+		if suite.FilePath != "" {
+			dir := filepath.Dir(suite.FilePath)
+			if dir != "" && dir != "." {
+				possiblePaths = append(possiblePaths, filepath.Join(dir, filename))
+			}
+		}
+	}
+
+	var content []byte
+	var err error
+
+	// Try each possible path
+	for _, path := range possiblePaths {
+		content, err = os.ReadFile(path)
+		if err == nil {
+			break // Found the file
+		}
+	}
+
+	if err != nil {
+		// File not found or not readable, return empty context
+		return nil, 0
+	}
+
+	// Split into lines
+	lines := strings.Split(string(content), "\n")
+
+	// Calculate context range (2 lines before and after)
+	contextSize := 2
+	startLine := errorLine - contextSize - 1 // Convert to 0-based index
+	endLine := errorLine + contextSize - 1   // Convert to 0-based index
+
+	// Ensure bounds
+	if startLine < 0 {
+		startLine = 0
+	}
+	if endLine >= len(lines) {
+		endLine = len(lines) - 1
+	}
+
+	// Extract context lines
+	var context []string
+	for i := startLine; i <= endLine; i++ {
+		if i < len(lines) {
+			context = append(context, lines[i])
+		}
+	}
+
+	// Calculate which line in the context is the error line
+	highlightedLine := (errorLine - 1) - startLine
+	if highlightedLine < 0 {
+		highlightedLine = 0
+	}
+	if highlightedLine >= len(context) {
+		highlightedLine = len(context) - 1
+	}
+
+	return context, highlightedLine
+}
+
+// determineErrorColumn attempts to determine the column position from error message context
+func (p *TestProcessor) determineErrorColumn(errorMessage, sourceFile string, sourceLine int) int {
+	// Read the source file to analyze the error line
+	content, err := os.ReadFile(sourceFile)
+	if err != nil {
+		return 1 // Default to column 1 if file can't be read
+	}
+
+	lines := strings.Split(string(content), "\n")
+	if sourceLine <= 0 || sourceLine > len(lines) {
+		return 1 // Default to column 1 if line is out of bounds
+	}
+
+	// Get the source line (convert to 0-based index)
+	sourceLiteral := lines[sourceLine-1]
+
+	// Try to find error-related keywords in the line and position the pointer
+	errorLower := strings.ToLower(errorMessage)
+
+	// For assertion errors, try to point to the condition
+	if strings.Contains(errorLower, "expected") || strings.Contains(errorLower, "assert") {
+		// Look for common assertion patterns
+		if pos := strings.Index(sourceLiteral, "if "); pos != -1 {
+			return pos + 4 // Point after "if "
+		}
+		if pos := strings.Index(sourceLiteral, "!="); pos != -1 {
+			return pos + 1 // Point at the operator
+		}
+		if pos := strings.Index(sourceLiteral, "=="); pos != -1 {
+			return pos + 1 // Point at the operator
+		}
+		if pos := strings.Index(sourceLiteral, "t.Error"); pos != -1 {
+			return pos + 1 // Point at the error call
+		}
+	}
+
+	// For panic errors, try to point to the problematic operation
+	if strings.Contains(errorLower, "panic") || strings.Contains(errorLower, "index out of range") {
+		// Look for array/slice access
+		if pos := strings.Index(sourceLiteral, "["); pos != -1 {
+			return pos + 1 // Point at the bracket
+		}
+		// Look for nil pointer dereference
+		if pos := strings.Index(sourceLiteral, "nil"); pos != -1 {
+			return pos + 1 // Point at nil
+		}
+	}
+
+	// Default: try to find the first non-whitespace character after indentation
+	for i, char := range sourceLiteral {
+		if char != ' ' && char != '\t' {
+			return i + 1 // Convert to 1-based indexing
+		}
+	}
+
+	return 1 // Default to column 1
 }

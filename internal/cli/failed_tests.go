@@ -235,53 +235,17 @@ func (r *FailedTestRenderer) RenderFailedTests(tests []*TestResult) error {
 		return err
 	}
 
-	// Print each failed test
+	// Print each failed test using the enhanced method
 	for _, test := range tests {
 		// Skip if not failed
 		if test.Status != StatusFailed {
 			continue
 		}
 
-		// Print enhanced test header with FAIL badge
-		testHeader := r.formatTestHeader(test)
-		fmt.Fprintln(r.writer, testHeader)
-
-		// Print error information if available
-		if test.Error != nil {
-			// Show error type and message in Vitest style
-			if test.Error.Type != "" && test.Error.Type != "TestFailure" {
-				errorTypeLine := fmt.Sprintf("  %s: %s",
-					r.formatter.Red(test.Error.Type),
-					test.Error.Message)
-				fmt.Fprintln(r.writer, errorTypeLine)
-			} else {
-				// Just show the message if no specific error type
-				fmt.Fprintln(r.writer, r.formatter.Gray("  "+test.Error.Message))
-			}
-
-			// Show source location if available
-			if test.Error.Location != nil {
-				locationRef := fmt.Sprintf("    %s %s:%d:%d",
-					r.formatter.Gray("at"),
-					r.formatter.Cyan(test.Error.Location.File),
-					test.Error.Location.Line,
-					test.Error.Location.Column,
-				)
-				fmt.Fprintln(r.writer, locationRef)
-			}
-
-			// Display source code context if available
-			if len(test.Error.SourceContext) > 0 {
-				fmt.Fprintln(r.writer) // Add spacing before source context
-				err := r.renderSourceContext(test)
-				if err != nil {
-					return err
-				}
-			}
+		// Use the enhanced RenderFailedTest method that includes source context
+		if err := r.RenderFailedTest(test); err != nil {
+			return err
 		}
-
-		// Add a blank line between tests
-		fmt.Fprintln(r.writer)
 	}
 
 	return nil
