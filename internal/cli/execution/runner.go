@@ -18,14 +18,18 @@ type SmartTestRunner struct {
 	cache        core.CacheManager
 	strategy     core.ExecutionStrategy
 	capabilities core.RunnerCapabilities
+	processor    *TestProcessor // Integrated processor for JSON output parsing
+	verbose      bool
 	mu           sync.RWMutex
 }
 
 // NewSmartTestRunner creates a new intelligent test runner
 func NewSmartTestRunner(cache core.CacheManager, strategy core.ExecutionStrategy) *SmartTestRunner {
 	return &SmartTestRunner{
-		cache:    cache,
-		strategy: strategy,
+		cache:     cache,
+		strategy:  strategy,
+		processor: NewTestProcessor(),
+		verbose:   false,
 		capabilities: core.RunnerCapabilities{
 			SupportsCaching:    true,
 			SupportsParallel:   true,
@@ -36,6 +40,13 @@ func NewSmartTestRunner(cache core.CacheManager, strategy core.ExecutionStrategy
 		},
 		mu: sync.RWMutex{},
 	}
+}
+
+// SetVerbose sets the verbose mode for the runner
+func (r *SmartTestRunner) SetVerbose(verbose bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.verbose = verbose
 }
 
 // RunTests executes tests based on the provided changes and strategy
@@ -73,8 +84,8 @@ func (r *SmartTestRunner) RunTests(ctx context.Context, changes []core.FileChang
 		}, nil
 	}
 
-	// Step 3: Execute tests
-	result, err := r.executeTests(ctx, targetsToRun)
+	// Step 3: Execute tests with JSON processing
+	result, err := r.executeTestsWithProcessing(ctx, targetsToRun)
 	if err != nil {
 		return nil, err
 	}
@@ -93,6 +104,13 @@ func (r *SmartTestRunner) GetCapabilities() core.RunnerCapabilities {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.capabilities
+}
+
+// GetProcessedResults returns the processed test suites and stats from the last run
+func (r *SmartTestRunner) GetProcessedResults() (map[string]*core.TestSuite, *core.TestRunStats) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.processor.GetSuites(), r.processor.GetStats()
 }
 
 // determineTestTargets figures out what tests need to be run based on file changes
@@ -211,8 +229,8 @@ func (r *SmartTestRunner) filterTargetsForExecution(targets []core.TestTarget, s
 	return strategy.GetExecutionOrder(targetsToRun)
 }
 
-// executeTests runs the actual tests
-func (r *SmartTestRunner) executeTests(ctx context.Context, targets []core.TestTarget) (*core.TestResult, error) {
+// executeTestsWithProcessing runs tests and processes the JSON output
+func (r *SmartTestRunner) executeTestsWithProcessing(ctx context.Context, targets []core.TestTarget) (*core.TestResult, error) {
 	if len(targets) == 0 {
 		return &core.TestResult{
 			Status:   core.StatusPassed,
@@ -227,8 +245,8 @@ func (r *SmartTestRunner) executeTests(ctx context.Context, targets []core.TestT
 		paths[i] = target.Path
 	}
 
-	// Build optimized command
-	cmd := r.buildTestCommand(paths)
+	// Build command with JSON output for processing
+	cmd := r.buildTestCommandWithJSON(paths)
 	cmdExec := exec.CommandContext(ctx, "go", cmd...)
 
 	// Execute and capture output
@@ -249,10 +267,36 @@ func (r *SmartTestRunner) executeTests(ctx context.Context, targets []core.TestT
 		}
 	}
 
-	// Parse results
+	// Process the JSON output
+	outputStr := string(output)
+	if err := r.processor.ProcessJSONOutput(outputStr); err != nil {
+		// If JSON processing fails, fall back to basic result
+		status := core.StatusPassed
+		if exitCode != 0 {
+			status = core.StatusFailed
+		}
+
+		return &core.TestResult{
+			Target: core.TestTarget{
+				Path: strings.Join(paths, ", "),
+				Type: "multiple",
+			},
+			Status:   status,
+			Output:   outputStr,
+			EndTime:  time.Now(),
+			CacheHit: false,
+		}, nil
+	}
+
+	// Get processed statistics
+	stats := r.processor.GetStats()
+
+	// Determine overall status from processed results
 	status := core.StatusPassed
-	if exitCode != 0 {
+	if stats.FailedTests > 0 {
 		status = core.StatusFailed
+	} else if stats.TotalTests == 0 {
+		status = core.StatusSkipped
 	}
 
 	return &core.TestResult{
@@ -260,16 +304,28 @@ func (r *SmartTestRunner) executeTests(ctx context.Context, targets []core.TestT
 			Path: strings.Join(paths, ", "),
 			Type: "multiple",
 		},
-		Status:   status,
-		Output:   string(output),
-		EndTime:  time.Now(),
-		CacheHit: false,
+		Status:       status,
+		Output:       outputStr,
+		EndTime:      time.Now(),
+		TestCount:    stats.TotalTests,
+		PassedCount:  stats.PassedTests,
+		FailedCount:  stats.FailedTests,
+		SkippedCount: stats.SkippedTests,
+		CacheHit:     false,
 	}, nil
 }
 
-// buildTestCommand builds an optimized test command
-func (r *SmartTestRunner) buildTestCommand(paths []string) []string {
+// buildTestCommandWithJSON builds a test command with JSON output
+func (r *SmartTestRunner) buildTestCommandWithJSON(paths []string) []string {
 	args := []string{"test"}
+
+	// Add JSON output for processing
+	args = append(args, "-json")
+
+	// Add verbose if enabled
+	if r.verbose {
+		args = append(args, "-v")
+	}
 
 	// Add performance optimizations
 	args = append(args, "-failfast") // Stop on first failure for faster feedback
