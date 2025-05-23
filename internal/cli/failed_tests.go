@@ -107,14 +107,14 @@ func (r *FailedTestRenderer) RenderFailedTest(test *TestResult) error {
 		return err
 	}
 
-	// Display error type and message with better spacing
+	// Display error type and message (no extra spacing after this)
 	errorTypeLine := r.formatter.Red(test.Error.Type) + ": " + r.formatter.Red(test.Error.Message)
 	_, err = fmt.Fprintln(r.writer, errorTypeLine)
 	if err != nil {
 		return err
 	}
 
-	// If we have source location information, show it
+	// If we have source location information, show it immediately (no spacing before)
 	if test.Error.Location != nil {
 		// Format the file:line reference with chevron
 		locationRef := fmt.Sprintf("↳ %s:%d:%d",
@@ -127,13 +127,8 @@ func (r *FailedTestRenderer) RenderFailedTest(test *TestResult) error {
 			return err
 		}
 
-		// Add spacing before source context
+		// Display source code context immediately if available (no spacing before)
 		if len(test.Error.SourceContext) > 0 {
-			_, err = fmt.Fprintln(r.writer) // Extra spacing before source context
-			if err != nil {
-				return err
-			}
-
 			err = r.renderSourceContext(test)
 			if err != nil {
 				return err

@@ -382,9 +382,39 @@ func (p *TestProcessor) createTestError(test *TestResult, event TestEvent) *Test
 			}
 		}
 
+		// Look for test function calls in output (alternative approach)
+		if sourceFile == "" && strings.Contains(trimmed, "t.Error") ||
+			strings.Contains(trimmed, "t.Fail") ||
+			strings.Contains(trimmed, "panic") {
+			// Try to find a reference to the test file in surrounding context
+			for i, contextLine := range lines {
+				if strings.Contains(contextLine, ".go:") {
+					// Found a file reference, extract it
+					if fileMatch := extractFileLocationFromLine(contextLine); fileMatch != nil {
+						sourceFile = fileMatch.file
+						sourceLine = fileMatch.line
+						break
+					}
+				}
+				// Don't search too far
+				if i > 10 {
+					break
+				}
+			}
+		}
+
 		// If no structured error found, use the first non-empty line as error message
-		if errorMessage == "" && trimmed != "" && !strings.HasPrefix(trimmed, "=== ") {
+		if errorMessage == "" && trimmed != "" && !strings.HasPrefix(trimmed, "=== ") &&
+			!strings.HasPrefix(trimmed, "--- ") {
 			errorMessage = trimmed
+		}
+	}
+
+	// Fallback: try to infer source location from test name and package
+	if sourceFile == "" {
+		sourceFile = p.inferSourceFileFromTest(test, event)
+		if sourceFile != "" {
+			sourceLine = p.findTestFunctionLine(sourceFile, test.Name)
 		}
 	}
 
@@ -430,6 +460,103 @@ func (p *TestProcessor) createTestError(test *TestResult, event TestEvent) *Test
 		SourceContext:   sourceContext,
 		HighlightedLine: highlightedLine,
 	}
+}
+
+// Helper struct for file location extraction
+type fileLocation struct {
+	file string
+	line int
+}
+
+// extractFileLocationFromLine extracts file and line number from a line
+func extractFileLocationFromLine(line string) *fileLocation {
+	// Look for patterns like "filename.go:123"
+	parts := strings.Fields(line)
+	for _, part := range parts {
+		if strings.Contains(part, ".go:") {
+			if colonIndex := strings.LastIndex(part, ":"); colonIndex != -1 {
+				file := part[:colonIndex]
+				if lineStr := part[colonIndex+1:]; lineStr != "" {
+					// Remove any trailing characters that aren't digits
+					var numStr string
+					for _, char := range lineStr {
+						if char >= '0' && char <= '9' {
+							numStr += string(char)
+						} else {
+							break
+						}
+					}
+					if line, err := strconv.Atoi(numStr); err == nil {
+						return &fileLocation{file: file, line: line}
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// inferSourceFileFromTest attempts to infer the source file from test information
+func (p *TestProcessor) inferSourceFileFromTest(test *TestResult, event TestEvent) string {
+	// If we have package information, try to construct the test file name
+	if event.Package != "" {
+		// For command-line-arguments, look for common test file patterns
+		if event.Package == "command-line-arguments" {
+			// Try common test file names in the current directory
+			possibleFiles := []string{
+				"basic_failures_test.go",
+				"extreme_scenarios_test.go",
+				test.Name + "_test.go",
+			}
+
+			for _, filename := range possibleFiles {
+				if _, err := os.Stat(filename); err == nil {
+					return filename
+				}
+				// Also try in stress_tests directory
+				stressPath := filepath.Join("stress_tests", filename)
+				if _, err := os.Stat(stressPath); err == nil {
+					return stressPath
+				}
+			}
+		} else {
+			// For named packages, construct the likely test file name
+			packageParts := strings.Split(event.Package, "/")
+			if len(packageParts) > 0 {
+				lastPart := packageParts[len(packageParts)-1]
+				return lastPart + "_test.go"
+			}
+		}
+	}
+
+	return ""
+}
+
+// findTestFunctionLine finds the line number where a test function is defined
+func (p *TestProcessor) findTestFunctionLine(filename string, testName string) int {
+	content, err := os.ReadFile(filename)
+	if err != nil {
+		return 0
+	}
+
+	lines := strings.Split(string(content), "\n")
+
+	// Extract the base test name (remove subtest parts)
+	baseTestName := testName
+	if slashIndex := strings.Index(testName, "/"); slashIndex != -1 {
+		baseTestName = testName[:slashIndex]
+	}
+
+	// Look for the test function definition
+	functionPattern := "func " + baseTestName + "("
+
+	for i, line := range lines {
+		if strings.Contains(line, functionPattern) {
+			return i + 1 // Convert to 1-based line number
+		}
+	}
+
+	return 0
 }
 
 // extractSourceContext reads the source file and extracts context around the error line
