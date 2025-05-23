@@ -160,6 +160,7 @@ func (p *TestProcessor) ProcessStream(r io.Reader, progress chan<- TestProgress)
 	// Process test results as they arrive with real-time updates
 	totalTests := 0
 	completedTests := 0
+	suiteHeaders := make(map[string]bool) // Track which suite headers we've shown
 
 	// Clear initial area for live updates
 	fmt.Fprint(p.writer, "\033[s") // Save cursor position
@@ -175,6 +176,12 @@ func (p *TestProcessor) ProcessStream(r io.Reader, progress chan<- TestProgress)
 				FilePath: suitePath,
 			}
 			p.suites[suitePath] = suite
+		}
+
+		// Show suite header if this is the first test from this suite
+		if !suiteHeaders[suitePath] {
+			p.renderSuiteHeader(suitePath)
+			suiteHeaders[suitePath] = true
 		}
 
 		// Enhance failed test errors with our advanced processing
@@ -247,6 +254,12 @@ func (p *TestProcessor) ProcessStream(r io.Reader, progress chan<- TestProgress)
 	return nil
 }
 
+// renderSuiteHeader shows the package/suite name when streaming starts
+func (p *TestProcessor) renderSuiteHeader(suitePath string) {
+	// Display suite name without extra indentation
+	fmt.Fprintln(p.writer, suitePath)
+}
+
 // renderLiveUpdate shows real-time test results as they complete
 func (p *TestProcessor) renderLiveUpdate(suite *TestSuite, latestResult *TestResult) {
 	// Format test result with appropriate icon
@@ -268,7 +281,7 @@ func (p *TestProcessor) renderLiveUpdate(suite *TestSuite, latestResult *TestRes
 		color = func(s string) string { return s }
 	}
 
-	// Show live test result
+	// Show live test result with consistent indentation under suite
 	duration := fmt.Sprintf("%dms", latestResult.Duration.Milliseconds())
 	testLine := fmt.Sprintf("  %s %s %s", color(icon), latestResult.Name, color(duration))
 
