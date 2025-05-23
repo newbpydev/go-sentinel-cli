@@ -72,7 +72,7 @@ func (r *ParallelTestRunner) RunParallel(ctx context.Context, testPaths []string
 	}()
 
 	// Collect results
-	var allResults []*ParallelTestResult
+	allResults := make([]*ParallelTestResult, 0, len(testPaths))
 	for result := range results {
 		allResults = append(allResults, result)
 	}

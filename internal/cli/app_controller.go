@@ -61,6 +61,13 @@ func (a *AppController) Run(args []string) error {
 		80, // Terminal width, could be detected
 	)
 
+	// Step 5.5: Ensure watch paths are properly set from CLI args
+	if mergedConfig.Watch.Enabled && len(mergedConfig.Paths.IncludePatterns) == 0 {
+		// Convert CLI packages to watch paths if not already set
+		watchPaths := convertPackagesToWatchPaths(cliArgs.Packages)
+		mergedConfig.Paths.IncludePatterns = watchPaths
+	}
+
 	// Step 6: Execute tests based on configuration
 	if mergedConfig.Watch.Enabled {
 		return a.runWatchMode(mergedConfig, cliArgs)
@@ -239,7 +246,7 @@ func (a *AppController) handleDebouncedFileChanges(events []FileEvent, config *C
 	}
 
 	// Analyze file changes for impact
-	var changes []*FileChange
+	changes := make([]*FileChange, 0, len(events))
 	for _, event := range events {
 		change, err := a.cache.AnalyzeChange(event.Path)
 		if err != nil {
@@ -262,15 +269,22 @@ func (a *AppController) handleDebouncedFileChanges(events []FileEvent, config *C
 	staleTests := a.cache.GetStaleTests(changes)
 
 	if len(staleTests) == 0 {
-		// Use incremental renderer to show no changes
+		// Initialize incremental renderer if needed
 		if a.incrementalRenderer == nil {
 			a.initializeIncrementalRenderer(config)
 		}
-		return a.incrementalRenderer.RenderIncrementalResults(
+
+		// Show that changes were detected but no tests need to run
+		if err := a.incrementalRenderer.RenderIncrementalResults(
 			make(map[string]*TestSuite),
 			&TestRunStats{},
 			changes,
-		)
+		); err != nil {
+			return err
+		}
+
+		fmt.Printf("👀 Watching for file changes...\n")
+		return nil // Don't run any tests!
 	}
 
 	fmt.Printf("⚡ Running tests for %d changed file(s) affecting %d test package(s)\n\n",
@@ -297,6 +311,13 @@ func (a *AppController) handleDebouncedFileChanges(events []FileEvent, config *C
 		// Merge results into processor
 		MergeResults(a.processor, results)
 
+		// Cache all results from parallel execution
+		for _, result := range results {
+			if result.Error == nil && result.Suite != nil {
+				a.cache.CacheResult(result.TestPath, result.Suite)
+			}
+		}
+
 		// Report parallel execution metrics
 		var fromCache, fromExecution int
 		for _, result := range results {
@@ -310,7 +331,6 @@ func (a *AppController) handleDebouncedFileChanges(events []FileEvent, config *C
 		if fromCache > 0 {
 			fmt.Printf("📋 Parallel execution: %d ran, %d from cache\n", fromExecution, fromCache)
 		}
-
 	} else {
 		// Sequential execution for single test or when parallel is disabled
 		for _, testPath := range staleTests {
@@ -319,9 +339,10 @@ func (a *AppController) handleDebouncedFileChanges(events []FileEvent, config *C
 				continue
 			}
 
-			// Cache the results for this test
-			if suite, exists := a.processor.suites[testPath]; exists {
-				a.cache.CacheResult(testPath, suite)
+			// Cache the results for this test - fix the suite key lookup
+			for suitePath, suite := range a.processor.suites {
+				// Use actual suite path instead of testPath
+				a.cache.CacheResult(suitePath, suite)
 			}
 		}
 	}

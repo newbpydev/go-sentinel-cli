@@ -36,11 +36,17 @@ func (r *IncrementalRenderer) RenderIncrementalResults(currentSuites map[string]
 		return err
 	}
 
+	// If no test suites were provided, this means no tests were run
+	if len(currentSuites) == 0 {
+		fmt.Fprintf(r.writer, "%s No test changes detected - tests not needed\n\n", r.icons.GetIcon("info"))
+		return nil
+	}
+
 	// Identify changed suites
 	changedSuites := r.identifyChangedSuites(currentSuites)
 
 	if len(changedSuites) == 0 {
-		fmt.Fprintf(r.writer, "%s No test changes detected\n\n", r.icons.GetIcon("info"))
+		fmt.Fprintf(r.writer, "%s No test result changes detected\n\n", r.icons.GetIcon("info"))
 		return nil
 	}
 
@@ -186,7 +192,6 @@ func (r *IncrementalRenderer) renderSuiteComparison(suitePath string, lastSuite,
 				r.formatter.Colorize(currentTest.Name, color),
 				r.formatter.Colorize(duration, "dim"))
 			hasChanges = true
-
 		} else if lastTest.Status != currentTest.Status {
 			// Status changed
 			oldIcon := r.getTestStatusIcon(lastTest.Status)
