@@ -47,11 +47,8 @@ func NewSummaryRenderer(writer io.Writer, formatter *ColorFormatter, icons *Icon
 
 // RenderSummary renders a summary of test results
 func (r *SummaryRenderer) RenderSummary(stats *TestRunStats) error {
-	// Add separator line before summary
-	fmt.Fprintln(r.writer, r.formatter.Dim(strings.Repeat("─", r.width)))
-
-	// Display summary header
-	fmt.Fprintln(r.writer, r.formatter.Bold("Test Summary:"))
+	// Render centered "Test Summary" header with separator line
+	r.renderSummaryHeader()
 
 	// Test files
 	fileStats := fmt.Sprintf("Test Files: ")
@@ -143,6 +140,27 @@ func (r *SummaryRenderer) RenderSummary(stats *TestRunStats) error {
 	fmt.Fprintln(r.writer, r.formatter.Dim(strings.Repeat("─", r.width)))
 
 	return nil
+}
+
+// renderSummaryHeader renders a centered "Test Summary" header on a separator line
+func (r *SummaryRenderer) renderSummaryHeader() {
+	headerText := "Test Summary"
+
+	// Calculate padding to center the header
+	headerLength := len(headerText)
+	totalPadding := r.width - headerLength
+	leftPadding := totalPadding / 2
+	rightPadding := totalPadding - leftPadding
+
+	// Create the centered header line
+	var headerLine strings.Builder
+	headerLine.WriteString(strings.Repeat("─", leftPadding))
+	headerLine.WriteString(headerText)
+	headerLine.WriteString(strings.Repeat("─", rightPadding))
+
+	// Add spacing and render the header
+	fmt.Fprintln(r.writer)
+	fmt.Fprintln(r.writer, r.formatter.Dim(headerLine.String()))
 }
 
 // formatDuration formats a duration in a human-readable way

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"golang.org/x/term"
@@ -116,12 +117,8 @@ func (r *FailedTestRenderer) RenderFailedTest(test *TestResult) error {
 
 	// If we have source location information, show it immediately (no spacing before)
 	if test.Error.Location != nil {
-		// Format the file:line reference with chevron
-		locationRef := fmt.Sprintf("↳ %s:%d:%d",
-			r.formatter.Cyan(test.Error.Location.File),
-			test.Error.Location.Line,
-			test.Error.Location.Column,
-		)
+		// Format the file:line reference with chevron and make it clickable
+		locationRef := r.formatClickableLocation(test.Error.Location)
 		_, err = fmt.Fprintln(r.writer, locationRef)
 		if err != nil {
 			return err
@@ -141,6 +138,34 @@ func (r *FailedTestRenderer) RenderFailedTest(test *TestResult) error {
 	return err
 }
 
+// formatClickableLocation formats a clickable file location reference
+func (r *FailedTestRenderer) formatClickableLocation(location *SourceLocation) string {
+	if location == nil {
+		return ""
+	}
+
+	// Create absolute file path for clickable link
+	absolutePath := location.File
+	if !strings.HasPrefix(absolutePath, "/") && !strings.Contains(absolutePath, ":") {
+		// Convert relative path to absolute path
+		if wd, err := os.Getwd(); err == nil {
+			absolutePath = filepath.Join(wd, location.File)
+		}
+	}
+
+	// Convert Windows paths to file:// URLs properly
+	fileUrl := "file://" + strings.ReplaceAll(absolutePath, "\\", "/")
+	displayText := fmt.Sprintf("%s:%d:%d", location.File, location.Line, location.Column)
+
+	// Create clickable text using OSC 8 escape sequence
+	// This makes the text clickable in terminals that support it (like VS Code integrated terminal)
+	clickableText := fmt.Sprintf("\033]8;;%s\033\\%s\033]8;;\033\\",
+		fileUrl,
+		r.formatter.Cyan(displayText))
+
+	return fmt.Sprintf("↳ %s", clickableText)
+}
+
 // renderSourceContext renders source code around the error with line numbers and highlighting
 func (r *FailedTestRenderer) renderSourceContext(test *TestResult) error {
 	if test.Error == nil || test.Error.Location == nil {
@@ -157,16 +182,16 @@ func (r *FailedTestRenderer) renderSourceContext(test *TestResult) error {
 			// Calculate the actual line number
 			lineNum := startLine + i
 
-			// Format line number and source code (fix duplicate line numbers)
+			// Format line number and source code with improved styling
 			var lineStr string
 			if i == test.Error.HighlightedLine {
-				// Highlight the error line (red background for the line number, red text)
+				// Highlight the error line (red background for the line number, normal text)
 				lineStr = fmt.Sprintf("    %s| %s",
 					r.formatter.BgRed(r.formatter.White(fmt.Sprintf("%3d", lineNum))),
-					r.formatter.Red(line),
+					line,
 				)
 			} else {
-				// Normal line (gray line number)
+				// Normal line (gray line number with | separator)
 				lineStr = fmt.Sprintf("    %s| %s",
 					r.formatter.Gray(fmt.Sprintf("%3d", lineNum)),
 					line,
@@ -178,21 +203,11 @@ func (r *FailedTestRenderer) renderSourceContext(test *TestResult) error {
 				return err
 			}
 
-			// If this is the error line, add the error indicator
+			// If this is the error line, add the enhanced error indicator
 			if i == test.Error.HighlightedLine {
-				// Find position of the error within the line
-				errorPos := 0
-				if test.Error.Location.Column > 0 {
-					errorPos = test.Error.Location.Column - 1
-				}
-
-				// Create the error indicator line with proper spacing
-				indicatorSpacing := 8 + errorPos // 4 for line number + 2 for "| " + column position
-				indicator := fmt.Sprintf("%s%s",
-					strings.Repeat(" ", indicatorSpacing),
-					r.formatter.Red("^"),
-				)
-				if _, err := fmt.Fprintln(r.writer, indicator); err != nil {
+				// Create the error indicator line with improved positioning
+				err := r.renderErrorPointer(test.Error.Location, line)
+				if err != nil {
 					return err
 				}
 			}
@@ -200,6 +215,92 @@ func (r *FailedTestRenderer) renderSourceContext(test *TestResult) error {
 	}
 
 	return nil
+}
+
+// renderErrorPointer renders the ^ pointer at the precise error location
+func (r *FailedTestRenderer) renderErrorPointer(location *SourceLocation, sourceLine string) error {
+	if location == nil {
+		return nil
+	}
+
+	// Calculate the exact position of the error within the line
+	errorPos := r.calculateErrorPosition(location, sourceLine)
+
+	// Create the error indicator line with | on the left and ^ at the error position
+	indicator := fmt.Sprintf("    %s| %s%s",
+		r.formatter.Gray("   "), // Space for line number area
+		strings.Repeat(" ", errorPos),
+		r.formatter.Red("^"),
+	)
+
+	_, err := fmt.Fprintln(r.writer, indicator)
+	return err
+}
+
+// calculateErrorPosition calculates the precise position of the error in the source line
+func (r *FailedTestRenderer) calculateErrorPosition(location *SourceLocation, sourceLine string) int {
+	if location.Column <= 0 {
+		// If no column info, try to find a reasonable position based on error context
+		return r.inferErrorPosition(sourceLine)
+	}
+
+	// Use the provided column, but ensure it's within bounds
+	column := location.Column - 1 // Convert to 0-based indexing
+	if column < 0 {
+		column = 0
+	}
+	if column >= len(sourceLine) {
+		column = len(sourceLine) - 1
+		if column < 0 {
+			column = 0
+		}
+	}
+
+	return column
+}
+
+// inferErrorPosition tries to infer the best position to point to in a source line
+func (r *FailedTestRenderer) inferErrorPosition(sourceLine string) int {
+	// Look for common error patterns and position the pointer appropriately
+
+	// Look for function calls that might be causing the error
+	if pos := r.findPatternPosition(sourceLine, []string{"t.Error", "t.Errorf", "t.Fail", "t.Fatal"}); pos >= 0 {
+		return pos
+	}
+
+	// Look for assertion operators
+	if pos := r.findPatternPosition(sourceLine, []string{"!=", "==", "<=", ">=", "<", ">"}); pos >= 0 {
+		return pos
+	}
+
+	// Look for array/slice access that might cause index errors
+	if pos := r.findPatternPosition(sourceLine, []string{"["}); pos >= 0 {
+		return pos
+	}
+
+	// Look for nil references
+	if pos := r.findPatternPosition(sourceLine, []string{"nil"}); pos >= 0 {
+		return pos
+	}
+
+	// Default: point to the first non-whitespace character
+	for i, char := range sourceLine {
+		if char != ' ' && char != '\t' {
+			return i
+		}
+	}
+
+	return 0
+}
+
+// findPatternPosition finds the position of the first matching pattern in the line
+func (r *FailedTestRenderer) findPatternPosition(line string, patterns []string) int {
+	for _, pattern := range patterns {
+		if pos := strings.Index(line, pattern); pos >= 0 {
+			return pos
+		}
+	}
+	return -1
 }
 
 // formatFailHeader formats the header for a single failed test

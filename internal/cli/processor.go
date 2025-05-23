@@ -268,6 +268,11 @@ func (p *TestProcessor) finalize() {
 	teardownTime := totalDuration / 20    // ~5% for teardown
 	environmentTime := totalDuration / 10 // ~10% for environment setup
 
+	// Ensure phases map is initialized before use
+	if p.statistics.Phases == nil {
+		p.statistics.Phases = make(map[string]time.Duration)
+	}
+
 	// Store phases
 	p.statistics.Phases["setup"] = setupTime
 	p.statistics.Phases["collect"] = collectTime
@@ -670,25 +675,44 @@ func (p *TestProcessor) determineErrorColumn(errorMessage, sourceFile string, so
 	// Try to find error-related keywords in the line and position the pointer
 	errorLower := strings.ToLower(errorMessage)
 
-	// For assertion errors, try to point to the condition
+	// For assertion errors, try to point to the assertion call
 	if strings.Contains(errorLower, "expected") || strings.Contains(errorLower, "assert") {
-		// Look for common assertion patterns
-		if pos := strings.Index(sourceLiteral, "if "); pos != -1 {
-			return pos + 4 // Point after "if "
+		// Look for test function calls first
+		if pos := strings.Index(sourceLiteral, "t.Errorf"); pos != -1 {
+			return pos + 1 // Point at t.Errorf
 		}
+		if pos := strings.Index(sourceLiteral, "t.Error"); pos != -1 {
+			return pos + 1 // Point at t.Error
+		}
+		if pos := strings.Index(sourceLiteral, "t.Fatalf"); pos != -1 {
+			return pos + 1 // Point at t.Fatalf
+		}
+		if pos := strings.Index(sourceLiteral, "t.Fatal"); pos != -1 {
+			return pos + 1 // Point at t.Fatal
+		}
+
+		// Look for assertion operators as fallback
 		if pos := strings.Index(sourceLiteral, "!="); pos != -1 {
 			return pos + 1 // Point at the operator
 		}
 		if pos := strings.Index(sourceLiteral, "=="); pos != -1 {
 			return pos + 1 // Point at the operator
 		}
-		if pos := strings.Index(sourceLiteral, "t.Error"); pos != -1 {
-			return pos + 1 // Point at the error call
+		if pos := strings.Index(sourceLiteral, "if "); pos != -1 {
+			return pos + 4 // Point after "if "
 		}
 	}
 
 	// For panic errors, try to point to the problematic operation
 	if strings.Contains(errorLower, "panic") || strings.Contains(errorLower, "index out of range") {
+		// Look for test function calls that might be the source
+		if pos := strings.Index(sourceLiteral, "t.Errorf"); pos != -1 {
+			return pos + 1 // Point at the reporting function
+		}
+		if pos := strings.Index(sourceLiteral, "t.Error"); pos != -1 {
+			return pos + 1 // Point at the reporting function
+		}
+
 		// Look for array/slice access
 		if pos := strings.Index(sourceLiteral, "["); pos != -1 {
 			return pos + 1 // Point at the bracket
@@ -696,6 +720,14 @@ func (p *TestProcessor) determineErrorColumn(errorMessage, sourceFile string, so
 		// Look for nil pointer dereference
 		if pos := strings.Index(sourceLiteral, "nil"); pos != -1 {
 			return pos + 1 // Point at nil
+		}
+	}
+
+	// Look for any test function call as a general fallback
+	testFunctions := []string{"t.Errorf", "t.Error", "t.Fatalf", "t.Fatal", "t.Logf", "t.Log"}
+	for _, fn := range testFunctions {
+		if pos := strings.Index(sourceLiteral, fn); pos != -1 {
+			return pos + 1 // Point at the test function
 		}
 	}
 
