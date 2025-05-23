@@ -1,0 +1,33 @@
+{
+  "colors": true,
+  "verbosity": 1,
+  "parallel": 2,
+  "timeout": "2m",
+  "visual": {
+    "colors": true,
+    "icons": "unicode",
+    "theme": "dark"
+  },
+  "paths": {
+    "includePatterns": ["**/*.go"],
+    "excludePatterns": [
+      "vendor/**",
+      ".git/**",
+      "node_modules/**",
+      "*.tmp",
+      "*.log"
+    ]
+  },
+  "watch": {
+    "enabled": true,
+    "debounce": "50ms",
+    "ignorePatterns": [
+      "**/*.log",
+      "**/*.tmp",
+      "**/coverage.*",
+      "**/.DS_Store"
+    ],
+    "clearOnRerun": true,
+    "runOnStart": true
+  }
+} 

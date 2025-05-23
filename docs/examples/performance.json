@@ -1,0 +1,29 @@
+{
+  "colors": true,
+  "verbosity": 2,
+  "parallel": 8,
+  "timeout": "10m",
+  "visual": {
+    "colors": true,
+    "icons": "unicode",
+    "theme": "dark"
+  },
+  "paths": {
+    "includePatterns": ["**/*.go"],
+    "excludePatterns": [
+      "vendor/**",
+      ".git/**",
+      "**/*_bench_temp.go"
+    ]
+  },
+  "watch": {
+    "enabled": false,
+    "debounce": "200ms",
+    "ignorePatterns": [
+      "**/benchmark_*",
+      "**/perf_*"
+    ],
+    "clearOnRerun": false,
+    "runOnStart": false
+  }
+} 

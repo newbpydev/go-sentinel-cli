@@ -1,0 +1,25 @@
+{
+  "colors": true,
+  "verbosity": 0,
+  "parallel": 2,
+  "timeout": "2m",
+  "visual": {
+    "colors": true,
+    "icons": "ascii",
+    "theme": "auto"
+  },
+  "paths": {
+    "includePatterns": ["**/*.go"],
+    "excludePatterns": [
+      "vendor/**",
+      ".git/**"
+    ]
+  },
+  "watch": {
+    "enabled": false,
+    "debounce": "100ms",
+    "ignorePatterns": [],
+    "clearOnRerun": true,
+    "runOnStart": true
+  }
+} 

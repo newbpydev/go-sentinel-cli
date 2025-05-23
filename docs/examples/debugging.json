@@ -1,0 +1,29 @@
+{
+  "colors": true,
+  "verbosity": 3,
+  "parallel": 1,
+  "timeout": "30m",
+  "visual": {
+    "colors": true,
+    "icons": "unicode",
+    "theme": "dark"
+  },
+  "paths": {
+    "includePatterns": ["**/*.go"],
+    "excludePatterns": [
+      "vendor/**",
+      ".git/**"
+    ]
+  },
+  "watch": {
+    "enabled": true,
+    "debounce": "1s",
+    "ignorePatterns": [
+      "**/*.log",
+      "**/*.tmp",
+      "**/debug_*"
+    ],
+    "clearOnRerun": false,
+    "runOnStart": false
+  }
+} 

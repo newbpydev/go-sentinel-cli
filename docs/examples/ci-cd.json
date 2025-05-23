@@ -1,0 +1,27 @@
+{
+  "colors": false,
+  "verbosity": 0,
+  "parallel": 4,
+  "timeout": "5m",
+  "visual": {
+    "colors": false,
+    "icons": "minimal",
+    "theme": "light"
+  },
+  "paths": {
+    "includePatterns": ["**/*.go"],
+    "excludePatterns": [
+      "vendor/**",
+      ".git/**",
+      "**/*_temp.go",
+      "**/*.backup"
+    ]
+  },
+  "watch": {
+    "enabled": false,
+    "debounce": "500ms",
+    "ignorePatterns": [],
+    "clearOnRerun": false,
+    "runOnStart": false
+  }
+} 
