@@ -136,7 +136,8 @@ func (r *SummaryRenderer) RenderSummary(stats *TestRunStats) error {
 
 	fmt.Fprintln(r.writer, durationText)
 
-	// Add another separator for clarity
+	// Add exactly one blank line after duration, then separator
+	fmt.Fprintln(r.writer) // One blank line after duration
 	fmt.Fprintln(r.writer, r.formatter.Dim(strings.Repeat("─", r.width)))
 
 	return nil
@@ -144,7 +145,7 @@ func (r *SummaryRenderer) RenderSummary(stats *TestRunStats) error {
 
 // renderSummaryHeader renders a centered "Test Summary" header on a separator line
 func (r *SummaryRenderer) renderSummaryHeader() {
-	headerText := "Test Summary"
+	headerText := " Test Summary " // Add spaces around the text
 
 	// Calculate padding to center the header
 	headerLength := len(headerText)
@@ -158,9 +159,10 @@ func (r *SummaryRenderer) renderSummaryHeader() {
 	headerLine.WriteString(headerText)
 	headerLine.WriteString(strings.Repeat("─", rightPadding))
 
-	// Add spacing and render the header
-	fmt.Fprintln(r.writer)
+	// Add padding above and below the header (one line each)
+	fmt.Fprintln(r.writer) // Padding line above
 	fmt.Fprintln(r.writer, r.formatter.Dim(headerLine.String()))
+	fmt.Fprintln(r.writer) // Padding line below
 }
 
 // formatDuration formats a duration in a human-readable way

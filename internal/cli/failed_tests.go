@@ -146,21 +146,44 @@ func (r *FailedTestRenderer) formatClickableLocation(location *SourceLocation) s
 
 	// Create absolute file path for clickable link
 	absolutePath := location.File
-	if !strings.HasPrefix(absolutePath, "/") && !strings.Contains(absolutePath, ":") {
-		// Convert relative path to absolute path
+
+	// Handle different cases for path resolution
+	if !filepath.IsAbs(absolutePath) {
+		// Get current working directory
 		if wd, err := os.Getwd(); err == nil {
-			absolutePath = filepath.Join(wd, location.File)
+			// If the file path doesn't contain directory separators, check if it's in stress_tests
+			if !strings.Contains(absolutePath, string(filepath.Separator)) && !strings.Contains(absolutePath, "/") {
+				// Check if file exists in stress_tests directory
+				stressTestPath := filepath.Join(wd, "stress_tests", absolutePath)
+				if _, err := os.Stat(stressTestPath); err == nil {
+					absolutePath = stressTestPath
+				} else {
+					// Default to current directory
+					absolutePath = filepath.Join(wd, absolutePath)
+				}
+			} else {
+				// File path has directory info, resolve relative to working directory
+				absolutePath = filepath.Join(wd, absolutePath)
+			}
 		}
 	}
 
-	// Convert Windows paths to file:// URLs properly
-	fileUrl := "file://" + strings.ReplaceAll(absolutePath, "\\", "/")
+	// Clean the path and ensure proper format
+	absolutePath = filepath.Clean(absolutePath)
+
+	// Create display text (show relative path for readability)
 	displayText := fmt.Sprintf("%s:%d:%d", location.File, location.Line, location.Column)
 
-	// Create clickable text using OSC 8 escape sequence
-	// This makes the text clickable in terminals that support it (like VS Code integrated terminal)
+	// Use standard file:// URL following OSC 8 best practices
+	// This respects the user's system default file associations and current IDE preferences
+	// Convert backslashes to forward slashes for URL format
+	urlPath := strings.ReplaceAll(absolutePath, "\\", "/")
+	linkUrl := "file:///" + urlPath
+
+	// Use OSC 8 hyperlink escape sequence for terminal link support
+	// Format: ESC]8;;URL ESC\\ text ESC]8;; ESC\\
 	clickableText := fmt.Sprintf("\033]8;;%s\033\\%s\033]8;;\033\\",
-		fileUrl,
+		linkUrl,
 		r.formatter.Cyan(displayText))
 
 	return fmt.Sprintf("↳ %s", clickableText)
