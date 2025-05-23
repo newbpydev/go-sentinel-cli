@@ -108,7 +108,7 @@ Download pre-built binaries from the [GitHub Releases](https://github.com/newbpy
 ## 🚦 Quick Start
 
 ### Basic Usage
-```bash
+   ```bash
 # Run tests with beautiful output
 go-sentinel run
 
@@ -123,7 +123,7 @@ go-sentinel run --test="TestConfig*"
 ```
 
 ### Common Workflows
-```bash
+   ```bash
 # Development workflow (watch mode with colors)
 go-sentinel run -w --color
 
@@ -144,7 +144,7 @@ go-sentinel run --parallel=8 --timeout=5m
 - `go-sentinel demo --phase=<1-7>` - View development phase demonstrations
 
 ### Run Command Flags
-```bash
+   ```bash
 go-sentinel run [flags] [packages]
 
 Flags:
@@ -161,7 +161,7 @@ Flags:
 ```
 
 ### Examples
-```bash
+   ```bash
 # Watch mode with test filtering
 go-sentinel run -w --test="TestHandler*" ./api
 
@@ -430,4 +430,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
   <p>
     Give us a ⭐ if Go Sentinel CLI makes your testing experience better!
   </p>
-</div> 
+</div>
