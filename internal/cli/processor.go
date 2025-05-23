@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -154,6 +155,10 @@ func (p *TestProcessor) onTestFail(event TestEvent) {
 			if test.Name == event.Test {
 				test.Status = StatusFailed
 				test.Duration = time.Duration(event.Elapsed * float64(time.Second))
+
+				// Create error details from accumulated output
+				test.Error = p.createTestError(test, event)
+
 				suite.FailedCount++
 				p.statistics.FailedTests++
 				p.statistics.TotalTests++
@@ -165,6 +170,10 @@ func (p *TestProcessor) onTestFail(event TestEvent) {
 				if subtest.Name == event.Test {
 					subtest.Status = StatusFailed
 					subtest.Duration = time.Duration(event.Elapsed * float64(time.Second))
+
+					// Create error details from accumulated output
+					subtest.Error = p.createTestError(subtest, event)
+
 					suite.FailedCount++
 					p.statistics.FailedTests++
 					p.statistics.TotalTests++
@@ -314,5 +323,85 @@ func (p *TestProcessor) AddTestSuite(suite *TestSuite) {
 		p.statistics.FailedFiles++
 	} else {
 		p.statistics.PassedFiles++
+	}
+}
+
+// createTestError creates a TestError from test output and event information
+func (p *TestProcessor) createTestError(test *TestResult, event TestEvent) *TestError {
+	// Extract error message from test output
+	output := strings.TrimSpace(test.Output)
+	lines := strings.Split(output, "\n")
+
+	var errorMessage string
+	var errorType string = "TestFailure"
+	var sourceFile string
+	var sourceLine int
+
+	// Parse output to extract error information
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		// Look for error messages (lines that start with test file and line number)
+		if strings.Contains(trimmed, ".go:") && strings.Contains(trimmed, ": ") {
+			// This looks like an error line: filename.go:123: error message
+			parts := strings.SplitN(trimmed, ": ", 2)
+			if len(parts) == 2 {
+				// Extract file and line info
+				fileLinePart := parts[0]
+				errorMessage = parts[1]
+
+				// Try to extract file name and line number
+				if lastSpace := strings.LastIndex(fileLinePart, " "); lastSpace != -1 {
+					fileLinePart = fileLinePart[lastSpace+1:]
+				}
+
+				if colonIndex := strings.LastIndex(fileLinePart, ":"); colonIndex != -1 {
+					sourceFile = fileLinePart[:colonIndex]
+					if lineStr := fileLinePart[colonIndex+1:]; lineStr != "" {
+						if line, err := strconv.Atoi(lineStr); err == nil {
+							sourceLine = line
+						}
+					}
+				}
+				break
+			}
+		}
+
+		// If no structured error found, use the first non-empty line as error message
+		if errorMessage == "" && trimmed != "" && !strings.HasPrefix(trimmed, "=== ") {
+			errorMessage = trimmed
+		}
+	}
+
+	// Default error message if none found
+	if errorMessage == "" {
+		errorMessage = "Test failed"
+	}
+
+	// Detect error type from message content
+	if strings.Contains(errorMessage, "panic") {
+		errorType = "Panic"
+	} else if strings.Contains(errorMessage, "timeout") {
+		errorType = "Timeout"
+	} else if strings.Contains(errorMessage, "Expected") || strings.Contains(errorMessage, "expected") {
+		errorType = "AssertionError"
+	}
+
+	// Create location if we have file info
+	var location *SourceLocation
+	if sourceFile != "" && sourceLine > 0 {
+		location = &SourceLocation{
+			File:     sourceFile,
+			Line:     sourceLine,
+			Column:   1,
+			Function: test.Name,
+		}
+	}
+
+	return &TestError{
+		Message:  errorMessage,
+		Type:     errorType,
+		Stack:    output, // Store full output as stack trace
+		Location: location,
 	}
 }
