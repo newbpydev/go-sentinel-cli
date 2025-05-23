@@ -128,25 +128,25 @@ Complete migration from monolithic structure to modular architecture while prese
 
 ---
 
-## Phase 5: Legacy Code Migration 📋
-**Status: READY TO BEGIN**
+## Phase 5: Legacy Code Migration 🔄
+**Status: IN PROGRESS**
 
-### Critical Component Analysis 📋
+### Critical Component Analysis ✅
 **Components to Migrate (Preserve Style):**
 - [ ] `internal/cli/incremental_renderer.go` → `internal/cli/rendering/incremental.go`
 - [x] `internal/cli/colors.go` → `internal/cli/rendering/colors.go` ✅
 - [ ] `internal/cli/processor.go` → Integrate with new rendering system
 - [ ] `internal/cli/test_runner.go` → Merge features with execution module
-- [ ] `internal/cli/watcher.go` → `internal/cli/watch/watcher.go`
+- [x] `internal/cli/watcher.go` → `internal/cli/watch/watcher.go` ✅
 
 **Components to Replace:**
 - [x] `internal/cli/app_controller.go` → Use new modular controller ✅
 - [ ] `internal/cli/optimized_test_runner.go` → Features integrated into execution
 - [ ] `internal/cli/test_cache.go` → Replaced by new cache system
 
-### Migration Priority Order 📋
+### Migration Priority Order ✅
 1. [x] **Phase 4 completion** ✅
-2. [ ] Watch system and file detection
+2. [x] **Watch system and file detection** ✅
 3. [ ] Test processing and output
 4. [ ] Configuration and CLI parsing
 5. [ ] Legacy cleanup
@@ -247,8 +247,10 @@ Complete migration from monolithic structure to modular architecture while prese
 
 ### Immediate Next Steps (In Order)
 1. **✅ COMPLETED**: Phase 4 - Rendering system integration
-2. **📋 NEXT**: Begin Phase 5 - Legacy component migration
-3. **📋 NEXT**: Implement full watch mode functionality
+2. **🔄 IN PROGRESS**: Phase 5 - Legacy component migration   
+  - **✅ COMPLETED**: Watch system migration (`internal/cli/watch/watcher.go`)   
+  - **📋 NEXT**: Test processing and output migration
+3. **✅ COMPLETED**: Full watch mode functionality with file detection
 4. **📋 NEXT**: Complete CLI flag compatibility testing
 5. **📋 NEXT**: Performance benchmarking
 
@@ -268,5 +270,5 @@ Complete migration from monolithic structure to modular architecture while prese
 
 ---
 
-**Last Updated**: Phase 4 completed successfully - Rendering system integration with 100% visual compatibility achieved
-**Next Milestone**: Begin Phase 5 - Legacy component migration while maintaining style preservation 
+**Last Updated**: Phase 5 in progress - Watch system migration completed with full file detection functionality
+**Next Milestone**: Continue Phase 5 - Test processing and output migration while maintaining style preservation 

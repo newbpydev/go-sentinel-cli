@@ -11,6 +11,7 @@ import (
 	"github.com/newbpydev/go-sentinel/internal/cli/core"
 	"github.com/newbpydev/go-sentinel/internal/cli/execution"
 	"github.com/newbpydev/go-sentinel/internal/cli/rendering"
+	"github.com/newbpydev/go-sentinel/internal/cli/watch"
 )
 
 // AppController coordinates the overall application flow using the new modular architecture
@@ -92,13 +93,12 @@ func (a *AppController) RunOnce(ctx context.Context, config *core.Config) error 
 	return nil
 }
 
-// RunWatch starts watch mode
+// RunWatch starts watch mode with full file watching functionality
 func (a *AppController) RunWatch(ctx context.Context, config *core.Config) error {
 	// Render watch mode startup with original style
 	a.renderer.RenderWatchStart()
 
-	// For now, implement a basic watch mode that runs once
-	// In the full implementation, this would set up file watchers
+	// Run initial tests
 	err := a.RunOnce(ctx, config)
 	if err != nil {
 		return err
@@ -107,11 +107,64 @@ func (a *AppController) RunWatch(ctx context.Context, config *core.Config) error
 	fmt.Printf("\n✅ Initial test run complete.")
 	a.renderer.RenderWatchModeInfo()
 
-	// For now, just return immediately instead of blocking
-	// In a real implementation, this would set up file watchers and block
-	fmt.Println("⚠️  Watch mode is not fully implemented yet. Exiting...")
+	// Set up file watcher
+	watchPaths := []string{"."}
+	ignorePatterns := []string{
+		"*.exe", "*.dll", "*.so", "*.dylib",
+		".git", ".github", "vendor", "node_modules",
+		"*.log", "*.tmp", "*.temp",
+	}
 
-	return nil
+	watcher, err := watch.NewFileSystemWatcher(watchPaths, ignorePatterns)
+	if err != nil {
+		return fmt.Errorf("failed to create file watcher: %w", err)
+	}
+	defer watcher.Close()
+
+	// Create channel for file changes
+	changes := make(chan core.FileChange, 10)
+
+	// Start watching in a goroutine
+	go func() {
+		defer close(changes)
+		if err := watcher.WatchForChanges(changes); err != nil {
+			fmt.Printf("⚠️ Watch error: %v\n", err)
+		}
+	}()
+
+	// Process file changes
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("\n🛑 Watch mode stopped")
+			return nil
+		case change, ok := <-changes:
+			if !ok {
+				fmt.Println("\n⚠️ File watcher stopped")
+				return nil
+			}
+
+			// Display file change
+			a.renderer.RenderFileChanges([]core.FileChange{change})
+
+			// Run tests for the change
+			strategy := a.factory.CreateStrategy(config.CacheStrategy)
+			result, err := a.testRunner.RunTests(ctx, []core.FileChange{change}, strategy)
+			if err != nil {
+				a.renderer.RenderError(err)
+				continue
+			}
+
+			// Render results
+			a.renderer.RenderTestResult(result)
+
+			// Render cache statistics if verbose
+			if config.Verbose {
+				stats := a.cache.GetStats()
+				a.renderer.RenderCacheStats(stats)
+			}
+		}
+	}
 }
 
 // updateRenderer updates renderer settings based on configuration
