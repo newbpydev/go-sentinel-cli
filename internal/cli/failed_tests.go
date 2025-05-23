@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -174,11 +175,26 @@ func (r *FailedTestRenderer) formatClickableLocation(location *SourceLocation) s
 	// Create display text (show relative path for readability)
 	displayText := fmt.Sprintf("%s:%d:%d", location.File, location.Line, location.Column)
 
-	// Use standard file:// URL following OSC 8 best practices
-	// This respects the user's system default file associations and current IDE preferences
 	// Convert backslashes to forward slashes for URL format
 	urlPath := strings.ReplaceAll(absolutePath, "\\", "/")
-	linkUrl := "file:///" + urlPath
+
+	// Multi-layered approach for maximum compatibility:
+	// Try different URL schemes based on what's available and most likely to work
+	var linkUrl string
+
+	// Strategy 1: Try Cursor-specific URL scheme (most reliable when it works)
+	if r.isCursorInstalled() {
+		// Use the format recommended in Cursor forum: cursor://file/path:line:column
+		linkUrl = fmt.Sprintf("cursor://file/%s:%d:%d", urlPath, location.Line, location.Column)
+	} else if r.isVSCodeInstalled() {
+		// Strategy 2: Use VS Code URL scheme if available
+		linkUrl = fmt.Sprintf("vscode://file/%s:%d:%d", urlPath, location.Line, location.Column)
+	} else {
+		// Strategy 3: Use a pragmatic fallback approach
+		// Create a command-style URL that could be processed by system handlers
+		// This format works with many systems and can be extended
+		linkUrl = fmt.Sprintf("file:///%s#line=%d&column=%d", urlPath, location.Line, location.Column)
+	}
 
 	// Use OSC 8 hyperlink escape sequence for terminal link support
 	// Format: ESC]8;;URL ESC\\ text ESC]8;; ESC\\
@@ -187,6 +203,79 @@ func (r *FailedTestRenderer) formatClickableLocation(location *SourceLocation) s
 		r.formatter.Cyan(displayText))
 
 	return fmt.Sprintf("↳ %s", clickableText)
+}
+
+// isCursorInstalled checks if Cursor is installed and available
+func (r *FailedTestRenderer) isCursorInstalled() bool {
+	// Check if cursor command is available in PATH first (most reliable)
+	if _, err := exec.LookPath("cursor"); err == nil {
+		return true
+	}
+
+	// Check common Cursor installation paths on Windows
+	username := os.Getenv("USERNAME")
+	if username != "" {
+		commonPaths := []string{
+			"C:\\Users\\" + username + "\\AppData\\Local\\Programs\\cursor\\Cursor.exe",
+			"C:\\Users\\" + username + "\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin\\cursor.cmd",
+		}
+
+		for _, path := range commonPaths {
+			if _, err := os.Stat(path); err == nil {
+				return true
+			}
+		}
+	}
+
+	// Fallback paths
+	fallbackPaths := []string{
+		"C:\\Program Files\\Cursor\\Cursor.exe",
+		"C:\\Program Files (x86)\\Cursor\\Cursor.exe",
+	}
+
+	for _, path := range fallbackPaths {
+		if _, err := os.Stat(path); err == nil {
+			return true
+		}
+	}
+
+	return false
+}
+
+// isVSCodeInstalled checks if VS Code is installed and available
+func (r *FailedTestRenderer) isVSCodeInstalled() bool {
+	// Check if code command is available in PATH first (most reliable)
+	if _, err := exec.LookPath("code"); err == nil {
+		return true
+	}
+
+	// Check common VS Code installation paths on Windows
+	username := os.Getenv("USERNAME")
+	if username != "" {
+		commonPaths := []string{
+			"C:\\Users\\" + username + "\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe",
+		}
+
+		for _, path := range commonPaths {
+			if _, err := os.Stat(path); err == nil {
+				return true
+			}
+		}
+	}
+
+	// Fallback paths
+	fallbackPaths := []string{
+		"C:\\Program Files\\Microsoft VS Code\\Code.exe",
+		"C:\\Program Files (x86)\\Microsoft VS Code\\Code.exe",
+	}
+
+	for _, path := range fallbackPaths {
+		if _, err := os.Stat(path); err == nil {
+			return true
+		}
+	}
+
+	return false
 }
 
 // renderSourceContext renders source code around the error with line numbers and highlighting
