@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/newbpydev/go-sentinel/internal/cli"
+	"github.com/newbpydev/go-sentinel/internal/cli/controller"
 	"github.com/spf13/cobra"
 )
 
@@ -14,40 +14,13 @@ var runCmd = &cobra.Command{
 If no packages are specified, runs tests in the current directory and subdirectories.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Create the application controller
-		controller := cli.NewAppController()
+		appController := controller.NewAppController()
 
-		// Extract flags directly from cobra command and create Args struct
-		watchFlag, _ := cmd.Flags().GetBool("watch")
-		colorFlag, _ := cmd.Flags().GetBool("color")
-		verboseFlag, _ := cmd.Flags().GetBool("verbose")
-		failFastFlag, _ := cmd.Flags().GetBool("fail-fast")
-		optimizedFlag, _ := cmd.Flags().GetBool("optimized")
-		testPattern, _ := cmd.Flags().GetString("test")
-		optimizationMode, _ := cmd.Flags().GetString("optimization")
+		// Build CLI args for legacy compatibility
+		cliArgs := buildCLIArgs(cmd, args)
 
-		// Handle no-color flag
-		if noColor, _ := cmd.Flags().GetBool("no-color"); noColor {
-			colorFlag = false
-		}
-
-		// Create Args struct
-		parser := cli.NewArgParser()
-		cliArgs := parser.ParseFromCobra(
-			watchFlag,
-			colorFlag,
-			verboseFlag,
-			failFastFlag,
-			optimizedFlag,
-			args,
-			testPattern,
-			optimizationMode,
-		)
-
-		// Convert to string slice for compatibility with existing Run method
-		cliArgsSlice := convertArgsToSlice(cliArgs)
-
-		// Run the application
-		return controller.Run(cliArgsSlice)
+		// Run the application using legacy interface
+		return appController.RunLegacy(cliArgs)
 	},
 }
 
@@ -130,52 +103,4 @@ func buildCLIArgs(cmd *cobra.Command, args []string) []string {
 	cliArgs = append(cliArgs, args...)
 
 	return cliArgs
-}
-
-// convertArgsToSlice converts Args struct back to string slice for compatibility
-func convertArgsToSlice(args *cli.Args) []string {
-	var result []string
-
-	// Handle verbosity levels
-	if args.Verbosity > 0 {
-		for i := 0; i < args.Verbosity; i++ {
-			result = append(result, "-v")
-		}
-	}
-
-	// Handle color flags
-	if !args.Colors {
-		result = append(result, "--no-color")
-	} else {
-		result = append(result, "--color")
-	}
-
-	// Handle watch mode
-	if args.Watch {
-		result = append(result, "--watch")
-	}
-
-	// Handle optimization flags
-	if args.Optimized {
-		result = append(result, "--optimized")
-	}
-
-	if args.OptimizationMode != "" {
-		result = append(result, "--optimization="+args.OptimizationMode)
-	}
-
-	// Handle test pattern
-	if args.TestPattern != "" {
-		result = append(result, "--test="+args.TestPattern)
-	}
-
-	// Handle fail fast
-	if args.FailFast {
-		result = append(result, "--fail-fast")
-	}
-
-	// Add package arguments
-	result = append(result, args.Packages...)
-
-	return result
 }
