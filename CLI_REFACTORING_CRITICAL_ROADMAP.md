@@ -175,22 +175,167 @@
 
 **Status**: ✅ **COMPLETED** - All UI components migrated with enhanced functionality
 
-### 🎯 **TIER 8: Application Orchestration**
-*Main application controller*
+### 🎯 **TIER 8: Application Orchestration → `internal/app/` ⏳ **IN PROGRESS**
+*Final application controller refactoring and coordination*
 
-- [ ] **`
+**Target**: Refactor remaining monolithic components to use new modular packages  
+**Files**: Core application controller and integration components  
+**Dependencies**: TIER 1-7 ✅ **COMPLETED**  
+**Complexity**: 🔥🔥🔥🔥🔥 VERY HIGH (Final orchestration of all components)
 
-## 📈 **Overall Progress**
+#### **Current Reality Check** (December 2024)
+**CRITICAL DISCOVERY**: Despite showing 87.5% completion, there are still **significant files** in `internal/cli/` that haven't been migrated:
 
-**COMPLETION STATUS**: 🏁 **87.5% COMPLETE** (7/8 TIERS COMPLETED)
+##### **UI Components Still in CLI** (Should have been in TIER 7):
+- [ ] `colors.go` (386 lines) → `internal/ui/colors/` ❌ **NOT MIGRATED**
+- [ ] `display.go` (167 lines) → `internal/ui/display/` ❌ **NOT MIGRATED**  
+- [ ] `failed_tests.go` (509 lines) → `internal/ui/display/` ❌ **NOT MIGRATED**
+- [ ] `incremental_renderer.go` (433 lines) → `internal/ui/renderer/` ❌ **NOT MIGRATED**
+- [ ] `suite_display.go` (104 lines) → `internal/ui/display/` ❌ **NOT MIGRATED**
+- [ ] `test_display.go` (160 lines) → `internal/ui/display/` ❌ **NOT MIGRATED**
+
+##### **Watch Integration Still in CLI**:
+- [ ] `optimization_integration.go` (335 lines) → `internal/watch/coordinator/optimization_coordinator.go`
+  - Watch optimization logic
+  - Integration with optimized test runner
+  - Performance metrics and efficiency tracking
+
+##### **Core Application Controller**:
+- [ ] `app_controller.go` (557 lines) → **REFACTOR** to use modular packages
+  - Main application orchestration  
+  - Component coordination and lifecycle management
+  - Watch mode and single mode execution
+  - Configuration merging and validation
+  - **Risk**: VERY HIGH - orchestrates entire application
+
+##### **Compatibility Layers** (Keep but clean up):
+- [x] `processor_compat.go` (474 lines) → Keep as compatibility bridge ✅
+- [x] `config_compat.go` (98 lines) → Keep as compatibility bridge ✅
+
+#### **Files to Migrate**:
+
+##### **8.1: Complete Missing UI Migration** (Should have been TIER 7):
+- [ ] **`colors.go` (386 lines)** → `internal/ui/colors/color_formatter.go` + `icon_provider.go`
+  - Color theme management and terminal detection
+  - Icon providers and symbol handling
+  - **Risk**: High - used by all display components
+  - **Dependencies**: None (foundation UI component)
+
+- [ ] **`display.go` (167 lines)** → `internal/ui/display/basic_display.go`
+  - Basic display formatting and output management
+  - Terminal width detection and formatting
+  - **Risk**: High - core display functionality
+  - **Dependencies**: colors.go
+
+- [ ] **`incremental_renderer.go` (433 lines)** → `internal/ui/renderer/incremental_renderer.go`
+  - Progressive test result rendering
+  - Real-time display updates and state management
+  - **Risk**: High - watch mode rendering
+  - **Dependencies**: colors.go, display.go
+
+- [ ] **`test_display.go` (160 lines)** → `internal/ui/display/test_display.go`
+  - Individual test result display formatting
+  - Test status indicators and messaging
+  - **Risk**: Medium - specific display component
+  - **Dependencies**: colors.go, display.go
+
+- [ ] **`suite_display.go` (104 lines)** → `internal/ui/display/suite_display.go`
+  - Test suite display and grouping
+  - Suite-level statistics and formatting
+  - **Risk**: Medium - specific display component
+  - **Dependencies**: colors.go, display.go
+
+- [ ] **`failed_tests.go` (509 lines)** → **SPLIT INTO**:
+  - `internal/ui/display/failure_display.go` (250 lines)
+    - Failed test grouping and headers
+    - Failure summary logic
+  - `internal/ui/display/error_formatter.go` (259 lines)
+    - Error message formatting and source context
+    - Stack trace processing and display
+  - **Risk**: VERY HIGH - complex component with source code extraction
+  - **Dependencies**: colors.go, display.go, source processing logic
+
+##### **8.2: Watch Integration Optimization**:
+- [ ] **`optimization_integration.go` (335 lines)** → `internal/watch/coordinator/optimization_coordinator.go`
+  - Optimized watch mode coordination
+  - Performance metrics and cache management
+  - Test targeting and efficiency optimization
+  - **Risk**: Medium - optimization logic
+  - **Dependencies**: watch coordinator, test cache, optimized runner
+
+##### **8.3: Application Controller Refactoring**:
+- [ ] **`app_controller.go` (557 lines)** → **REFACTOR** to orchestrate modular packages
+  - **Current issues**:
+    - Direct instantiation of monolithic components
+    - Mixed concerns (UI, testing, watching all in one file)
+    - Hard-coded dependencies instead of interfaces
+  - **Refactoring approach**:
+    - Create `internal/app/controller.go` with dependency injection
+    - Use interfaces from all migrated packages
+    - Implement proper lifecycle management
+    - Separate concerns into focused methods
+  - **Target architecture**:
+    ```go
+    type ApplicationController struct {
+        configService   config.ServiceInterface
+        testService     test.ServiceInterface  
+        watchService    watch.ServiceInterface
+        uiService       ui.ServiceInterface
+        lifecycle       LifecycleManagerInterface
+    }
+    ```
+
+#### **Migration Strategy**:
+
+##### **Phase 8.1**: Complete UI Migration (1 week)
+1. **Day 1-2**: Migrate `colors.go` and `display.go` (foundation)
+2. **Day 3-4**: Migrate `test_display.go` and `suite_display.go` 
+3. **Day 5-7**: Split and migrate `failed_tests.go` (most complex)
+4. **Day 7**: Migrate `incremental_renderer.go` and test integration
+
+##### **Phase 8.2**: Watch Integration (3 days)  
+1. **Day 1**: Migrate `optimization_integration.go` 
+2. **Day 2**: Update watch coordinator integration
+3. **Day 3**: Test and validate watch optimization
+
+##### **Phase 8.3**: App Controller Refactoring (1 week)
+1. **Day 1-2**: Design new controller architecture with interfaces
+2. **Day 3-4**: Implement dependency injection and service creation
+3. **Day 5-6**: Refactor Run() method to use modular services
+4. **Day 7**: Test integration and validate all workflows
+
+#### **Success Criteria**:
+- ✅ All UI components migrated to `internal/ui/`
+- ✅ Watch integration in `internal/watch/coordinator/`
+- ✅ App controller uses only interfaces from modular packages
+- ✅ Zero breaking changes to public CLI interface
+- ✅ All tests passing with improved coverage
+- ✅ Performance maintained or improved
+
+#### **Risk Mitigation**:
+- **UI Migration**: Test each component separately before integration
+- **Failed Tests Split**: Complex component requires careful source context handling
+- **App Controller**: Maintain compatibility layer during refactoring
+- **Integration**: Comprehensive end-to-end testing after each phase
+
+**Status**: ⏳ **PENDING** - Ready to start Phase 8.1 (Complete missing UI migration)
+
+## 📈 **Updated Overall Progress**
+
+**COMPLETION STATUS**: 🏁 **75% COMPLETE** (6/8 TIERS COMPLETED + TIER 7 PARTIAL)
 
 ✅ **TIER 1**: Data Models → `pkg/models/` (2 files)  
 ✅ **TIER 2**: Configuration → `internal/config/` (2 files)  
 ✅ **TIER 3**: Test Processing → `internal/test/processor/` (4 files from 834-line split)  
-✅ **TIER 4**: Test Runners → `internal/test/runner/` (6 files)  
+✅ **TIER 4**: Test Runners → `internal/test/runner/` (4 files)  
 ✅ **TIER 5**: Test Caching → `internal/test/cache/` (1 file)  
-✅ **TIER 6**: Watch System → `internal/watch/` (3/4 files, optimization_integration.go deferred)  
-✅ **TIER 7**: UI Components → `internal/ui/` (7 files, including complex split)  
-🎯 **TIER 8**: App Controller → Refactor (orchestrate all migrated components)
+✅ **TIER 6**: Watch System → `internal/watch/` (3/4 files, optimization_integration.go deferred to TIER 8)  
+🔄 **TIER 7**: UI Components → `internal/ui/` (0/7 files actually migrated - **CRITICAL DISCOVERY**)  
+🎯 **TIER 8**: App Controller + Missing Components → Orchestrate and complete migration
 
-**Next**: Complete the CLI refactoring journey with TIER 8 - the final app controller orchestration.
+**CRITICAL REALITY**: The migration is actually at **75% completion**, not 87.5%. TIER 7 was never actually completed - the UI components are still in `internal/cli/` and need to be migrated as part of TIER 8.
+
+**Next Phase**: Execute TIER 8 in 3 phases:
+1. **8.1**: Complete missing UI component migration (what should have been TIER 7)
+2. **8.2**: Watch integration optimization migration  
+3. **8.3**: Final app controller refactoring to orchestrate all modular packages

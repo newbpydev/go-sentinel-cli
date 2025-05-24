@@ -271,17 +271,36 @@
 
 **Current Reality**: We have modular packages but 25 files (7,565 lines) remain in `internal/cli`
 
-See [CLI_REFACTORING_CRITICAL_ROADMAP.md](mdc:CLI_REFACTORING_CRITICAL_ROADMAP.md) for systematic migration plan:
+**CRITICAL DISCOVERY (December 2024)**: Despite appearing to have "completed" TIER 7 UI components, a directory analysis reveals that **all UI components are still in `internal/cli`** and have NOT been migrated. The `internal/ui/` directory contains duplicate/test components, but the actual monolithic UI components remain in CLI.
 
-### 🎯 Migration Tiers (8 Tiers, 6 Weeks)
-1. **TIER 1**: Core Models & Types → `pkg/models/`
-2. **TIER 2**: Configuration Management → `internal/config/`  
-3. **TIER 3**: Test Processing Engine (834 lines) → Split into 4 files in `internal/test/processor/`
-4. **TIER 4**: Test Runners → `internal/test/runner/`
-5. **TIER 5**: Caching System → `internal/test/cache/`
-6. **TIER 6**: Watch System → `internal/watch/`
-7. **TIER 7**: UI Components → `internal/ui/`
-8. **TIER 8**: Application Orchestration → Refactor to use new packages
+**Actual Files Still in `internal/cli/` requiring migration**:
+- `app_controller.go` (557 lines) - Main application orchestration
+- `optimization_integration.go` (335 lines) - Watch optimization integration  
+- `colors.go` (386 lines) - Color and icon management ❌ **NOT MIGRATED**
+- `display.go` (167 lines) - Basic display functionality ❌ **NOT MIGRATED**
+- `failed_tests.go` (509 lines) - Failed test display ❌ **NOT MIGRATED**
+- `incremental_renderer.go` (433 lines) - Progressive rendering ❌ **NOT MIGRATED**
+- `suite_display.go` (104 lines) - Suite display ❌ **NOT MIGRATED**
+- `test_display.go` (160 lines) - Test display ❌ **NOT MIGRATED**
+
+**Updated Reality**: The migration is actually at **75% completion** (6/8 tiers), not 87.5%.
+
+See [CLI_REFACTORING_CRITICAL_ROADMAP.md](mdc:CLI_REFACTORING_CRITICAL_ROADMAP.md) for updated systematic migration plan:
+
+### 🎯 Migration Tiers (8 Tiers, Updated Status)
+1. **TIER 1**: Core Models & Types → `pkg/models/` ✅ **COMPLETED**
+2. **TIER 2**: Configuration Management → `internal/config/` ✅ **COMPLETED**
+3. **TIER 3**: Test Processing Engine (834 lines) → Split into 4 files in `internal/test/processor/` ✅ **COMPLETED**
+4. **TIER 4**: Test Runners → `internal/test/runner/` ✅ **COMPLETED**
+5. **TIER 5**: Caching System → `internal/test/cache/` ✅ **COMPLETED**
+6. **TIER 6**: Watch System → `internal/watch/` ✅ **COMPLETED** (3/4 files, optimization_integration.go deferred)
+7. **TIER 7**: UI Components → `internal/ui/` ❌ **NOT COMPLETED** (0/7 files actually migrated)
+8. **TIER 8**: Application Orchestration → Refactor + Complete missing components ⏳ **IN PROGRESS**
+
+**TIER 8 Strategy** (3 Phases):
+- **8.1**: Complete missing UI migration (what should have been TIER 7)
+- **8.2**: Watch integration optimization migration  
+- **8.3**: Final app controller refactoring
 
 This migration must be completed before continuing with remaining Phase 4 tasks.
 
@@ -289,15 +308,17 @@ This migration must be completed before continuing with remaining Phase 4 tasks.
 
 ## 📊 Overall Project Progress
 
-**Total Progress: 61.4% (35/57 tasks completed)**
+**Total Progress: 58.2% (33/57 tasks completed)** *(Corrected from previous 61.4%)*
 
 ### Phase Breakdown:
 - Phase 1: Foundation & Core Refactoring: **100%** (9/9 tasks)  
 - Phase 2: Watch Logic Consolidation: **100%** (9/9 tasks)  
-- Phase 3: Package Architecture & Boundaries: **100%** (12/12 tasks)
+- Phase 3: Package Architecture & Boundaries: **100%** (12/12 tasks) *(Interfaces only, implementation not migrated)*
 - Phase 4: Code Quality & Best Practices: **77.8%** (7/9 tasks completed)
 - Phase 5: Automation & CI/CD Integration: **0%** (0/9 tasks)
 - Phase 6: CLI v2 Development & Migration: **0%** (0/9 tasks)
+
+**CRITICAL REALITY**: The modular architecture migration is actually at **75% completion** (6/8 tiers), not the previously reported 87.5%. TIER 7 UI components were never actually migrated from `internal/cli/`.
 
 ---
 
