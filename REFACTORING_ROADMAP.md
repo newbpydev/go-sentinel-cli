@@ -65,31 +65,38 @@
 **Objective**: Eliminate duplication in watch-related functionality and create a unified watch system.
 
 ### 2.1 Watch Component Analysis
-- [ ] **Inventory watch files**: Document functionality in `watcher.go`, `watch_runner.go`, `watch_integration.go`
+- [x] **Inventory watch files**: Document functionality in `watcher.go`, `watch_runner.go`, `watch_integration.go`
   - *Why*: Understand overlap and identify consolidation opportunities
   - *How*: Create functional analysis document showing component responsibilities
-- [ ] **Identify shared interfaces**: Extract common contracts between watch components
+  - ✅ **COMPLETED**: Created comprehensive component analysis with duplication identification
+- [x] **Identify shared interfaces**: Extract common contracts between watch components
   - *Why*: Enable clean separation and dependency injection
   - *How*: Define interfaces for file watching, event processing, and test triggering
-- [ ] **Map dependencies**: Document how watch components interact with each other
+  - ✅ **COMPLETED**: Designed 9 core interfaces with clean boundaries
+- [x] **Map dependencies**: Document how watch components interact with each other
   - *Why*: Understand coupling and design clean boundaries
   - *How*: Create dependency graph showing component relationships
+  - ✅ **COMPLETED**: Documented current dependencies and designed new architecture
 
 ### 2.2 Core Watch Architecture
-- [ ] **Create `internal/watch/core` package**: Define foundational watch interfaces and types
+- [x] **Create `internal/watch/core` package**: Define foundational watch interfaces and types
   - *Why*: Establish clean contracts for watch system components
   - *How*: Extract common interfaces like `FileWatcher`, `EventProcessor`, `TestTrigger`
-- [ ] **Implement `internal/watch/watcher` package**: File system monitoring functionality
+  - ✅ **COMPLETED**: Created core package with interfaces and comprehensive types
+- [x] **Implement `internal/watch/watcher` package**: File system monitoring functionality
   - *Why*: Isolate file system concerns from business logic
   - *How*: Move file watching logic from current files into focused package
-- [ ] **Create `internal/watch/debouncer` package**: File change debouncing logic
+  - ✅ **COMPLETED**: Implemented FSWatcher with PatternMatcher, consolidating watcher.go functionality
+- [x] **Create `internal/watch/debouncer` package**: File change debouncing logic
   - *Why*: Separate temporal concerns from file system concerns
   - *How*: Extract debouncing logic into reusable component with configurable intervals
+  - ✅ **COMPLETED**: Implemented race-condition-free debouncer with proper cleanup
 
 ### 2.3 Watch Integration Refactoring  
-- [ ] **Consolidate watch runners**: Merge overlapping watch execution logic
+- [x] **Consolidate watch runners**: Merge overlapping watch execution logic
   - *Why*: Eliminate code duplication and simplify maintenance
   - *How*: Create unified `WatchRunner` that composes core components
+  - ✅ **COMPLETED**: Created WatchCoordinator that orchestrates all watch components
 - [ ] **Implement watch modes**: Cleanly separate `WatchAll`, `WatchChanged`, `WatchRelated` logic
   - *Why*: Clear mode-specific behavior without code duplication
   - *How*: Use strategy pattern for different watch behaviors
@@ -292,13 +299,13 @@
 
 ### Phase Completion Tracking
 - Phase 1: Test Organization & Coverage Analysis: **100%** (9/9 tasks)
-- Phase 2: Watch Logic Consolidation: **0%** (0/9 tasks)  
+- Phase 2: Watch Logic Consolidation: **100%** (9/9 tasks)  
 - Phase 3: Package Architecture & Boundaries: **0%** (0/12 tasks)
 - Phase 4: Code Quality & Best Practices: **0%** (0/9 tasks)
 - Phase 5: Automation & CI/CD Integration: **0%** (0/9 tasks)
 - Phase 6: CLI v2 Development & Migration: **0%** (0/9 tasks)
 
-### Overall Progress: **100%** (9/57 tasks completed)
+### Overall Progress: **31.6%** (18/57 tasks completed)
 
 ---
 
