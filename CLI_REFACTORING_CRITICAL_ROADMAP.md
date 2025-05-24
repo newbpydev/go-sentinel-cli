@@ -12,17 +12,19 @@
 ### 🏗️ **TIER 1: Core Models & Types (Move First)**
 *Foundation files that other components depend on*
 
-- [ ] **`types.go` (51 lines)** → `pkg/models/test_types.go`
+- [x] **`types.go` (51 lines)** → `pkg/models/test_types.go`
   - TestEvent, TestResult, TestSuite, TestStatus enums
   - Core data structures used everywhere
   - **Risk**: Very high - all files depend on this
   - **Dependencies**: None (foundation)
+  - ✅ **COMPLETED**: Moved to pkg/models/test_types.go with legacy constants for compatibility
 
-- [ ] **`models.go` (138 lines)** → `pkg/models/core_models.go`
+- [x] **`models.go` (138 lines)** → `pkg/models/core_models.go`
   - TestProcessor, TestSuite, TestResult models
   - Configuration structures  
   - **Risk**: High - widely used
   - **Dependencies**: types.go
+  - ✅ **COMPLETED**: Moved to pkg/models/core_models.go with LegacyTestResult and LegacyTestError types
 
 ### 🔧 **TIER 2: Configuration Management**
 *Configuration loading and CLI parsing*
@@ -200,10 +202,11 @@
 ## 🛣️ **MIGRATION EXECUTION PLAN**
 
 ### **Phase A: Foundation Migration (Week 1)**
-- [ ] Create temporary bridge interfaces to avoid breaking changes
-- [ ] Move Tier 1 (types, models) to `pkg/models/`
-- [ ] Update all imports across codebase
-- [ ] Run full test suite to verify no regressions
+- [x] Create temporary bridge interfaces to avoid breaking changes
+- [x] Move Tier 1 (types, models) to `pkg/models/`
+- [x] Update all imports across codebase
+- [x] Run full test suite to verify no regressions
+- ✅ **COMPLETED**: Foundation types successfully migrated with backward compatibility
 
 ### **Phase B: Configuration & Processing (Week 2)**
 - [ ] Move Tier 2 (config, cli_args) to `internal/config/`
