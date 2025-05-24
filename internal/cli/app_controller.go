@@ -149,7 +149,7 @@ func (a *AppController) runSingleMode(config *Config, cliArgs *Args) error {
 	}
 
 	// Add separator before final results
-	fmt.Fprintln(a.processor.writer)
+	fmt.Fprintln(a.processor.GetWriter())
 
 	// Render final summary (no need to call finalize again as ProcessStream does it)
 	if err := a.processor.RenderResults(true); err != nil {
@@ -444,7 +444,7 @@ func (a *AppController) renderIncrementalResults(changes []*FileChange, config *
 
 	// Use incremental rendering for watch mode
 	return a.incrementalRenderer.RenderIncrementalResults(
-		a.processor.suites,
+		a.processor.GetSuites(),
 		a.processor.GetStats(),
 		changes,
 	)

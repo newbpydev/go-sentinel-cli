@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 )
 
 // IncrementalRenderer manages incremental test result rendering for watch mode
@@ -348,4 +349,84 @@ func (r *IncrementalRenderer) getDeltaColor(delta int) string {
 		return r.formatter.Colorize("", "red")
 	}
 	return ""
+}
+
+// formatDuration is a simple wrapper around FormatDuration for backward compatibility
+func formatDuration(d time.Duration) string {
+	// Create a dummy formatter for the existing FormatDuration function
+	formatter := &ColorFormatter{useColors: false}
+	return FormatDuration(formatter, d)
+}
+
+// SummaryRenderer renders test summary information
+type SummaryRenderer struct {
+	writer    io.Writer
+	formatter *ColorFormatter
+	icons     *IconProvider
+	width     int
+}
+
+// NewSummaryRenderer creates a new SummaryRenderer
+func NewSummaryRenderer(writer io.Writer, formatter *ColorFormatter, icons *IconProvider, width int) *SummaryRenderer {
+	return &SummaryRenderer{
+		writer:    writer,
+		formatter: formatter,
+		icons:     icons,
+		width:     width,
+	}
+}
+
+// RenderSummary renders a test run summary
+func (r *SummaryRenderer) RenderSummary(stats *TestRunStats) error {
+	// Render test files summary
+	fmt.Fprintf(r.writer, "Test Files  %s\n", r.formatFileStats(stats))
+
+	// Render tests summary
+	fmt.Fprintf(r.writer, "Tests       %s\n", r.formatTestStats(stats))
+
+	// Render timing information
+	fmt.Fprintf(r.writer, "Start at    %s\n", stats.StartTime.Format("15:04:05"))
+	fmt.Fprintf(r.writer, "Duration    %s\n", FormatDuration(r.formatter, stats.Duration))
+
+	return nil
+}
+
+// formatFileStats formats file statistics
+func (r *SummaryRenderer) formatFileStats(stats *TestRunStats) string {
+	var parts []string
+
+	total := stats.TotalFiles
+	parts = append(parts, fmt.Sprintf("%d total", total))
+
+	if stats.PassedFiles > 0 {
+		parts = append(parts, r.formatter.Green(fmt.Sprintf("%d passed", stats.PassedFiles)))
+	}
+
+	if stats.FailedFiles > 0 {
+		parts = append(parts, r.formatter.Red(fmt.Sprintf("%d failed", stats.FailedFiles)))
+	}
+
+	return strings.Join(parts, " | ")
+}
+
+// formatTestStats formats test statistics
+func (r *SummaryRenderer) formatTestStats(stats *TestRunStats) string {
+	var parts []string
+
+	total := stats.TotalTests
+	parts = append(parts, fmt.Sprintf("%d total", total))
+
+	if stats.PassedTests > 0 {
+		parts = append(parts, r.formatter.Green(fmt.Sprintf("%d passed", stats.PassedTests)))
+	}
+
+	if stats.FailedTests > 0 {
+		parts = append(parts, r.formatter.Red(fmt.Sprintf("%d failed", stats.FailedTests)))
+	}
+
+	if stats.SkippedTests > 0 {
+		parts = append(parts, r.formatter.Yellow(fmt.Sprintf("%d skipped", stats.SkippedTests)))
+	}
+
+	return strings.Join(parts, " | ")
 }

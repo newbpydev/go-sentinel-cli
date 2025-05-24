@@ -161,12 +161,12 @@ func (r *ParallelTestRunner) runSingleTestPath(ctx context.Context, testPath str
 	}
 
 	// Extract the test suite for this path
-	if suite, exists := processor.suites[testPath]; exists {
+	if suite, exists := processor.GetSuites()[testPath]; exists {
 		return suite, nil
 	}
 
 	// If no suite found for exact path, look for first suite (fallback)
-	for _, suite := range processor.suites {
+	for _, suite := range processor.GetSuites() {
 		return suite, nil
 	}
 

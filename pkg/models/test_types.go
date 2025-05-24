@@ -62,7 +62,7 @@ type TestSuite struct {
 	// FilePath is the path to the test file
 	FilePath string
 	// Tests is the collection of test results
-	Tests []*TestResult
+	Tests []*LegacyTestResult
 	// Duration is the total time taken to run all tests
 	Duration time.Duration
 	// MemoryUsage is the memory used during the test run

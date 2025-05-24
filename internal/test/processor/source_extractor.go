@@ -1,10 +1,12 @@
-package cli
+package processor
 
 import (
 	"bufio"
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/newbpydev/go-sentinel/pkg/models"
 )
 
 // SourceExtractor extracts source code context around error locations
@@ -56,7 +58,7 @@ func (e *SourceExtractor) ExtractContext(filePath string, lineNumber int, contex
 }
 
 // ExtractSourceContext extracts source context for a TestError
-func (e *SourceExtractor) ExtractSourceContext(testError *TestError, contextLines int) error {
+func (e *SourceExtractor) ExtractSourceContext(testError *models.LegacyTestError, contextLines int) error {
 	if testError.Location == nil {
 		return nil // No location to extract context from
 	}

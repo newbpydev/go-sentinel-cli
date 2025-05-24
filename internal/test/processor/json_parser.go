@@ -1,4 +1,4 @@
-package cli
+package processor
 
 import (
 	"bufio"
@@ -10,14 +10,16 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/newbpydev/go-sentinel/pkg/models"
 )
 
 // Parser parses go test output into structured test results
 type Parser struct {
 	// testEvents maps package+test to slice of events
-	testEvents map[string][]*TestEvent
+	testEvents map[string][]*models.TestEvent
 	// packageEvents maps package to slice of events
-	packageEvents map[string][]*TestEvent
+	packageEvents map[string][]*models.TestEvent
 	// filePath is a regexp to extract file paths from output
 	filePath *regexp.Regexp
 	// lineNumber is a regexp to extract line numbers from output
@@ -27,8 +29,8 @@ type Parser struct {
 // NewParser creates a new Parser instance
 func NewParser() *Parser {
 	return &Parser{
-		testEvents:    make(map[string][]*TestEvent),
-		packageEvents: make(map[string][]*TestEvent),
+		testEvents:    make(map[string][]*models.TestEvent),
+		packageEvents: make(map[string][]*models.TestEvent),
 		// Match file paths like /path/to/file.go or C:\path\to\file.go
 		filePath: regexp.MustCompile(`(?:\/[\w.-]+)+\.go|\w:\\(?:[\w.-]+\\)+[\w.-]+\.go`),
 		// Match line numbers like :42 or line 42
@@ -37,7 +39,7 @@ func NewParser() *Parser {
 }
 
 // Parse parses the go test -json output and returns TestPackage results
-func (p *Parser) Parse(r io.Reader) ([]*TestPackage, error) {
+func (p *Parser) Parse(r io.Reader) ([]*models.TestPackage, error) {
 	scanner := bufio.NewScanner(r)
 
 	// First pass: collect all events
@@ -47,7 +49,7 @@ func (p *Parser) Parse(r io.Reader) ([]*TestPackage, error) {
 			continue
 		}
 
-		var event TestEvent
+		var event models.TestEvent
 		if err := json.Unmarshal([]byte(line), &event); err != nil {
 			return nil, fmt.Errorf("error parsing JSON: %v", err)
 		}
@@ -70,14 +72,14 @@ func (p *Parser) Parse(r io.Reader) ([]*TestPackage, error) {
 }
 
 // processEvents processes all events into test results
-func (p *Parser) processEvents() ([]*TestPackage, error) {
-	packages := make(map[string]*TestPackage)
+func (p *Parser) processEvents() ([]*models.TestPackage, error) {
+	packages := make(map[string]*models.TestPackage)
 
 	// Process package events first
 	for pkgName, events := range p.packageEvents {
-		pkg := &TestPackage{
+		pkg := &models.TestPackage{
 			Package: pkgName,
-			Tests:   make([]*TestResult, 0),
+			Tests:   make([]*models.LegacyTestResult, 0),
 		}
 		packages[pkgName] = pkg
 
@@ -114,14 +116,14 @@ func (p *Parser) processEvents() ([]*TestPackage, error) {
 		pkgName, testName := parts[0], parts[1]
 		pkg, exists := packages[pkgName]
 		if !exists {
-			pkg = &TestPackage{
+			pkg = &models.TestPackage{
 				Package: pkgName,
-				Tests:   make([]*TestResult, 0),
+				Tests:   make([]*models.LegacyTestResult, 0),
 			}
 			packages[pkgName] = pkg
 		}
 
-		result := &TestResult{
+		result := &models.LegacyTestResult{
 			Name:    testName,
 			Package: pkgName,
 			Test:    testName,
@@ -139,17 +141,17 @@ func (p *Parser) processEvents() ([]*TestPackage, error) {
 		for _, event := range events {
 			switch event.Action {
 			case "run":
-				result.Status = StatusRunning
+				result.Status = models.StatusRunning
 			case "pass":
-				result.Status = StatusPassed
+				result.Status = models.StatusPassed
 				result.Duration = time.Duration(event.Elapsed * float64(time.Second))
 				pkg.PassedCount++
 			case "fail":
-				result.Status = StatusFailed
+				result.Status = models.StatusFailed
 				result.Duration = time.Duration(event.Elapsed * float64(time.Second))
 				pkg.FailedCount++
 			case "skip":
-				result.Status = StatusSkipped
+				result.Status = models.StatusSkipped
 				pkg.SkippedCount++
 			case "output":
 				output.WriteString(event.Output)
@@ -159,7 +161,7 @@ func (p *Parser) processEvents() ([]*TestPackage, error) {
 					strings.Contains(event.Output, "panic:") ||
 					strings.Contains(event.Output, "Expected") {
 					if result.Error == nil {
-						result.Error = &TestError{
+						result.Error = &models.LegacyTestError{
 							Message: strings.TrimSpace(event.Output),
 							Type:    p.determineErrorType(event.Output),
 						}
@@ -196,12 +198,12 @@ func (p *Parser) processEvents() ([]*TestPackage, error) {
 
 				if !found {
 					// Parent test hasn't been processed yet, create a placeholder
-					parent := &TestResult{
+					parent := &models.LegacyTestResult{
 						Name:     parentName,
 						Package:  pkgName,
 						Test:     parentName,
-						Status:   StatusRunning,
-						Subtests: []*TestResult{result},
+						Status:   models.StatusRunning,
+						Subtests: []*models.LegacyTestResult{result},
 					}
 					pkg.Tests = append(pkg.Tests, parent)
 				}
@@ -213,7 +215,7 @@ func (p *Parser) processEvents() ([]*TestPackage, error) {
 	}
 
 	// Convert map to slice
-	results := make([]*TestPackage, 0, len(packages))
+	results := make([]*models.TestPackage, 0, len(packages))
 	for _, pkg := range packages {
 		results = append(results, pkg)
 	}
@@ -238,7 +240,7 @@ func (p *Parser) determineErrorType(output string) string {
 }
 
 // extractSourceLocation extracts file and line information from test output
-func (p *Parser) extractSourceLocation(output string) *SourceLocation {
+func (p *Parser) extractSourceLocation(output string) *models.SourceLocation {
 	// Extract file path
 	fileMatches := p.filePath.FindStringSubmatch(output)
 	if len(fileMatches) == 0 {
@@ -265,7 +267,7 @@ func (p *Parser) extractSourceLocation(output string) *SourceLocation {
 		return nil
 	}
 
-	return &SourceLocation{
+	return &models.SourceLocation{
 		File: file,
 		Line: line,
 	}
