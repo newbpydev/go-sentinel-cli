@@ -193,6 +193,59 @@ go-sentinel-cli/
 └── stress_tests/                  # Performance and stress tests
 ```
 
+## 📚 Documentation
+
+### API Documentation
+For comprehensive documentation of all exported symbols, interfaces, and usage examples, see:
+- **[API Documentation](docs/API.md)** - Complete API reference with examples
+- **[Package Examples](pkg/models/examples.go)** - Runnable examples for the models package
+- **[Event System Examples](pkg/events/examples.go)** - Runnable examples for the events package
+
+### Architecture Documentation
+- **[Architecture Analysis](ARCHITECTURE_ANALYSIS.md)** - System architecture overview
+- **[Refactoring Roadmap](REFACTORING_ROADMAP.md)** - Development phases and progress
+- **[Phase 4 Progress](PHASE_4_PROGRESS_SUMMARY.md)** - Current development status
+
+### Key Packages
+
+#### `pkg/models` - Core Data Models
+Provides shared data structures for test results, error handling, file changes, and configuration.
+
+```go
+// Create and use test results
+result := models.NewTestResult("TestExample", "github.com/example/pkg")
+result.Status = models.TestStatusPassed
+
+// Handle errors with context
+err := models.NewValidationError("timeout", "must be positive")
+if models.IsErrorType(err, models.ErrorTypeValidation) {
+    fmt.Println("Validation error:", err.UserMessage())
+}
+```
+
+#### `pkg/events` - Event System
+Enables decoupled communication between components through a comprehensive event system.
+
+```go
+// Create and publish events
+event := events.NewTestStartedEvent("TestExample", "example/pkg")
+bus.Publish(ctx, event)
+
+// Subscribe to events
+subscription, err := bus.Subscribe("test.completed", handler)
+```
+
+### Examples and Usage Patterns
+
+The project includes comprehensive examples demonstrating:
+- **Error Handling** - Creating, wrapping, and sanitizing errors
+- **Test Result Management** - Building test results, package summaries, and coverage data
+- **Event System Usage** - Publishing, subscribing, and querying events
+- **Configuration Management** - Setting up test and watch configurations
+- **File Change Tracking** - Monitoring and responding to file system changes
+
+See the [API Documentation](docs/API.md) for detailed examples and usage patterns.
+
 ## 🧪 Development
 
 ### Prerequisites
