@@ -1,12 +1,15 @@
-package cli
+package cache
 
 import (
 	"crypto/md5"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/newbpydev/go-sentinel/pkg/models"
 )
 
 // TestResultCache manages cached test results for incremental testing
@@ -19,11 +22,11 @@ type TestResultCache struct {
 
 // CachedTestResult represents a cached test result
 type CachedTestResult struct {
-	Suite     *TestSuite
+	Suite     *models.TestSuite
 	FileHash  string
 	LastRun   time.Time
 	Duration  time.Duration
-	Status    TestStatus
+	Status    models.TestStatus
 	DependsOn []string // Files this test depends on
 }
 
@@ -45,6 +48,18 @@ type FileChange struct {
 	Hash          string
 	Timestamp     time.Time
 	AffectedTests []string
+}
+
+// CacheInterface defines the interface for test result caching
+type CacheInterface interface {
+	AnalyzeChange(filePath string) (*FileChange, error)
+	MarkFileAsProcessed(filePath string, processTime time.Time)
+	ShouldRunTests(changes []*FileChange) (bool, []string)
+	GetStaleTests(changes []*FileChange) []string
+	CacheResult(testPath string, suite *models.TestSuite)
+	GetCachedResult(testPath string) (*CachedTestResult, bool)
+	Clear()
+	GetStats() map[string]interface{}
 }
 
 // NewTestResultCache creates a new test result cache
@@ -168,7 +183,7 @@ func (c *TestResultCache) GetStaleTests(changes []*FileChange) []string {
 }
 
 // CacheResult stores a test result in the cache
-func (c *TestResultCache) CacheResult(testPath string, suite *TestSuite) {
+func (c *TestResultCache) CacheResult(testPath string, suite *models.TestSuite) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -275,7 +290,7 @@ func (c *TestResultCache) findAffectedTests(filePath string, changeType ChangeTy
 
 // findDependencies finds files that a test depends on
 func (c *TestResultCache) findDependencies(testPath string) []string {
-	var dependencies []string
+	dependencies := make([]string, 0)
 
 	// Add go.mod and go.sum as dependencies
 	if _, err := os.Stat("go.mod"); err == nil {
@@ -298,19 +313,19 @@ func (c *TestResultCache) findDependencies(testPath string) []string {
 		return nil
 	})
 
-	// If walk fails, just return basic dependencies
+	// Always return a non-nil slice
 	return dependencies
 }
 
 // calculateSuiteStatus calculates overall status of a test suite
-func (c *TestResultCache) calculateSuiteStatus(suite *TestSuite) TestStatus {
+func (c *TestResultCache) calculateSuiteStatus(suite *models.TestSuite) models.TestStatus {
 	if suite.FailedCount > 0 {
-		return StatusFailed
+		return models.StatusFailed
 	}
 	if suite.SkippedCount > 0 && suite.PassedCount == 0 {
-		return StatusSkipped
+		return models.StatusSkipped
 	}
-	return StatusPassed
+	return models.StatusPassed
 }
 
 // Clear clears all cached results
@@ -335,6 +350,7 @@ func (c *TestResultCache) GetStats() map[string]interface{} {
 	}
 }
 
-// Test change for watch mode
-// Test change Fri, May 23, 2025  4:54:56 PM
-// Another test change Fri, May 23, 2025  4:54:59 PM
+// isTestFile returns true if the file is a Go test file
+func isTestFile(filename string) bool {
+	return strings.HasSuffix(filename, "_test.go")
+}

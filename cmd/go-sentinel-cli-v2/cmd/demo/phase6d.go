@@ -2,7 +2,6 @@ package demo
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -231,19 +230,14 @@ func demonstrateMemoryManagement(formatter *cli.ColorFormatter, icons *cli.IconP
 	fmt.Println(formatter.Yellow("⚡ Creating optimized test processor..."))
 	time.Sleep(300 * time.Millisecond)
 
-	processor := cli.NewOptimizedTestProcessor(
-		io.Discard,
-		cli.NewColorFormatter(false),
-		cli.NewIconProvider(false),
-		80,
-	)
+	optimizedProcessor := cli.NewOptimizedTestProcessorWithUI(os.Stdout, formatter, icons, 80)
 
 	// Simulate processing many test suites
 	fmt.Println(formatter.Yellow("🔄 Processing multiple test suites..."))
 
 	for i := 0; i < 50; i++ {
 		suite := createMockTestSuite(fmt.Sprintf("test/batch_%d_test.go", i), 20)
-		processor.AddTestSuite(suite)
+		optimizedProcessor.AddTestSuite(suite)
 
 		if i%10 == 0 {
 			time.Sleep(50 * time.Millisecond)
@@ -253,14 +247,14 @@ func demonstrateMemoryManagement(formatter *cli.ColorFormatter, icons *cli.IconP
 	}
 
 	// Get memory stats from optimized processor
-	memStats := processor.GetMemoryStats()
+	memStats := optimizedProcessor.GetMemoryStats()
 	fmt.Printf("  %s Current allocated memory: %s\n",
 		formatter.Green(icons.CheckMark()),
 		formatter.Green(formatBytes(memStats.AllocBytes)))
 
 	// Demonstrate garbage collection
 	fmt.Println(formatter.Yellow("🗑️  Triggering garbage collection..."))
-	processor.ForceGarbageCollection()
+	optimizedProcessor.ForceGarbageCollection()
 	time.Sleep(200 * time.Millisecond)
 
 	var finalStats runtime.MemStats
@@ -297,12 +291,7 @@ func demonstrateConcurrentStability(formatter *cli.ColorFormatter, icons *cli.Ic
 	fmt.Println()
 
 	// Create optimized processor for concurrent testing
-	processor := cli.NewOptimizedTestProcessor(
-		io.Discard,
-		cli.NewColorFormatter(false),
-		cli.NewIconProvider(false),
-		80,
-	)
+	optimizedProcessor := cli.NewOptimizedTestProcessorWithUI(os.Stdout, formatter, icons, 80)
 
 	// Show worker pool configuration
 	numWorkers := runtime.NumCPU()
@@ -326,7 +315,7 @@ func demonstrateConcurrentStability(formatter *cli.ColorFormatter, icons *cli.Ic
 					fmt.Sprintf("test/concurrent_%d_%d_test.go", id, j),
 					15,
 				)
-				processor.AddTestSuite(suite)
+				optimizedProcessor.AddTestSuite(suite)
 			}
 		}(i)
 	}
@@ -347,7 +336,7 @@ func demonstrateConcurrentStability(formatter *cli.ColorFormatter, icons *cli.Ic
 	time.Sleep(200 * time.Millisecond)
 
 	renderStart := time.Now()
-	err := processor.RenderResultsOptimized(false)
+	err := optimizedProcessor.RenderResultsOptimized(false)
 	renderDuration := time.Since(renderStart)
 
 	if err == nil {
@@ -357,7 +346,7 @@ func demonstrateConcurrentStability(formatter *cli.ColorFormatter, icons *cli.Ic
 	}
 
 	// Show final statistics
-	stats := processor.GetStatsOptimized()
+	stats := optimizedProcessor.GetStatsOptimized()
 	fmt.Printf("  %s Total test suites: %s\n",
 		formatter.Cyan("→"),
 		formatter.Green(fmt.Sprintf("%d", stats.TotalFiles)))

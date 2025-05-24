@@ -4,6 +4,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/newbpydev/go-sentinel/internal/test/cache"
 	"github.com/newbpydev/go-sentinel/internal/test/processor"
 	"github.com/newbpydev/go-sentinel/internal/test/runner"
 	"github.com/newbpydev/go-sentinel/pkg/models"
@@ -70,6 +71,33 @@ type BatchProcessor = runner.BatchProcessor
 
 // LazyRenderer re-exports runner.LazyRenderer
 type LazyRenderer = runner.LazyRenderer
+
+// Re-export types from internal/test/cache for backward compatibility during TIER 5 migration
+
+// TestResultCache re-exports cache.TestResultCache
+type TestResultCache = cache.TestResultCache
+
+// CachedTestResult re-exports cache.CachedTestResult
+type CachedTestResult = cache.CachedTestResult
+
+// ChangeType re-exports cache.ChangeType
+type ChangeType = cache.ChangeType
+
+// FileChange re-exports cache.FileChange
+type FileChange = cache.FileChange
+
+// CacheInterface re-exports cache.CacheInterface
+type CacheInterface = cache.CacheInterface
+
+// Re-export constants from cache package
+const (
+	ChangeTypeTest       = cache.ChangeTypeTest
+	ChangeTypeSource     = cache.ChangeTypeSource
+	ChangeTypeConfig     = cache.ChangeTypeConfig
+	ChangeTypeDependency = cache.ChangeTypeDependency
+)
+
+// Re-export config types for backward compatibility
 
 // Re-export constructor functions
 
@@ -166,6 +194,11 @@ func NewLazyRenderer(threshold int) *LazyRenderer {
 	return runner.NewLazyRenderer(threshold)
 }
 
+// NewTestResultCache creates a new test result cache
+func NewTestResultCache() *TestResultCache {
+	return cache.NewTestResultCache()
+}
+
 // AdaptFileChanges converts CLI FileChange slice to FileChangeInterface slice
 func AdaptFileChanges(changes []*FileChange) []FileChangeInterface {
 	if changes == nil {
@@ -194,6 +227,41 @@ func AdaptFileChanges(changes []*FileChange) []FileChangeInterface {
 func adaptChangeType(cliType ChangeType) models.ChangeType {
 	switch cliType {
 	case ChangeTypeTest, ChangeTypeSource, ChangeTypeConfig, ChangeTypeDependency:
+		// These map to Created/Modified based on whether file is new
+		return models.ChangeTypeModified
+	default:
+		return models.ChangeTypeModified
+	}
+}
+
+// AdaptCacheFileChanges converts cache FileChange slice to runner FileChangeInterface slice
+func AdaptCacheFileChanges(changes []*cache.FileChange) []FileChangeInterface {
+	if changes == nil {
+		return nil
+	}
+
+	result := make([]FileChangeInterface, len(changes))
+	for i, change := range changes {
+		// Convert cache FileChange to models.FileChange first, then wrap in adapter
+		modelChange := &models.FileChange{
+			FilePath:   change.Path,
+			ChangeType: adaptCacheChangeType(change.Type),
+			Timestamp:  change.Timestamp,
+			Checksum:   change.Hash,
+			Metadata: map[string]interface{}{
+				"is_new":         change.IsNew,
+				"affected_tests": change.AffectedTests,
+			},
+		}
+		result[i] = &FileChangeAdapter{FileChange: modelChange}
+	}
+	return result
+}
+
+// adaptCacheChangeType converts cache ChangeType to models ChangeType
+func adaptCacheChangeType(cacheType cache.ChangeType) models.ChangeType {
+	switch cacheType {
+	case cache.ChangeTypeTest, cache.ChangeTypeSource, cache.ChangeTypeConfig, cache.ChangeTypeDependency:
 		// These map to Created/Modified based on whether file is new
 		return models.ChangeTypeModified
 	default:
