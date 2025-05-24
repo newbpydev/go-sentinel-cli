@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/newbpydev/go-sentinel/internal/watch/core"
+	"github.com/newbpydev/go-sentinel/pkg/models"
 )
 
 // Coordinator implements the WatchCoordinator interface
@@ -54,7 +55,9 @@ func (c *Coordinator) Start(ctx context.Context) error {
 	defer c.mu.Unlock()
 
 	if c.status.IsRunning {
-		return fmt.Errorf("watch coordinator is already running")
+		return models.NewWatchError("start", "", nil).
+			WithContext("reason", "already_running").
+			WithContext("component", "coordinator")
 	}
 
 	// Create context for this watch session
@@ -66,12 +69,11 @@ func (c *Coordinator) Start(ctx context.Context) error {
 	c.status.WatchedPaths = c.options.Paths
 
 	// Start the file system watcher
-	go func() {
-		if err := c.fsWatcher.Watch(c.ctx, c.eventChannel); err != nil && err != context.Canceled {
-			c.incrementErrorCount()
-			fmt.Printf("File watcher error: %v\n", err)
-		}
-	}()
+	if err := c.fsWatcher.Watch(c.ctx, c.eventChannel); err != nil && err != context.Canceled {
+		c.incrementErrorCount()
+		return models.NewWatchError("start_file_watcher", "", err).
+			WithContext("component", "file_watcher")
+	}
 
 	// Start the event processing loop
 	go c.processEvents()
@@ -98,13 +100,15 @@ func (c *Coordinator) Stop() error {
 	// Stop the debouncer
 	if err := c.debouncer.Stop(); err != nil {
 		c.status.ErrorCount++
-		return fmt.Errorf("failed to stop debouncer: %w", err)
+		return models.NewWatchError("stop_debouncer", "", err).
+			WithContext("component", "debouncer")
 	}
 
 	// Close the file system watcher
 	if err := c.fsWatcher.Close(); err != nil {
 		c.status.ErrorCount++
-		return fmt.Errorf("failed to close file watcher: %w", err)
+		return models.NewWatchError("stop_file_watcher", "", err).
+			WithContext("component", "file_watcher")
 	}
 
 	// Close channels
@@ -123,7 +127,9 @@ func (c *Coordinator) HandleFileChanges(changes []core.FileEvent) error {
 	defer c.mu.RUnlock()
 
 	if !c.status.IsRunning {
-		return fmt.Errorf("watch coordinator is not running")
+		return models.NewWatchError("handle_changes", "", nil).
+			WithContext("reason", "not_running").
+			WithContext("component", "coordinator")
 	}
 
 	// Update last event time
@@ -132,13 +138,22 @@ func (c *Coordinator) HandleFileChanges(changes []core.FileEvent) error {
 	// Trigger tests based on watch mode
 	switch c.options.Mode {
 	case core.WatchAll:
-		return c.testTrigger.TriggerAllTests(c.ctx)
+		for _, change := range changes {
+			if err := c.testTrigger.TriggerTestsForFile(c.ctx, change.Path); err != nil {
+				c.incrementErrorCount()
+				return models.NewWatchError("trigger_tests", change.Path, err).
+					WithContext("mode", "watch_all").
+					WithContext("change_type", change.Type)
+			}
+		}
 
 	case core.WatchChanged:
 		for _, change := range changes {
 			if err := c.testTrigger.TriggerTestsForFile(c.ctx, change.Path); err != nil {
 				c.incrementErrorCount()
-				return fmt.Errorf("failed to trigger tests for file %s: %w", change.Path, err)
+				return models.NewWatchError("trigger_tests", change.Path, err).
+					WithContext("mode", "watch_changed").
+					WithContext("change_type", change.Type)
 			}
 		}
 
@@ -146,12 +161,16 @@ func (c *Coordinator) HandleFileChanges(changes []core.FileEvent) error {
 		for _, change := range changes {
 			if err := c.testTrigger.TriggerRelatedTests(c.ctx, change.Path); err != nil {
 				c.incrementErrorCount()
-				return fmt.Errorf("failed to trigger related tests for file %s: %w", change.Path, err)
+				return models.NewWatchError("trigger_related_tests", change.Path, err).
+					WithContext("mode", "watch_related").
+					WithContext("change_type", change.Type)
 			}
 		}
 
 	default:
-		return fmt.Errorf("unknown watch mode: %s", c.options.Mode)
+		return models.NewWatchError("handle_changes", "", nil).
+			WithContext("reason", "unknown_mode").
+			WithContext("mode", string(c.options.Mode))
 	}
 
 	return nil

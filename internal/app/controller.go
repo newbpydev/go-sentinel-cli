@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/newbpydev/go-sentinel/internal/watch/core"
+	"github.com/newbpydev/go-sentinel/pkg/models"
 )
 
 // Controller implements the ApplicationController interface
@@ -92,31 +93,37 @@ func (c *Controller) Run(args []string) error {
 
 	// Notify startup
 	if err := c.eventHandler.OnStartup(c.ctx); err != nil {
-		return fmt.Errorf("startup event handler failed: %w", err)
+		return models.NewLifecycleError("startup", err).
+			WithContext("component", "event_handler")
 	}
 
 	// Step 1: Parse CLI arguments
 	parsedArgs, err := c.argParser.Parse(args)
 	if err != nil {
-		return fmt.Errorf("failed to parse arguments: %w", err)
+		return models.WrapError(err, models.ErrorTypeValidation, models.SeverityWarning, "failed to parse command line arguments").
+			WithContext("operation", "argument_parsing").
+			WithContext("args", fmt.Sprintf("%v", args))
 	}
 	c.args = parsedArgs
 
 	// Step 2: Load and merge configuration
 	config, err := c.loadAndMergeConfiguration(parsedArgs)
 	if err != nil {
-		return fmt.Errorf("failed to load configuration: %w", err)
+		return models.WrapError(err, models.ErrorTypeConfig, models.SeverityError, "failed to load configuration").
+			WithContext("operation", "config_loading")
 	}
 	c.config = config
 
 	// Step 3: Validate configuration
 	if err := c.configLoader.Validate(config); err != nil {
-		return fmt.Errorf("invalid configuration: %w", err)
+		return models.WrapError(err, models.ErrorTypeValidation, models.SeverityWarning, "configuration validation failed").
+			WithContext("operation", "config_validation")
 	}
 
 	// Step 4: Configure components
 	if err := c.configureComponents(config); err != nil {
-		return fmt.Errorf("failed to configure components: %w", err)
+		return models.WrapError(err, models.ErrorTypeDependency, models.SeverityError, "failed to configure application components").
+			WithContext("operation", "component_configuration")
 	}
 
 	// Step 5: Execute based on configuration
@@ -132,11 +139,17 @@ func (c *Controller) Shutdown(ctx context.Context) error {
 
 	// Notify shutdown
 	if err := c.eventHandler.OnShutdown(ctx); err != nil {
-		fmt.Printf("Warning: shutdown event handler failed: %v\n", err)
+		// Log warning but don't fail shutdown
+		fmt.Printf("Warning: %s\n", models.SanitizeError(err).Error())
 	}
 
 	// Shutdown lifecycle manager
-	return c.lifecycle.Shutdown(ctx)
+	if err := c.lifecycle.Shutdown(ctx); err != nil {
+		return models.NewLifecycleError("shutdown", err).
+			WithContext("component", "lifecycle_manager")
+	}
+
+	return nil
 }
 
 // loadAndMergeConfiguration loads configuration from file or defaults and merges with CLI args
@@ -150,7 +163,8 @@ func (c *Controller) loadAndMergeConfiguration(args *Arguments) (*Configuration,
 	if _, statErr := os.Stat(configPath); statErr == nil {
 		config, err = c.configLoader.LoadFromFile(configPath)
 		if err != nil {
-			return nil, fmt.Errorf("failed to load configuration from file: %w", err)
+			return nil, models.NewFileSystemError("read_config", configPath, err).
+				WithContext("config_type", "file")
 		}
 	} else {
 		// Use defaults if no file found
@@ -171,7 +185,8 @@ func (c *Controller) configureComponents(config *Configuration) error {
 	// Configure display renderer
 	if c.displayRenderer != nil {
 		if err := c.displayRenderer.SetConfiguration(config); err != nil {
-			return fmt.Errorf("failed to configure display renderer: %w", err)
+			return models.NewDependencyError("displayRenderer", err).
+				WithContext("operation", "configure_display")
 		}
 	}
 
@@ -189,7 +204,9 @@ func (c *Controller) configureComponents(config *Configuration) error {
 		}
 
 		if err := c.watchCoordinator.Configure(watchOptions); err != nil {
-			return fmt.Errorf("failed to configure watch coordinator: %w", err)
+			return models.NewDependencyError("watchCoordinator", err).
+				WithContext("operation", "configure_watch").
+				WithContext("watch_mode", "enabled")
 		}
 	}
 
@@ -219,12 +236,16 @@ func (c *Controller) executeSingleMode(config *Configuration, args *Arguments) e
 
 	// Execute tests
 	if err := c.testExecutor.ExecuteSingle(c.ctx, packages, config); err != nil {
-		return fmt.Errorf("test execution failed: %w", err)
+		return models.NewTestExecutionError(fmt.Sprintf("%v", packages), err).
+			WithContext("mode", "single").
+			WithContext("package_count", fmt.Sprintf("%d", len(packages)))
 	}
 
 	// Render results
 	if err := c.displayRenderer.RenderResults(c.ctx); err != nil {
-		return fmt.Errorf("failed to render results: %w", err)
+		return models.WrapError(err, models.ErrorTypeInternal, models.SeverityError, "failed to render test results").
+			WithContext("operation", "render_results").
+			WithContext("mode", "single")
 	}
 
 	// Display timing
@@ -240,7 +261,8 @@ func (c *Controller) executeWatchMode() error {
 
 	// Start watch coordinator
 	if err := c.watchCoordinator.Start(c.ctx); err != nil {
-		return fmt.Errorf("failed to start watch coordinator: %w", err)
+		return models.NewWatchError("start_coordinator", "", err).
+			WithContext("mode", "watch")
 	}
 
 	// Wait for context cancellation (shutdown signal)
@@ -253,17 +275,20 @@ func (c *Controller) executeWatchMode() error {
 func (c *Controller) resolveDependencies() error {
 	// Resolve test executor
 	if err := c.container.ResolveAs("testExecutor", &c.testExecutor); err != nil {
-		return fmt.Errorf("failed to resolve test executor: %w", err)
+		return models.NewDependencyError("testExecutor", err).
+			WithContext("operation", "resolve_dependency")
 	}
 
 	// Resolve watch coordinator
 	if err := c.container.ResolveAs("watchCoordinator", &c.watchCoordinator); err != nil {
-		return fmt.Errorf("failed to resolve watch coordinator: %w", err)
+		return models.NewDependencyError("watchCoordinator", err).
+			WithContext("operation", "resolve_dependency")
 	}
 
 	// Resolve display renderer
 	if err := c.container.ResolveAs("displayRenderer", &c.displayRenderer); err != nil {
-		return fmt.Errorf("failed to resolve display renderer: %w", err)
+		return models.NewDependencyError("displayRenderer", err).
+			WithContext("operation", "resolve_dependency")
 	}
 
 	return nil
@@ -273,7 +298,8 @@ func (c *Controller) resolveDependencies() error {
 func (c *Controller) cleanup() error {
 	// Cleanup dependency container
 	if err := c.container.Cleanup(); err != nil {
-		return fmt.Errorf("failed to cleanup dependency container: %w", err)
+		return models.NewLifecycleError("cleanup", err).
+			WithContext("component", "dependency_container")
 	}
 
 	return nil

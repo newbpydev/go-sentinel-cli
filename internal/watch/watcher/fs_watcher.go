@@ -3,14 +3,13 @@ package watcher
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/newbpydev/go-sentinel/internal/watch/core"
+	"github.com/newbpydev/go-sentinel/pkg/models"
 )
 
 // FSWatcher implements the FileSystemWatcher interface using fsnotify
@@ -26,7 +25,8 @@ type FSWatcher struct {
 func NewFSWatcher(paths []string, ignorePatterns []string) (*FSWatcher, error) {
 	fsWatcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create file watcher: %w", err)
+		return nil, models.NewFileSystemError("create_watcher", "", err).
+			WithContext("component", "fs_watcher")
 	}
 
 	return &FSWatcher{
@@ -43,7 +43,8 @@ func (w *FSWatcher) Watch(ctx context.Context, events chan<- core.FileEvent) err
 	// Add all paths to the watcher
 	for _, path := range w.paths {
 		if err := w.AddPath(path); err != nil {
-			return fmt.Errorf("failed to add path %s: %w", path, err)
+			return models.NewWatchError("add_path", path, err).
+				WithContext("component", "fs_watcher")
 		}
 	}
 
@@ -55,7 +56,9 @@ func (w *FSWatcher) Watch(ctx context.Context, events chan<- core.FileEvent) err
 
 		case event, ok := <-w.watcher.Events:
 			if !ok {
-				return errors.New("watcher channel closed")
+				return models.NewWatchError("watch", "", nil).
+					WithContext("reason", "events_channel_closed").
+					WithContext("component", "fs_watcher")
 			}
 
 			// Process the file system event
@@ -66,9 +69,12 @@ func (w *FSWatcher) Watch(ctx context.Context, events chan<- core.FileEvent) err
 
 		case err, ok := <-w.watcher.Errors:
 			if !ok {
-				return errors.New("watcher error channel closed")
+				return models.NewWatchError("watch", "", nil).
+					WithContext("reason", "errors_channel_closed").
+					WithContext("component", "fs_watcher")
 			}
-			return fmt.Errorf("watcher error: %w", err)
+			return models.NewWatchError("watch", "", err).
+				WithContext("component", "fs_watcher")
 		}
 	}
 }
@@ -77,13 +83,15 @@ func (w *FSWatcher) Watch(ctx context.Context, events chan<- core.FileEvent) err
 func (w *FSWatcher) AddPath(path string) error {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
-		return fmt.Errorf("failed to get absolute path for %s: %w", path, err)
+		return models.NewFileSystemError("resolve_path", path, err).
+			WithContext("operation", "add_path")
 	}
 
 	// Check if path exists
 	info, err := os.Stat(absPath)
 	if err != nil {
-		return fmt.Errorf("failed to stat path %s: %w", absPath, err)
+		return models.NewFileSystemError("stat_path", absPath, err).
+			WithContext("operation", "add_path")
 	}
 
 	if info.IsDir() {
@@ -101,7 +109,9 @@ func (w *FSWatcher) AddPath(path string) error {
 
 				// Add directory to watcher
 				if err := w.watcher.Add(path); err != nil {
-					return fmt.Errorf("failed to add directory %s to watcher: %w", path, err)
+					return models.NewWatchError("add_directory", path, err).
+						WithContext("component", "fs_watcher").
+						WithContext("parent_path", absPath)
 				}
 			}
 			return nil
@@ -110,7 +120,9 @@ func (w *FSWatcher) AddPath(path string) error {
 		// Add the directory containing the file
 		dir := filepath.Dir(absPath)
 		if err := w.watcher.Add(dir); err != nil {
-			return fmt.Errorf("failed to add directory %s to watcher: %w", dir, err)
+			return models.NewWatchError("add_directory", dir, err).
+				WithContext("component", "fs_watcher").
+				WithContext("file_path", absPath)
 		}
 	}
 
@@ -129,12 +141,14 @@ func (w *FSWatcher) AddPath(path string) error {
 func (w *FSWatcher) RemovePath(path string) error {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
-		return fmt.Errorf("failed to get absolute path for %s: %w", path, err)
+		return models.NewFileSystemError("resolve_path", path, err).
+			WithContext("operation", "remove_path")
 	}
 
 	// Remove from fsnotify watcher
 	if err := w.watcher.Remove(absPath); err != nil {
-		return fmt.Errorf("failed to remove path %s from watcher: %w", absPath, err)
+		return models.NewWatchError("remove_path", absPath, err).
+			WithContext("component", "fs_watcher")
 	}
 
 	// Remove from paths list
