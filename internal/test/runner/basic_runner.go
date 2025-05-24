@@ -1,4 +1,4 @@
-package cli
+package runner
 
 import (
 	"bytes"
@@ -16,8 +16,8 @@ type TestRunnerInterface interface {
 	RunStream(ctx context.Context, testPaths []string) (io.ReadCloser, error)
 }
 
-// TestRunner executes Go tests
-type TestRunner struct {
+// BasicTestRunner executes Go tests using the basic approach
+type BasicTestRunner struct {
 	// Verbose enables verbose output
 	Verbose bool
 
@@ -25,8 +25,16 @@ type TestRunner struct {
 	JSONOutput bool
 }
 
+// NewBasicTestRunner creates a new basic test runner
+func NewBasicTestRunner(verbose, jsonOutput bool) *BasicTestRunner {
+	return &BasicTestRunner{
+		Verbose:    verbose,
+		JSONOutput: jsonOutput,
+	}
+}
+
 // Run executes the specified tests and returns the output
-func (r *TestRunner) Run(ctx context.Context, testPaths []string) (string, error) {
+func (r *BasicTestRunner) Run(ctx context.Context, testPaths []string) (string, error) {
 	// Validate test paths
 	if len(testPaths) == 0 {
 		return "", fmt.Errorf("no test paths provided")
@@ -87,7 +95,7 @@ func (r *TestRunner) Run(ctx context.Context, testPaths []string) (string, error
 }
 
 // RunStream executes the specified tests and returns a stream of JSON output
-func (r *TestRunner) RunStream(ctx context.Context, testPaths []string) (io.ReadCloser, error) {
+func (r *BasicTestRunner) RunStream(ctx context.Context, testPaths []string) (io.ReadCloser, error) {
 	// Validate test paths
 	if len(testPaths) == 0 {
 		return nil, fmt.Errorf("no test paths provided")
@@ -184,4 +192,12 @@ func IsGoTestFile(path string) bool {
 // IsGoFile returns true if the file is a Go source file
 func IsGoFile(path string) bool {
 	return strings.HasSuffix(path, ".go")
+}
+
+// TestRunner type alias for backward compatibility
+type TestRunner = BasicTestRunner
+
+// NewTestRunner creates a new test runner for backward compatibility
+func NewTestRunner(verbose, jsonOutput bool) *TestRunner {
+	return NewBasicTestRunner(verbose, jsonOutput)
 }

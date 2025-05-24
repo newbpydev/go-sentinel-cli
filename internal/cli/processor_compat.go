@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/newbpydev/go-sentinel/internal/test/processor"
+	"github.com/newbpydev/go-sentinel/internal/test/runner"
 	"github.com/newbpydev/go-sentinel/pkg/models"
 )
 
@@ -22,11 +23,61 @@ type Parser = processor.Parser
 // StreamParser re-exports processor.StreamParser
 type StreamParser = processor.StreamParser
 
+// Re-export types from internal/test/runner for backward compatibility
+
+// TestRunner re-exports runner.TestRunner (BasicTestRunner)
+type TestRunner = runner.TestRunner
+
+// TestRunnerInterface re-exports runner.TestRunnerInterface
+type TestRunnerInterface = runner.TestRunnerInterface
+
+// ParallelTestRunner re-exports runner.ParallelTestRunner
+type ParallelTestRunner = runner.ParallelTestRunner
+
+// ParallelTestResult re-exports runner.ParallelTestResult
+type ParallelTestResult = runner.ParallelTestResult
+
 // Re-export constructor functions
 
 // NewTestProcessor re-exports processor.NewTestProcessor
 func NewTestProcessor(writer io.Writer, formatter *ColorFormatter, icons *IconProvider, width int) *TestProcessor {
 	return processor.NewTestProcessor(writer, formatter, icons, width)
+}
+
+// NewTestRunner creates a new test runner for backward compatibility
+func NewTestRunner(verbose, jsonOutput bool) *TestRunner {
+	return runner.NewTestRunner(verbose, jsonOutput)
+}
+
+// NewParallelTestRunner creates a new parallel test runner
+func NewParallelTestRunner(maxConcurrency int, testRunner *TestRunner, cache *TestResultCache) *ParallelTestRunner {
+	// We need to adapt the cache interface here
+	var cacheAdapter runner.CacheInterface
+	if cache != nil {
+		cacheAdapter = &cacheAdapterImpl{cache: cache}
+	}
+	return runner.NewParallelTestRunner(maxConcurrency, testRunner, cacheAdapter)
+}
+
+// cacheAdapterImpl adapts TestResultCache to runner.CacheInterface
+type cacheAdapterImpl struct {
+	cache *TestResultCache
+}
+
+func (c *cacheAdapterImpl) GetCachedResult(testPath string) (*runner.CachedResult, bool) {
+	if result, exists := c.cache.GetCachedResult(testPath); exists {
+		return &runner.CachedResult{Suite: result.Suite}, true
+	}
+	return nil, false
+}
+
+func (c *cacheAdapterImpl) CacheResult(testPath string, suite *models.TestSuite) {
+	c.cache.CacheResult(testPath, suite)
+}
+
+// MergeResults merges parallel test results
+func MergeResults(processor *TestProcessor, results []*ParallelTestResult) {
+	runner.MergeResults(processor, results)
 }
 
 // NewSourceExtractor re-exports processor.NewSourceExtractor
@@ -42,6 +93,25 @@ func NewParser() *Parser {
 // NewStreamParser re-exports processor.NewStreamParser
 func NewStreamParser() *StreamParser {
 	return processor.NewStreamParser()
+}
+
+// Helper functions re-exported from runner package
+
+// IsGoTestFile returns true if the file is a Go test file
+func IsGoTestFile(path string) bool {
+	return runner.IsGoTestFile(path)
+}
+
+// IsGoFile returns true if the file is a Go source file
+func IsGoFile(path string) bool {
+	return runner.IsGoFile(path)
+}
+
+// discardWriter is a writer that discards all writes (for testing)
+type discardWriter struct{}
+
+func (d *discardWriter) Write(p []byte) (n int, err error) {
+	return len(p), nil
 }
 
 // Legacy type aliases for backward compatibility
