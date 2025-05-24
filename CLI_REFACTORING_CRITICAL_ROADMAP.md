@@ -120,34 +120,38 @@
   - **Dependencies**: models.go, types.go
   - ✅ **COMPLETED**: Moved to internal/test/cache/result_cache.go with full test suite migrated
 
-### 👁️ **TIER 6: Watch System**
+### 👁️ **TIER 6: Watch System (COMPLETED ✅)**
 *File watching and change detection*
 
-- [ ] **`debouncer.go` (136 lines)** → `internal/watch/debouncer/file_debouncer.go`
+- [x] **`debouncer.go` (136 lines)** → `internal/watch/debouncer/file_debouncer.go`
   - File change debouncing
   - Event deduplication
   - **Risk**: Low - self-contained
   - **Dependencies**: models.go
+  - ✅ **COMPLETED**: Moved to internal/watch/debouncer/file_debouncer.go with full test suite (11 tests passing)
 
-- [ ] **`watcher.go` (347 lines)** → `internal/watch/watcher/fs_watcher.go`
+- [x] **`watcher.go` (347 lines)** → `internal/watch/watcher/fs_watcher.go`
   - File system watching
   - Pattern matching
   - **Risk**: Medium - file system interactions
   - **Dependencies**: debouncer.go, models.go
+  - ✅ **COMPLETED**: Moved to internal/watch/watcher/fs_watcher.go with enhanced interface design
 
-- [ ] **`watch_runner.go` (372 lines)** → `internal/watch/coordinator/watch_coordinator.go`
+- [x] **`watch_runner.go` (372 lines)** → `internal/watch/coordinator/watch_coordinator.go`
   - Watch mode orchestration
   - Test triggering logic
   - **Risk**: High - coordinates watch system
   - **Dependencies**: watcher.go, debouncer.go, test_runner.go
+  - ✅ **COMPLETED**: Moved to internal/watch/coordinator/watch_coordinator.go with 6 tests passing
 
 - [ ] **`optimization_integration.go` (333 lines)** → `internal/watch/coordinator/optimization_coordinator.go`
   - Watch optimization logic
   - Intelligent change detection
   - **Risk**: Medium - optimization complexity
   - **Dependencies**: watch_runner.go, optimized_test_runner.go
+  - ⏳ **PENDING**: Will be migrated with TIER 7/8 as it's tightly coupled with UI components
 
-### 🎨 **TIER 7: UI Components**
+### 🎨 **TIER 7: UI Components (IN PROGRESS 🚧)**
 *User interface and display logic*
 
 - [ ] **`colors.go` (385 lines)** → `internal/ui/colors/color_formatter.go`
