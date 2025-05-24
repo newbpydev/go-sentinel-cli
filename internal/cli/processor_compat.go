@@ -7,6 +7,10 @@ import (
 	"github.com/newbpydev/go-sentinel/internal/test/cache"
 	"github.com/newbpydev/go-sentinel/internal/test/processor"
 	"github.com/newbpydev/go-sentinel/internal/test/runner"
+	"github.com/newbpydev/go-sentinel/internal/watch/coordinator"
+	"github.com/newbpydev/go-sentinel/internal/watch/core"
+	"github.com/newbpydev/go-sentinel/internal/watch/debouncer"
+	"github.com/newbpydev/go-sentinel/internal/watch/watcher"
 	"github.com/newbpydev/go-sentinel/pkg/models"
 )
 
@@ -331,3 +335,62 @@ const (
 	StatusSkipped = models.StatusSkipped
 	StatusRunning = models.StatusRunning
 )
+
+// Re-export types from internal/watch/debouncer for backward compatibility
+type FileEventDebouncer = debouncer.FileEventDebouncer
+
+// Re-export types from internal/watch/core for backward compatibility
+type FileEvent = core.FileEvent
+
+// AdaptFileEventToCoreEvent converts CLI FileEvent to core.FileEvent
+func AdaptFileEventToCoreEvent(event FileEvent) core.FileEvent {
+	return core.FileEvent{
+		Path:      event.Path,
+		Type:      event.Type,
+		Timestamp: event.Timestamp,
+		IsTest:    event.IsTest,
+	}
+}
+
+// AdaptCoreEventToFileEvent converts core.FileEvent to CLI FileEvent
+func AdaptCoreEventToFileEvent(event core.FileEvent) FileEvent {
+	return FileEvent{
+		Path:      event.Path,
+		Type:      event.Type,
+		Timestamp: event.Timestamp,
+		IsTest:    event.IsTest,
+	}
+}
+
+// AdaptCoreEventsToFileEvents converts slice of core.FileEvent to CLI FileEvent
+func AdaptCoreEventsToFileEvents(events []core.FileEvent) []FileEvent {
+	result := make([]FileEvent, len(events))
+	for i, event := range events {
+		result[i] = AdaptCoreEventToFileEvent(event)
+	}
+	return result
+}
+
+// Re-export constructor functions for watch components
+func NewFileEventDebouncer(interval time.Duration) *debouncer.FileEventDebouncer {
+	return debouncer.NewFileEventDebouncer(interval)
+}
+
+// Re-export types from internal/watch/watcher for backward compatibility
+type FileWatcher = watcher.FileSystemWatcher
+type TestFileFinder = watcher.TestFileFinder
+
+func NewFileWatcher(paths []string, ignorePatterns []string) (*watcher.FileSystemWatcher, error) {
+	return watcher.NewFileSystemWatcher(paths, ignorePatterns)
+}
+
+func NewTestFileFinder(rootDir string) *watcher.TestFileFinder {
+	return watcher.NewTestFileFinder(rootDir)
+}
+
+// Re-export types from internal/watch/coordinator for backward compatibility
+type TestWatchCoordinator = coordinator.TestWatchCoordinator
+
+func NewTestWatchCoordinator(options core.WatchOptions) (*coordinator.TestWatchCoordinator, error) {
+	return coordinator.NewTestWatchCoordinator(options)
+}

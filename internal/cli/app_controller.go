@@ -216,7 +216,8 @@ func (a *AppController) initializeWatcher(config *Config) (*FileWatcher, chan Fi
 	// Start the watcher in a goroutine
 	go func() {
 		defer close(events)
-		if err := watcher.Watch(events); err != nil {
+		ctx := context.Background()
+		if err := watcher.Watch(ctx, events); err != nil {
 			watcherErrors <- fmt.Errorf("watcher error: %w", err)
 		}
 	}()
@@ -248,10 +249,11 @@ func (a *AppController) runWatchLoop(config *Config, events chan FileEvent, watc
 			}
 
 			// Send to debouncer
-			debouncer.AddEvent(event)
+			debouncer.AddEvent(AdaptFileEventToCoreEvent(event))
 
 		case debouncedEvents := <-debouncer.Events():
-			if err := a.handleDebouncedFileChanges(debouncedEvents, config); err != nil {
+			adaptedEvents := AdaptCoreEventsToFileEvents(debouncedEvents)
+			if err := a.handleDebouncedFileChanges(adaptedEvents, config); err != nil {
 				fmt.Printf("❌ Error handling file changes: %v\n", err)
 			}
 

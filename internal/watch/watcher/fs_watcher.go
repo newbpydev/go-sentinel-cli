@@ -3,48 +3,48 @@ package watcher
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/newbpydev/go-sentinel/internal/watch/core"
-	"github.com/newbpydev/go-sentinel/pkg/models"
 )
 
-// FSWatcher implements the FileSystemWatcher interface using fsnotify
-type FSWatcher struct {
+// FileSystemWatcher watches for file changes in specified directories
+// Implements the core.FileSystemWatcher interface
+type FileSystemWatcher struct {
 	watcher        *fsnotify.Watcher
 	paths          []string
 	ignorePatterns []string
 	testPatterns   []string
-	patternMatcher core.PatternMatcher
 }
 
-// NewFSWatcher creates a new file system watcher
-func NewFSWatcher(paths []string, ignorePatterns []string) (*FSWatcher, error) {
-	fsWatcher, err := fsnotify.NewWatcher()
+// NewFileSystemWatcher creates a new FileSystemWatcher
+func NewFileSystemWatcher(paths []string, ignorePatterns []string) (*FileSystemWatcher, error) {
+	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return nil, models.NewFileSystemError("create_watcher", "", err).
-			WithContext("component", "fs_watcher")
+		return nil, fmt.Errorf("failed to create file watcher: %w", err)
 	}
 
-	return &FSWatcher{
-		watcher:        fsWatcher,
+	return &FileSystemWatcher{
+		watcher:        watcher,
 		paths:          paths,
 		ignorePatterns: ignorePatterns,
 		testPatterns:   []string{"*_test.go"},
-		patternMatcher: NewPatternMatcher(),
 	}, nil
 }
 
-// Watch implements the FileSystemWatcher interface
-func (w *FSWatcher) Watch(ctx context.Context, events chan<- core.FileEvent) error {
+// Watch starts monitoring for file changes and sends events to the channel
+// Implements core.FileSystemWatcher.Watch
+func (w *FileSystemWatcher) Watch(ctx context.Context, events chan<- core.FileEvent) error {
 	// Add all paths to the watcher
 	for _, path := range w.paths {
 		if err := w.AddPath(path); err != nil {
-			return models.NewWatchError("add_path", path, err).
-				WithContext("component", "fs_watcher")
+			return err
 		}
 	}
 
@@ -56,99 +56,119 @@ func (w *FSWatcher) Watch(ctx context.Context, events chan<- core.FileEvent) err
 
 		case event, ok := <-w.watcher.Events:
 			if !ok {
-				return models.NewWatchError("watch", "", nil).
-					WithContext("reason", "events_channel_closed").
-					WithContext("component", "fs_watcher")
+				return errors.New("watcher channel closed")
 			}
 
-			// Process the file system event
-			fileEvent := w.processEvent(event)
-			if fileEvent != nil {
-				events <- *fileEvent
+			// Skip events for ignored files
+			if w.matchesAnyPattern(event.Name, w.ignorePatterns) {
+				continue
+			}
+
+			// Only watch for write and create events
+			if event.Op&(fsnotify.Write|fsnotify.Create) == 0 {
+				continue
+			}
+
+			// Skip directories
+			info, err := os.Stat(event.Name)
+			if err == nil && info.IsDir() {
+				// Add the new directory to the watcher
+				if err := w.watcher.Add(event.Name); err != nil {
+					return fmt.Errorf("failed to add new directory %s to watcher: %w", event.Name, err)
+				}
+				continue
+			}
+
+			// Determine if this is a test file
+			isTest := w.matchesAnyPattern(event.Name, w.testPatterns)
+
+			// Send the event
+			select {
+			case events <- core.FileEvent{
+				Path:      event.Name,
+				Type:      w.eventTypeString(event.Op),
+				Timestamp: time.Now(),
+				IsTest:    isTest,
+			}:
+			case <-ctx.Done():
+				return ctx.Err()
 			}
 
 		case err, ok := <-w.watcher.Errors:
 			if !ok {
-				return models.NewWatchError("watch", "", nil).
-					WithContext("reason", "errors_channel_closed").
-					WithContext("component", "fs_watcher")
+				return errors.New("watcher error channel closed")
 			}
-			return models.NewWatchError("watch", "", err).
-				WithContext("component", "fs_watcher")
+			return fmt.Errorf("watcher error: %w", err)
 		}
 	}
 }
 
-// AddPath implements the FileSystemWatcher interface
-func (w *FSWatcher) AddPath(path string) error {
+// AddPath adds a new path to be monitored
+// Implements core.FileSystemWatcher.AddPath
+func (w *FileSystemWatcher) AddPath(path string) error {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
-		return models.NewFileSystemError("resolve_path", path, err).
-			WithContext("operation", "add_path")
+		return fmt.Errorf("failed to get absolute path for %s: %w", path, err)
 	}
 
-	// Check if path exists
+	// Add the directory itself
 	info, err := os.Stat(absPath)
 	if err != nil {
-		return models.NewFileSystemError("stat_path", absPath, err).
-			WithContext("operation", "add_path")
+		return fmt.Errorf("failed to stat path %s: %w", absPath, err)
 	}
 
 	if info.IsDir() {
 		// Walk through all subdirectories
-		return filepath.Walk(absPath, func(path string, info os.FileInfo, err error) error {
+		err = filepath.Walk(absPath, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
 
 			if info.IsDir() {
 				// Skip directories that match ignore patterns
-				if w.patternMatcher.MatchesAny(path, w.ignorePatterns) {
+				if w.matchesAnyPattern(path, w.ignorePatterns) {
 					return filepath.SkipDir
 				}
 
 				// Add directory to watcher
 				if err := w.watcher.Add(path); err != nil {
-					return models.NewWatchError("add_directory", path, err).
-						WithContext("component", "fs_watcher").
-						WithContext("parent_path", absPath)
+					return fmt.Errorf("failed to add directory %s to watcher: %w", path, err)
 				}
 			}
 			return nil
 		})
+
+		if err != nil {
+			return fmt.Errorf("failed to walk directory %s: %w", absPath, err)
+		}
 	} else {
-		// Add the directory containing the file
-		dir := filepath.Dir(absPath)
-		if err := w.watcher.Add(dir); err != nil {
-			return models.NewWatchError("add_directory", dir, err).
-				WithContext("component", "fs_watcher").
-				WithContext("file_path", absPath)
+		// Add the single file to the watcher
+		if err := w.watcher.Add(filepath.Dir(absPath)); err != nil {
+			return fmt.Errorf("failed to add file %s to watcher: %w", absPath, err)
 		}
 	}
 
 	// Add to paths list if not already present
 	for _, existingPath := range w.paths {
 		if existingPath == path {
-			return nil // Already present
+			return nil // Already exists
 		}
 	}
 	w.paths = append(w.paths, path)
-
 	return nil
 }
 
-// RemovePath implements the FileSystemWatcher interface
-func (w *FSWatcher) RemovePath(path string) error {
+// RemovePath removes a path from monitoring
+// Implements core.FileSystemWatcher.RemovePath
+func (w *FileSystemWatcher) RemovePath(path string) error {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
-		return models.NewFileSystemError("resolve_path", path, err).
-			WithContext("operation", "remove_path")
+		return fmt.Errorf("failed to get absolute path for %s: %w", path, err)
 	}
 
 	// Remove from fsnotify watcher
 	if err := w.watcher.Remove(absPath); err != nil {
-		return models.NewWatchError("remove_path", absPath, err).
-			WithContext("component", "fs_watcher")
+		return fmt.Errorf("failed to remove path %s from watcher: %w", absPath, err)
 	}
 
 	// Remove from paths list
@@ -162,46 +182,39 @@ func (w *FSWatcher) RemovePath(path string) error {
 	return nil
 }
 
-// Close implements the FileSystemWatcher interface
-func (w *FSWatcher) Close() error {
+// Close releases all resources used by the watcher
+// Implements core.FileSystemWatcher.Close
+func (w *FileSystemWatcher) Close() error {
 	return w.watcher.Close()
 }
 
-// processEvent converts fsnotify.Event to core.FileEvent
-func (w *FSWatcher) processEvent(event fsnotify.Event) *core.FileEvent {
-	// Skip events for ignored files
-	if w.patternMatcher.MatchesAny(event.Name, w.ignorePatterns) {
-		return nil
-	}
-
-	// Only watch for write and create events
-	if event.Op&(fsnotify.Write|fsnotify.Create) == 0 {
-		return nil
-	}
-
-	// Skip directories for file events
-	info, err := os.Stat(event.Name)
-	if err == nil && info.IsDir() {
-		// Add new directories to the watcher
-		if event.Op&fsnotify.Create != 0 {
-			_ = w.watcher.Add(event.Name) // Ignore error for now
+// matchesAnyPattern checks if a path matches any of the provided patterns
+func (w *FileSystemWatcher) matchesAnyPattern(path string, patterns []string) bool {
+	for _, pattern := range patterns {
+		// Simple pattern matching - could be enhanced with more sophisticated matching
+		if strings.Contains(path, pattern) {
+			return true
 		}
-		return nil
-	}
 
-	// Determine if this is a test file
-	isTest := w.patternMatcher.MatchesAny(event.Name, w.testPatterns)
+		// Handle glob-like patterns
+		if strings.HasPrefix(pattern, "*") && strings.HasSuffix(path, pattern[1:]) {
+			return true
+		}
 
-	return &core.FileEvent{
-		Path:      event.Name,
-		Type:      convertEventType(event.Op),
-		Timestamp: time.Now(),
-		IsTest:    isTest,
+		if strings.HasSuffix(pattern, "*") && strings.HasPrefix(path, pattern[:len(pattern)-1]) {
+			return true
+		}
+
+		// Exact match
+		if path == pattern {
+			return true
+		}
 	}
+	return false
 }
 
-// convertEventType converts fsnotify.Op to string
-func convertEventType(op fsnotify.Op) string {
+// eventTypeString converts fsnotify operation to string
+func (w *FileSystemWatcher) eventTypeString(op fsnotify.Op) string {
 	switch {
 	case op&fsnotify.Create != 0:
 		return "create"
@@ -217,3 +230,105 @@ func convertEventType(op fsnotify.Op) string {
 		return "unknown"
 	}
 }
+
+// TestFileFinder helps find test files related to implementation files
+// Implements the core.TestFileFinder interface
+type TestFileFinder struct {
+	rootDir string
+}
+
+// NewTestFileFinder creates a new TestFileFinder
+func NewTestFileFinder(rootDir string) *TestFileFinder {
+	return &TestFileFinder{
+		rootDir: rootDir,
+	}
+}
+
+// FindTestFile finds the test file corresponding to the given implementation file
+// Implements core.TestFileFinder.FindTestFile
+func (f *TestFileFinder) FindTestFile(filePath string) (string, error) {
+	// If it's already a test file, just return it
+	if strings.HasSuffix(filePath, "_test.go") {
+		return filePath, nil
+	}
+
+	// Construct the expected test file path
+	dir := filepath.Dir(filePath)
+	base := filepath.Base(filePath)
+	ext := filepath.Ext(base)
+	name := strings.TrimSuffix(base, ext)
+	testFile := filepath.Join(dir, name+"_test"+ext)
+
+	// Check if the test file exists
+	_, err := os.Stat(testFile)
+	if err != nil {
+		return "", fmt.Errorf("test file not found for %s: %w", filePath, err)
+	}
+
+	return testFile, nil
+}
+
+// FindImplementationFile finds the implementation file for a given test file
+// Implements core.TestFileFinder.FindImplementationFile
+func (f *TestFileFinder) FindImplementationFile(testPath string) (string, error) {
+	if !strings.HasSuffix(testPath, "_test.go") {
+		return "", fmt.Errorf("not a test file: %s", testPath)
+	}
+
+	// Construct the expected implementation file path
+	dir := filepath.Dir(testPath)
+	base := filepath.Base(testPath)
+	name := strings.TrimSuffix(base, "_test.go")
+	implFile := filepath.Join(dir, name+".go")
+
+	// Check if the implementation file exists
+	_, err := os.Stat(implFile)
+	if err != nil {
+		return "", fmt.Errorf("implementation file not found for %s: %w", testPath, err)
+	}
+
+	return implFile, nil
+}
+
+// FindPackageTests finds all test files in the same package as the given file
+// Implements core.TestFileFinder.FindPackageTests
+func (f *TestFileFinder) FindPackageTests(filePath string) ([]string, error) {
+	dir := filepath.Dir(filePath)
+
+	// Read all files in the directory
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read directory %s: %w", dir, err)
+	}
+
+	// Filter for test files
+	var testFiles []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		name := entry.Name()
+		if strings.HasSuffix(name, "_test.go") {
+			testFiles = append(testFiles, filepath.Join(dir, name))
+		}
+	}
+
+	if len(testFiles) == 0 {
+		return nil, fmt.Errorf("no test files found in %s", dir)
+	}
+
+	return testFiles, nil
+}
+
+// IsTestFile determines if the given file is a test file
+// Implements core.TestFileFinder.IsTestFile
+func (f *TestFileFinder) IsTestFile(filePath string) bool {
+	return strings.HasSuffix(filePath, "_test.go")
+}
+
+// Ensure FileSystemWatcher implements the FileSystemWatcher interface
+var _ core.FileSystemWatcher = (*FileSystemWatcher)(nil)
+
+// Ensure TestFileFinder implements the TestFileFinder interface
+var _ core.TestFileFinder = (*TestFileFinder)(nil)

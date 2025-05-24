@@ -1,16 +1,19 @@
-package cli
+package debouncer
 
 import (
 	"sync"
 	"time"
+
+	"github.com/newbpydev/go-sentinel/internal/watch/core"
 )
 
 // FileEventDebouncer batches file events to avoid running tests too frequently
+// Implements the core.EventDebouncer interface
 type FileEventDebouncer struct {
 	interval time.Duration
-	events   chan []FileEvent
-	input    chan FileEvent
-	pending  map[string]FileEvent // Use map to deduplicate events by path
+	events   chan []core.FileEvent
+	input    chan core.FileEvent
+	pending  map[string]core.FileEvent // Use map to deduplicate events by path
 	timer    *time.Timer
 	mutex    sync.Mutex
 	stopCh   chan struct{}
@@ -25,9 +28,9 @@ func NewFileEventDebouncer(interval time.Duration) *FileEventDebouncer {
 
 	d := &FileEventDebouncer{
 		interval: interval,
-		events:   make(chan []FileEvent, 10),
-		input:    make(chan FileEvent, 100),
-		pending:  make(map[string]FileEvent),
+		events:   make(chan []core.FileEvent, 10),
+		input:    make(chan core.FileEvent, 100),
+		pending:  make(map[string]core.FileEvent),
 		stopCh:   make(chan struct{}),
 	}
 
@@ -36,7 +39,8 @@ func NewFileEventDebouncer(interval time.Duration) *FileEventDebouncer {
 }
 
 // AddEvent adds a file event to be debounced
-func (d *FileEventDebouncer) AddEvent(event FileEvent) {
+// Implements core.EventDebouncer.AddEvent
+func (d *FileEventDebouncer) AddEvent(event core.FileEvent) {
 	select {
 	case d.input <- event:
 	case <-d.stopCh:
@@ -45,17 +49,32 @@ func (d *FileEventDebouncer) AddEvent(event FileEvent) {
 }
 
 // Events returns the channel for debounced events
-func (d *FileEventDebouncer) Events() <-chan []FileEvent {
+// Implements core.EventDebouncer.Events
+func (d *FileEventDebouncer) Events() <-chan []core.FileEvent {
 	return d.events
 }
 
+// SetInterval configures the debounce interval
+// Implements core.EventDebouncer.SetInterval
+func (d *FileEventDebouncer) SetInterval(interval time.Duration) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
+	if interval <= 0 {
+		interval = 250 * time.Millisecond
+	}
+
+	d.interval = interval
+}
+
 // Stop stops the debouncer and closes channels
-func (d *FileEventDebouncer) Stop() {
+// Implements core.EventDebouncer.Stop
+func (d *FileEventDebouncer) Stop() error {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 
 	if d.stopped {
-		return
+		return nil
 	}
 
 	d.stopped = true
@@ -72,6 +91,8 @@ func (d *FileEventDebouncer) Stop() {
 		time.Sleep(10 * time.Millisecond)
 		close(d.events)
 	}()
+
+	return nil
 }
 
 // run is the main debouncer loop
@@ -114,13 +135,13 @@ func (d *FileEventDebouncer) flushPendingEvents() {
 	}
 
 	// Convert map to slice
-	events := make([]FileEvent, 0, len(d.pending))
+	events := make([]core.FileEvent, 0, len(d.pending))
 	for _, event := range d.pending {
 		events = append(events, event)
 	}
 
 	// Clear pending events
-	d.pending = make(map[string]FileEvent)
+	d.pending = make(map[string]core.FileEvent)
 
 	// Send events (non-blocking) only if not stopped
 	if !d.stopped {
@@ -134,3 +155,6 @@ func (d *FileEventDebouncer) flushPendingEvents() {
 		}
 	}
 }
+
+// Ensure FileEventDebouncer implements the EventDebouncer interface
+var _ core.EventDebouncer = (*FileEventDebouncer)(nil)

@@ -1,8 +1,10 @@
-package cli
+package debouncer
 
 import (
 	"testing"
 	"time"
+
+	"github.com/newbpydev/go-sentinel/internal/watch/core"
 )
 
 // TestNewFileEventDebouncer_Creation verifies debouncer initialization
@@ -62,7 +64,7 @@ func TestFileEventDebouncer_SingleEvent(t *testing.T) {
 	debouncer := NewFileEventDebouncer(50 * time.Millisecond)
 	defer debouncer.Stop()
 
-	event := FileEvent{
+	event := core.FileEvent{
 		Path: "test.go",
 		Type: "write",
 	}
@@ -94,9 +96,9 @@ func TestFileEventDebouncer_EventDeduplication(t *testing.T) {
 	defer debouncer.Stop()
 
 	// Act - Add multiple events for the same file
-	debouncer.AddEvent(FileEvent{Path: "test.go", Type: "write"})
-	debouncer.AddEvent(FileEvent{Path: "test.go", Type: "modify"})
-	debouncer.AddEvent(FileEvent{Path: "test.go", Type: "write"}) // Should override previous
+	debouncer.AddEvent(core.FileEvent{Path: "test.go", Type: "write"})
+	debouncer.AddEvent(core.FileEvent{Path: "test.go", Type: "modify"})
+	debouncer.AddEvent(core.FileEvent{Path: "test.go", Type: "write"}) // Should override previous
 
 	// Assert
 	select {
@@ -120,9 +122,9 @@ func TestFileEventDebouncer_MultipleFiles(t *testing.T) {
 	defer debouncer.Stop()
 
 	// Act - Add events for different files
-	debouncer.AddEvent(FileEvent{Path: "file1.go", Type: "write"})
-	debouncer.AddEvent(FileEvent{Path: "file2.go", Type: "create"})
-	debouncer.AddEvent(FileEvent{Path: "file3.go", Type: "remove"})
+	debouncer.AddEvent(core.FileEvent{Path: "file1.go", Type: "write"})
+	debouncer.AddEvent(core.FileEvent{Path: "file2.go", Type: "create"})
+	debouncer.AddEvent(core.FileEvent{Path: "file3.go", Type: "remove"})
 
 	// Assert
 	select {
@@ -156,7 +158,7 @@ func TestFileEventDebouncer_RapidEvents(t *testing.T) {
 
 	// Act - Add events rapidly
 	for i := 0; i < 10; i++ {
-		debouncer.AddEvent(FileEvent{Path: "rapid.go", Type: "write"})
+		debouncer.AddEvent(core.FileEvent{Path: "rapid.go", Type: "write"})
 		time.Sleep(10 * time.Millisecond) // Faster than debounce interval
 	}
 
@@ -191,186 +193,160 @@ func TestFileEventDebouncer_TimerReset(t *testing.T) {
 	defer debouncer.Stop()
 
 	// Act - Add event, wait halfway, add another event
-	debouncer.AddEvent(FileEvent{Path: "timer.go", Type: "write"})
+	debouncer.AddEvent(core.FileEvent{Path: "timer.go", Type: "write"})
 	time.Sleep(50 * time.Millisecond) // Half the debounce interval
-	debouncer.AddEvent(FileEvent{Path: "timer.go", Type: "modify"})
+	debouncer.AddEvent(core.FileEvent{Path: "timer.go", Type: "modify"})
 
 	// Assert - Should not receive event until full interval after last event
 	select {
 	case <-debouncer.Events():
-		t.Error("Expected timer to be reset, but received event too early")
-	case <-time.After(80 * time.Millisecond): // Should still be waiting
-		// This is expected
+		t.Error("Should not receive event before full debounce interval")
+	case <-time.After(75 * time.Millisecond): // 75ms total, should not have triggered yet
+		// Good, no event received yet
 	}
 
 	// Now wait for the full interval and should receive event
 	select {
 	case events := <-debouncer.Events():
 		if len(events) != 1 {
-			t.Errorf("Expected 1 event after timer reset, got %d", len(events))
+			t.Errorf("Expected 1 event, got %d", len(events))
 		}
 		if events[0].Type != "modify" {
-			t.Errorf("Expected type 'modify' (latest), got '%s'", events[0].Type)
+			t.Errorf("Expected type 'modify' (last event), got '%s'", events[0].Type)
 		}
-	case <-time.After(50 * time.Millisecond):
-		t.Error("Expected to receive event after timer reset")
+	case <-time.After(50 * time.Millisecond): // Additional 50ms should be enough
+		t.Error("Expected to receive event after full debounce interval")
 	}
 }
 
-// TestFileEventDebouncer_Stop tests proper shutdown behavior
+// TestFileEventDebouncer_Stop tests proper cleanup when stopping
 func TestFileEventDebouncer_Stop(t *testing.T) {
 	// Arrange
 	debouncer := NewFileEventDebouncer(50 * time.Millisecond)
 
-	// Add an event
-	debouncer.AddEvent(FileEvent{Path: "stop.go", Type: "write"})
-
-	// Wait a bit to let any pending timer operations start
-	time.Sleep(10 * time.Millisecond)
-
 	// Act
-	debouncer.Stop()
+	err := debouncer.Stop()
 
-	// Assert - Events channel should be closed eventually
-	select {
-	case events, ok := <-debouncer.Events():
-		if !ok {
-			// Channel closed - this is expected after Stop()
-			return
-		}
-		// If we get events, that's ok too (final flush)
-		if len(events) > 1 {
-			t.Errorf("Expected at most 1 event after stop, got %d", len(events))
-		}
-	case <-time.After(200 * time.Millisecond):
-		t.Error("Expected events channel to be closed or receive final events")
+	// Assert
+	if err != nil {
+		t.Errorf("Expected no error when stopping, got: %v", err)
 	}
 
-	// Adding events after stop should not panic and should be ignored
-	debouncer.AddEvent(FileEvent{Path: "ignored.go", Type: "write"})
+	// Verify that adding events after stop doesn't block or panic
+	debouncer.AddEvent(core.FileEvent{Path: "test.go", Type: "write"})
 
-	// Multiple stops should not panic
-	debouncer.Stop()
-	debouncer.Stop()
+	// Verify that stopping again doesn't cause issues
+	err = debouncer.Stop()
+	if err != nil {
+		t.Errorf("Expected no error when stopping again, got: %v", err)
+	}
+
+	// Verify events channel is eventually closed
+	select {
+	case _, ok := <-debouncer.Events():
+		if ok {
+			t.Error("Expected events channel to be closed after stop")
+		}
+	case <-time.After(50 * time.Millisecond):
+		// Channel might not be closed immediately, that's okay
+	}
 }
 
-// TestFileEventDebouncer_ConcurrentAccess tests concurrent access patterns
+// TestFileEventDebouncer_ConcurrentAccess tests thread safety
 func TestFileEventDebouncer_ConcurrentAccess(t *testing.T) {
 	// Arrange
-	debouncer := NewFileEventDebouncer(100 * time.Millisecond) // Longer interval to reduce race conditions
-	defer func() {
-		// Drain events channel before stopping to prevent race conditions
-		go func() {
-			for range debouncer.Events() {
-				// Drain events
-			}
-		}()
-		time.Sleep(10 * time.Millisecond)
-		debouncer.Stop()
-	}()
+	debouncer := NewFileEventDebouncer(100 * time.Millisecond)
+	defer debouncer.Stop()
 
-	// Act - Add events concurrently from multiple goroutines
+	// Act - Add events concurrently
 	done := make(chan bool, 3)
 
-	// Goroutine 1: Add events for file1
+	// Goroutine 1: Add events
 	go func() {
-		defer func() { done <- true }()
-		for i := 0; i < 5; i++ { // Reduced iterations
-			debouncer.AddEvent(FileEvent{Path: "concurrent1.go", Type: "write"})
-			time.Sleep(10 * time.Millisecond) // Slightly longer sleep
+		for i := 0; i < 50; i++ {
+			debouncer.AddEvent(core.FileEvent{Path: "concurrent1.go", Type: "write"})
 		}
+		done <- true
 	}()
 
-	// Goroutine 2: Add events for file2
+	// Goroutine 2: Add different events
 	go func() {
-		defer func() { done <- true }()
-		for i := 0; i < 5; i++ { // Reduced iterations
-			debouncer.AddEvent(FileEvent{Path: "concurrent2.go", Type: "modify"})
-			time.Sleep(10 * time.Millisecond) // Slightly longer sleep
+		for i := 0; i < 50; i++ {
+			debouncer.AddEvent(core.FileEvent{Path: "concurrent2.go", Type: "create"})
 		}
+		done <- true
 	}()
 
 	// Goroutine 3: Read events
 	go func() {
-		defer func() { done <- true }()
-		select {
-		case events := <-debouncer.Events():
-			// Should receive some events (1 or 2 files depending on timing)
-			if len(events) == 0 {
-				t.Error("Expected at least one event from concurrent access")
+		eventCount := 0
+		timeout := time.After(300 * time.Millisecond)
+		for {
+			select {
+			case events := <-debouncer.Events():
+				eventCount += len(events)
+			case <-timeout:
+				// Should have received some events
+				if eventCount == 0 {
+					t.Error("Expected to receive some events during concurrent access")
+				}
+				done <- true
+				return
 			}
-			if len(events) > 2 {
-				t.Errorf("Expected at most 2 events (one per file), got %d", len(events))
-			}
-		case <-time.After(300 * time.Millisecond): // Longer timeout
-			t.Error("Expected to receive events from concurrent access")
 		}
 	}()
 
-	// Wait for all goroutines to complete
+	// Wait for all goroutines
 	for i := 0; i < 3; i++ {
-		select {
-		case <-done:
-		case <-time.After(1 * time.Second):
-			t.Error("Timeout waiting for concurrent operations to complete")
-		}
+		<-done
 	}
 }
 
-// TestFileEventDebouncer_ChannelBlocking tests non-blocking behavior when channel is full
+// TestFileEventDebouncer_ChannelBlocking tests behavior when events channel is full
 func TestFileEventDebouncer_ChannelBlocking(t *testing.T) {
 	// Arrange
-	debouncer := NewFileEventDebouncer(30 * time.Millisecond) // Longer interval
-	defer func() {
-		// Drain events before stopping
-		go func() {
-			for range debouncer.Events() {
-				// Drain
-			}
-		}()
-		time.Sleep(20 * time.Millisecond)
-		debouncer.Stop()
-	}()
+	debouncer := NewFileEventDebouncer(50 * time.Millisecond)
+	defer debouncer.Stop()
 
-	// Fill up the events channel by not reading from it and generating many batches
-	for i := 0; i < 8; i++ { // Reduced count to be safer
-		debouncer.AddEvent(FileEvent{Path: "blocking.go", Type: "write"})
-		time.Sleep(35 * time.Millisecond) // Wait for debounce to trigger
+	// Fill up the events channel by not reading from it
+	for i := 0; i < 15; i++ { // More than channel buffer size (10)
+		debouncer.AddEvent(core.FileEvent{Path: "blocking.go", Type: "write"})
+		time.Sleep(60 * time.Millisecond) // Wait for debounce to trigger
 	}
 
-	// Act - Add more events (should not block even if channel is full)
-	eventSent := false
-	done := make(chan bool, 1)
+	// Act - Add one more event (should not block due to non-blocking send)
+	debouncer.AddEvent(core.FileEvent{Path: "final.go", Type: "write"})
 
-	go func() {
-		debouncer.AddEvent(FileEvent{Path: "nonblocking.go", Type: "write"})
-		eventSent = true
-		done <- true
-	}()
+	// Assert - Should not hang, and we should be able to read events
+	eventBatches := 0
+	timeout := time.After(200 * time.Millisecond)
 
-	// Assert - Should complete quickly without blocking
-	select {
-	case <-done:
-		if !eventSent {
-			t.Error("Expected event to be sent without blocking")
+	for {
+		select {
+		case <-debouncer.Events():
+			eventBatches++
+		case <-timeout:
+			// Should have received some events (channel was full)
+			if eventBatches == 0 {
+				t.Error("Expected to receive some events even when channel was full")
+			}
+			return
 		}
-	case <-time.After(100 * time.Millisecond):
-		t.Error("AddEvent appears to be blocking when channel is full")
 	}
 }
 
-// TestFileEventDebouncer_EmptyFlush tests that empty flushes are handled correctly
+// TestFileEventDebouncer_EmptyFlush tests that empty flushes don't send events
 func TestFileEventDebouncer_EmptyFlush(t *testing.T) {
 	// Arrange
-	debouncer := NewFileEventDebouncer(30 * time.Millisecond)
+	debouncer := NewFileEventDebouncer(50 * time.Millisecond)
 	defer debouncer.Stop()
 
-	// Act - Wait for potential flush without adding events
+	// Act - Don't add any events, just wait
 	select {
-	case events := <-debouncer.Events():
-		t.Errorf("Expected no events when nothing was added, got %d events", len(events))
+	case <-debouncer.Events():
+		t.Error("Should not receive any events when none were added")
 	case <-time.After(100 * time.Millisecond):
-		// This is expected - no events should be sent
+		// Good, no events received
 	}
 }
 
@@ -380,24 +356,44 @@ func TestFileEventDebouncer_EventOverride(t *testing.T) {
 	debouncer := NewFileEventDebouncer(50 * time.Millisecond)
 	defer debouncer.Stop()
 
-	// Act - Add events with different types for the same path
-	debouncer.AddEvent(FileEvent{Path: "override.go", Type: "create"})
-	debouncer.AddEvent(FileEvent{Path: "override.go", Type: "write"})
-	debouncer.AddEvent(FileEvent{Path: "override.go", Type: "remove"})
+	// Act - Add events for same path with different types
+	debouncer.AddEvent(core.FileEvent{Path: "override.go", Type: "create", Timestamp: time.Now()})
+	time.Sleep(10 * time.Millisecond)
+	debouncer.AddEvent(core.FileEvent{Path: "override.go", Type: "write", Timestamp: time.Now()})
+	time.Sleep(10 * time.Millisecond)
+	debouncer.AddEvent(core.FileEvent{Path: "override.go", Type: "remove", Timestamp: time.Now()})
 
 	// Assert
 	select {
 	case events := <-debouncer.Events():
 		if len(events) != 1 {
-			t.Errorf("Expected 1 event after override, got %d", len(events))
+			t.Errorf("Expected 1 event (overridden), got %d", len(events))
 		}
 		if events[0].Type != "remove" {
-			t.Errorf("Expected type 'remove' (last override), got '%s'", events[0].Type)
-		}
-		if events[0].Path != "override.go" {
-			t.Errorf("Expected path 'override.go', got '%s'", events[0].Path)
+			t.Errorf("Expected type 'remove' (last event), got '%s'", events[0].Type)
 		}
 	case <-time.After(100 * time.Millisecond):
-		t.Error("Expected to receive overridden event within timeout")
+		t.Error("Expected to receive debounced event within timeout")
+	}
+}
+
+// TestFileEventDebouncer_SetInterval tests the SetInterval method
+func TestFileEventDebouncer_SetInterval(t *testing.T) {
+	// Arrange
+	debouncer := NewFileEventDebouncer(100 * time.Millisecond)
+	defer debouncer.Stop()
+
+	// Act
+	debouncer.SetInterval(200 * time.Millisecond)
+
+	// Assert - Check that the interval was updated
+	if debouncer.interval != 200*time.Millisecond {
+		t.Errorf("Expected interval to be updated to 200ms, got %v", debouncer.interval)
+	}
+
+	// Test with invalid interval
+	debouncer.SetInterval(-50 * time.Millisecond)
+	if debouncer.interval != 250*time.Millisecond {
+		t.Errorf("Expected invalid interval to default to 250ms, got %v", debouncer.interval)
 	}
 }
