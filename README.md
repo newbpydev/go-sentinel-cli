@@ -1,167 +1,100 @@
-<div align="center">
-  <h1>🚀 Go Sentinel CLI</h1>
-  <p>
-    <strong>A modern, Vitest-inspired test runner for Go with beautiful terminal output</strong>
-  </p>
-  <p>
-    <a href="https://github.com/newbpydev/go-sentinel-cli/actions">
-      <img src="https://github.com/newbpydev/go-sentinel-cli/actions/workflows/test.yml/badge.svg" alt="Build Status">
-    </a>
-    <a href="https://goreportcard.com/report/github.com/newbpydev/go-sentinel-cli">
-      <img src="https://goreportcard.com/badge/github.com/newbpydev/go-sentinel-cli" alt="Go Report Card">
-    </a>
-    <a href="https://pkg.go.dev/github.com/newbpydev/go-sentinel-cli">
-      <img src="https://pkg.go.dev/badge/github.com/newbpydev/go-sentinel-cli" alt="Go Reference">
-    </a>
-    <a href="LICENSE">
-      <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT">
-    </a>
-  </p>
-</div>
+# 🚀 Go Sentinel CLI
+
+> A modern, Vitest-inspired test runner for Go with beautiful terminal output
+
+[![Build Status](https://github.com/newbpydev/go-sentinel-cli/actions/workflows/test.yml/badge.svg)](https://github.com/newbpydev/go-sentinel-cli/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/newbpydev/go-sentinel-cli)](https://goreportcard.com/report/github.com/newbpydev/go-sentinel-cli)
+[![Go Reference](https://pkg.go.dev/badge/github.com/newbpydev/go-sentinel-cli)](https://pkg.go.dev/github.com/newbpydev/go-sentinel-cli)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## ✨ Overview
 
-Go Sentinel CLI brings the modern, beautiful test runner experience from Vitest to the Go ecosystem. It provides real-time test execution with gorgeous terminal output, smart file watching, and a rich developer experience that makes testing in Go a joy.
+Go Sentinel CLI transforms the standard `go test` experience into a modern, beautiful test runner with real-time feedback, smart file watching, and comprehensive reporting. Built for Go developers who want the productivity and aesthetic of modern JavaScript testing tools like Vitest, but native to the Go ecosystem.
 
-Born from the need for better Go testing UX, Go Sentinel CLI transforms standard `go test` output into beautiful, informative displays with clear test suite summaries, detailed failure reporting, and comprehensive statistics.
-
-## 🎨 Beautiful Output
-
-```
-🚀 Running tests with go-sentinel...
-
-github.com/myproject/pkg/utils (15 tests | 2 failed) 1240ms 2.1 MB heap used
-  ✓ TestStringHelper 45ms
-  ✗ TestValidation 230ms
-  ✓ TestFormatter 12ms
-  ✓ TestConfig 89ms
-  ...
-
-────────────────────────────────────────────────────────────────────────────────
-                                 Failed Tests 2
-────────────────────────────────────────────────────────────────────────────────
-FAIL github.com/myproject/pkg/utils > TestValidation
-
-    validation_test.go:25
-    Expected validation to pass but got error: invalid input
-
-────────────────────────────────────────────────────────────────────────────────
-Test Summary:
-Test Files: 3 passed, 1 failed (total: 4)
-Tests: 28 passed, 2 failed (total: 30)
-Start at: 14:32:15
-Duration: 1.2s
-────────────────────────────────────────────────────────────────────────────────
-
-⏱️  Tests completed in 1.24s
-```
-
-## 🚀 Features
-
-### **🎯 Core Features**
-- **🎨 Beautiful Vitest-style Output**: Clean, colorful test results with clear pass/fail indicators
-- **📊 Test Suite Display**: File-based organization with test counts, timing, and memory usage
-- **❌ Detailed Error Reporting**: Failed tests section with source code context and line numbers
-- **📈 Comprehensive Summary**: Overall statistics with timing breakdown
-- **🎪 Real-time Processing**: Live updates as tests execute
-
-### **👁️ Watch Mode**
-- **📁 Smart File Watching**: Automatically detects file changes and runs relevant tests
-- **🎯 Selective Test Running**: Only runs tests affected by changed files
-- **⚡ Debounced Updates**: Intelligent handling of rapid file changes
-- **🧹 Clean Re-runs**: Optional terminal clearing between test runs
-
-### **⚙️ Configuration System**
-- **📄 JSON Configuration**: Flexible `sentinel.config.json` support
-- **🎛️ CLI Arguments**: Comprehensive command-line flag system
-- **🎨 Visual Customization**: Icons (unicode/ascii/minimal/none), themes, colors
-- **📂 Path Management**: Include/exclude patterns for files and directories
-
-### **🔧 Advanced Options**
-- **🔄 Parallel Execution**: Configurable parallel test execution
-- **⏱️ Timeout Control**: Customizable test timeouts
-- **🎯 Pattern Filtering**: Run specific tests by name pattern
-- **📊 Verbosity Levels**: Multiple levels of output detail
-- **🎨 Color Control**: Enable/disable colored output
+**Key Features:**
+- 🎨 **Beautiful Vitest-style Output** - Clean, colorful test results with intuitive indicators
+- 👁️ **Smart Watch Mode** - Intelligent file monitoring with debounced re-runs
+- ⚡ **Optimized Execution** - Leverages Go's built-in test caching for faster runs
+- 📊 **Rich Test Reporting** - Detailed failure analysis with source code context
+- 🎯 **Selective Testing** - Run specific tests, packages, or patterns
+- 🔧 **Highly Configurable** - JSON config files and comprehensive CLI options
 
 ## 📦 Installation
 
 ### Prerequisites
-- Go 1.23 or higher
+- Go 1.23+ 
 - Git
 
-### Using Go Install (Recommended)
+### Install via Go (Recommended)
 ```bash
 go install github.com/newbpydev/go-sentinel-cli/cmd/go-sentinel-cli@latest
 ```
 
-### Building from Source
+### Build from Source
 ```bash
 git clone https://github.com/newbpydev/go-sentinel-cli.git
 cd go-sentinel-cli
 go build -o go-sentinel-cli ./cmd/go-sentinel-cli
 ```
 
-### Download Releases
-Download pre-built binaries from the [GitHub Releases](https://github.com/newbpydev/go-sentinel-cli/releases) page.
+### Download Pre-built Binaries
+Visit the [GitHub Releases](https://github.com/newbpydev/go-sentinel-cli/releases) page.
 
 ## 🚦 Quick Start
 
 ### Basic Usage
-   ```bash
+```bash
 # Run tests with beautiful output
 go-sentinel run
 
 # Run tests in watch mode
 go-sentinel run --watch
 
-# Run specific package with verbose output
-go-sentinel run -v ./internal/cli
+# Run specific package
+go-sentinel run ./internal/cli
 
-# Run tests matching a pattern
+# Run tests matching pattern
 go-sentinel run --test="TestConfig*"
 ```
 
 ### Common Workflows
-   ```bash
-# Development workflow (watch mode with colors)
+```bash
+# Development workflow (watch mode)
 go-sentinel run -w --color
 
 # CI/CD workflow (no colors, fail fast)
 go-sentinel run --no-color --fail-fast
 
-# Debug mode (maximum verbosity)
+# Debug mode (verbose output)
 go-sentinel run -vvv
 
 # Performance testing (parallel execution)
-go-sentinel run --parallel=8 --timeout=5m
+go-sentinel run --parallel=8
 ```
 
-## 📋 CLI Commands
+## 📋 CLI Reference
 
-### Main Commands
-- `go-sentinel run [packages]` - Run tests with beautiful output
-- `go-sentinel demo --phase=<1-7>` - View development phase demonstrations
+### Commands
 
-### Run Command Flags
-   ```bash
-go-sentinel run [flags] [packages]
+#### `go-sentinel run [packages]`
+Run tests with beautiful output and optional watch mode.
 
-Flags:
-  -c, --color              Use colored output (default true)
+**Flags:**
+```
+  -c, --color              Enable colored output (default: true)
       --no-color           Disable colored output
-  -v, --verbose            Enable verbose output
-  -vv, -vvv               Verbosity levels (can be repeated)
+  -v, --verbose            Increase verbosity (can be repeated: -v, -vv, -vvv)
   -w, --watch              Enable watch mode for file changes
   -t, --test string        Run only tests matching pattern
   -f, --fail-fast          Stop on first test failure
-  -j, --parallel int       Number of tests to run in parallel
-      --timeout duration   Timeout for test execution
+  -j, --parallel int       Number of parallel test processes (default: 4)
+      --timeout duration   Test execution timeout (default: 10m)
+      --optimized          Enable optimized mode with Go test caching
   -h, --help               Show help information
 ```
 
-### Examples
-   ```bash
+**Examples:**
+```bash
 # Watch mode with test filtering
 go-sentinel run -w --test="TestHandler*" ./api
 
@@ -172,14 +105,17 @@ go-sentinel run --parallel=4 --timeout=30s ./...
 go-sentinel run -vvv --color ./internal
 
 # CI-friendly mode
-go-sentinel run --no-color --fail-fast --parallel=2 ./...
+go-sentinel run --no-color --fail-fast ./...
 ```
+
+#### `go-sentinel demo --phase=<1-7>`
+View development phase demonstrations.
 
 ## ⚙️ Configuration
 
 ### Configuration File (`sentinel.config.json`)
 
-Create a `sentinel.config.json` file in your project root for persistent settings:
+Create a `sentinel.config.json` file in your project root:
 
 ```json
 {
@@ -194,221 +130,139 @@ Create a `sentinel.config.json` file in your project root for persistent setting
   },
   "paths": {
     "includePatterns": ["**/*.go"],
-    "excludePatterns": ["vendor/**", ".git/**"]
+    "excludePatterns": ["vendor/**", ".git/**", "node_modules/**"]
   },
   "watch": {
     "enabled": false,
-    "debounce": "100ms",
-    "ignorePatterns": ["**/*_test.go"],
+    "debounce": "500ms",
+    "ignorePatterns": ["**/.git/**", "**/vendor/**", "**/*.tmp"],
     "clearOnRerun": true,
     "runOnStart": true
-  }
+  },
+  "testCommand": "go test"
 }
 ```
 
 ### Configuration Options
 
-#### Visual Configuration
-- **`colors`** (bool): Enable/disable colored output
-- **`icons`** (string): Icon style - `unicode`, `ascii`, `minimal`, `none`
-- **`theme`** (string): Color theme - `dark`, `light`, `auto`
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `colors` | boolean | `true` | Enable/disable colored output |
+| `verbosity` | number | `1` | Output verbosity level (0-5) |
+| `parallel` | number | `4` | Number of parallel test processes |
+| `timeout` | string | `"10m"` | Test execution timeout |
+| `visual.icons` | string | `"unicode"` | Icon style: `unicode`, `ascii`, `minimal`, `none` |
+| `visual.theme` | string | `"dark"` | Color theme |
+| `watch.debounce` | string | `"500ms"` | File change debounce interval |
+| `watch.clearOnRerun` | boolean | `true` | Clear terminal between test runs |
 
-#### Execution Configuration
-- **`verbosity`** (int): Output verbosity level (0-3)
-- **`parallel`** (int): Number of parallel test executions
-- **`timeout`** (duration): Maximum test execution time
-- **`testPattern`** (string): Pattern to filter tests
-
-#### Path Configuration
-- **`includePatterns`** ([]string): File patterns to include
-- **`excludePatterns`** ([]string): File patterns to exclude
-
-#### Watch Configuration
-- **`enabled`** (bool): Enable watch mode by default
-- **`debounce`** (duration): Delay before running tests after file changes
-- **`ignorePatterns`** ([]string): File patterns to ignore during watching
-- **`clearOnRerun`** (bool): Clear terminal before re-running tests
-- **`runOnStart`** (bool): Run tests immediately when watch mode starts
-
-### CLI Arguments Override Configuration
-CLI arguments always take precedence over configuration file settings, allowing for flexible per-run customization.
-
-## 🏗️ Project Structure
+## 📁 Directory Structure (Post-Refactoring)
 
 ```
 go-sentinel-cli/
 ├── cmd/
-│   └── go-sentinel-cli/
-│       ├── main.go              # Application entry point
-│       └── cmd/
-│           ├── root.go          # Root command configuration
-│           ├── run.go           # Main test runner command
-│           └── demo/            # Development phase demos
-│               ├── demo.go      # Demo command handler
-│               ├── phase1.go    # Core architecture demo
-│               ├── phase2.go    # Test suite display demo
-│               ├── phase3.go    # Failed test details demo
-│               ├── phase4.go    # Real-time processing demo
-│               ├── phase5.go    # Watch mode demo
-│               ├── phase6d.go   # Performance demo
-│               └── phase7d.go   # CLI options demo
-│
-├── internal/cli/                # Core CLI implementation
-│   ├── app_controller.go        # Main application controller
-│   ├── cli_args.go             # CLI argument parsing
-│   ├── config.go               # Configuration system
-│   ├── colors.go               # Color and formatting
-│   ├── display.go              # Test suite display
-│   ├── failed_tests.go         # Failed test rendering
-│   ├── models.go               # Core data structures
-│   ├── parser.go               # Test output parsing
-│   ├── processor.go            # Test result processing
-│   ├── summary.go              # Summary generation
-│   ├── test_runner.go          # Test execution
-│   ├── watcher.go              # File watching
-│   └── performance_optimizations.go # Performance features
-│
-├── docs/                       # Documentation
-│   ├── configuration.md        # Configuration guide
-│   └── assets/                 # Documentation assets
-│
-├── demo-configs/               # Example configurations
-├── .golangci.yml              # Linting configuration
-├── go.mod                     # Go module definition
-├── go.sum                     # Dependency checksums
-├── README.md                  # This file
-└── ROADMAP-CLI-VITEST-V2.md   # Development roadmap
+│   ├── go-sentinel-cli/           # Main CLI entry point
+│   │   ├── cmd/                   # Cobra command definitions
+│   │   └── main.go               # Application entry point
+│   └── go-sentinel-cli-v2/        # V2 CLI (development)
+├── internal/
+│   ├── app/                       # Core application logic
+│   │   ├── controller.go         # Main application controller
+│   │   └── controller_test.go    # Application tests
+│   ├── watch/                     # File watching functionality
+│   │   ├── core/                 # Core watch interfaces
+│   │   ├── debouncer/            # File change debouncing
+│   │   ├── watcher/              # File system watching
+│   │   └── runner/               # Watch-triggered test running
+│   ├── test/                      # Test execution & processing
+│   │   ├── runner/               # Test execution engines
+│   │   ├── processor/            # Test output processing
+│   │   └── cache/                # Test result caching
+│   ├── ui/                        # User interface components
+│   │   ├── display/              # Test result display
+│   │   ├── colors/               # Color formatting
+│   │   └── icons/                # Icon providers
+│   └── config/                    # Configuration management
+│       ├── loader.go             # Configuration loading
+│       └── validation.go         # Configuration validation
+├── pkg/
+│   ├── events/                    # Event system for inter-component communication
+│   └── models/                    # Shared data models
+├── docs/                          # Documentation
+├── demo-configs/                  # Example configurations
+└── stress_tests/                  # Performance and stress tests
 ```
 
-## 🎬 Demonstrations
+## 🧪 Development
 
-Go Sentinel CLI includes interactive demonstrations of each development phase:
+### Prerequisites
+- Go 1.23+
+- Make (optional, for convenience commands)
 
+### Running Tests
 ```bash
-# View core architecture (data structures, parsing)
-go-sentinel demo --phase=1
-
-# See test suite display formatting
-go-sentinel demo --phase=2
-
-# Explore failed test detail rendering
-go-sentinel demo --phase=3
-
-# Watch real-time processing and summary
-go-sentinel demo --phase=4
-
-# Experience watch mode functionality
-go-sentinel demo --phase=5
-
-# Test performance optimizations
-go-sentinel demo --phase=6
-
-# Try CLI options and configuration
-go-sentinel demo --phase=7
-```
-
-## 🔧 Development
-
-### Building
-```bash
-# Build the application
-go build -o go-sentinel-cli ./cmd/go-sentinel-cli
-
-# Run tests
+# Run all tests
 go test ./...
 
 # Run tests with coverage
-go test ./... -cover
+go test -cover ./...
 
-# Format code
-go fmt ./...
+# Run specific package tests
+go test ./internal/cli
 
-# Lint code (requires golangci-lint)
-golangci-lint run
+# Run with race detection
+go test -race ./...
 ```
 
-### Testing
+### TDD Workflow
+1. **Write failing tests** in `*_test.go` files
+2. **Implement minimal code** to pass tests
+3. **Run test suite**: `go test ./...`
+4. **Refactor** while maintaining test coverage
+5. **Validate with linting**: `golangci-lint run`
+
+### Code Quality Standards
+- **Test Coverage**: ≥ 90% for all new code
+- **Linting**: Must pass `golangci-lint run` without errors
+- **Formatting**: All code must be `go fmt` compliant
+- **Documentation**: All exported symbols must be documented
+
+### Building
 ```bash
-# Run the CLI on itself
-./go-sentinel-cli run ./internal/cli
+# Build main CLI
+go build -o go-sentinel-cli ./cmd/go-sentinel-cli
 
-# Test with watch mode
-./go-sentinel-cli run -w ./internal/cli
+# Build with optimizations
+go build -ldflags="-s -w" -o go-sentinel-cli ./cmd/go-sentinel-cli
 
-# Test with different configurations
-./go-sentinel-cli run -vv --parallel=2 ./...
+# Cross-compile for different platforms
+GOOS=linux GOARCH=amd64 go build -o go-sentinel-cli-linux ./cmd/go-sentinel-cli
+GOOS=windows GOARCH=amd64 go build -o go-sentinel-cli.exe ./cmd/go-sentinel-cli
 ```
-
-## 🎯 Use Cases
-
-### **👨‍💻 Development Workflow**
-```bash
-go-sentinel run -w --color           # Watch mode with colors
-```
-Perfect for TDD with immediate feedback on file changes.
-
-### **🏭 CI/CD Pipeline**
-```bash
-go-sentinel run --no-color --fail-fast --parallel=4 ./...
-```
-Fast, parallel execution with clean output for automation.
-
-### **🐛 Debugging Tests**
-```bash
-go-sentinel run -vvv --test="TestProblem*"
-```
-Maximum verbosity with focused test execution.
-
-### **⚡ Performance Testing**
-```bash
-go-sentinel run --parallel=8 --timeout=5m ./...
-```
-High-performance execution for large test suites.
 
 ## 🤝 Contributing
 
-We welcome contributions! Here's how to get involved:
+### Code Style
+- Follow [Go Code Review Comments](https://github.com/golang/go/wiki/CodeReviewComments)
+- Use meaningful variable and function names
+- Keep functions focused and small (≤ 50 lines)
+- Prefer composition over inheritance
 
-1. **Fork the repository** and clone your fork
-2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
-3. **Make your changes** and add tests
-4. **Run the test suite**: `go test ./...`
-5. **Format your code**: `go fmt ./...`
-6. **Commit your changes**: `git commit -m 'Add amazing feature'`
-7. **Push to your branch**: `git push origin feature/amazing-feature`
-8. **Open a Pull Request**
+### Pull Request Process
+1. **Fork** the repository
+2. **Create feature branch**: `git checkout -b feature/amazing-feature`
+3. **Write tests** for new functionality
+4. **Ensure tests pass**: `go test ./...`
+5. **Run linting**: `golangci-lint run`
+6. **Update documentation** if needed
+7. **Submit pull request** with clear description
 
-### Development Setup
-```bash
-git clone https://github.com/newbpydev/go-sentinel-cli.git
-cd go-sentinel-cli
-go mod download
-go build -o go-sentinel-cli ./cmd/go-sentinel-cli
-./go-sentinel-cli run ./internal/cli
-```
-
-## 📖 Documentation
-
-- **[Configuration Guide](docs/configuration.md)** - Detailed configuration options
-- **[Development Roadmap](ROADMAP-CLI-VITEST-V2.md)** - Project development history
-- **[API Documentation](https://pkg.go.dev/github.com/newbpydev/go-sentinel-cli)** - Go package documentation
-
-## 🗺️ Roadmap
-
-Go Sentinel CLI follows a structured development approach with completed phases:
-
-- ✅ **Phase 1**: Core Architecture & Data Structures  
-- ✅ **Phase 2**: Test Suite Display
-- ✅ **Phase 3**: Failed Test Details Section
-- ✅ **Phase 4**: Real-time Processing & Summary
-- ✅ **Phase 5**: Watch Mode & Integration
-- ✅ **Phase 6**: Performance & Error Handling
-- ✅ **Phase 7**: CLI Options & Configuration
-- ✅ **Phase 8.1**: Main Application Integration
-- 🚧 **Phase 8.2**: Final Documentation (In Progress)
-- 📋 **Phase 8.3**: Final Testing & Validation
-
-See [ROADMAP-CLI-VITEST-V2.md](ROADMAP-CLI-VITEST-V2.md) for detailed development history.
+### Adding New Features
+1. **Design Phase**: Document the feature in an issue
+2. **TDD Phase**: Write tests before implementation
+3. **Implementation**: Follow the established patterns
+4. **Testing**: Ensure ≥ 90% test coverage
+5. **Documentation**: Update README and code docs
 
 ## 📄 License
 
@@ -416,18 +270,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- **[Vitest](https://vitest.dev/)** - Inspiration for the beautiful test output format
-- **[Go Team](https://golang.org/)** - For the excellent testing tools and ecosystem
-- **[Cobra](https://github.com/spf13/cobra)** - For the CLI framework
-- **[fsnotify](https://github.com/fsnotify/fsnotify)** - For efficient file watching
+- Inspired by [Vitest](https://vitest.dev/) - Modern testing framework for Vite
+- Built with [Cobra](https://github.com/spf13/cobra) - Modern CLI framework for Go
+- File watching powered by [fsnotify](https://github.com/fsnotify/fsnotify)
 
 ---
 
 <div align="center">
-  <p>
-    <strong>Made with ❤️ for the Go community</strong>
-  </p>
-  <p>
-    Give us a ⭐ if Go Sentinel CLI makes your testing experience better!
-  </p>
+  <strong>Made with ❤️ for the Go community</strong>
 </div>
