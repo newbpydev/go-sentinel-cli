@@ -3,7 +3,7 @@
 
 **CRITICAL STATUS**: We have created modular packages but the monolithic CLI still exists and is being used. This roadmap completes the actual code migration.
 
-**Current Reality**: 25 source files (7,565 lines) still in `internal/cli` that need to be moved to modular architecture.
+**Current Reality**: 23 source files (6,875 lines) still in `internal/cli` that need to be moved to modular architecture.
 
 ---
 
@@ -29,19 +29,21 @@
 ### 🔧 **TIER 2: Configuration Management**
 *Configuration loading and CLI parsing*
 
-- [ ] **`config.go` (437 lines)** → `internal/config/loader.go`
+- [x] **`config.go` (437 lines)** → `internal/config/loader.go`
   - ConfigLoader interface and implementation
   - File parsing and validation logic
   - Default configuration management
   - **Risk**: Medium - used by app controller
   - **Dependencies**: models.go, types.go
+  - ✅ **COMPLETED**: Moved to internal/config/loader.go with full functionality preserved
 
-- [ ] **`cli_args.go` (253 lines)** → `internal/config/args_parser.go`
+- [x] **`cli_args.go` (253 lines)** → `internal/config/args.go`
   - Command line argument parsing
   - Args struct and validation
   - CLI flag definitions
   - **Risk**: Medium - used by main entry points
   - **Dependencies**: config.go, models.go
+  - ✅ **COMPLETED**: Moved to internal/config/args.go with backward compatibility layer in internal/cli/config_compat.go
 
 ### 🧪 **TIER 3: Test Processing Engine**
 *Core test execution and result processing*
@@ -209,11 +211,12 @@
 - ✅ **COMPLETED**: Foundation types successfully migrated with backward compatibility
 
 ### **Phase B: Configuration & Processing (Week 2)**
-- [ ] Move Tier 2 (config, cli_args) to `internal/config/`
+- [x] Move Tier 2 (config, cli_args) to `internal/config/`
 - [ ] **CRITICAL**: Split processor.go into 4 files (Tier 3)
 - [ ] Move source_extractor, parser, stream to test/processor
 - [ ] Update interfaces and dependencies
 - [ ] Test configuration loading and test processing
+- ✅ **TIER 2 COMPLETED**: Configuration management successfully migrated to internal/config/ with backward compatibility layer
 
 ### **Phase C: Test Execution (Week 3)**
 - [ ] Move Tier 4 (all test runners) to `internal/test/runner/`
