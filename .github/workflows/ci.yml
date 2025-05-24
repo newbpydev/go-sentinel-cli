@@ -168,3 +168,37 @@ jobs:
           fi
           
           echo "✅ Quality gate passed"
+
+  benchmark:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.23'
+        cache: true
+        
+    - name: Run benchmarks
+      run: |
+        mkdir -p build/benchmarks
+        go test -bench=. -benchmem -benchtime=100ms -run=^$ ./internal/cli > build/benchmarks/results.txt
+        
+    - name: Display benchmark results
+      run: |
+        echo "## Performance Benchmark Results" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        cat build/benchmarks/results.txt >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v3
+      with:
+        name: benchmark-results-ubuntu
+        path: build/benchmarks/results.txt
+        retention-days: 30

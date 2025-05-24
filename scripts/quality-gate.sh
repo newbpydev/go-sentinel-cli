@@ -161,9 +161,48 @@ run_tests_with_coverage() {
     log_success "Coverage report generated: $COVERAGE_DIR/coverage.html"
 }
 
-# Step 7: Build validation
+# Step 7: Performance Benchmarks
+run_performance_benchmarks() {
+    log_step "Step 7: Running performance benchmarks..."
+    
+    if command -v go >/dev/null 2>&1; then
+        # Create benchmarks directory
+        mkdir -p "${BUILD_DIR}/benchmarks"
+        
+        # Run short benchmarks to validate performance
+        log_info "Running performance benchmarks..."
+        if go test -bench=BenchmarkColorFormatter -benchmem -benchtime=50ms -run=^$ ./internal/cli > "${BUILD_DIR}/benchmarks/quick.txt" 2>&1; then
+            log_success "Performance benchmarks completed"
+            
+            # Extract key metrics
+            if [ -f "${BUILD_DIR}/benchmarks/quick.txt" ]; then
+                log_info "Performance Summary:"
+                grep "BenchmarkColorFormatter" "${BUILD_DIR}/benchmarks/quick.txt" | head -1
+            fi
+            
+            # Check for performance regression if baseline exists
+            if [ -f "${BUILD_DIR}/benchmarks/baseline.txt" ]; then
+                log_info "Checking for performance regressions..."
+                if command -v benchcmp >/dev/null 2>&1; then
+                    benchcmp "${BUILD_DIR}/benchmarks/baseline.txt" "${BUILD_DIR}/benchmarks/quick.txt" || true
+                else
+                    log_warning "benchcmp not available for regression analysis"
+                fi
+            else
+                log_info "Creating performance baseline..."
+                cp "${BUILD_DIR}/benchmarks/quick.txt" "${BUILD_DIR}/benchmarks/baseline.txt"
+            fi
+        else
+            log_warning "Performance benchmarks failed (non-critical)"
+        fi
+    else
+        log_error "Go not found"
+    fi
+}
+
+# Step 8: Build validation
 validate_build() {
-    log_step "Step 7: Validating build..."
+    log_step "Step 8: Validating build..."
     
     # Build main CLI
     go build -o "$BUILD_DIR/go-sentinel-cli" ./cmd/go-sentinel-cli
@@ -188,6 +227,7 @@ run_quality_gate() {
     run_linting
     run_security_scan
     run_tests_with_coverage
+    run_performance_benchmarks
     validate_build
     
     echo "=================================="

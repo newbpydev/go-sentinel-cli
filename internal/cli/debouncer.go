@@ -109,7 +109,7 @@ func (d *FileEventDebouncer) flushPendingEvents() {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 
-	if len(d.pending) == 0 {
+	if len(d.pending) == 0 || d.stopped {
 		return
 	}
 
@@ -122,13 +122,15 @@ func (d *FileEventDebouncer) flushPendingEvents() {
 	// Clear pending events
 	d.pending = make(map[string]FileEvent)
 
-	// Send events (non-blocking)
-	select {
-	case d.events <- events:
-	case <-d.stopCh:
-		// Debouncer is stopped, don't send events
-	default:
-		// Channel is full, skip this batch
-		// This prevents blocking if the consumer is slow
+	// Send events (non-blocking) only if not stopped
+	if !d.stopped {
+		select {
+		case d.events <- events:
+		case <-d.stopCh:
+			// Debouncer is stopped, don't send events
+		default:
+			// Channel is full, skip this batch
+			// This prevents blocking if the consumer is slow
+		}
 	}
 }

@@ -125,11 +125,102 @@ test-coverage-ci: ## Run tests with coverage for CI (no HTML)
 	go test -race -covermode=atomic -coverprofile=$(COVERAGE_DIR)/coverage.out ./...
 	@echo "$(GREEN)✓ Coverage data generated: $(COVERAGE_DIR)/coverage.out$(RESET)"
 
+# ==============================================================================
+# Benchmark Commands
+# ==============================================================================
+
 .PHONY: benchmark
-benchmark: ## Run benchmark tests
+benchmark: ## Run all benchmarks
 	@echo "$(BLUE)Running benchmarks...$(RESET)"
-	go test -bench=. -benchmem -run=^$$ ./...
+	go test -bench=. -benchmem -run=^$$ ./internal/cli
 	@echo "$(GREEN)✓ Benchmarks complete$(RESET)"
+
+.PHONY: benchmark-short
+benchmark-short: ## Run short benchmarks (100ms each)
+	@echo "$(BLUE)Running short benchmarks...$(RESET)"
+	go test -bench=. -benchmem -benchtime=100ms -run=^$$ ./internal/cli
+	@echo "$(GREEN)✓ Short benchmarks complete$(RESET)"
+
+.PHONY: benchmark-filesystem
+benchmark-filesystem: ## Run file system operation benchmarks
+	@echo "$(BLUE)Running file system benchmarks...$(RESET)"
+	go test -bench=BenchmarkFile -benchmem -run=^$$ ./internal/cli
+	go test -bench=BenchmarkPattern -benchmem -run=^$$ ./internal/cli
+	go test -bench=BenchmarkDirectory -benchmem -run=^$$ ./internal/cli
+	@echo "$(GREEN)✓ File system benchmarks complete$(RESET)"
+
+.PHONY: benchmark-execution
+benchmark-execution: ## Run test execution pipeline benchmarks
+	@echo "$(BLUE)Running execution benchmarks...$(RESET)"
+	go test -bench=BenchmarkTest -benchmem -run=^$$ ./internal/cli
+	go test -bench=BenchmarkOptimized -benchmem -run=^$$ ./internal/cli
+	go test -bench=BenchmarkParallel -benchmem -run=^$$ ./internal/cli
+	@echo "$(GREEN)✓ Execution benchmarks complete$(RESET)"
+
+.PHONY: benchmark-rendering
+benchmark-rendering: ## Run rendering and output benchmarks
+	@echo "$(BLUE)Running rendering benchmarks...$(RESET)"
+	go test -bench=BenchmarkColor -benchmem -run=^$$ ./internal/cli
+	go test -bench=BenchmarkIcon -benchmem -run=^$$ ./internal/cli
+	go test -bench=BenchmarkSuite -benchmem -run=^$$ ./internal/cli
+	go test -bench=BenchmarkIncremental -benchmem -run=^$$ ./internal/cli
+	@echo "$(GREEN)✓ Rendering benchmarks complete$(RESET)"
+
+.PHONY: benchmark-integration
+benchmark-integration: ## Run integration and end-to-end benchmarks
+	@echo "$(BLUE)Running integration benchmarks...$(RESET)"
+	go test -bench=BenchmarkEndToEnd -benchmem -run=^$$ ./internal/cli
+	go test -bench=BenchmarkWatch -benchmem -run=^$$ ./internal/cli
+	go test -bench=BenchmarkConcurrent -benchmem -run=^$$ ./internal/cli
+	@echo "$(GREEN)✓ Integration benchmarks complete$(RESET)"
+
+.PHONY: benchmark-memory
+benchmark-memory: ## Run memory-intensive benchmarks
+	@echo "$(BLUE)Running memory benchmarks...$(RESET)"
+	go test -bench=BenchmarkMemory -benchmem -run=^$$ ./internal/cli
+	go test -bench=BenchmarkCache -benchmem -run=^$$ ./internal/cli
+	@echo "$(GREEN)✓ Memory benchmarks complete$(RESET)"
+
+.PHONY: benchmark-compare
+benchmark-compare: ## Run benchmarks and save results for comparison
+	@echo "$(BLUE)Running benchmarks for comparison...$(RESET)"
+	@mkdir -p $(BUILD_DIR)/benchmarks
+	go test -bench=. -benchmem -run=^$$ ./internal/cli > $(BUILD_DIR)/benchmarks/current.txt
+	@echo "$(GREEN)✓ Benchmark results saved to $(BUILD_DIR)/benchmarks/current.txt$(RESET)"
+
+.PHONY: benchmark-profile
+benchmark-profile: ## Run benchmarks with CPU profiling
+	@echo "$(BLUE)Running benchmarks with CPU profiling...$(RESET)"
+	@mkdir -p $(BUILD_DIR)/profiles
+	go test -bench=BenchmarkTestProcessor -benchmem -cpuprofile=$(BUILD_DIR)/profiles/cpu.prof -run=^$$ ./internal/cli
+	@echo "$(GREEN)✓ CPU profile saved to $(BUILD_DIR)/profiles/cpu.prof$(RESET)"
+	@echo "$(CYAN)View profile with: go tool pprof $(BUILD_DIR)/profiles/cpu.prof$(RESET)"
+
+.PHONY: benchmark-memprofile
+benchmark-memprofile: ## Run benchmarks with memory profiling
+	@echo "$(BLUE)Running benchmarks with memory profiling...$(RESET)"
+	@mkdir -p $(BUILD_DIR)/profiles
+	go test -bench=BenchmarkMemoryAllocation -benchmem -memprofile=$(BUILD_DIR)/profiles/mem.prof -run=^$$ ./internal/cli
+	@echo "$(GREEN)✓ Memory profile saved to $(BUILD_DIR)/profiles/mem.prof$(RESET)"
+	@echo "$(CYAN)View profile with: go tool pprof $(BUILD_DIR)/profiles/mem.prof$(RESET)"
+
+.PHONY: benchmark-regression
+benchmark-regression: ## Check for performance regressions
+	@echo "$(BLUE)Checking for performance regressions...$(RESET)"
+	@if [ -f "$(BUILD_DIR)/benchmarks/baseline.txt" ]; then \
+		go test -bench=. -benchmem -run=^$$ ./internal/cli > $(BUILD_DIR)/benchmarks/current.txt; \
+		echo "$(CYAN)Comparing with baseline...$(RESET)"; \
+		if command -v benchcmp >/dev/null 2>&1; then \
+			benchcmp $(BUILD_DIR)/benchmarks/baseline.txt $(BUILD_DIR)/benchmarks/current.txt; \
+		else \
+			echo "$(YELLOW)benchcmp not installed. Install with: go install golang.org/x/tools/cmd/benchcmp@latest$(RESET)"; \
+			diff $(BUILD_DIR)/benchmarks/baseline.txt $(BUILD_DIR)/benchmarks/current.txt || true; \
+		fi; \
+	else \
+		echo "$(YELLOW)No baseline found. Creating baseline...$(RESET)"; \
+		go test -bench=. -benchmem -run=^$$ ./internal/cli > $(BUILD_DIR)/benchmarks/baseline.txt; \
+		echo "$(GREEN)✓ Baseline created$(RESET)"; \
+	fi
 
 # ==============================================================================
 # Code Quality Commands
