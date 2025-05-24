@@ -97,12 +97,14 @@
   - *Why*: Eliminate code duplication and simplify maintenance
   - *How*: Create unified `WatchRunner` that composes core components
   - ✅ **COMPLETED**: Created WatchCoordinator that orchestrates all watch components
-- [ ] **Implement watch modes**: Cleanly separate `WatchAll`, `WatchChanged`, `WatchRelated` logic
+- [x] **Implement watch modes**: Cleanly separate `WatchAll`, `WatchChanged`, `WatchRelated` logic
   - *Why*: Clear mode-specific behavior without code duplication
   - *How*: Use strategy pattern for different watch behaviors
-- [ ] **Create watch configuration**: Centralized configuration for all watch behavior
+  - ✅ **COMPLETED**: Implemented mode switching in WatchCoordinator.HandleFileChanges()
+- [x] **Create watch configuration**: Centralized configuration for all watch behavior
   - *Why*: Consistent configuration interface and easy customization
   - *How*: Consolidate watch-related config into unified structure
+  - ✅ **COMPLETED**: Created WatchOptions type and Configure() method in coordinator
 
 ---
 
