@@ -311,6 +311,7 @@ func TestGetCachedResult_ValidResult(t *testing.T) {
 	}
 	if cached == nil {
 		t.Error("Expected cached result to be returned")
+		return // Exit early to avoid nil pointer dereference
 	}
 	if cached.Suite != suite {
 		t.Error("Expected correct suite to be returned")

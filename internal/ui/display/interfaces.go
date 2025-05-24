@@ -7,10 +7,10 @@ import (
 	"time"
 )
 
-// DisplayRenderer handles rendering of test results and progress
-type DisplayRenderer interface {
+// Renderer handles rendering of test results and progress
+type Renderer interface {
 	// RenderResults renders the final test results
-	RenderResults(ctx context.Context, results *DisplayResults) error
+	RenderResults(ctx context.Context, results *Results) error
 
 	// RenderProgress renders real-time progress updates
 	RenderProgress(ctx context.Context, progress *ProgressUpdate) error
@@ -22,7 +22,7 @@ type DisplayRenderer interface {
 	Clear() error
 
 	// SetConfiguration configures the renderer
-	SetConfiguration(config *DisplayConfig) error
+	SetConfiguration(config *Config) error
 }
 
 // ProgressRenderer handles real-time progress display
@@ -85,8 +85,8 @@ type ThemeManager interface {
 	ListAvailableThemes() []string
 }
 
-// DisplayResults represents test results to be displayed
-type DisplayResults struct {
+// Results represents test results to be displayed
+type Results struct {
 	// Packages contains results for each package
 	Packages []*PackageResult
 
@@ -208,8 +208,8 @@ type ProgressUpdate struct {
 	EstimatedRemaining time.Duration
 }
 
-// DisplayConfig configures display behavior
-type DisplayConfig struct {
+// Config configures display behavior
+type Config struct {
 	// Output is where to write display output
 	Output io.Writer
 
@@ -393,19 +393,19 @@ const (
 	StatusSkipped TestStatus = "skipped"
 )
 
-// DisplayMode represents different display modes
-type DisplayMode string
+// Mode represents different display modes
+type Mode string
 
 const (
-	// DisplayModeCompact uses compact display format
-	DisplayModeCompact DisplayMode = "compact"
+	// ModeCompact uses compact display format
+	ModeCompact Mode = "compact"
 
-	// DisplayModeStandard uses standard display format
-	DisplayModeStandard DisplayMode = "standard"
+	// ModeStandard uses standard display format
+	ModeStandard Mode = "standard"
 
-	// DisplayModeVerbose uses verbose display format
-	DisplayModeVerbose DisplayMode = "verbose"
+	// ModeVerbose uses verbose display format
+	ModeVerbose Mode = "verbose"
 
-	// DisplayModeQuiet uses minimal display format
-	DisplayModeQuiet DisplayMode = "quiet"
+	// ModeQuiet uses minimal display format
+	ModeQuiet Mode = "quiet"
 )

@@ -200,7 +200,7 @@ func (c *DefaultContainer) ListComponents() []string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	var names []string
+	names := make([]string, 0, len(c.components)+len(c.factories))
 
 	for name := range c.components {
 		names = append(names, name)

@@ -118,7 +118,7 @@ func (o *OptimizedWatchMode) HandleFileChanges(events []FileEvent, config *Confi
 		if result.Output != "" {
 			fmt.Printf("\n")
 			// Show test results
-			o.processTestOutput(result.Output, result.ExitCode)
+			o.processTestOutput(result.Output)
 		}
 
 		// Display performance metrics
@@ -140,7 +140,7 @@ func (o *OptimizedWatchMode) HandleFileChanges(events []FileEvent, config *Confi
 }
 
 // processTestOutput processes and displays test output with better formatting
-func (o *OptimizedWatchMode) processTestOutput(output string, exitCode int) {
+func (o *OptimizedWatchMode) processTestOutput(output string) {
 	lines := strings.Split(output, "\n")
 
 	// Track test results

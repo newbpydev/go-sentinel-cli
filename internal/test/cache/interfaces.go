@@ -21,7 +21,7 @@ type ResultCache interface {
 	Clear(ctx context.Context) error
 
 	// GetStats returns cache statistics
-	GetStats() *CacheStats
+	GetStats() *Stats
 
 	// Close closes the cache and releases resources
 	Close() error
@@ -72,28 +72,28 @@ type DependencyCache interface {
 	Clear()
 }
 
-// CacheStorage provides the underlying storage mechanism for cache
-type CacheStorage interface {
-	// Get retrieves data from storage
-	Get(key string) ([]byte, error)
+// Storage provides pluggable storage backends for cache data
+type Storage interface {
+	// Store saves data to the storage backend
+	Store(key string, data []byte) error
 
-	// Set stores data in storage
-	Set(key string, data []byte, ttl time.Duration) error
+	// Load retrieves data from the storage backend
+	Load(key string) ([]byte, error)
 
-	// Delete removes data from storage
+	// Delete removes data from the storage backend
 	Delete(key string) error
 
-	// Keys returns all keys in storage
-	Keys() ([]string, error)
+	// Exists checks if a key exists in the storage backend
+	Exists(key string) bool
 
-	// Clear clears all data from storage
+	// Clear removes all data from the storage backend
 	Clear() error
 
-	// Size returns the current storage size
+	// Size returns the total size of stored data
 	Size() (int64, error)
 
-	// Close closes the storage
-	Close() error
+	// Keys returns all keys in the storage backend
+	Keys() ([]string, error)
 }
 
 // CachedResult represents a cached test result
@@ -129,70 +129,70 @@ type CachedResult struct {
 	AccessCount int
 }
 
-// CacheStats provides statistics about cache usage
-type CacheStats struct {
-	// TotalKeys is the total number of cached keys
-	TotalKeys int
-
+// Stats provides metrics about cache usage and performance
+type Stats struct {
 	// HitCount is the number of cache hits
 	HitCount int64
 
 	// MissCount is the number of cache misses
 	MissCount int64
 
-	// HitRatio is the cache hit ratio (hits / total requests)
-	HitRatio float64
+	// StoreCount is the number of cache stores
+	StoreCount int64
 
-	// MemoryUsage is the memory usage in bytes
-	MemoryUsage int64
+	// EvictionCount is the number of cache evictions
+	EvictionCount int64
 
-	// DiskUsage is the disk usage in bytes
-	DiskUsage int64
+	// TotalSize is the total size of cached data
+	TotalSize int64
 
-	// OldestEntry is the timestamp of the oldest cached entry
-	OldestEntry time.Time
+	// LastAccess is the time of the last cache access
+	LastAccess time.Time
 
-	// NewestEntry is the timestamp of the newest cached entry
-	NewestEntry time.Time
+	// StartTime is when cache metrics started being collected
+	StartTime time.Time
 }
 
-// CacheConfig configures cache behavior
-type CacheConfig struct {
-	// MaxMemorySize is the maximum memory size in bytes
-	MaxMemorySize int64
+// Config configures cache behavior and limits
+type Config struct {
+	// MaxSize is the maximum cache size in bytes
+	MaxSize int64
 
-	// MaxDiskSize is the maximum disk size in bytes
-	MaxDiskSize int64
+	// MaxEntries is the maximum number of cache entries
+	MaxEntries int
 
-	// DefaultTTL is the default time-to-live for cached entries
-	DefaultTTL time.Duration
+	// TTL is the default time-to-live for cache entries
+	TTL time.Duration
 
 	// CleanupInterval is how often to run cache cleanup
 	CleanupInterval time.Duration
 
-	// PersistentStorage indicates if cache should persist to disk
-	PersistentStorage bool
+	// PersistToDisk indicates if cache should be persisted
+	PersistToDisk bool
 
 	// StoragePath is the path for persistent storage
 	StoragePath string
 
-	// Compression indicates if cache data should be compressed
-	Compression bool
+	// CompressionEnabled indicates if data should be compressed
+	CompressionEnabled bool
 }
 
-// CacheKey represents a cache key with metadata
-type CacheKey struct {
-	// Package is the test package
-	Package string
+// Key represents a cache key with metadata
+type Key struct {
+	// Value is the actual key value
+	Value string
 
-	// Files are the files involved in the test
-	Files []string
+	// Category is the key category for organization
+	Category string
 
-	// Checksum is a checksum of the key components
-	Checksum string
+	// Tags are metadata tags for the key
+	Tags []string
 
 	// CreatedAt is when the key was created
 	CreatedAt time.Time
+
+	// AccessedAt is when the key was last accessed
+	AccessedAt time.Time
 }
 
 // TestInvalidationReason represents why a cached test was invalidated

@@ -132,7 +132,7 @@ func (r *OptimizedTestRunner) determineTestTargets(changes []*FileChange) []stri
 
 // determineNeedsExecution determines what actually needs execution based on changes
 func (r *OptimizedTestRunner) determineNeedsExecution(targets []string, changes []*FileChange) []string {
-	var needsExecution []string
+	needsExecution := make([]string, 0, len(targets))
 
 	// If we have file changes, we should run tests - be less aggressive about caching during development
 	hasActualChanges := false

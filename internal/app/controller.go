@@ -201,7 +201,7 @@ func (c *Controller) executeApplication(config *Configuration, args *Arguments) 
 	fmt.Printf("🚀 Running tests with go-sentinel...\n\n")
 
 	if config.Watch.Enabled {
-		return c.executeWatchMode(config)
+		return c.executeWatchMode()
 	} else {
 		return c.executeSingleMode(config, args)
 	}
@@ -235,7 +235,7 @@ func (c *Controller) executeSingleMode(config *Configuration, args *Arguments) e
 }
 
 // executeWatchMode runs tests in watch mode
-func (c *Controller) executeWatchMode(config *Configuration) error {
+func (c *Controller) executeWatchMode() error {
 	fmt.Printf("👀 Starting watch mode...\n")
 
 	// Start watch coordinator

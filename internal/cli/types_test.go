@@ -376,13 +376,9 @@ func TestTypeConformance_TestProcessorInterface(t *testing.T) {
 	icons := NewIconProvider(false)
 	realProcessor := NewTestProcessor(nil, formatter, icons, 80)
 
-	// Test interface assignment
+	// Test interface assignment - assign to interface variable
 	processor = realProcessor
-	if processor == nil {
-		t.Error("Expected processor to be assigned")
-	}
-
-	// Test that interface methods can be called
+	// Test that interface methods can be called (this validates the assignment)
 	stats := processor.GetStats()
 	if stats == nil {
 		t.Error("Expected stats from interface method call")
