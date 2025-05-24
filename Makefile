@@ -29,6 +29,10 @@ CYAN := \033[0;36m
 WHITE := \033[0;37m
 RESET := \033[0m
 
+# Quality thresholds
+COVERAGE_THRESHOLD := 90
+LINT_TIMEOUT := 5m
+
 .PHONY: help
 help: ## Show this help message
 	@echo "$(CYAN)Go Sentinel CLI - Development Commands$(RESET)"
@@ -310,6 +314,67 @@ info: ## Show project information
 deps: ## Show dependency information
 	@echo "$(CYAN)Go Dependencies:$(RESET)"
 	go list -m all
+
+# ==============================================================================
+# Quality Gate Commands
+# ==============================================================================
+
+.PHONY: quality-gate
+quality-gate: ## Run complete quality gate pipeline
+	@echo "$(CYAN)Running Quality Gate Pipeline...$(RESET)"
+	@./scripts/quality-gate.sh
+
+.PHONY: quality-gate-setup
+quality-gate-setup: ## Set up quality gate dependencies
+	@echo "$(CYAN)Setting up quality gate dependencies...$(RESET)"
+	@mkdir -p scripts build coverage
+	@chmod +x scripts/quality-gate.sh
+	@echo "$(GREEN)✓ Quality gate setup complete$(RESET)"
+
+.PHONY: test-coverage-check
+test-coverage-check: ## Run tests and enforce coverage threshold
+	@echo "$(BLUE)Running tests with coverage checking...$(RESET)"
+	@mkdir -p $(COVERAGE_DIR)
+	go test -race -covermode=atomic -coverprofile=$(COVERAGE_DIR)/coverage.out ./...
+	@echo "$(BLUE)Checking coverage threshold ($(COVERAGE_THRESHOLD)%)...$(RESET)"
+	@COVERAGE=$$(go tool cover -func=$(COVERAGE_DIR)/coverage.out | tail -1 | awk '{print $$3}' | sed 's/%//'); \
+	if [ "$$(echo "$$COVERAGE < $(COVERAGE_THRESHOLD)" | bc -l)" -eq 1 ]; then \
+		echo "$(RED)❌ Coverage $$COVERAGE% is below threshold $(COVERAGE_THRESHOLD)%$(RESET)"; \
+		exit 1; \
+	else \
+		echo "$(GREEN)✅ Coverage $$COVERAGE% meets threshold $(COVERAGE_THRESHOLD)%$(RESET)"; \
+	fi
+	go tool cover -html=$(COVERAGE_DIR)/coverage.out -o $(COVERAGE_DIR)/coverage.html
+	@echo "$(GREEN)✓ Coverage report: $(COVERAGE_DIR)/coverage.html$(RESET)"
+
+.PHONY: security-scan
+security-scan: ## Run security vulnerability scan
+	@echo "$(BLUE)Running security scan...$(RESET)"
+	@if ! command -v gosec >/dev/null 2>&1; then \
+		echo "Installing gosec..."; \
+		go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest; \
+	fi
+	gosec -fmt json -out $(BUILD_DIR)/gosec-report.json ./...
+	@echo "$(GREEN)✓ Security scan complete: $(BUILD_DIR)/gosec-report.json$(RESET)"
+
+.PHONY: lint-fix
+lint-fix: ## Auto-fix linting issues where possible
+	@echo "$(BLUE)Auto-fixing linting issues...$(RESET)"
+	@if command -v golangci-lint >/dev/null 2>&1; then \
+		golangci-lint run --fix --config .golangci.yml ./...; \
+		echo "$(GREEN)✓ Auto-fix complete$(RESET)"; \
+	else \
+		echo "$(RED)✗ golangci-lint not installed. Run: make install-tools$(RESET)"; \
+		exit 1; \
+	fi
+
+.PHONY: pre-commit
+pre-commit: fmt vet lint-fix test-short ## Run pre-commit checks
+	@echo "$(GREEN)✓ Pre-commit checks passed$(RESET)"
+
+.PHONY: ci-local
+ci-local: quality-gate ## Run full CI pipeline locally
+	@echo "$(GREEN)✓ Local CI pipeline complete$(RESET)"
 
 # Default target
 .DEFAULT_GOAL := help 

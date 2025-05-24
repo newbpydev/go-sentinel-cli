@@ -115,9 +115,11 @@ func (r *ParallelTestRunner) executeTestPath(ctx context.Context, testPath strin
 
 // runSingleTestPath executes a single test path and returns the suite
 func (r *ParallelTestRunner) runSingleTestPath(ctx context.Context, testPath string, config *Config) (*TestSuite, error) {
-	// Configure the test runner for this execution
-	r.testRunner.Verbose = config.Verbosity > 0
-	r.testRunner.JSONOutput = true
+	// Create a new test runner instance for this execution to avoid race conditions
+	testRunner := &TestRunner{
+		Verbose:    config.Verbosity > 0,
+		JSONOutput: true,
+	}
 
 	// Apply timeout if configured
 	testCtx := ctx
@@ -128,7 +130,7 @@ func (r *ParallelTestRunner) runSingleTestPath(ctx context.Context, testPath str
 	}
 
 	// Execute test command using streaming approach
-	stream, err := r.testRunner.RunStream(testCtx, []string{testPath})
+	stream, err := testRunner.RunStream(testCtx, []string{testPath})
 	if err != nil {
 		return nil, fmt.Errorf("failed to start test stream for %s: %w", testPath, err)
 	}

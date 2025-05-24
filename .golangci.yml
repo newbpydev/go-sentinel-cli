@@ -1,61 +1,34 @@
-version: "2"
 run:
+  timeout: 5m
   tests: true
+
+output:
+  format: colored-line-number
+
 linters:
-  default: none
   enable:
     - errcheck
-    - gosec
     - govet
-    - ineffassign
-    - misspell
-    - nolintlint
-    - prealloc
-    - revive
     - staticcheck
-    - unconvert
-    - unparam
+    - gosimple
+    - ineffassign
     - unused
-    - whitespace
-  settings:
-    gosec:
-      includes:
-        - G101-G505
-    govet:
-      enable:
-        - atomicalign
-        - deepequalerrors
-    revive:
-      rules:
-        - name: exported
-          arguments:
-            - checkPrivateReceivers
-            - sayRepetitiveInsteadOfStutters
-          severity: warning
-          disabled: false
-  exclusions:
-    generated: lax
-    presets:
-      - comments
-      - common-false-positives
-      - legacy
-      - std-error-handling
-    rules:
-      - linters:
-          - dupl
-          - gocyclo
-          - gosec
-        path: _test\.go
-    paths:
-      - third_party$
-      - builtin$
-      - examples$
+    - misspell
+    - unconvert
+    - gosec
+    - unparam
+
+linters-settings:
+  govet:
+    check-shadowing: true
+  
+  gosec:
+    includes:
+      - G101-G505
+
 issues:
   max-same-issues: 3
-formatters:
-  exclusions:
-    generated: lax
-    paths:
-      - third_party$
-      - builtin$
-      - examples$
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gosec

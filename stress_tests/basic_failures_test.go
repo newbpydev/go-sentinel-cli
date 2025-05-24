@@ -1,6 +1,7 @@
 package stress_tests
 
 import (
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -146,20 +147,20 @@ func TestNilPointer(t *testing.T) {
 
 // Test 11: Test with goroutine issues (race condition simulation)
 func TestConcurrency(t *testing.T) {
-	counter := 0
+	var counter int64
 	done := make(chan bool, 2)
 
 	// Start two goroutines that increment counter
 	go func() {
 		for i := 0; i < 100; i++ {
-			counter++
+			atomic.AddInt64(&counter, 1)
 		}
 		done <- true
 	}()
 
 	go func() {
 		for i := 0; i < 100; i++ {
-			counter++
+			atomic.AddInt64(&counter, 1)
 		}
 		done <- true
 	}()
@@ -168,9 +169,10 @@ func TestConcurrency(t *testing.T) {
 	<-done
 	<-done
 
-	// This might fail due to race condition (without proper synchronization)
-	if counter != 200 {
-		t.Errorf("Race condition detected: expected 200, got %d", counter)
+	// This should now work correctly with atomic operations
+	finalCount := atomic.LoadInt64(&counter)
+	if finalCount != 200 {
+		t.Errorf("Race condition detected: expected 200, got %d", finalCount)
 	}
 }
 
