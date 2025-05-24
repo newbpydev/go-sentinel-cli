@@ -394,3 +394,80 @@ type TestWatchCoordinator = coordinator.TestWatchCoordinator
 func NewTestWatchCoordinator(options core.WatchOptions) (*coordinator.TestWatchCoordinator, error) {
 	return coordinator.NewTestWatchCoordinator(options)
 }
+
+// Re-export types from internal/ui/colors for backward compatibility
+
+// ColorFormatter re-exports colors.ColorFormatter
+// type ColorFormatter = colors.ColorFormatter
+
+// IconProvider re-exports colors.IconProvider
+// type IconProvider = colors.IconProvider
+
+// TerminalDetector re-exports colors.TerminalDetector
+// type TerminalDetector = colors.TerminalDetector
+
+// Re-export types from internal/ui/display for backward compatibility
+
+// HeaderRenderer re-exports display.HeaderRenderer
+// type HeaderRenderer = display.HeaderRenderer
+
+// PathFormatter re-exports display.PathFormatter
+// type PathFormatter = display.PathFormatter
+
+// DurationFormatter re-exports display.DurationFormatter
+// type DurationFormatter = display.DurationFormatter
+
+// MemoryFormatter re-exports display.MemoryFormatter
+// type MemoryFormatter = display.MemoryFormatter
+
+// Re-export types from internal/ui/renderer for backward compatibility
+
+// IncrementalRenderer re-exports renderer.IncrementalRenderer
+// type IncrementalRenderer = renderer.IncrementalRenderer
+
+// Re-export UI constructor functions
+
+// NewColorFormatter creates a new ColorFormatter
+// func NewColorFormatter(useColors bool) *ColorFormatter {
+// 	return colors.NewColorFormatter(useColors)
+// }
+
+// NewIconProvider creates a new IconProvider
+// func NewIconProvider(unicodeSupport bool) *IconProvider {
+// 	return colors.NewIconProvider(unicodeSupport)
+// }
+
+// NewTerminalDetector creates a new TerminalDetector
+// func NewTerminalDetector() *TerminalDetector {
+// 	return colors.NewTerminalDetector()
+// }
+
+// NewHeaderRenderer creates a new HeaderRenderer
+// func NewHeaderRenderer(writer io.Writer, formatter *ColorFormatter, icons *IconProvider, width int) *HeaderRenderer {
+// 	return display.NewHeaderRenderer(writer, formatter, icons, width)
+// }
+
+// NewIncrementalRenderer creates a new IncrementalRenderer
+// func NewIncrementalRenderer(writer io.Writer, formatter *ColorFormatter, icons *IconProvider, width int, cache *TestResultCache) *IncrementalRenderer {
+// 	return renderer.NewIncrementalRenderer(writer, formatter, icons, width, cache)
+// }
+
+// FormatFilePath formats a file path with colorized components
+// func FormatFilePath(formatter *ColorFormatter, path string) string {
+// 	return display.FormatFilePath(formatter, path)
+// }
+
+// FormatDuration formats a duration with appropriate units
+// func FormatDuration(formatter *ColorFormatter, d time.Duration) string {
+// 	return display.FormatDuration(formatter, d)
+// }
+
+// FormatMemoryUsage formats memory usage in appropriate units
+// func FormatMemoryUsage(formatter *ColorFormatter, bytes uint64) string {
+// 	return display.FormatMemoryUsage(formatter, bytes)
+// }
+
+// FormatTestStatus formats a test status with appropriate coloring and icon
+// func FormatTestStatus(status TestStatus, formatter *ColorFormatter, icons *IconProvider) string {
+// 	return colors.FormatTestStatus(status, formatter, icons)
+// }
