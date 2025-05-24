@@ -205,7 +205,12 @@ func TestStableBehaviorWithCorruptedFiles(t *testing.T) {
 
 // TestConcurrentProcessing tests stability under concurrent processing
 func TestConcurrentProcessing(t *testing.T) {
-	processor := NewOptimizedTestProcessor(io.Discard, NewColorFormatter(false), NewIconProvider(false), 80)
+	processor := NewOptimizedTestProcessorWithUI(
+		io.Discard,
+		NewColorFormatter(false),
+		NewIconProvider(false),
+		80,
+	)
 
 	// Number of concurrent goroutines
 	const numGoroutines = 10

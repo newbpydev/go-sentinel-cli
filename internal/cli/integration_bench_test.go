@@ -108,7 +108,8 @@ func BenchmarkOptimizedPipeline(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		// Run optimized pipeline
-		result, err := optimizedRunner.RunOptimized(ctx, changes)
+		adaptedChanges := AdaptFileChanges(changes)
+		result, err := optimizedRunner.RunOptimized(ctx, adaptedChanges)
 		if err != nil {
 			b.Logf("Optimized pipeline failed (expected in benchmark): %v", err)
 		}
@@ -167,7 +168,7 @@ func BenchmarkConcurrentTestExecution(b *testing.B) {
 func BenchmarkMemoryIntensiveWorkload(b *testing.B) {
 	// Create large test suites that consume significant memory
 	var buf bytes.Buffer
-	processor := NewOptimizedTestProcessor(
+	processor := NewOptimizedTestProcessorWithUI(
 		&buf, // Use buffer instead of nil
 		NewColorFormatter(false),
 		NewIconProvider(false),

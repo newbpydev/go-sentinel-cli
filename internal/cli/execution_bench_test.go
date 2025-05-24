@@ -52,7 +52,9 @@ func BenchmarkOptimizedTestRunner(b *testing.B) {
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		result, err := runner.RunOptimized(ctx, changes)
+		// Use optimized runner
+		adaptedChanges := AdaptFileChanges(changes)
+		result, err := runner.RunOptimized(ctx, adaptedChanges)
 		if err != nil {
 			b.Logf("Optimized test run failed (expected in benchmark): %v", err)
 		}
@@ -146,7 +148,7 @@ func BenchmarkTestProcessor(b *testing.B) {
 
 // BenchmarkOptimizedTestProcessor benchmarks the optimized processor
 func BenchmarkOptimizedTestProcessor(b *testing.B) {
-	processor := NewOptimizedTestProcessor(
+	processor := NewOptimizedTestProcessorWithUI(
 		io.Discard,
 		NewColorFormatter(false),
 		NewIconProvider(false),
@@ -276,7 +278,7 @@ func BenchmarkBatchProcessor(b *testing.B) {
 
 // BenchmarkConcurrentTestProcessing benchmarks concurrent test processing
 func BenchmarkConcurrentTestProcessing(b *testing.B) {
-	processor := NewOptimizedTestProcessor(
+	processor := NewOptimizedTestProcessorWithUI(
 		io.Discard,
 		NewColorFormatter(false),
 		NewIconProvider(false),

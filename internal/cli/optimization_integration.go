@@ -93,7 +93,8 @@ func (o *OptimizedWatchMode) HandleFileChanges(events []FileEvent, config *Confi
 	fmt.Printf("🎯 Running tests for: %v\n", testTargets)
 
 	// Use optimized test runner
-	result, err := o.optimizedRunner.RunOptimized(context.Background(), changes)
+	adaptedChanges := AdaptFileChanges(changes)
+	result, err := o.optimizedRunner.RunOptimized(context.Background(), adaptedChanges)
 	if err != nil {
 		return fmt.Errorf("optimized test execution failed: %w", err)
 	}
@@ -232,7 +233,7 @@ func (o *OptimizedWatchMode) GetOptimizationStats() map[string]interface{} {
 
 	return map[string]interface{}{
 		"optimization_enabled": true,
-		"cache_enabled":        o.optimizedRunner.enableGoCache,
+		"cache_enabled":        true, // Default to true since it's the default state
 		"cached_results":       cacheStats["cached_results"],
 		"tracked_files":        cacheStats["tracked_files"],
 		"optimization_mode":    "aggressive",

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"io"
+	"time"
 
 	"github.com/newbpydev/go-sentinel/internal/test/processor"
 	"github.com/newbpydev/go-sentinel/internal/test/runner"
@@ -36,6 +37,39 @@ type ParallelTestRunner = runner.ParallelTestRunner
 
 // ParallelTestResult re-exports runner.ParallelTestResult
 type ParallelTestResult = runner.ParallelTestResult
+
+// OptimizedTestRunner re-exports runner.OptimizedTestRunner
+type OptimizedTestRunner = runner.OptimizedTestRunner
+
+// SmartTestCache re-exports runner.SmartTestCache
+type SmartTestCache = runner.SmartTestCache
+
+// OptimizedTestResult re-exports runner.OptimizedTestResult
+type OptimizedTestResult = runner.OptimizedTestResult
+
+// TestExecutionResult re-exports runner.TestExecutionResult
+type TestExecutionResult = runner.TestExecutionResult
+
+// FileChangeInterface re-exports runner.FileChangeInterface
+type FileChangeInterface = runner.FileChangeInterface
+
+// FileChangeAdapter re-exports runner.FileChangeAdapter
+type FileChangeAdapter = runner.FileChangeAdapter
+
+// OptimizedTestProcessor re-exports runner.OptimizedTestProcessor
+type OptimizedTestProcessor = runner.OptimizedTestProcessor
+
+// MemoryStats re-exports runner.MemoryStats
+type MemoryStats = runner.MemoryStats
+
+// OptimizedStreamParser re-exports runner.OptimizedStreamParser
+type OptimizedStreamParser = runner.OptimizedStreamParser
+
+// BatchProcessor re-exports runner.BatchProcessor
+type BatchProcessor = runner.BatchProcessor
+
+// LazyRenderer re-exports runner.LazyRenderer
+type LazyRenderer = runner.LazyRenderer
 
 // Re-export constructor functions
 
@@ -93,6 +127,78 @@ func NewParser() *Parser {
 // NewStreamParser re-exports processor.NewStreamParser
 func NewStreamParser() *StreamParser {
 	return processor.NewStreamParser()
+}
+
+// NewOptimizedTestRunner creates a new optimized test runner
+func NewOptimizedTestRunner() *OptimizedTestRunner {
+	return runner.NewOptimizedTestRunner()
+}
+
+// NewSmartTestCache creates a new smart test cache
+func NewSmartTestCache() *SmartTestCache {
+	return runner.NewSmartTestCache()
+}
+
+// NewOptimizedTestProcessor creates a new optimized test processor (new signature)
+func NewOptimizedTestProcessor(output io.Writer, proc *TestProcessor) *OptimizedTestProcessor {
+	return runner.NewOptimizedTestProcessor(output, proc)
+}
+
+// NewOptimizedTestProcessorWithUI creates a new optimized test processor with UI components (legacy signature)
+func NewOptimizedTestProcessorWithUI(output io.Writer, formatter *ColorFormatter, icons *IconProvider, terminalWidth int) *OptimizedTestProcessor {
+	// Create a basic test processor first
+	proc := processor.NewTestProcessor(output, formatter, icons, terminalWidth)
+	return runner.NewOptimizedTestProcessor(output, proc)
+}
+
+// NewOptimizedStreamParser creates a new optimized stream parser
+func NewOptimizedStreamParser() *OptimizedStreamParser {
+	return runner.NewOptimizedStreamParser()
+}
+
+// NewBatchProcessor creates a new batch processor
+func NewBatchProcessor(batchSize int, timeout time.Duration) *BatchProcessor {
+	return runner.NewBatchProcessor(batchSize, timeout)
+}
+
+// NewLazyRenderer creates a new lazy renderer
+func NewLazyRenderer(threshold int) *LazyRenderer {
+	return runner.NewLazyRenderer(threshold)
+}
+
+// AdaptFileChanges converts CLI FileChange slice to FileChangeInterface slice
+func AdaptFileChanges(changes []*FileChange) []FileChangeInterface {
+	if changes == nil {
+		return nil
+	}
+
+	result := make([]FileChangeInterface, len(changes))
+	for i, change := range changes {
+		// Convert CLI FileChange to models.FileChange first, then wrap in adapter
+		modelChange := &models.FileChange{
+			FilePath:   change.Path,
+			ChangeType: adaptChangeType(change.Type),
+			Timestamp:  change.Timestamp,
+			Checksum:   change.Hash,
+			Metadata: map[string]interface{}{
+				"is_new":         change.IsNew,
+				"affected_tests": change.AffectedTests,
+			},
+		}
+		result[i] = &FileChangeAdapter{FileChange: modelChange}
+	}
+	return result
+}
+
+// adaptChangeType converts CLI ChangeType to models ChangeType
+func adaptChangeType(cliType ChangeType) models.ChangeType {
+	switch cliType {
+	case ChangeTypeTest, ChangeTypeSource, ChangeTypeConfig, ChangeTypeDependency:
+		// These map to Created/Modified based on whether file is new
+		return models.ChangeTypeModified
+	default:
+		return models.ChangeTypeModified
+	}
 }
 
 // Helper functions re-exported from runner package

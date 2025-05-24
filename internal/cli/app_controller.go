@@ -341,7 +341,8 @@ func (a *AppController) analyzeFileChanges(events []FileEvent) []*FileChange {
 
 // executeOptimizedTests runs tests using the optimized runner and handles results
 func (a *AppController) executeOptimizedTests(changes []*FileChange, config *Config) error {
-	optimizedResult, err := a.optimizedRunner.RunOptimized(context.Background(), changes)
+	adaptedChanges := AdaptFileChanges(changes)
+	optimizedResult, err := a.optimizedRunner.RunOptimized(context.Background(), adaptedChanges)
 	if err != nil {
 		return fmt.Errorf("optimized test execution failed: %w", err)
 	}
