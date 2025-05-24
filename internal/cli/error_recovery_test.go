@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -426,4 +428,557 @@ func TestLargeOutputHandling(t *testing.T) {
 	}
 
 	t.Logf("Large output processing completed in %v", elapsed)
+}
+
+// TestErrorRecovery_TestRunnerFailures tests recovery from test runner failures
+func TestErrorRecovery_TestRunnerFailures(t *testing.T) {
+	runner := &TestRunner{
+		Verbose:    false,
+		JSONOutput: true,
+	}
+
+	ctx := context.Background()
+
+	testCases := []struct {
+		name        string
+		testPaths   []string
+		expectError bool
+		description string
+	}{
+		{
+			name:        "NonExistentDirectory",
+			testPaths:   []string{"/non/existent/path"},
+			expectError: true,
+			description: "Should handle non-existent directory gracefully",
+		},
+		{
+			name:        "EmptyPathList",
+			testPaths:   []string{},
+			expectError: true,
+			description: "Should handle empty path list gracefully",
+		},
+		{
+			name:        "InvalidPath",
+			testPaths:   []string{""},
+			expectError: true,
+			description: "Should handle empty path string gracefully",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := runner.Run(ctx, tc.testPaths)
+
+			if tc.expectError && err == nil {
+				t.Errorf("Expected error for %s, but got none", tc.description)
+			}
+
+			if !tc.expectError && err != nil {
+				t.Errorf("Did not expect error for %s, but got: %v", tc.description, err)
+			}
+
+			if err != nil {
+				// Verify error message is user-friendly
+				errorMsg := err.Error()
+				if errorMsg == "" {
+					t.Error("Expected non-empty error message")
+				}
+
+				t.Logf("Error message for %s: %s", tc.name, errorMsg)
+			}
+		})
+	}
+}
+
+// TestErrorRecovery_ProcessorFailures tests recovery from processor failures
+func TestErrorRecovery_ProcessorFailures(t *testing.T) {
+	testCases := []struct {
+		name        string
+		suite       *TestSuite
+		expectError bool
+		description string
+	}{
+		{
+			name:        "NilTestSuite",
+			suite:       nil,
+			expectError: true,
+			description: "Should handle nil test suite gracefully",
+		},
+		{
+			name: "EmptyFilePath",
+			suite: &TestSuite{
+				FilePath:    "",
+				TestCount:   1,
+				PassedCount: 1,
+			},
+			expectError: false,
+			description: "Should handle empty file path gracefully",
+		},
+		{
+			name: "NegativeTestCounts",
+			suite: &TestSuite{
+				FilePath:     "test.go",
+				TestCount:    -1,
+				PassedCount:  -1,
+				FailedCount:  -1,
+				SkippedCount: -1,
+			},
+			expectError: false,
+			description: "Should handle negative test counts gracefully",
+		},
+		{
+			name: "InconsistentCounts",
+			suite: &TestSuite{
+				FilePath:     "test.go",
+				TestCount:    5,
+				PassedCount:  10, // More than total
+				FailedCount:  2,
+				SkippedCount: 1,
+			},
+			expectError: false,
+			description: "Should handle inconsistent test counts gracefully",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var output bytes.Buffer
+			processor := NewTestProcessor(
+				&output,
+				NewColorFormatter(false),
+				NewIconProvider(false),
+				80,
+			)
+
+			var err error
+			if tc.suite != nil {
+				processor.AddTestSuite(tc.suite)
+				err = processor.RenderResults(false)
+			} else {
+				// Test nil suite handling
+				func() {
+					defer func() {
+						if r := recover(); r != nil {
+							err = r.(error)
+						}
+					}()
+					processor.AddTestSuite(tc.suite)
+				}()
+			}
+
+			if tc.expectError && err == nil {
+				t.Errorf("Expected error for %s, but got none", tc.description)
+			}
+
+			if !tc.expectError && err != nil {
+				t.Errorf("Did not expect error for %s, but got: %v", tc.description, err)
+			}
+
+			t.Logf("Error recovery test %s completed", tc.name)
+		})
+	}
+}
+
+// TestErrorRecovery_FileSystemErrors tests recovery from file system errors
+func TestErrorRecovery_FileSystemErrors(t *testing.T) {
+	// Test file watcher with problematic directories
+	testCases := []struct {
+		name        string
+		paths       []string
+		expectError bool
+		description string
+	}{
+		{
+			name:        "NonExistentDirectory",
+			paths:       []string{"/absolutely/non/existent/path"},
+			expectError: true,
+			description: "Should handle non-existent directory",
+		},
+		{
+			name:        "EmptyPaths",
+			paths:       []string{},
+			expectError: true,
+			description: "Should handle empty paths list",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			options := WatchOptions{
+				Paths:            tc.paths,
+				IgnorePatterns:   []string{"*.log"},
+				TestPatterns:     []string{"*_test.go"},
+				Mode:             WatchAll,
+				DebounceInterval: 100 * time.Millisecond,
+				ClearTerminal:    false,
+				Writer:           nil,
+			}
+
+			_, err := NewTestWatcher(options)
+
+			if tc.expectError && err == nil {
+				t.Errorf("Expected error for %s, but got none", tc.description)
+			}
+
+			if !tc.expectError && err != nil {
+				t.Errorf("Did not expect error for %s, but got: %v", tc.description, err)
+			}
+
+			if err != nil {
+				t.Logf("File system error for %s: %s", tc.name, err.Error())
+			}
+		})
+	}
+}
+
+// TestErrorRecovery_CacheErrors tests recovery from cache-related errors
+func TestErrorRecovery_CacheErrors(t *testing.T) {
+	cache := NewTestResultCache()
+
+	testCases := []struct {
+		name        string
+		testPath    string
+		suite       *TestSuite
+		expectError bool
+		description string
+	}{
+		{
+			name:        "EmptyTestPath",
+			testPath:    "",
+			suite:       &TestSuite{FilePath: "test.go"},
+			expectError: false,
+			description: "Should handle empty test path gracefully",
+		},
+		{
+			name:        "NilTestSuite",
+			testPath:    "./test",
+			suite:       nil,
+			expectError: false,
+			description: "Should handle nil test suite gracefully",
+		},
+		{
+			name:        "ValidCacheOperation",
+			testPath:    "./valid/test",
+			suite:       &TestSuite{FilePath: "valid_test.go", TestCount: 1},
+			expectError: false,
+			description: "Should handle valid cache operation",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var err error
+
+			// Test cache store operation
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						err = r.(error)
+					}
+				}()
+				cache.CacheResult(tc.testPath, tc.suite)
+			}()
+
+			if tc.expectError && err == nil {
+				t.Errorf("Expected error for %s, but got none", tc.description)
+			}
+
+			if !tc.expectError && err != nil {
+				t.Errorf("Did not expect error for %s, but got: %v", tc.description, err)
+			}
+
+			// Test cache retrieve operation
+			_, exists := cache.GetCachedResult(tc.testPath)
+
+			if tc.suite != nil && tc.testPath != "" && !exists {
+				t.Errorf("Expected cached result to exist for valid operation")
+			}
+
+			t.Logf("Cache error recovery test %s completed", tc.name)
+		})
+	}
+}
+
+// TestErrorRecovery_ConfigurationErrors tests recovery from configuration errors
+func TestErrorRecovery_ConfigurationErrors(t *testing.T) {
+	tempDir := t.TempDir()
+
+	testCases := []struct {
+		name        string
+		configFile  string
+		content     string
+		expectError bool
+		description string
+	}{
+		{
+			name:        "MalformedYAML",
+			configFile:  "malformed.yaml",
+			content:     "invalid: yaml: content: [unclosed",
+			expectError: true,
+			description: "Should handle malformed YAML gracefully",
+		},
+		{
+			name:        "InvalidFieldTypes",
+			configFile:  "invalid_types.yaml",
+			content:     "verbosity: \"not_a_number\"\ncolors: \"not_a_boolean\"",
+			expectError: true,
+			description: "Should handle invalid field types gracefully",
+		},
+		{
+			name:        "MissingRequiredFields",
+			configFile:  "incomplete.yaml",
+			content:     "# Only partial config\nverbosity: 1",
+			expectError: false,
+			description: "Should handle incomplete config with defaults",
+		},
+		{
+			name:        "EmptyConfigFile",
+			configFile:  "empty.yaml",
+			content:     "",
+			expectError: false,
+			description: "Should handle empty config file gracefully",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			configPath := filepath.Join(tempDir, tc.configFile)
+			err := os.WriteFile(configPath, []byte(tc.content), 0644)
+			if err != nil {
+				t.Fatalf("Failed to create test config file: %v", err)
+			}
+
+			configLoader := &DefaultConfigLoader{}
+			_, err = configLoader.LoadFromFile(configPath)
+
+			if tc.expectError && err == nil {
+				t.Errorf("Expected error for %s, but got none", tc.description)
+			}
+
+			if !tc.expectError && err != nil {
+				t.Errorf("Did not expect error for %s, but got: %v", tc.description, err)
+			}
+
+			if err != nil {
+				// Verify error message is user-friendly
+				errorMsg := err.Error()
+				if !strings.Contains(errorMsg, "config") {
+					t.Errorf("Expected error message to mention config, got: %s", errorMsg)
+				}
+				t.Logf("Config error for %s: %s", tc.name, errorMsg)
+			}
+		})
+	}
+}
+
+// TestErrorRecovery_ResourceExhaustion tests recovery from resource exhaustion scenarios
+func TestErrorRecovery_ResourceExhaustion(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Create many files to potentially exhaust resources
+	numFiles := 100
+	for i := 0; i < numFiles; i++ {
+		filename := filepath.Join(tempDir, fmt.Sprintf("stress_%d_test.go", i))
+		content := fmt.Sprintf(`package stress%d
+import "testing"
+func TestStress%d(t *testing.T) {
+	// Stress test %d
+}`, i%10, i, i)
+
+		err := os.WriteFile(filename, []byte(content), 0644)
+		if err != nil {
+			t.Fatalf("Failed to create stress test file %d: %v", i, err)
+		}
+	}
+
+	// Test file watcher with many files
+	options := WatchOptions{
+		Paths:            []string{tempDir},
+		IgnorePatterns:   []string{},
+		TestPatterns:     []string{"*_test.go"},
+		Mode:             WatchAll,
+		DebounceInterval: 50 * time.Millisecond,
+		ClearTerminal:    false,
+		Writer:           nil,
+	}
+
+	watcher, err := NewTestWatcher(options)
+	if err != nil {
+		t.Logf("File watcher creation failed under stress (may be expected): %v", err)
+	} else {
+		defer watcher.Stop()
+
+		// Wait for initialization
+		time.Sleep(100 * time.Millisecond)
+
+		// Modify many files quickly
+		for i := 0; i < 20; i++ {
+			filename := filepath.Join(tempDir, fmt.Sprintf("stress_%d_test.go", i))
+			content := fmt.Sprintf(`package stress%d
+import "testing"
+func TestStress%d(t *testing.T) {
+	// Modified stress test %d
+}`, i%10, i, i)
+
+			err := os.WriteFile(filename, []byte(content), 0644)
+			if err != nil {
+				t.Logf("Failed to modify stress file %d (may be expected under load): %v", i, err)
+			}
+		}
+
+		// Wait for processing
+		time.Sleep(200 * time.Millisecond)
+		t.Log("Resource exhaustion test completed successfully")
+	}
+}
+
+// TestErrorRecovery_ConcurrencyIssues tests recovery from concurrency issues
+func TestErrorRecovery_ConcurrencyIssues(t *testing.T) {
+	cache := NewTestResultCache()
+
+	// Test concurrent cache access
+	numGoroutines := 10
+	numOperations := 50
+
+	errChan := make(chan error, numGoroutines)
+
+	for i := 0; i < numGoroutines; i++ {
+		go func(id int) {
+			defer func() {
+				if r := recover(); r != nil {
+					errChan <- r.(error)
+				} else {
+					errChan <- nil
+				}
+			}()
+
+			for j := 0; j < numOperations; j++ {
+				testPath := fmt.Sprintf("./concurrent/test_%d_%d", id, j)
+				suite := &TestSuite{
+					FilePath:    fmt.Sprintf("concurrent_%d_%d_test.go", id, j),
+					TestCount:   1,
+					PassedCount: 1,
+				}
+
+				// Mix of read and write operations
+				if j%2 == 0 {
+					cache.CacheResult(testPath, suite)
+				} else {
+					_, _ = cache.GetCachedResult(testPath)
+				}
+			}
+		}(i)
+	}
+
+	// Collect results
+	errorCount := 0
+	for i := 0; i < numGoroutines; i++ {
+		err := <-errChan
+		if err != nil {
+			errorCount++
+			t.Logf("Concurrent operation error (may be expected): %v", err)
+		}
+	}
+
+	if errorCount > numGoroutines/2 {
+		t.Errorf("Too many concurrent errors: %d/%d", errorCount, numGoroutines)
+	}
+
+	t.Logf("Concurrency test completed with %d/%d errors", errorCount, numGoroutines)
+}
+
+// TestErrorRecovery_GracefulDegradation tests graceful degradation scenarios
+func TestErrorRecovery_GracefulDegradation(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Create test file
+	testFile := filepath.Join(tempDir, "degradation_test.go")
+	content := `package main
+import "testing"
+func TestDegradation(t *testing.T) {
+	// Test graceful degradation
+}`
+
+	err := os.WriteFile(testFile, []byte(content), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Test processor with various failure scenarios
+	testCases := []struct {
+		name        string
+		colors      bool
+		icons       bool
+		termWidth   int
+		description string
+	}{
+		{
+			name:        "NoColors",
+			colors:      false,
+			icons:       true,
+			termWidth:   80,
+			description: "Should work without colors",
+		},
+		{
+			name:        "NoIcons",
+			colors:      true,
+			icons:       false,
+			termWidth:   80,
+			description: "Should work without icons",
+		},
+		{
+			name:        "NarrowTerminal",
+			colors:      true,
+			icons:       true,
+			termWidth:   20,
+			description: "Should work with narrow terminal",
+		},
+		{
+			name:        "MinimalFeatures",
+			colors:      false,
+			icons:       false,
+			termWidth:   40,
+			description: "Should work with minimal features",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var output bytes.Buffer
+			processor := NewTestProcessor(
+				&output,
+				NewColorFormatter(tc.colors),
+				NewIconProvider(tc.icons),
+				tc.termWidth,
+			)
+
+			suite := &TestSuite{
+				FilePath:    "degradation_test.go",
+				TestCount:   1,
+				PassedCount: 1,
+				Tests: []*TestResult{
+					{
+						Name:     "TestDegradation",
+						Status:   StatusPassed,
+						Duration: 10 * time.Millisecond,
+						Package:  "github.com/test/degradation",
+					},
+				},
+			}
+
+			processor.AddTestSuite(suite)
+			err := processor.RenderResults(false)
+
+			if err != nil {
+				t.Errorf("Graceful degradation failed for %s: %v", tc.description, err)
+			}
+
+			// Verify output was generated
+			if output.Len() == 0 {
+				t.Errorf("No output generated for %s", tc.description)
+			}
+
+			t.Logf("Graceful degradation test %s completed", tc.name)
+		})
+	}
 }

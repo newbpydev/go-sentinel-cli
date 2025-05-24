@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -26,6 +27,22 @@ type TestRunner struct {
 
 // Run executes the specified tests and returns the output
 func (r *TestRunner) Run(ctx context.Context, testPaths []string) (string, error) {
+	// Validate test paths
+	if len(testPaths) == 0 {
+		return "", fmt.Errorf("no test paths provided")
+	}
+
+	for _, path := range testPaths {
+		if path == "" {
+			return "", fmt.Errorf("empty test path provided")
+		}
+
+		// Check if path exists
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			return "", fmt.Errorf("test path does not exist: %s", path)
+		}
+	}
+
 	// Build the command arguments
 	args := []string{"test"}
 
@@ -71,6 +88,22 @@ func (r *TestRunner) Run(ctx context.Context, testPaths []string) (string, error
 
 // RunStream executes the specified tests and returns a stream of JSON output
 func (r *TestRunner) RunStream(ctx context.Context, testPaths []string) (io.ReadCloser, error) {
+	// Validate test paths
+	if len(testPaths) == 0 {
+		return nil, fmt.Errorf("no test paths provided")
+	}
+
+	for _, path := range testPaths {
+		if path == "" {
+			return nil, fmt.Errorf("empty test path provided")
+		}
+
+		// Check if path exists
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			return nil, fmt.Errorf("test path does not exist: %s", path)
+		}
+	}
+
 	// Build the command arguments
 	args := []string{"test"}
 
