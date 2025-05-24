@@ -108,7 +108,28 @@ func (l *DefaultConfigLoader) LoadFromDefault() (*Config, error) {
 func (l *DefaultConfigLoader) parseConfigData(data *configFileData) (*Config, error) {
 	config := GetDefaultConfig()
 
-	// Parse basic settings
+	// Parse different configuration sections
+	if err := l.parseBasicSettings(data, config); err != nil {
+		return nil, err
+	}
+
+	if err := l.parseVisualConfig(data, config); err != nil {
+		return nil, err
+	}
+
+	l.parsePathsConfig(data, config)
+
+	if err := l.parseWatchConfig(data, config); err != nil {
+		return nil, err
+	}
+
+	l.parseTestCommand(data, config)
+
+	return config, nil
+}
+
+// parseBasicSettings parses basic configuration settings
+func (l *DefaultConfigLoader) parseBasicSettings(data *configFileData, config *Config) error {
 	if data.Colors != nil {
 		config.Colors = *data.Colors
 		config.Visual.Colors = *data.Colors
@@ -116,14 +137,14 @@ func (l *DefaultConfigLoader) parseConfigData(data *configFileData) (*Config, er
 
 	if data.Verbosity != nil {
 		if *data.Verbosity < 0 || *data.Verbosity > 5 {
-			return nil, errors.New("verbosity level must be between 0 and 5")
+			return errors.New("verbosity level must be between 0 and 5")
 		}
 		config.Verbosity = *data.Verbosity
 	}
 
 	if data.Parallel != nil {
 		if *data.Parallel < 0 {
-			return nil, errors.New("parallel count cannot be negative")
+			return errors.New("parallel count cannot be negative")
 		}
 		config.Parallel = *data.Parallel
 	}
@@ -132,12 +153,16 @@ func (l *DefaultConfigLoader) parseConfigData(data *configFileData) (*Config, er
 	if data.Timeout != "" {
 		timeout, err := time.ParseDuration(data.Timeout)
 		if err != nil {
-			return nil, fmt.Errorf("invalid timeout format: %w", err)
+			return fmt.Errorf("invalid timeout format: %w", err)
 		}
 		config.Timeout = timeout
 	}
 
-	// Parse visual configuration
+	return nil
+}
+
+// parseVisualConfig parses visual configuration settings
+func (l *DefaultConfigLoader) parseVisualConfig(data *configFileData, config *Config) error {
 	if data.Icons != "" {
 		validIcons := []string{"unicode", "ascii", "minimal", "none"}
 		valid := false
@@ -148,7 +173,7 @@ func (l *DefaultConfigLoader) parseConfigData(data *configFileData) (*Config, er
 			}
 		}
 		if !valid {
-			return nil, fmt.Errorf("invalid icons type: %s (must be one of: unicode, ascii, minimal, none)", data.Icons)
+			return fmt.Errorf("invalid icons type: %s (must be one of: unicode, ascii, minimal, none)", data.Icons)
 		}
 		config.Icons = data.Icons
 		config.Visual.Icons = data.Icons
@@ -158,7 +183,11 @@ func (l *DefaultConfigLoader) parseConfigData(data *configFileData) (*Config, er
 		config.Visual.Theme = data.Theme
 	}
 
-	// Parse paths configuration
+	return nil
+}
+
+// parsePathsConfig parses file paths configuration
+func (l *DefaultConfigLoader) parsePathsConfig(data *configFileData, config *Config) {
 	if len(data.IncludePatterns) > 0 {
 		config.Paths.IncludePatterns = data.IncludePatterns
 	}
@@ -166,8 +195,10 @@ func (l *DefaultConfigLoader) parseConfigData(data *configFileData) (*Config, er
 	if len(data.ExcludePatterns) > 0 {
 		config.Paths.ExcludePatterns = data.ExcludePatterns
 	}
+}
 
-	// Parse watch configuration
+// parseWatchConfig parses watch mode configuration
+func (l *DefaultConfigLoader) parseWatchConfig(data *configFileData, config *Config) error {
 	if data.WatchMode != nil {
 		config.Watch.Enabled = *data.WatchMode
 	}
@@ -179,7 +210,7 @@ func (l *DefaultConfigLoader) parseConfigData(data *configFileData) (*Config, er
 	if data.WatchDebounce != "" {
 		debounce, err := time.ParseDuration(data.WatchDebounce)
 		if err != nil {
-			return nil, fmt.Errorf("invalid watch debounce format: %w", err)
+			return fmt.Errorf("invalid watch debounce format: %w", err)
 		}
 		config.Watch.Debounce = debounce
 	}
@@ -192,18 +223,31 @@ func (l *DefaultConfigLoader) parseConfigData(data *configFileData) (*Config, er
 		config.Watch.RunOnStart = *data.RunOnStart
 	}
 
-	// Parse test command
+	return nil
+}
+
+// parseTestCommand parses test command configuration
+func (l *DefaultConfigLoader) parseTestCommand(data *configFileData, config *Config) {
 	if data.TestCommand != "" {
 		config.TestCommand = data.TestCommand
 	}
-
-	return config, nil
 }
 
 // MergeWithCLIArgs merges configuration with CLI arguments, with CLI args taking precedence
 func (c *Config) MergeWithCLIArgs(args *Args) *Config {
-	merged := &Config{
-		// Copy config values
+	// Create a copy of the base configuration
+	merged := c.createConfigCopy()
+
+	// Apply CLI argument overrides
+	c.applyBasicArgsOverrides(args, merged)
+	c.applyPackagesOverrides(args, merged)
+
+	return merged
+}
+
+// createConfigCopy creates a deep copy of the configuration
+func (c *Config) createConfigCopy() *Config {
+	return &Config{
 		Colors:      c.Colors,
 		Verbosity:   c.Verbosity,
 		Parallel:    c.Parallel,
@@ -215,35 +259,46 @@ func (c *Config) MergeWithCLIArgs(args *Args) *Config {
 		Watch:       c.Watch,
 		Icons:       c.Icons,
 	}
+}
 
-	// Override with CLI args
-	if args.Colors != c.Colors { // CLI explicitly set colors
+// applyBasicArgsOverrides applies basic CLI argument overrides to the merged config
+func (c *Config) applyBasicArgsOverrides(args *Args, merged *Config) {
+	// Override colors if CLI explicitly set them
+	if args.Colors != c.Colors {
 		merged.Colors = args.Colors
 		merged.Visual.Colors = args.Colors
 	}
 
+	// Override verbosity if specified
 	if args.Verbosity > 0 {
 		merged.Verbosity = args.Verbosity
 	}
 
+	// Override parallel execution if specified
 	if args.Parallel > 0 {
 		merged.Parallel = args.Parallel
 	}
 
+	// Override watch mode if specified
 	if args.Watch {
 		merged.Watch.Enabled = true
 	}
 
+	// Override test pattern if specified
 	if args.TestPattern != "" {
 		merged.TestPattern = args.TestPattern
 	}
 
+	// Override timeout if specified and valid
 	if args.Timeout != "" {
 		if timeout, err := time.ParseDuration(args.Timeout); err == nil {
 			merged.Timeout = timeout
 		}
 	}
+}
 
+// applyPackagesOverrides applies package-related CLI argument overrides
+func (c *Config) applyPackagesOverrides(args *Args, merged *Config) {
 	// Convert CLI packages to watch paths
 	if len(args.Packages) > 0 {
 		merged.Paths.IncludePatterns = convertPackagesToWatchPaths(args.Packages)
@@ -251,8 +306,6 @@ func (c *Config) MergeWithCLIArgs(args *Args) *Config {
 		// Default to current directory if no packages specified and no config paths
 		merged.Paths.IncludePatterns = []string{"."}
 	}
-
-	return merged
 }
 
 // convertPackagesToWatchPaths converts Go package patterns to file system paths for watching

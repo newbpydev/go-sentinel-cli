@@ -167,7 +167,9 @@ func TestBuildCLIArgs_BasicFlags(t *testing.T) {
 		{
 			name: "verbose flag",
 			setFlags: func() {
-				cmd.Flags().Set("verbose", "true")
+				if err := cmd.Flags().Set("verbose", "true"); err != nil {
+					t.Errorf("Failed to set verbose flag: %v", err)
+				}
 			},
 			args:     []string{},
 			expected: []string{"-v", "--color"},
@@ -175,7 +177,9 @@ func TestBuildCLIArgs_BasicFlags(t *testing.T) {
 		{
 			name: "no-color flag",
 			setFlags: func() {
-				cmd.Flags().Set("no-color", "true")
+				if err := cmd.Flags().Set("no-color", "true"); err != nil {
+					t.Errorf("Failed to set no-color flag: %v", err)
+				}
 			},
 			args:     []string{},
 			expected: []string{"--no-color"},
@@ -183,7 +187,9 @@ func TestBuildCLIArgs_BasicFlags(t *testing.T) {
 		{
 			name: "watch flag",
 			setFlags: func() {
-				cmd.Flags().Set("watch", "true")
+				if err := cmd.Flags().Set("watch", "true"); err != nil {
+					t.Errorf("Failed to set watch flag: %v", err)
+				}
 			},
 			args:     []string{},
 			expected: []string{"--color", "--watch"},
@@ -191,7 +197,9 @@ func TestBuildCLIArgs_BasicFlags(t *testing.T) {
 		{
 			name: "optimized flag",
 			setFlags: func() {
-				cmd.Flags().Set("optimized", "true")
+				if err := cmd.Flags().Set("optimized", "true"); err != nil {
+					t.Errorf("Failed to set optimized flag: %v", err)
+				}
 			},
 			args:     []string{},
 			expected: []string{"--color", "--optimized"},
@@ -199,7 +207,9 @@ func TestBuildCLIArgs_BasicFlags(t *testing.T) {
 		{
 			name: "test pattern",
 			setFlags: func() {
-				cmd.Flags().Set("test", "TestExample")
+				if err := cmd.Flags().Set("test", "TestExample"); err != nil {
+					t.Errorf("Failed to set test flag: %v", err)
+				}
 			},
 			args:     []string{},
 			expected: []string{"--color", "--test=TestExample"},
@@ -208,8 +218,12 @@ func TestBuildCLIArgs_BasicFlags(t *testing.T) {
 			name: "with packages",
 			setFlags: func() {
 				// Reset flags
-				cmd.Flags().Set("verbose", "false")
-				cmd.Flags().Set("watch", "false")
+				if err := cmd.Flags().Set("verbose", "false"); err != nil {
+					t.Errorf("Failed to set verbose flag: %v", err)
+				}
+				if err := cmd.Flags().Set("watch", "false"); err != nil {
+					t.Errorf("Failed to set watch flag: %v", err)
+				}
 			},
 			args:     []string{"./pkg1", "./pkg2"},
 			expected: []string{"--color", "./pkg1", "./pkg2"},
@@ -219,15 +233,33 @@ func TestBuildCLIArgs_BasicFlags(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Reset all flags to defaults
-			cmd.Flags().Set("verbose", "false")
-			cmd.Flags().Set("color", "true")
-			cmd.Flags().Set("no-color", "false")
-			cmd.Flags().Set("watch", "false")
-			cmd.Flags().Set("optimized", "false")
-			cmd.Flags().Set("fail-fast", "false")
-			cmd.Flags().Set("test", "")
-			cmd.Flags().Set("optimization", "")
-			cmd.Flags().Set("parallel", "0")
+			if err := cmd.Flags().Set("verbose", "false"); err != nil {
+				t.Fatalf("Failed to set verbose flag: %v", err)
+			}
+			if err := cmd.Flags().Set("color", "true"); err != nil {
+				t.Fatalf("Failed to set color flag: %v", err)
+			}
+			if err := cmd.Flags().Set("no-color", "false"); err != nil {
+				t.Fatalf("Failed to set no-color flag: %v", err)
+			}
+			if err := cmd.Flags().Set("watch", "false"); err != nil {
+				t.Fatalf("Failed to set watch flag: %v", err)
+			}
+			if err := cmd.Flags().Set("optimized", "false"); err != nil {
+				t.Fatalf("Failed to set optimized flag: %v", err)
+			}
+			if err := cmd.Flags().Set("fail-fast", "false"); err != nil {
+				t.Fatalf("Failed to set fail-fast flag: %v", err)
+			}
+			if err := cmd.Flags().Set("test", ""); err != nil {
+				t.Fatalf("Failed to set test flag: %v", err)
+			}
+			if err := cmd.Flags().Set("optimization", ""); err != nil {
+				t.Fatalf("Failed to set optimization flag: %v", err)
+			}
+			if err := cmd.Flags().Set("parallel", "0"); err != nil {
+				t.Fatalf("Failed to set parallel flag: %v", err)
+			}
 
 			// Set specific flags for this test
 			tc.setFlags()

@@ -80,8 +80,12 @@ func TestRootCmd_FlagValues(t *testing.T) {
 	}
 
 	// Reset flags to defaults for other tests
-	rootCmd.PersistentFlags().Set("color", "true")
-	rootCmd.PersistentFlags().Set("watch", "false")
+	if err := rootCmd.PersistentFlags().Set("color", "true"); err != nil {
+		t.Errorf("Failed to reset color flag: %v", err)
+	}
+	if err := rootCmd.PersistentFlags().Set("watch", "false"); err != nil {
+		t.Errorf("Failed to reset watch flag: %v", err)
+	}
 }
 
 // TestExecute_FunctionExists tests that Execute function exists
@@ -95,5 +99,19 @@ func TestExecute_FunctionExists(t *testing.T) {
 	// Verify that rootCmd has the expected structure for Execute to work
 	if rootCmd.Use == "" {
 		t.Error("Expected rootCmd.Use to be set for Execute to work properly")
+	}
+}
+
+// TestCLI_FlagParsing tests CLI flag parsing
+func TestCLI_FlagParsing(t *testing.T) {
+	// Test CLI flag parsing
+	rootCmd.SetArgs([]string{"run", "./..."})
+
+	// Set flags with error handling
+	if err := rootCmd.PersistentFlags().Set("color", "true"); err != nil {
+		t.Fatalf("failed to set color flag: %v", err)
+	}
+	if err := rootCmd.PersistentFlags().Set("watch", "false"); err != nil {
+		t.Fatalf("failed to set watch flag: %v", err)
 	}
 }

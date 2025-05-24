@@ -177,22 +177,40 @@ func (a *AppController) runWatchMode(config *Config, cliArgs *Args) error {
 	// Display detailed watch configuration
 	a.displayWatchConfiguration(config)
 
+	// Initialize and start file watcher
+	watcher, events, watcherErrors, err := a.initializeWatcher(config)
+	if err != nil {
+		return err
+	}
+	defer watcher.Close()
+
+	// Run initial tests if configured
+	if err := a.runInitialTests(config, cliArgs); err != nil {
+		fmt.Printf("❌ Initial test run failed: %v\n", err)
+	}
+
+	// Display watch mode help
+	a.displayWatchModeHelp()
+
+	// Start watch loop
+	return a.runWatchLoop(config, events, watcherErrors)
+}
+
+// initializeWatcher creates and starts the file watcher
+func (a *AppController) initializeWatcher(config *Config) (*FileWatcher, chan FileEvent, chan error, error) {
 	// Initialize file watcher
 	watcher, err := NewFileWatcher(
 		config.Paths.IncludePatterns,
 		config.Watch.IgnorePatterns,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create file watcher: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to create file watcher: %w", err)
 	}
-	defer watcher.Close()
 
 	a.watcher = watcher
 
-	// Create a buffered channel for file events to handle bursts
+	// Create channels for file events and errors
 	events := make(chan FileEvent, 50)
-
-	// Create error channel for watcher errors
 	watcherErrors := make(chan error, 1)
 
 	// Start the watcher in a goroutine
@@ -203,17 +221,20 @@ func (a *AppController) runWatchMode(config *Config, cliArgs *Args) error {
 		}
 	}()
 
-	// Run tests initially if configured
+	return watcher, events, watcherErrors, nil
+}
+
+// runInitialTests runs tests initially if configured
+func (a *AppController) runInitialTests(config *Config, cliArgs *Args) error {
 	if config.Watch.RunOnStart {
 		fmt.Printf("🏃 Running initial tests...\n\n")
-		if err := a.runSingleMode(config, cliArgs); err != nil {
-			fmt.Printf("❌ Initial test run failed: %v\n", err)
-		}
+		return a.runSingleMode(config, cliArgs)
 	}
+	return nil
+}
 
-	// Display watch mode help
-	a.displayWatchModeHelp()
-
+// runWatchLoop runs the main watch loop handling file events
+func (a *AppController) runWatchLoop(config *Config, events chan FileEvent, watcherErrors chan error) error {
 	// Watch for file changes with debouncing
 	debouncer := NewFileEventDebouncer(config.Watch.Debounce)
 	defer debouncer.Stop()
@@ -285,16 +306,7 @@ func (a *AppController) handleDebouncedFileChanges(events []FileEvent, config *C
 	}
 
 	// Analyze file changes for impact
-	changes := make([]*FileChange, 0, len(events))
-	for _, event := range events {
-		change, err := a.cache.AnalyzeChange(event.Path)
-		if err != nil {
-			fmt.Printf("⚠️ Failed to analyze change for %s: %v\n", event.Path, err)
-			continue
-		}
-		changes = append(changes, change)
-	}
-
+	changes := a.analyzeFileChanges(events)
 	if len(changes) == 0 {
 		return nil
 	}
@@ -309,40 +321,92 @@ func (a *AppController) handleDebouncedFileChanges(events []FileEvent, config *C
 		return a.optimizedMode.HandleFileChanges(events, config)
 	}
 
-	// Fallback to standard optimized runner for backward compatibility
+	// Execute tests and handle results
+	return a.executeOptimizedTests(changes, config)
+}
+
+// analyzeFileChanges analyzes file events and returns meaningful changes
+func (a *AppController) analyzeFileChanges(events []FileEvent) []*FileChange {
+	changes := make([]*FileChange, 0, len(events))
+	for _, event := range events {
+		change, err := a.cache.AnalyzeChange(event.Path)
+		if err != nil {
+			fmt.Printf("⚠️ Failed to analyze change for %s: %v\n", event.Path, err)
+			continue
+		}
+		changes = append(changes, change)
+	}
+	return changes
+}
+
+// executeOptimizedTests runs tests using the optimized runner and handles results
+func (a *AppController) executeOptimizedTests(changes []*FileChange, config *Config) error {
 	optimizedResult, err := a.optimizedRunner.RunOptimized(context.Background(), changes)
 	if err != nil {
 		return fmt.Errorf("optimized test execution failed: %w", err)
 	}
 
-	// Report efficiency gains
-	stats := optimizedResult.GetEfficiencyStats()
+	// Handle case where no tests need to run
 	if optimizedResult.TestsRun == 0 {
-		// Initialize incremental renderer if needed
-		if a.incrementalRenderer == nil {
-			a.initializeIncrementalRenderer(config)
-		}
-
-		// Show that changes were detected but no tests need to run
-		if err := a.incrementalRenderer.RenderIncrementalResults(
-			make(map[string]*TestSuite),
-			&TestRunStats{},
-			changes,
-		); err != nil {
-			return err
-		}
-
-		fmt.Printf("💨 %s (%.1f%% cache hit rate)\n",
-			optimizedResult.Message,
-			stats["cache_hit_rate"].(float64))
-		fmt.Printf("👀 Watching for file changes...\n")
-		return nil
+		return a.handleNoTestsNeeded(optimizedResult, changes, config)
 	}
 
-	fmt.Printf("⚡ Running %d tests, %d from cache (%.1f%% efficiency)\n",
-		optimizedResult.TestsRun,
-		optimizedResult.CacheHits,
+	// Handle case where tests were executed
+	return a.handleTestsExecuted(optimizedResult, changes, config)
+}
+
+// handleNoTestsNeeded handles the case where changes were detected but no tests need to run
+func (a *AppController) handleNoTestsNeeded(result *OptimizedTestResult, changes []*FileChange, config *Config) error {
+	// Initialize incremental renderer if needed
+	if a.incrementalRenderer == nil {
+		a.initializeIncrementalRenderer(config)
+	}
+
+	// Show that changes were detected but no tests need to run
+	if err := a.incrementalRenderer.RenderIncrementalResults(
+		make(map[string]*TestSuite),
+		&TestRunStats{},
+		changes,
+	); err != nil {
+		return err
+	}
+
+	stats := result.GetEfficiencyStats()
+	fmt.Printf("💨 %s (%.1f%% cache hit rate)\n",
+		result.Message,
 		stats["cache_hit_rate"].(float64))
+	fmt.Printf("👀 Watching for file changes...\n")
+	return nil
+}
+
+// handleTestsExecuted handles the case where tests were actually executed
+func (a *AppController) handleTestsExecuted(result *OptimizedTestResult, changes []*FileChange, config *Config) error {
+	stats := result.GetEfficiencyStats()
+	fmt.Printf("⚡ Running %d tests, %d from cache (%.1f%% efficiency)\n",
+		result.TestsRun,
+		result.CacheHits,
+		stats["cache_hit_rate"].(float64))
+
+	// Process test output if available
+	if err := a.processTestOutput(result.Output, config); err != nil {
+		return err
+	}
+
+	// Render incremental results
+	if err := a.renderIncrementalResults(changes, config); err != nil {
+		return err
+	}
+
+	// Display performance metrics
+	a.displayPerformanceMetrics(result, stats)
+	return nil
+}
+
+// processTestOutput processes test output through the processor for consistent rendering
+func (a *AppController) processTestOutput(output string, config *Config) error {
+	if output == "" {
+		return nil
+	}
 
 	// Reset processor for new test run
 	a.processor = NewTestProcessor(
@@ -352,50 +416,48 @@ func (a *AppController) handleDebouncedFileChanges(events []FileEvent, config *C
 		80,
 	)
 
-	// Tests have already been executed by optimizedRunner - parse the output
-	if optimizedResult.Output != "" {
-		// Process the test output through our processor for consistent rendering
-		reader := strings.NewReader(optimizedResult.Output)
-		progress := make(chan TestProgress, 10)
-		defer close(progress)
+	// Process the test output through our processor for consistent rendering
+	reader := strings.NewReader(output)
+	progress := make(chan TestProgress, 10)
+	defer close(progress)
 
-		// Start progress monitoring in background
-		go func() {
-			for range progress {
-				// Consume progress updates
-			}
-		}()
-
-		// Process the output
-		if err := a.processor.ProcessStream(reader, progress); err != nil {
-			fmt.Printf("⚠️ Warning: failed to process test output: %v\n", err)
+	// Start progress monitoring in background
+	go func() {
+		for range progress {
+			// Consume progress updates
 		}
-	}
+	}()
 
+	// Process the output
+	if err := a.processor.ProcessStream(reader, progress); err != nil {
+		fmt.Printf("⚠️ Warning: failed to process test output: %v\n", err)
+	}
+	return nil
+}
+
+// renderIncrementalResults renders incremental results for watch mode
+func (a *AppController) renderIncrementalResults(changes []*FileChange, config *Config) error {
 	// Initialize incremental renderer if needed
 	if a.incrementalRenderer == nil {
 		a.initializeIncrementalRenderer(config)
 	}
 
 	// Use incremental rendering for watch mode
-	if err := a.incrementalRenderer.RenderIncrementalResults(
+	return a.incrementalRenderer.RenderIncrementalResults(
 		a.processor.suites,
 		a.processor.GetStats(),
 		changes,
-	); err != nil {
-		return err
-	}
+	)
+}
 
-	// Display performance metrics
+// displayPerformanceMetrics displays performance and efficiency information
+func (a *AppController) displayPerformanceMetrics(result *OptimizedTestResult, stats map[string]interface{}) {
 	cacheStats := a.cache.GetStats()
 	fmt.Printf("⏱️  Completed in %v | Efficiency: %.1f%% | Cache: %d results\n",
-		optimizedResult.Duration,
+		result.Duration,
 		stats["cache_hit_rate"].(float64),
 		cacheStats["cached_results"])
-
 	fmt.Printf("👀 Watching for file changes...\n")
-
-	return nil
 }
 
 // initializeIncrementalRenderer creates and configures the incremental renderer

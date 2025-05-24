@@ -74,62 +74,104 @@ func init() {
 func buildCLIArgs(cmd *cobra.Command, args []string) []string {
 	var cliArgs []string
 
-	// Handle verbosity levels
-	if verbose, _ := cmd.Flags().GetBool("verbose"); verbose {
-		cliArgs = append(cliArgs, "-v")
-	}
-
-	if verbosity, _ := cmd.Flags().GetCount("verbosity"); verbosity > 0 {
-		for i := 0; i < verbosity; i++ {
-			cliArgs = append(cliArgs, "-v")
-		}
-	}
-
-	// Handle color flags
-	if noColor, _ := cmd.Flags().GetBool("no-color"); noColor {
-		cliArgs = append(cliArgs, "--no-color")
-	} else if color, _ := cmd.Flags().GetBool("color"); color {
-		cliArgs = append(cliArgs, "--color")
-	}
-
-	// Handle watch mode
-	if watch, _ := cmd.Flags().GetBool("watch"); watch {
-		cliArgs = append(cliArgs, "--watch")
-	}
-
-	// Handle optimization flags
-	if optimized, _ := cmd.Flags().GetBool("optimized"); optimized {
-		cliArgs = append(cliArgs, "--optimized")
-	}
-
-	if optimization, _ := cmd.Flags().GetString("optimization"); optimization != "" {
-		cliArgs = append(cliArgs, "--optimization="+optimization)
-	}
-
-	// Handle test pattern
-	if testPattern, _ := cmd.Flags().GetString("test"); testPattern != "" {
-		cliArgs = append(cliArgs, "--test="+testPattern)
-	}
-
-	// Handle parallel execution
-	if parallel, _ := cmd.Flags().GetInt("parallel"); parallel > 0 {
-		cliArgs = append(cliArgs, fmt.Sprintf("--parallel=%d", parallel))
-	}
-
-	// Handle timeout
-	if timeout, _ := cmd.Flags().GetDuration("timeout"); timeout > 0 {
-		cliArgs = append(cliArgs, fmt.Sprintf("--timeout=%v", timeout))
-	}
-
-	// Handle fail fast
-	if failFast, _ := cmd.Flags().GetBool("fail-fast"); failFast {
-		cliArgs = append(cliArgs, "--fail-fast")
-	}
+	// Add different types of flags
+	cliArgs = append(cliArgs, buildVerbosityArgs(cmd)...)
+	cliArgs = append(cliArgs, buildColorArgs(cmd)...)
+	cliArgs = append(cliArgs, buildModeArgs(cmd)...)
+	cliArgs = append(cliArgs, buildOptimizationArgs(cmd)...)
+	cliArgs = append(cliArgs, buildTestArgs(cmd)...)
+	cliArgs = append(cliArgs, buildExecutionArgs(cmd)...)
 
 	// Add package arguments
 	cliArgs = append(cliArgs, args...)
 
 	return cliArgs
+}
+
+// buildVerbosityArgs builds verbosity-related CLI arguments
+func buildVerbosityArgs(cmd *cobra.Command) []string {
+	var args []string
+
+	if verbose, _ := cmd.Flags().GetBool("verbose"); verbose {
+		args = append(args, "-v")
+	}
+
+	if verbosity, _ := cmd.Flags().GetCount("verbosity"); verbosity > 0 {
+		for i := 0; i < verbosity; i++ {
+			args = append(args, "-v")
+		}
+	}
+
+	return args
+}
+
+// buildColorArgs builds color-related CLI arguments
+func buildColorArgs(cmd *cobra.Command) []string {
+	var args []string
+
+	if noColor, _ := cmd.Flags().GetBool("no-color"); noColor {
+		args = append(args, "--no-color")
+	} else if color, _ := cmd.Flags().GetBool("color"); color {
+		args = append(args, "--color")
+	}
+
+	return args
+}
+
+// buildModeArgs builds mode-related CLI arguments
+func buildModeArgs(cmd *cobra.Command) []string {
+	var args []string
+
+	if watch, _ := cmd.Flags().GetBool("watch"); watch {
+		args = append(args, "--watch")
+	}
+
+	if failFast, _ := cmd.Flags().GetBool("fail-fast"); failFast {
+		args = append(args, "--fail-fast")
+	}
+
+	return args
+}
+
+// buildOptimizationArgs builds optimization-related CLI arguments
+func buildOptimizationArgs(cmd *cobra.Command) []string {
+	var args []string
+
+	if optimized, _ := cmd.Flags().GetBool("optimized"); optimized {
+		args = append(args, "--optimized")
+	}
+
+	if optimization, _ := cmd.Flags().GetString("optimization"); optimization != "" {
+		args = append(args, "--optimization="+optimization)
+	}
+
+	return args
+}
+
+// buildTestArgs builds test-related CLI arguments
+func buildTestArgs(cmd *cobra.Command) []string {
+	var args []string
+
+	if testPattern, _ := cmd.Flags().GetString("test"); testPattern != "" {
+		args = append(args, "--test="+testPattern)
+	}
+
+	return args
+}
+
+// buildExecutionArgs builds execution-related CLI arguments
+func buildExecutionArgs(cmd *cobra.Command) []string {
+	var args []string
+
+	if parallel, _ := cmd.Flags().GetInt("parallel"); parallel > 0 {
+		args = append(args, fmt.Sprintf("--parallel=%d", parallel))
+	}
+
+	if timeout, _ := cmd.Flags().GetDuration("timeout"); timeout > 0 {
+		args = append(args, fmt.Sprintf("--timeout=%v", timeout))
+	}
+
+	return args
 }
 
 // convertArgsToSlice converts Args struct back to string slice for compatibility

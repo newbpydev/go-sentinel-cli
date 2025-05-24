@@ -35,7 +35,28 @@ type DefaultArgParser struct{}
 
 // Parse parses command line arguments into Args structure
 func (p *DefaultArgParser) Parse(args []string) (*Args, error) {
-	// First, handle multiple -v flags manually
+	// Handle multiple -v flags manually
+	verbosity, filteredArgs := p.extractVerbosityFlags(args)
+
+	// Create flag set and define flags
+	fs, flagValues := p.createFlagSet()
+
+	// Parse the filtered arguments
+	if err := fs.Parse(filteredArgs); err != nil {
+		return nil, fmt.Errorf("failed to parse arguments: %w", err)
+	}
+
+	// Build and validate Args structure
+	parsedArgs, err := p.buildArgsFromFlags(flagValues, verbosity, fs.Args())
+	if err != nil {
+		return nil, err
+	}
+
+	return parsedArgs, nil
+}
+
+// extractVerbosityFlags handles multiple -v flags and returns verbosity level and filtered args
+func (p *DefaultArgParser) extractVerbosityFlags(args []string) (int, []string) {
 	verbosity := 0
 	filteredArgs := []string{}
 
@@ -48,41 +69,66 @@ func (p *DefaultArgParser) Parse(args []string) (*Args, error) {
 		}
 	}
 
-	// Create a new flag set to avoid conflicts with global flags
+	return verbosity, filteredArgs
+}
+
+// flagValues holds pointers to all flag values for easy access
+type flagValues struct {
+	watchFlag        *bool
+	watchLongFlag    *bool
+	colorFlag        *bool
+	noColorFlag      *bool
+	verboseFlag      *bool
+	verboseLongFlag  *bool
+	failFastFlag     *bool
+	testPattern      *string
+	testPatternLong  *string
+	verbosityLevel   *string
+	configFile       *string
+	timeout          *string
+	parallel         *int
+	coverage         *string
+	optimized        *bool
+	optimizationMode *string
+}
+
+// createFlagSet creates a new flag set with all required flags and returns flag values
+func (p *DefaultArgParser) createFlagSet() (*flag.FlagSet, *flagValues) {
 	fs := flag.NewFlagSet("go-sentinel", flag.ContinueOnError)
 
-	// Define flags
-	watchFlag := fs.Bool("w", false, "Enable watch mode")
-	watchLongFlag := fs.Bool("watch", false, "Enable watch mode")
-	colorFlag := fs.Bool("color", true, "Enable colored output")
-	noColorFlag := fs.Bool("no-color", false, "Disable colored output")
-	verboseFlag := fs.Bool("v", false, "Enable verbose output")
-	verboseLongFlag := fs.Bool("verbose", false, "Enable verbose output")
-	failFastFlag := fs.Bool("fail-fast", false, "Stop on first failure")
-	testPattern := fs.String("t", "", "Run only tests matching pattern")
-	testPatternLong := fs.String("test", "", "Run only tests matching pattern")
-	verbosityLevel := fs.String("verbosity", "0", "Set verbosity level (0-5)")
-	configFile := fs.String("config", "", "Path to configuration file")
-	timeout := fs.String("timeout", "", "Test timeout duration")
-	parallel := fs.Int("parallel", 0, "Number of parallel test executions")
-	coverage := fs.String("covermode", "", "Set coverage mode")
-	optimized := fs.Bool("optimized", false, "Enable optimized test execution with Go's built-in caching")
-	optimizationMode := fs.String("optimization", "", "Set optimization mode (conservative, balanced, aggressive)")
-
-	// Parse the filtered arguments
-	err := fs.Parse(filteredArgs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse arguments: %w", err)
+	flags := &flagValues{
+		watchFlag:        fs.Bool("w", false, "Enable watch mode"),
+		watchLongFlag:    fs.Bool("watch", false, "Enable watch mode"),
+		colorFlag:        fs.Bool("color", true, "Enable colored output"),
+		noColorFlag:      fs.Bool("no-color", false, "Disable colored output"),
+		verboseFlag:      fs.Bool("v", false, "Enable verbose output"),
+		verboseLongFlag:  fs.Bool("verbose", false, "Enable verbose output"),
+		failFastFlag:     fs.Bool("fail-fast", false, "Stop on first failure"),
+		testPattern:      fs.String("t", "", "Run only tests matching pattern"),
+		testPatternLong:  fs.String("test", "", "Run only tests matching pattern"),
+		verbosityLevel:   fs.String("verbosity", "0", "Set verbosity level (0-5)"),
+		configFile:       fs.String("config", "", "Path to configuration file"),
+		timeout:          fs.String("timeout", "", "Test timeout duration"),
+		parallel:         fs.Int("parallel", 0, "Number of parallel test executions"),
+		coverage:         fs.String("covermode", "", "Set coverage mode"),
+		optimized:        fs.Bool("optimized", false, "Enable optimized test execution with Go's built-in caching"),
+		optimizationMode: fs.String("optimization", "", "Set optimization mode (conservative, balanced, aggressive)"),
 	}
 
+	return fs, flags
+}
+
+// buildArgsFromFlags constructs Args structure from parsed flag values
+func (p *DefaultArgParser) buildArgsFromFlags(flags *flagValues, baseVerbosity int, packages []string) (*Args, error) {
 	// Handle verbosity level parsing
-	if *verboseLongFlag || *verboseFlag {
+	verbosity := baseVerbosity
+	if *flags.verboseLongFlag || *flags.verboseFlag {
 		verbosity = 1
 	}
 
 	// Parse verbosity level if specified
-	if *verbosityLevel != "0" {
-		level, err := strconv.Atoi(*verbosityLevel)
+	if *flags.verbosityLevel != "0" {
+		level, err := strconv.Atoi(*flags.verbosityLevel)
 		if err != nil {
 			return nil, errors.New("invalid verbosity level")
 		}
@@ -95,37 +141,29 @@ func (p *DefaultArgParser) Parse(args []string) (*Args, error) {
 		verbosity = level
 	}
 
-	// Determine watch mode
-	watch := *watchFlag || *watchLongFlag
+	// Determine boolean flags
+	watch := *flags.watchFlag || *flags.watchLongFlag
+	colors := *flags.colorFlag && !*flags.noColorFlag
 
-	// Determine color mode (default true unless --no-color is specified)
-	colors := *colorFlag
-	if *noColorFlag {
-		colors = false
+	// Get test pattern (prefer long form)
+	pattern := *flags.testPattern
+	if *flags.testPatternLong != "" {
+		pattern = *flags.testPatternLong
 	}
-
-	// Get test pattern
-	pattern := *testPattern
-	if *testPatternLong != "" {
-		pattern = *testPatternLong
-	}
-
-	// Get remaining arguments as packages
-	packages := fs.Args()
 
 	return &Args{
 		Watch:            watch,
 		Packages:         packages,
 		TestPattern:      pattern,
 		Verbosity:        verbosity,
-		FailFast:         *failFastFlag,
+		FailFast:         *flags.failFastFlag,
 		Colors:           colors,
-		ConfigFile:       *configFile,
-		Timeout:          *timeout,
-		Parallel:         *parallel,
-		CoverageMode:     *coverage,
-		Optimized:        *optimized,
-		OptimizationMode: *optimizationMode,
+		ConfigFile:       *flags.configFile,
+		Timeout:          *flags.timeout,
+		Parallel:         *flags.parallel,
+		CoverageMode:     *flags.coverage,
+		Optimized:        *flags.optimized,
+		OptimizationMode: *flags.optimizationMode,
 	}, nil
 }
 
