@@ -157,29 +157,29 @@ Total test files to migrate: **37 files** (~8,500 lines)
 
 ---
 
-## TIER 9.8: Performance/Benchmark Tests
-**Status**: ⏳ **PENDING**
+## TIER 9.8: Performance/Benchmark Tests ✅ COMPLETED
+**Status**: ✅ **COMPLETED**
 **Priority**: LOW - Performance validation
 
 ### Tasks:
-- [ ] `internal/cli/performance_test.go` → `internal/test/benchmarks/performance_test.go`
-- [ ] `internal/cli/execution_bench_test.go` → `internal/test/benchmarks/execution_bench_test.go`
-- [ ] `internal/cli/filesystem_bench_test.go` → `internal/test/benchmarks/filesystem_bench_test.go`
-- [ ] `internal/cli/integration_bench_test.go` → `internal/test/benchmarks/integration_bench_test.go`
-- [ ] `internal/cli/rendering_bench_test.go` → `internal/test/benchmarks/rendering_bench_test.go`
-- [ ] Update package declarations and imports
-- [ ] Verify: `go test ./internal/test/benchmarks/... -v`
+- [x] `internal/cli/performance_test.go` → `internal/test/benchmarks/performance_test.go` ✅
+- [x] `internal/cli/execution_bench_test.go` → `internal/test/benchmarks/execution_bench_test.go` ✅
+- [x] `internal/cli/filesystem_bench_test.go` → `internal/test/benchmarks/filesystem_bench_test.go` ✅
+- [x] `internal/cli/integration_bench_test.go` → `internal/test/benchmarks/integration_bench_test.go` ✅
+- [x] `internal/cli/rendering_bench_test.go` → `internal/test/benchmarks/rendering_bench_test.go` ✅
+- [x] Update package declarations and imports ✅
+- [x] Verify: `go test ./internal/test/benchmarks/... -v` ✅
 
 ---
 
-## TIER 9.9: Error Recovery Tests
-**Status**: ⏳ **PENDING**
+## TIER 9.9: Error Recovery Tests ✅ COMPLETED
+**Status**: ✅ **COMPLETED**
 **Priority**: LOW - Error handling validation
 
 ### Tasks:
-- [ ] `internal/cli/error_recovery_test.go` → `internal/test/recovery/error_recovery_test.go`
-- [ ] Update package declarations and imports
-- [ ] Verify: `go test ./internal/test/recovery/... -v`
+- [x] `internal/cli/error_recovery_test.go` → `internal/test/recovery/error_recovery_test.go` ✅
+- [x] Update package declarations and imports ✅
+- [x] Verify: `go test ./internal/test/recovery/... -v` ✅
 
 ---
 
@@ -219,7 +219,7 @@ Total test files to migrate: **37 files** (~8,500 lines)
 
 ## Progress Tracking
 
-### Completed (51%):
+### Completed (68%):
 - ✅ Build errors resolved
 - ✅ Directory structure created
 - ✅ Model tests migrated (2/2 files)
@@ -228,18 +228,18 @@ Total test files to migrate: **37 files** (~8,500 lines)
 - ✅ Runner tests migrated (2/2 files)
 - ✅ Watch tests migrated (2/2 files)
 - ✅ UI/Display tests migrated (7/7 files)
+- ✅ Performance/Benchmark tests migrated (5/5 files)
+- ✅ Error Recovery tests migrated (1/1 file)
 
 ### In Progress:
 - 🚧 Ready for next tier
 
 ### Remaining:
-- ⏳ Performance/Benchmark tests (0/5 files)
-- ⏳ Error Recovery tests (0/1 file)
 - ⏳ App Controller tests (0/2 files)
 - ⏳ Final validation and cleanup
 
-### Files Migrated: 19/37 (51%)
-### Lines Migrated: ~4,800/8,500 (56%)
+### Files Migrated: 25/37 (68%)
+### Lines Migrated: ~6,500/8,500 (76%)
 
 ---
 
