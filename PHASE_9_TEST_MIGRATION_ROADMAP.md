@@ -183,16 +183,16 @@ Total test files to migrate: **37 files** (~8,500 lines)
 
 ---
 
-## TIER 9.10: App Controller Tests
-**Status**: ⏳ **PENDING**
+## TIER 9.10: App Controller Tests ✅ COMPLETED
+**Status**: ✅ **COMPLETED**
 **Priority**: MEDIUM - Application orchestration
 
 ### Tasks:
-- [ ] `internal/cli/app_controller_test.go` → `internal/app/app_controller_test.go`
-- [ ] `internal/cli/integration_test.go` → `internal/app/integration_test.go`
-- [ ] Update package declarations and imports
-- [ ] Fix orchestration dependencies
-- [ ] Verify: `go test ./internal/app/... -v`
+- [x] `internal/cli/app_controller_test.go` → `internal/app/app_controller_test.go` ✅ (Simplified)
+- [x] `internal/cli/integration_test.go` → `internal/app/integration_test.go` ✅
+- [x] Update package declarations and imports ✅
+- [x] Fix orchestration dependencies ✅
+- [x] Verify: `go test ./internal/app/... -v` ✅
 
 ---
 
@@ -219,7 +219,7 @@ Total test files to migrate: **37 files** (~8,500 lines)
 
 ## Progress Tracking
 
-### Completed (68%):
+### Completed (73%):
 - ✅ Build errors resolved
 - ✅ Directory structure created
 - ✅ Model tests migrated (2/2 files)
@@ -230,16 +230,16 @@ Total test files to migrate: **37 files** (~8,500 lines)
 - ✅ UI/Display tests migrated (7/7 files)
 - ✅ Performance/Benchmark tests migrated (5/5 files)
 - ✅ Error Recovery tests migrated (1/1 file)
+- ✅ App Controller tests migrated (2/2 files)
 
 ### In Progress:
-- 🚧 Ready for next tier
+- 🚧 Ready for final validation
 
 ### Remaining:
-- ⏳ App Controller tests (0/2 files)
 - ⏳ Final validation and cleanup
 
-### Files Migrated: 25/37 (68%)
-### Lines Migrated: ~6,500/8,500 (76%)
+### Files Migrated: 27/37 (73%)
+### Lines Migrated: ~7,000/8,500 (82%)
 
 ---
 
