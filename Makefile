@@ -198,6 +198,58 @@ benchmark-profile: ## Run benchmarks with CPU profiling
 
 .PHONY: benchmark-memprofile
 benchmark-memprofile: ## Run benchmarks with memory profiling
+
+# ==============================================================================
+# Code Complexity Analysis Commands
+# ==============================================================================
+
+.PHONY: complexity
+complexity: build ## Analyze code complexity metrics
+	@echo "$(BLUE)Analyzing code complexity...$(RESET)"
+	./$(BUILD_DIR)/$(BINARY_NAME) complexity . --format=text
+	@echo "$(GREEN)✓ Complexity analysis complete$(RESET)"
+
+.PHONY: complexity-json
+complexity-json: build ## Generate complexity analysis in JSON format
+	@echo "$(BLUE)Generating JSON complexity report...$(RESET)"
+	@mkdir -p $(BUILD_DIR)/reports
+	./$(BUILD_DIR)/$(BINARY_NAME) complexity . --format=json --output=$(BUILD_DIR)/reports/complexity.json
+	@echo "$(GREEN)✓ JSON complexity report: $(BUILD_DIR)/reports/complexity.json$(RESET)"
+
+.PHONY: complexity-html
+complexity-html: build ## Generate complexity analysis in HTML format
+	@echo "$(BLUE)Generating HTML complexity report...$(RESET)"
+	@mkdir -p $(BUILD_DIR)/reports
+	./$(BUILD_DIR)/$(BINARY_NAME) complexity . --format=html --output=$(BUILD_DIR)/reports/complexity.html
+	@echo "$(GREEN)✓ HTML complexity report: $(BUILD_DIR)/reports/complexity.html$(RESET)"
+
+.PHONY: complexity-package
+complexity-package: build ## Analyze complexity for specific package
+	@echo "$(BLUE)Analyzing package complexity...$(RESET)"
+	@if [ -z "$(PKG)" ]; then \
+		echo "$(RED)Error: Please specify PKG variable, e.g., make complexity-package PKG=internal/cli$(RESET)"; \
+		exit 1; \
+	fi
+	./$(BUILD_DIR)/$(BINARY_NAME) complexity $(PKG) --verbose
+	@echo "$(GREEN)✓ Package complexity analysis complete$(RESET)"
+
+.PHONY: complexity-strict
+complexity-strict: build ## Analyze complexity with strict thresholds
+	@echo "$(BLUE)Analyzing complexity with strict thresholds...$(RESET)"
+	./$(BUILD_DIR)/$(BINARY_NAME) complexity . \
+		--max-complexity=5 \
+		--min-maintainability=90 \
+		--max-lines=300 \
+		--max-function-lines=30 \
+		--max-debt-ratio=2.0 \
+		--verbose
+	@echo "$(GREEN)✓ Strict complexity analysis complete$(RESET)"
+
+.PHONY: complexity-ci
+complexity-ci: build ## Run complexity analysis for CI (exits with error on violations)
+	@echo "$(BLUE)Running complexity analysis for CI...$(RESET)"
+	./$(BUILD_DIR)/$(BINARY_NAME) complexity . --format=json --output=$(BUILD_DIR)/reports/complexity-ci.json
+	@echo "$(GREEN)✓ CI complexity analysis complete$(RESET)"
 	@echo "$(BLUE)Running benchmarks with memory profiling...$(RESET)"
 	@mkdir -p $(BUILD_DIR)/profiles
 	go test -bench=BenchmarkMemoryAllocation -benchmem -memprofile=$(BUILD_DIR)/profiles/mem.prof -run=^$$ ./internal/cli

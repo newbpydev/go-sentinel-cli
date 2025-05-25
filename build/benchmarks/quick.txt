@@ -1,7 +1,0 @@
-goos: windows
-goarch: amd64
-pkg: github.com/newbpydev/go-sentinel/internal/cli
-cpu: AMD Ryzen 5 4500U with Radeon Graphics         
-BenchmarkColorFormatter-6   	   24922	      2121 ns/op	    1152 B/op	      24 allocs/op
-PASS
-ok  	github.com/newbpydev/go-sentinel/internal/cli	0.736s

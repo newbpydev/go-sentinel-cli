@@ -17,6 +17,9 @@ linters:
     - unconvert
     - gosec
     - unparam
+    - gocyclo
+    - gocognit
+    - funlen
 
 linters-settings:
   govet:
@@ -25,6 +28,16 @@ linters-settings:
   gosec:
     includes:
       - G101-G505
+  
+  gocyclo:
+    min-complexity: 10
+  
+  gocognit:
+    min-complexity: 10
+  
+  funlen:
+    lines: 50
+    statements: 30
 
 issues:
   max-same-issues: 3
