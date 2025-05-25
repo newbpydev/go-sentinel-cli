@@ -1046,46 +1046,219 @@ monitoring-clean: ## Clean monitoring data and reports
 	@rm -rf $(BUILD_DIR)/monitoring
 	@echo "$(GREEN)✓ Monitoring data cleaned$(RESET)"
 
+.PHONY: monitoring-dashboard
+monitoring-dashboard: build-v2 ## Start advanced monitoring dashboard with real-time features
+	@echo "$(BLUE)Starting advanced monitoring dashboard...$(RESET)"
+	@echo "$(CYAN)Dashboard will be available at:$(RESET)"
+	@echo "  Main Dashboard: http://localhost:3000"
+	@echo "  API Metrics:    http://localhost:3000/api/metrics"
+	@echo "  API Alerts:     http://localhost:3000/api/alerts"
+	@echo "  API Trends:     http://localhost:3000/api/trends"
+	@echo "  Export Data:    http://localhost:3000/api/export?format=json"
+	@echo ""
+	@echo "$(YELLOW)Starting application with enhanced monitoring...$(RESET)"
+	MONITORING_ENABLED=true MONITORING_PORT=8080 DASHBOARD_ENABLED=true DASHBOARD_PORT=3000 ./$(BUILD_DIR)/$(BINARY_NAME_V2) run --watch --color
+
+.PHONY: monitoring-dashboard-test
+monitoring-dashboard-test: ## Test advanced dashboard endpoints
+	@echo "$(BLUE)Testing advanced dashboard endpoints...$(RESET)"
+	@echo ""
+	@echo "$(CYAN)Testing main dashboard...$(RESET)"
+	@curl -s http://localhost:3000/ | head -10 || echo "Dashboard not available"
+	@echo ""
+	@echo "$(CYAN)Testing API metrics...$(RESET)"
+	@curl -s http://localhost:3000/api/metrics | jq '.overview' || echo "Metrics API not available"
+	@echo ""
+	@echo "$(CYAN)Testing API alerts...$(RESET)"
+	@curl -s http://localhost:3000/api/alerts | jq '. | length' || echo "Alerts API not available"
+	@echo ""
+	@echo "$(CYAN)Testing API trends...$(RESET)"
+	@curl -s http://localhost:3000/api/trends | jq '.performance_trend' || echo "Trends API not available"
+
+.PHONY: monitoring-alerts-test
+monitoring-alerts-test: ## Test monitoring alerts and notifications
+	@echo "$(BLUE)Testing monitoring alerts system...$(RESET)"
+	@echo ""
+	@echo "$(CYAN)Generating test load to trigger alerts...$(RESET)"
+	@for i in {1..20}; do \
+		echo "Load test cycle $$i/20..."; \
+		timeout 3s ./$(BUILD_DIR)/$(BINARY_NAME_V2) run --timeout=1s > /dev/null 2>&1 || true; \
+		sleep 0.5; \
+	done
+	@echo ""
+	@echo "$(CYAN)Checking for triggered alerts...$(RESET)"
+	@curl -s http://localhost:3000/api/alerts 2>/dev/null | jq '.[] | select(.severity == "CRITICAL" or .severity == "HIGH")' || echo "No alerts active"
+
+.PHONY: monitoring-export-all
+monitoring-export-all: ## Export all monitoring data in multiple formats
+	@echo "$(BLUE)Exporting all monitoring data...$(RESET)"
+	@mkdir -p $(BUILD_DIR)/monitoring/exports
+	@echo "Exporting JSON format..."
+	@curl -s "http://localhost:3000/api/export?format=json" > $(BUILD_DIR)/monitoring/exports/dashboard-data.json 2>/dev/null || echo "{}" > $(BUILD_DIR)/monitoring/exports/dashboard-data.json
+	@echo "Exporting CSV format..."
+	@curl -s "http://localhost:3000/api/export?format=csv" > $(BUILD_DIR)/monitoring/exports/dashboard-data.csv 2>/dev/null || echo "" > $(BUILD_DIR)/monitoring/exports/dashboard-data.csv
+	@echo "Exporting Prometheus format..."
+	@curl -s "http://localhost:3000/api/export?format=prometheus" > $(BUILD_DIR)/monitoring/exports/dashboard-data.prom 2>/dev/null || echo "" > $(BUILD_DIR)/monitoring/exports/dashboard-data.prom
+	@echo "Exporting basic metrics..."
+	@curl -s "http://localhost:8080/metrics" > $(BUILD_DIR)/monitoring/exports/basic-metrics.json 2>/dev/null || echo "{}" > $(BUILD_DIR)/monitoring/exports/basic-metrics.json
+	@echo "$(GREEN)✓ All monitoring data exported to $(BUILD_DIR)/monitoring/exports/$(RESET)"
+
+.PHONY: monitoring-trending
+monitoring-trending: ## Generate trend analysis and predictions
+	@echo "$(BLUE)Generating trend analysis...$(RESET)"
+	@mkdir -p $(BUILD_DIR)/monitoring/trends
+	@echo "Collecting historical data..."
+	@curl -s "http://localhost:3000/api/trends" > $(BUILD_DIR)/monitoring/trends/trend-analysis.json 2>/dev/null || echo "{}" > $(BUILD_DIR)/monitoring/trends/trend-analysis.json
+	@echo "Generating trend charts data..."
+	@curl -s "http://localhost:3000/api/metrics" | jq '.trends.trend_charts' > $(BUILD_DIR)/monitoring/trends/chart-data.json 2>/dev/null || echo "{}" > $(BUILD_DIR)/monitoring/trends/chart-data.json
+	@echo "$(GREEN)✓ Trend analysis generated in $(BUILD_DIR)/monitoring/trends/$(RESET)"
+
+.PHONY: monitoring-health-comprehensive
+monitoring-health-comprehensive: ## Run comprehensive health check with detailed reporting
+	@echo "$(BLUE)Running comprehensive health checks...$(RESET)"
+	@mkdir -p $(BUILD_DIR)/monitoring/health
+	@echo ""
+	@echo "$(CYAN)1. Basic Health Check...$(RESET)"
+	@curl -s http://localhost:8080/health | jq . > $(BUILD_DIR)/monitoring/health/basic-health.json 2>/dev/null || echo "{\"error\": \"basic health not available\"}" > $(BUILD_DIR)/monitoring/health/basic-health.json
+	@echo ""
+	@echo "$(CYAN)2. Readiness Check...$(RESET)"
+	@curl -s http://localhost:8080/health/ready | jq . > $(BUILD_DIR)/monitoring/health/readiness.json 2>/dev/null || echo "{\"error\": \"readiness not available\"}" > $(BUILD_DIR)/monitoring/health/readiness.json
+	@echo ""
+	@echo "$(CYAN)3. Liveness Check...$(RESET)"
+	@curl -s http://localhost:8080/health/live | jq . > $(BUILD_DIR)/monitoring/health/liveness.json 2>/dev/null || echo "{\"error\": \"liveness not available\"}" > $(BUILD_DIR)/monitoring/health/liveness.json
+	@echo ""
+	@echo "$(CYAN)4. Dashboard Health Check...$(RESET)"
+	@curl -s http://localhost:3000/api/metrics | jq '.system_health' > $(BUILD_DIR)/monitoring/health/dashboard-health.json 2>/dev/null || echo "{\"error\": \"dashboard health not available\"}" > $(BUILD_DIR)/monitoring/health/dashboard-health.json
+	@echo ""
+	@echo "$(CYAN)Health Check Summary:$(RESET)"
+	@BASIC_STATUS=$$(curl -s http://localhost:8080/health 2>/dev/null | jq -r '.status' 2>/dev/null || echo "unavailable"); \
+	DASHBOARD_STATUS=$$(curl -s http://localhost:3000/api/metrics 2>/dev/null | jq -r '.system_health.health_score // 0' 2>/dev/null || echo "0"); \
+	echo "Basic Health: $$BASIC_STATUS"; \
+	echo "Dashboard Health Score: $$DASHBOARD_STATUS"; \
+	if [ "$$BASIC_STATUS" = "healthy" ] && [ "$$(echo "$$DASHBOARD_STATUS > 90" | bc -l 2>/dev/null || echo 0)" = "1" ]; then \
+		echo "$(GREEN)✅ Overall System Health: EXCELLENT$(RESET)"; \
+	elif [ "$$BASIC_STATUS" = "healthy" ]; then \
+		echo "$(YELLOW)⚠️  Overall System Health: GOOD$(RESET)"; \
+	else \
+		echo "$(RED)❌ Overall System Health: NEEDS ATTENTION$(RESET)"; \
+	fi
+	@echo "$(GREEN)✓ Comprehensive health check completed. Reports saved to $(BUILD_DIR)/monitoring/health/$(RESET)"
+
+.PHONY: monitoring-stress-test
+monitoring-stress-test: ## Run stress test to validate monitoring under load
+	@echo "$(BLUE)Running monitoring stress test...$(RESET)"
+	@echo "$(YELLOW)This will generate high load to test monitoring resilience...$(RESET)"
+	@mkdir -p $(BUILD_DIR)/monitoring/stress
+	@echo "Starting stress test with 50 concurrent operations..."
+	@for i in {1..50}; do \
+		(timeout 10s ./$(BUILD_DIR)/$(BINARY_NAME_V2) run --timeout=1s > /dev/null 2>&1 || true) & \
+	done
+	@wait
+	@echo "Collecting stress test metrics..."
+	@curl -s http://localhost:8080/metrics > $(BUILD_DIR)/monitoring/stress/stress-metrics.json 2>/dev/null || echo "{}" > $(BUILD_DIR)/monitoring/stress/stress-metrics.json
+	@curl -s http://localhost:3000/api/metrics > $(BUILD_DIR)/monitoring/stress/dashboard-stress.json 2>/dev/null || echo "{}" > $(BUILD_DIR)/monitoring/stress/dashboard-stress.json
+	@echo "$(GREEN)✓ Stress test completed. Results saved to $(BUILD_DIR)/monitoring/stress/$(RESET)"
+
+.PHONY: monitoring-benchmark
+monitoring-benchmark: ## Benchmark monitoring system performance
+	@echo "$(BLUE)Benchmarking monitoring system performance...$(RESET)"
+	@mkdir -p $(BUILD_DIR)/monitoring/benchmark
+	@echo "Testing metrics endpoint performance..."
+	@time curl -s http://localhost:8080/metrics > /dev/null 2>&1 || echo "Metrics endpoint not available"
+	@echo "Testing dashboard endpoint performance..."
+	@time curl -s http://localhost:3000/api/metrics > /dev/null 2>&1 || echo "Dashboard endpoint not available"
+	@echo "Testing health check performance..."
+	@time curl -s http://localhost:8080/health > /dev/null 2>&1 || echo "Health endpoint not available"
+	@echo "$(GREEN)✓ Monitoring benchmark completed$(RESET)"
+
+.PHONY: monitoring-security-check
+monitoring-security-check: ## Check monitoring endpoints for security issues
+	@echo "$(BLUE)Running monitoring security checks...$(RESET)"
+	@mkdir -p $(BUILD_DIR)/monitoring/security
+	@echo "Checking for exposed sensitive information..."
+	@curl -s http://localhost:8080/metrics 2>/dev/null | grep -i "password\|secret\|key\|token" > $(BUILD_DIR)/monitoring/security/sensitive-check.txt || echo "No sensitive data found" > $(BUILD_DIR)/monitoring/security/sensitive-check.txt
+	@echo "Checking endpoint accessibility..."
+	@curl -I http://localhost:8080/metrics 2>/dev/null | head -1 > $(BUILD_DIR)/monitoring/security/endpoint-status.txt || echo "Endpoint not accessible" > $(BUILD_DIR)/monitoring/security/endpoint-status.txt
+	@echo "$(GREEN)✓ Security check completed. Results saved to $(BUILD_DIR)/monitoring/security/$(RESET)"
+
 .PHONY: monitoring-help
 monitoring-help: ## Show monitoring commands help and examples
 	@echo "$(CYAN)Monitoring & Observability Commands:$(RESET)"
 	@echo ""
 	@echo "$(YELLOW)System Control:$(RESET)"
-	@echo "  make monitoring-start       - Start application with monitoring enabled"
+	@echo "  make monitoring-start       - Start application with basic monitoring enabled"
+	@echo "  make monitoring-dashboard   - Start advanced dashboard with real-time features"
 	@echo "  make monitoring-stop        - Stop monitoring system"
-	@echo "  make monitoring-test        - Test all monitoring endpoints"
 	@echo ""
-	@echo "$(YELLOW)Data Collection:$(RESET)"
+	@echo "$(YELLOW)Basic Monitoring:$(RESET)"
+	@echo "  make monitoring-test        - Test all basic monitoring endpoints"
 	@echo "  make monitoring-metrics     - Fetch current metrics (JSON)"
 	@echo "  make monitoring-metrics-prometheus - Fetch metrics (Prometheus format)"
 	@echo "  make monitoring-health      - Check application health"
-	@echo "  make monitoring-dashboard   - Generate monitoring dashboard"
 	@echo ""
-	@echo "$(YELLOW)Testing & Validation:$(RESET)"
-	@echo "  make monitoring-load-test   - Run load test to generate data"
-	@echo "  make monitoring-alerts      - Check alert thresholds"
+	@echo "$(YELLOW)Advanced Dashboard:$(RESET)"
+	@echo "  make monitoring-dashboard-test      - Test advanced dashboard endpoints"
+	@echo "  make monitoring-health-comprehensive - Run comprehensive health checks"
+	@echo "  make monitoring-trending            - Generate trend analysis and predictions"
+	@echo "  make monitoring-alerts-test         - Test monitoring alerts system"
 	@echo ""
-	@echo "$(YELLOW)Data Export:$(RESET)"
-	@echo "  make monitoring-export      - Export data for external systems"
-	@echo "  make monitoring-clean       - Clean monitoring data"
+	@echo "$(YELLOW)Performance & Security:$(RESET)"
+	@echo "  make monitoring-stress-test         - Run stress test to validate monitoring under load"
+	@echo "  make monitoring-benchmark           - Benchmark monitoring system performance"
+	@echo "  make monitoring-security-check      - Check monitoring endpoints for security issues"
 	@echo ""
-	@echo "$(YELLOW)Monitoring Endpoints (when running):$(RESET)"
-	@echo "  http://localhost:8080/metrics       - Application metrics"
-	@echo "  http://localhost:8080/health        - Health checks"
-	@echo "  http://localhost:8080/health/ready  - Readiness probe"
-	@echo "  http://localhost:8080/health/live   - Liveness probe"
+	@echo "$(YELLOW)Data Export & Analysis:$(RESET)"
+	@echo "  make monitoring-export-all  - Export all data in multiple formats (JSON/CSV/Prometheus)"
+	@echo "  make monitoring-export      - Export basic data for external systems"
+	@echo "  make monitoring-load-test   - Run load test to generate metrics data"
+	@echo "  make monitoring-clean       - Clean all monitoring data and reports"
 	@echo ""
-	@echo "$(YELLOW)Example Workflow:$(RESET)"
-	@echo "  1. make monitoring-start            # Start with monitoring"
-	@echo "  2. make monitoring-load-test        # Generate some data"
-	@echo "  3. make monitoring-dashboard        # Collect dashboard data"
-	@echo "  4. make monitoring-alerts           # Check system health"
-	@echo "  5. make monitoring-export           # Export for external tools"
+	@echo "$(YELLOW)Basic Monitoring Endpoints:$(RESET)"
+	@echo "  http://localhost:8080/metrics       - Application metrics (JSON/Prometheus)"
+	@echo "  http://localhost:8080/health        - Health checks with component status"
+	@echo "  http://localhost:8080/health/ready  - Readiness probe (K8s compatible)"
+	@echo "  http://localhost:8080/health/live   - Liveness probe (K8s compatible)"
 	@echo ""
-	@echo "$(YELLOW)Generated Files:$(RESET)"
+	@echo "$(YELLOW)Advanced Dashboard Endpoints:$(RESET)"
+	@echo "  http://localhost:3000/              - Interactive monitoring dashboard"
+	@echo "  http://localhost:3000/api/metrics   - Comprehensive dashboard metrics"
+	@echo "  http://localhost:3000/api/alerts    - Active alerts and notifications"
+	@echo "  http://localhost:3000/api/trends    - Trend analysis and predictions"
+	@echo "  http://localhost:3000/api/export    - Multi-format data export"
+	@echo ""
+	@echo "$(YELLOW)Example Workflows:$(RESET)"
+	@echo ""
+	@echo "$(MAGENTA)Basic Monitoring:$(RESET)"
+	@echo "  1. make monitoring-start            # Start with basic monitoring"
+	@echo "  2. make monitoring-load-test        # Generate some test data"
+	@echo "  3. make monitoring-health           # Check system health"
+	@echo "  4. make monitoring-export           # Export data"
+	@echo ""
+	@echo "$(MAGENTA)Advanced Dashboard:$(RESET)"
+	@echo "  1. make monitoring-dashboard        # Start advanced dashboard"
+	@echo "  2. make monitoring-alerts-test      # Generate alerts for testing"
+	@echo "  3. make monitoring-trending         # Analyze trends"
+	@echo "  4. make monitoring-export-all       # Export comprehensive data"
+	@echo ""
+	@echo "$(MAGENTA)Production Health Check:$(RESET)"
+	@echo "  1. make monitoring-health-comprehensive  # Run full health assessment"
+	@echo "  2. make monitoring-dashboard-test        # Validate dashboard endpoints"
+	@echo "  3. make monitoring-export-all            # Export for analysis"
+	@echo ""
+	@echo "$(YELLOW)Generated Files Structure:$(RESET)"
 	@echo "  $(BUILD_DIR)/monitoring/metrics.json       - Current metrics snapshot"
 	@echo "  $(BUILD_DIR)/monitoring/health.json        - Current health status"
-	@echo "  $(BUILD_DIR)/monitoring/export/            - Exported data for external systems"
+	@echo "  $(BUILD_DIR)/monitoring/exports/            - Multi-format exports (JSON/CSV/Prometheus)"
+	@echo "  $(BUILD_DIR)/monitoring/trends/             - Trend analysis and charts data"
+	@echo "  $(BUILD_DIR)/monitoring/health/             - Comprehensive health reports"
+	@echo ""
+	@echo "$(YELLOW)Dashboard Features:$(RESET)"
+	@echo "  • Real-time metrics visualization with auto-refresh"
+	@echo "  • Advanced alerting with configurable thresholds"
+	@echo "  • Trend analysis with historical data and predictions"
+	@echo "  • Multiple export formats (JSON, CSV, Prometheus)"
+	@echo "  • Comprehensive health scoring and incident tracking"
+	@echo "  • Dark theme optimized for developer workflows"
 
 # ==============================================================================
 # Deployment Automation Commands

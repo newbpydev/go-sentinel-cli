@@ -199,6 +199,76 @@ create_deployment_package() {
 
     mkdir -p "$package_dir"
 
+    # Copy binary and configuration files
+    if [ ! -f "$BUILD_DIR/$BINARY_NAME" ]; then
+        log "ERROR" "Binary not found at $BUILD_DIR/$BINARY_NAME"
+        return 1
+    fi
+
+    cp "$BUILD_DIR/$BINARY_NAME" "$package_dir/"
+
+    # Copy configuration files if they exist
+    if [ -f "$PROJECT_ROOT/config.yaml" ]; then
+        cp "$PROJECT_ROOT/config.yaml" "$package_dir/"
+    fi
+
+    # Create package manifest
+    cat > "$package_dir/manifest.json" << EOF
+{
+    "version": "$version",
+    "binary": "$BINARY_NAME",
+    "created_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+    "git_commit": "$(git rev-parse HEAD 2>/dev/null || echo 'unknown')",
+    "git_branch": "$(git branch --show-current 2>/dev/null || echo 'unknown')",
+    "build_info": {
+        "go_version": "$(go version | cut -d' ' -f3)",
+        "os": "$(uname -s)",
+        "arch": "$(uname -m)"
+    }
+}
+EOF
+
+    # Create health check script
+    cat > "$package_dir/health_check.sh" << 'EOF'
+#!/bin/bash
+BINARY_PATH="$1"
+if [ -z "$BINARY_PATH" ]; then
+    echo "Usage: $0 <binary_path>"
+    exit 1
+fi
+
+# Basic health check - verify binary can run
+if [ -f "$BINARY_PATH" ] && [ -x "$BINARY_PATH" ]; then
+    if timeout 10s "$BINARY_PATH" version > /dev/null 2>&1; then
+        echo "Health check passed"
+        exit 0
+    else
+        echo "Health check failed - binary execution error"
+        exit 1
+    fi
+else
+    echo "Health check failed - binary not found or not executable"
+    exit 1
+fi
+EOF
+
+    chmod +x "$package_dir/health_check.sh"
+
+    # Create deployment configuration
+    cat > "$package_dir/deploy.conf" << EOF
+BINARY_NAME=$BINARY_NAME
+VERSION=$version
+HEALTH_CHECK_TIMEOUT=30
+HEALTH_CHECK_RETRIES=5
+STARTUP_TIMEOUT=60
+SHUTDOWN_TIMEOUT=30
+ENV_FILE=.env
+CONFIG_FILE=config.yaml
+EOF
+
+    log "SUCCESS" "Deployment package created at $package_dir"
+    return 0
+
     # Copy binary
     if [ -f "$BUILD_DIR/$BINARY_NAME" ]; then
         cp "$BUILD_DIR/$BINARY_NAME" "$package_dir/"
@@ -301,6 +371,373 @@ run_health_checks() {
 
     log "ERROR" "Health checks failed after $max_checks attempts"
     return 1
+}
+
+# Function to deploy using rolling strategy
+deploy_rolling() {
+    local env="$1"
+    local version="$2"
+    local skip_health_checks="$3"
+    local deployment_path="$DEPLOY_DIR/$env"
+
+    log "INFO" "Starting rolling deployment to $env environment"
+
+    # Create environment directory
+    mkdir -p "$deployment_path"
+
+    # Stop existing application gracefully
+    if [ -f "$deployment_path/current/$BINARY_NAME" ]; then
+        log "INFO" "Stopping existing application"
+        pkill -f "$BINARY_NAME" || true
+        sleep 5
+    fi
+
+    # Create new deployment directory
+    local new_deployment="$deployment_path/deployments/$(date +%Y%m%d-%H%M%S)-$version"
+    mkdir -p "$new_deployment"
+
+    # Copy package files
+    local package_dir="$DEPLOY_DIR/packages/$version"
+    if [ ! -d "$package_dir" ]; then
+        log "ERROR" "Package directory not found: $package_dir"
+        return 1
+    fi
+
+    cp -r "$package_dir"/* "$new_deployment/"
+
+    # Update symlink to new deployment
+    ln -sfn "$new_deployment" "$deployment_path/current"
+
+    # Start application
+    log "INFO" "Starting new application version"
+    cd "$deployment_path/current"
+    nohup "./$BINARY_NAME" > "$deployment_path/app.log" 2>&1 &
+    local app_pid=$!
+    echo "$app_pid" > "$deployment_path/app.pid"
+
+    # Wait for startup
+    sleep 10
+
+    # Run health checks
+    if [ "$skip_health_checks" != "true" ]; then
+        if ! run_health_checks "$env" "$DEFAULT_MAX_HEALTH_CHECKS" "$DEFAULT_HEALTH_CHECK_INTERVAL" "$version"; then
+            log "ERROR" "Health checks failed, rolling back"
+            rollback_deployment "$env" "" "true"
+            return 1
+        fi
+    fi
+
+    # Update version tracking
+    set_current_version "$env" "$version"
+
+    log "SUCCESS" "Rolling deployment completed successfully"
+    return 0
+}
+
+# Function to deploy using blue-green strategy
+deploy_blue_green() {
+    local env="$1"
+    local version="$2"
+    local skip_health_checks="$3"
+    local deployment_path="$DEPLOY_DIR/$env"
+
+    log "INFO" "Starting blue-green deployment to $env environment"
+
+    # Create environment directory
+    mkdir -p "$deployment_path"
+
+    # Determine current and target slots
+    local current_slot="blue"
+    local target_slot="green"
+
+    if [ -f "$deployment_path/current_slot.txt" ]; then
+        current_slot=$(cat "$deployment_path/current_slot.txt")
+        if [ "$current_slot" = "blue" ]; then
+            target_slot="green"
+        else
+            target_slot="blue"
+        fi
+    fi
+
+    log "INFO" "Current slot: $current_slot, Target slot: $target_slot"
+
+    # Create target slot directory
+    local target_deployment="$deployment_path/$target_slot"
+    mkdir -p "$target_deployment"
+
+    # Copy package files to target slot
+    local package_dir="$DEPLOY_DIR/packages/$version"
+    if [ ! -d "$package_dir" ]; then
+        log "ERROR" "Package directory not found: $package_dir"
+        return 1
+    fi
+
+    cp -r "$package_dir"/* "$target_deployment/"
+
+    # Start application in target slot
+    log "INFO" "Starting application in $target_slot slot"
+    cd "$target_deployment"
+
+    # Use different port for green slot during testing
+    local app_port=8080
+    if [ "$target_slot" = "green" ]; then
+        app_port=8081
+    fi
+
+    PORT=$app_port nohup "./$BINARY_NAME" > "$deployment_path/${target_slot}.log" 2>&1 &
+    local app_pid=$!
+    echo "$app_pid" > "$deployment_path/${target_slot}.pid"
+
+    # Wait for startup
+    sleep 10
+
+    # Run health checks on target slot
+    if [ "$skip_health_checks" != "true" ]; then
+        if ! run_health_checks "$env" "$DEFAULT_MAX_HEALTH_CHECKS" "$DEFAULT_HEALTH_CHECK_INTERVAL" "$version"; then
+            log "ERROR" "Health checks failed on $target_slot slot"
+            # Stop target slot
+            if [ -f "$deployment_path/${target_slot}.pid" ]; then
+                kill "$(cat "$deployment_path/${target_slot}.pid")" || true
+            fi
+            return 1
+        fi
+    fi
+
+    # Switch traffic to target slot (simulate load balancer switch)
+    log "INFO" "Switching traffic to $target_slot slot"
+
+    # Stop current slot
+    if [ -f "$deployment_path/${current_slot}.pid" ]; then
+        log "INFO" "Stopping $current_slot slot"
+        kill "$(cat "$deployment_path/${current_slot}.pid")" || true
+    fi
+
+    # Update current slot tracking
+    echo "$target_slot" > "$deployment_path/current_slot.txt"
+    ln -sfn "$target_deployment" "$deployment_path/current"
+
+    # If using different ports, switch main port
+    if [ "$target_slot" = "green" ]; then
+        # In a real scenario, this would update load balancer configuration
+        log "INFO" "Load balancer would be updated to point to port $app_port"
+    fi
+
+    # Update version tracking
+    set_current_version "$env" "$version"
+
+    log "SUCCESS" "Blue-green deployment completed successfully"
+    return 0
+}
+
+# Function to rollback deployment
+rollback_deployment() {
+    local env="$1"
+    local target_version="$2"
+    local immediate="$3"
+
+    log "INFO" "Starting rollback for $env environment"
+
+    local deployment_path="$DEPLOY_DIR/$env"
+    local rollback_version="$target_version"
+
+    # If no target version specified, use previous version
+    if [ -z "$rollback_version" ]; then
+        rollback_version=$(get_previous_version "$env")
+        if [ "$rollback_version" = "unknown" ]; then
+            log "ERROR" "No previous version found for rollback"
+            return 1
+        fi
+    fi
+
+    log "INFO" "Rolling back to version $rollback_version"
+
+    # Find the package for rollback version
+    local package_dir="$DEPLOY_DIR/packages/$rollback_version"
+    if [ ! -d "$package_dir" ]; then
+        log "ERROR" "Package not found for version $rollback_version"
+        return 1
+    fi
+
+    # Stop current application
+    if [ -f "$deployment_path/app.pid" ]; then
+        log "INFO" "Stopping current application"
+        kill "$(cat "$deployment_path/app.pid")" || true
+        sleep 5
+    fi
+
+    # Create rollback deployment
+    local rollback_deployment="$deployment_path/rollback-$(date +%Y%m%d-%H%M%S)-$rollback_version"
+    mkdir -p "$rollback_deployment"
+    cp -r "$package_dir"/* "$rollback_deployment/"
+
+    # Update symlink
+    ln -sfn "$rollback_deployment" "$deployment_path/current"
+
+    # Start rollback version
+    log "INFO" "Starting rollback version"
+    cd "$deployment_path/current"
+    nohup "./$BINARY_NAME" > "$deployment_path/rollback.log" 2>&1 &
+    local app_pid=$!
+    echo "$app_pid" > "$deployment_path/app.pid"
+
+    # Wait for startup
+    sleep 10
+
+    # Run health checks unless immediate rollback
+    if [ "$immediate" != "true" ]; then
+        if ! run_health_checks "$env" "$DEFAULT_MAX_HEALTH_CHECKS" "$DEFAULT_HEALTH_CHECK_INTERVAL" "$rollback_version"; then
+            log "ERROR" "Health checks failed after rollback"
+            return 1
+        fi
+    fi
+
+    # Update version tracking
+    set_current_version "$env" "$rollback_version"
+
+    log "SUCCESS" "Rollback completed successfully to version $rollback_version"
+    send_notification "Rollback Completed" "$env" "$rollback_version" "rollback" "Application rolled back successfully"
+    return 0
+}
+
+# Function to check deployment status
+check_deployment_status() {
+    local env="$1"
+    local deployment_path="$DEPLOY_DIR/$env"
+
+    log "INFO" "Checking deployment status for $env environment"
+
+    if [ ! -d "$deployment_path" ]; then
+        log "WARN" "No deployment found for $env environment"
+        return 1
+    fi
+
+    local current_version=$(get_current_version "$env")
+    local previous_version=$(get_previous_version "$env")
+
+    echo ""
+    echo -e "${CYAN}Deployment Status for $env:${RESET}"
+    echo "=================================="
+    echo "Current Version: $current_version"
+    echo "Previous Version: $previous_version"
+
+    # Check if application is running
+    if [ -f "$deployment_path/app.pid" ]; then
+        local pid=$(cat "$deployment_path/app.pid")
+        if ps -p "$pid" > /dev/null 2>&1; then
+            echo -e "Application Status: ${GREEN}RUNNING${RESET} (PID: $pid)"
+        else
+            echo -e "Application Status: ${RED}STOPPED${RESET} (stale PID file)"
+        fi
+    else
+        echo -e "Application Status: ${RED}UNKNOWN${RESET} (no PID file)"
+    fi
+
+    # Check deployment history
+    if [ -f "$deployment_path/version_history.txt" ]; then
+        echo ""
+        echo "Recent Deployments:"
+        tail -5 "$deployment_path/version_history.txt" | while IFS= read -r line; do
+            echo "  $line"
+        done
+    fi
+
+    # Check blue-green slot if applicable
+    if [ -f "$deployment_path/current_slot.txt" ]; then
+        local current_slot=$(cat "$deployment_path/current_slot.txt")
+        echo "Current Slot: $current_slot"
+    fi
+
+    echo ""
+    return 0
+}
+
+# Function to list deployments
+list_deployments() {
+    log "INFO" "Listing available deployments"
+
+    echo ""
+    echo -e "${CYAN}Available Environments:${RESET}"
+    echo "======================="
+
+    for env in "${ENVIRONMENTS[@]}"; do
+        local deployment_path="$DEPLOY_DIR/$env"
+        if [ -d "$deployment_path" ]; then
+            local current_version=$(get_current_version "$env")
+            echo -e "  ${GREEN}$env${RESET}: $current_version"
+        else
+            echo -e "  ${YELLOW}$env${RESET}: Not deployed"
+        fi
+    done
+
+    echo ""
+    echo -e "${CYAN}Available Packages:${RESET}"
+    echo "==================="
+
+    if [ -d "$DEPLOY_DIR/packages" ]; then
+        for package in "$DEPLOY_DIR/packages"/*; do
+            if [ -d "$package" ]; then
+                local version=$(basename "$package")
+                local manifest="$package/manifest.json"
+                if [ -f "$manifest" ]; then
+                    local created_at=$(jq -r '.created_at // "unknown"' "$manifest" 2>/dev/null || echo "unknown")
+                    local git_commit=$(jq -r '.git_commit // "unknown"' "$manifest" 2>/dev/null || echo "unknown")
+                    echo -e "  ${GREEN}$version${RESET}: Created $created_at (commit: ${git_commit:0:8})"
+                else
+                    echo -e "  ${YELLOW}$version${RESET}: No manifest"
+                fi
+            fi
+        done
+    else
+        echo "  No packages found"
+    fi
+
+    echo ""
+    return 0
+}
+
+# Function to cleanup old deployments
+cleanup_deployments() {
+    local keep_count="${1:-5}"
+
+    log "INFO" "Cleaning up old deployments (keeping $keep_count most recent)"
+
+    # Clean up old packages
+    if [ -d "$DEPLOY_DIR/packages" ]; then
+        local package_count=$(find "$DEPLOY_DIR/packages" -maxdepth 1 -type d | wc -l)
+        if [ "$package_count" -gt "$keep_count" ]; then
+            log "INFO" "Cleaning up old packages"
+            find "$DEPLOY_DIR/packages" -maxdepth 1 -type d -exec basename {} \; | \
+            sort -V | head -n -"$keep_count" | \
+            while read -r version; do
+                if [ "$version" != "packages" ]; then
+                    log "INFO" "Removing old package: $version"
+                    rm -rf "$DEPLOY_DIR/packages/$version"
+                fi
+            done
+        fi
+    fi
+
+    # Clean up old deployments in each environment
+    for env in "${ENVIRONMENTS[@]}"; do
+        local deployments_dir="$DEPLOY_DIR/$env/deployments"
+        if [ -d "$deployments_dir" ]; then
+            local deployment_count=$(find "$deployments_dir" -maxdepth 1 -type d | wc -l)
+            if [ "$deployment_count" -gt "$keep_count" ]; then
+                log "INFO" "Cleaning up old deployments in $env"
+                find "$deployments_dir" -maxdepth 1 -type d -exec basename {} \; | \
+                sort | head -n -"$keep_count" | \
+                while read -r deployment; do
+                    if [ "$deployment" != "deployments" ]; then
+                        log "INFO" "Removing old deployment: $deployment"
+                        rm -rf "$deployments_dir/$deployment"
+                    fi
+                done
+            fi
+        fi
+    done
+
+    log "SUCCESS" "Cleanup completed"
+    return 0
 }
 
 # Function to send notification
