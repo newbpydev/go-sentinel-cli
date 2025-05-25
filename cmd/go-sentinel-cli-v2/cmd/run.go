@@ -3,7 +3,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/newbpydev/go-sentinel/internal/cli"
+	"github.com/newbpydev/go-sentinel/internal/app"
+	"github.com/newbpydev/go-sentinel/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -13,41 +14,14 @@ var runCmd = &cobra.Command{
 	Long: `Run Go tests with beautiful, Vitest-style output.
 If no packages are specified, runs tests in the current directory and subdirectories.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Create the application controller
-		controller := cli.NewAppController()
+		// Create the legacy application controller
+		controller := app.NewLegacyAppController()
 
-		// Extract flags directly from cobra command and create Args struct
-		watchFlag, _ := cmd.Flags().GetBool("watch")
-		colorFlag, _ := cmd.Flags().GetBool("color")
-		verboseFlag, _ := cmd.Flags().GetBool("verbose")
-		failFastFlag, _ := cmd.Flags().GetBool("fail-fast")
-		optimizedFlag, _ := cmd.Flags().GetBool("optimized")
-		testPattern, _ := cmd.Flags().GetString("test")
-		optimizationMode, _ := cmd.Flags().GetString("optimization")
-
-		// Handle no-color flag
-		if noColor, _ := cmd.Flags().GetBool("no-color"); noColor {
-			colorFlag = false
-		}
-
-		// Create Args struct
-		parser := cli.NewArgParser()
-		cliArgs := parser.ParseFromCobra(
-			watchFlag,
-			colorFlag,
-			verboseFlag,
-			failFastFlag,
-			optimizedFlag,
-			args,
-			testPattern,
-			optimizationMode,
-		)
-
-		// Convert to string slice for compatibility with existing Run method
-		cliArgsSlice := convertArgsToSlice(cliArgs)
+		// Build CLI arguments from cobra flags
+		cliArgs := buildCLIArgs(cmd, args)
 
 		// Run the application
-		return controller.Run(cliArgsSlice)
+		return controller.Run(cliArgs)
 	},
 }
 
@@ -175,7 +149,7 @@ func buildExecutionArgs(cmd *cobra.Command) []string {
 }
 
 // convertArgsToSlice converts Args struct back to string slice for compatibility
-func convertArgsToSlice(args *cli.Args) []string {
+func convertArgsToSlice(args *config.Args) []string {
 	var result []string
 
 	// Handle verbosity levels

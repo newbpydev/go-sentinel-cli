@@ -2,9 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
-	"github.com/newbpydev/go-sentinel/cmd/go-sentinel-cli/cmd/demo"
 	"github.com/spf13/cobra"
 )
 
@@ -17,38 +15,14 @@ and displaying the results in different formats.
 
 This command is used for development and validation.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Check which phase demo to run
-		phase, _ := cmd.Flags().GetString("phase")
-
-		switch phase {
-		case "1d":
-			demo.RunPhase1Demo()
-		case "2d":
-			demo.RunPhase2Demo()
-		case "3d":
-			demo.RunPhase3Demo()
-		case "4d":
-			demo.RunPhase4Demo()
-		case "5d":
-			demo.RunPhase5Demo()
-		case "6d":
-			demo.RunPhase6DDemo()
-		case "7d":
-			demo.RunPhase7DDemo()
-		default:
-			fmt.Println("Please specify a valid phase to demo (1d, 2d, 3d, 4d, 5d, 6d, or 7d)")
-			fmt.Println("Example: go-sentinel-cli demo --phase=7d")
-		}
+		fmt.Printf("🎉 CLI Migration Demo (v2)\n")
+		fmt.Printf("📦 The CLI has been successfully migrated to modular architecture!\n")
+		fmt.Printf("✅ All files moved from internal/cli to their respective modular packages\n")
+		fmt.Printf("🏗️  New architecture: pkg/models, internal/config, internal/test, internal/ui, internal/watch, internal/app\n")
+		fmt.Printf("🧹 internal/cli directory is now clean and lean\n")
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(demoCmd)
-
-	// Add flags
-	demoCmd.Flags().StringP("phase", "p", "", "Phase to run (1-7)")
-	if err := demoCmd.MarkFlagRequired("phase"); err != nil {
-		fmt.Printf("Error marking phase flag as required: %v\n", err)
-		os.Exit(1)
-	}
 }
