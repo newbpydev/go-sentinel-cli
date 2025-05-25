@@ -562,3 +562,498 @@ func BenchmarkFunction(x int) int {
 		}
 	}
 }
+
+// TestComplexityAnalyzer_AnalyzePackage tests package-level analysis
+func TestComplexityAnalyzer_AnalyzePackage(t *testing.T) {
+	// Create a temporary package with multiple Go files
+	tmpDir := t.TempDir()
+
+	// Create first file
+	file1 := `package testpkg
+
+func SimpleFunc() {
+	x := 1
+	y := 2
+	_ = x + y
+}
+
+func ComplexFunc(a int) string {
+	if a < 0 {
+		return "negative"
+	} else if a == 0 {
+		return "zero"
+	}
+	
+	for i := 0; i < a; i++ {
+		if i%2 == 0 {
+			continue
+		}
+	}
+	
+	return "positive"
+}
+`
+
+	// Create second file
+	file2 := `package testpkg
+
+func AnotherFunc(x, y, z int) int {
+	if x > y {
+		if y > z {
+			return x
+		} else {
+			return y
+		}
+	}
+	return z
+}
+`
+
+	err := os.WriteFile(filepath.Join(tmpDir, "file1.go"), []byte(file1), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	err = os.WriteFile(filepath.Join(tmpDir, "file2.go"), []byte(file2), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	analyzer := NewComplexityAnalyzer()
+	result, err := analyzer.AnalyzePackage(tmpDir)
+
+	if err != nil {
+		t.Fatalf("AnalyzePackage failed: %v", err)
+	}
+
+	if len(result.Files) != 2 {
+		t.Errorf("Expected 2 files, got %d", len(result.Files))
+	}
+
+	if result.TotalFunctions != 3 {
+		t.Errorf("Expected 3 total functions, got %d", result.TotalFunctions)
+	}
+
+	if result.AverageCyclomaticComplexity <= 0 {
+		t.Error("Expected positive average complexity")
+	}
+
+	if len(result.Violations) == 0 {
+		t.Log("No violations found - functions are within thresholds")
+	}
+}
+
+// TestComplexityAnalyzer_AnalyzeProject tests project-level analysis
+func TestComplexityAnalyzer_AnalyzeProject(t *testing.T) {
+	// Create a temporary project structure
+	tmpDir := t.TempDir()
+
+	// Create main package
+	mainDir := filepath.Join(tmpDir, "main")
+	err := os.MkdirAll(mainDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create main dir: %v", err)
+	}
+
+	mainFile := `package main
+
+func main() {
+	println("Hello, World!")
+}
+
+func complexMain() {
+	for i := 0; i < 10; i++ {
+		if i%2 == 0 {
+			if i > 5 {
+				println("even and > 5")
+			} else {
+				println("even and <= 5")
+			}
+		} else {
+			switch i {
+			case 1:
+				println("one")
+			case 3:
+				println("three")
+			default:
+				println("odd")
+			}
+		}
+	}
+}
+`
+
+	// Create util package
+	utilDir := filepath.Join(tmpDir, "util")
+	err = os.MkdirAll(utilDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create util dir: %v", err)
+	}
+
+	utilFile := `package util
+
+func Add(a, b int) int {
+	return a + b
+}
+
+func ProcessData(data []int) []int {
+	result := make([]int, 0, len(data))
+	for _, v := range data {
+		if v > 0 {
+			result = append(result, v*2)
+		}
+	}
+	return result
+}
+`
+
+	err = os.WriteFile(filepath.Join(mainDir, "main.go"), []byte(mainFile), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create main file: %v", err)
+	}
+
+	err = os.WriteFile(filepath.Join(utilDir, "util.go"), []byte(utilFile), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create util file: %v", err)
+	}
+
+	analyzer := NewComplexityAnalyzer()
+	result, err := analyzer.AnalyzeProject(tmpDir)
+
+	if err != nil {
+		t.Fatalf("AnalyzeProject failed: %v", err)
+	}
+
+	if len(result.Packages) != 2 {
+		t.Errorf("Expected 2 packages, got %d", len(result.Packages))
+	}
+
+	if result.Summary.TotalFunctions != 4 {
+		t.Errorf("Expected 4 total functions, got %d", result.Summary.TotalFunctions)
+	}
+
+	if result.Summary.QualityGrade == "" {
+		t.Error("Expected quality grade to be assigned")
+	}
+
+	if result.Summary.AverageCyclomaticComplexity <= 0 {
+		t.Error("Expected positive average complexity")
+	}
+}
+
+// TestComplexityAnalyzer_CalculatePackageMetrics tests package metrics calculation
+func TestComplexityAnalyzer_CalculatePackageMetrics(t *testing.T) {
+	analyzer := NewComplexityAnalyzer()
+
+	// Create test package with files
+	pkg := &PackageComplexity{
+		PackagePath: "test/package",
+		Files: []FileComplexity{
+			{
+				FilePath:    "file1.go",
+				LinesOfCode: 50,
+				Functions: []FunctionMetrics{
+					{CyclomaticComplexity: 2},
+					{CyclomaticComplexity: 4},
+				},
+				AverageCyclomaticComplexity: 3.0,
+				MaintainabilityIndex:        80.0,
+				TechnicalDebtMinutes:        30,
+				Violations: []ComplexityViolation{
+					{Type: "test", Severity: "Minor"},
+				},
+			},
+			{
+				FilePath:    "file2.go",
+				LinesOfCode: 30,
+				Functions: []FunctionMetrics{
+					{CyclomaticComplexity: 1},
+				},
+				AverageCyclomaticComplexity: 1.0,
+				MaintainabilityIndex:        90.0,
+				TechnicalDebtMinutes:        10,
+			},
+		},
+	}
+
+	analyzer.calculatePackageMetrics(pkg)
+
+	if pkg.TotalLinesOfCode != 80 {
+		t.Errorf("Expected 80 total lines, got %d", pkg.TotalLinesOfCode)
+	}
+
+	if pkg.TotalFunctions != 3 {
+		t.Errorf("Expected 3 total functions, got %d", pkg.TotalFunctions)
+	}
+
+	if pkg.TechnicalDebtHours == 0 {
+		t.Error("Expected positive technical debt hours")
+	}
+
+	if len(pkg.Violations) != 1 {
+		t.Errorf("Expected 1 violation, got %d", len(pkg.Violations))
+	}
+}
+
+// TestComplexityAnalyzer_CalculateProjectSummary tests project summary calculation
+func TestComplexityAnalyzer_CalculateProjectSummary(t *testing.T) {
+	analyzer := NewComplexityAnalyzer()
+
+	project := &ProjectComplexity{
+		Packages: []PackageComplexity{
+			{
+				PackagePath:    "pkg1",
+				TotalFunctions: 5,
+				Files: []FileComplexity{
+					{LinesOfCode: 100},
+					{LinesOfCode: 50},
+				},
+				TotalLinesOfCode:            150,
+				AverageCyclomaticComplexity: 3.0,
+				MaintainabilityIndex:        75.0,
+				TechnicalDebtHours:          2.0,
+				Violations: []ComplexityViolation{
+					{Type: "test1"}, {Type: "test2"},
+				},
+			},
+			{
+				PackagePath:    "pkg2",
+				TotalFunctions: 3,
+				Files: []FileComplexity{
+					{LinesOfCode: 80},
+				},
+				TotalLinesOfCode:            80,
+				AverageCyclomaticComplexity: 2.0,
+				MaintainabilityIndex:        85.0,
+				TechnicalDebtHours:          1.0,
+				Violations: []ComplexityViolation{
+					{Type: "test3"},
+				},
+			},
+		},
+	}
+
+	analyzer.calculateProjectSummary(project)
+
+	summary := &project.Summary
+
+	if summary.TotalFiles != 3 {
+		t.Errorf("Expected 3 total files, got %d", summary.TotalFiles)
+	}
+
+	if summary.TotalFunctions != 8 {
+		t.Errorf("Expected 8 total functions, got %d", summary.TotalFunctions)
+	}
+
+	if summary.TotalLinesOfCode != 230 {
+		t.Errorf("Expected 230 total lines, got %d", summary.TotalLinesOfCode)
+	}
+
+	if summary.ViolationCount != 3 {
+		t.Errorf("Expected 3 violations, got %d", summary.ViolationCount)
+	}
+
+	if summary.QualityGrade == "" {
+		t.Error("Expected quality grade to be assigned")
+	}
+
+	if summary.TechnicalDebtDays <= 0 {
+		t.Error("Expected positive technical debt days")
+	}
+}
+
+// TestComplexityAnalyzer_ContainsGoFiles tests Go file detection
+func TestComplexityAnalyzer_ContainsGoFiles(t *testing.T) {
+	analyzer := NewComplexityAnalyzer()
+
+	// Test directory with Go files
+	tmpDir := t.TempDir()
+	goFile := filepath.Join(tmpDir, "test.go")
+	err := os.WriteFile(goFile, []byte("package test"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create Go file: %v", err)
+	}
+
+	if !analyzer.containsGoFiles(tmpDir) {
+		t.Error("Expected directory to contain Go files")
+	}
+
+	// Test directory without Go files
+	emptyDir := t.TempDir()
+	if analyzer.containsGoFiles(emptyDir) {
+		t.Error("Expected directory to not contain Go files")
+	}
+
+	// Test non-existent directory
+	if analyzer.containsGoFiles("/non/existent/path") {
+		t.Error("Expected non-existent directory to not contain Go files")
+	}
+}
+
+// TestComplexityAnalyzer_ShouldSkipDirectory tests directory skipping logic
+func TestComplexityAnalyzer_ShouldSkipDirectory(t *testing.T) {
+	analyzer := NewComplexityAnalyzer()
+
+	testCases := []struct {
+		name     string
+		dirName  string
+		expected bool
+	}{
+		{"vendor directory", "vendor", true},
+		{"node_modules directory", "node_modules", true},
+		{"dot directory", ".git", true},
+		{"test directory", "test", false},
+		{"normal directory", "internal", false},
+		{"underscore directory", "_examples", false}, // Directory skipping only checks for specific paths, not patterns
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := analyzer.shouldSkipDirectory(tc.dirName)
+			if result != tc.expected {
+				t.Errorf("Expected %v for directory %s, got %v", tc.expected, tc.dirName, result)
+			}
+		})
+	}
+}
+
+// TestComplexityAnalyzer_GetFileName tests file name extraction
+func TestComplexityAnalyzer_GetFileName(t *testing.T) {
+	analyzer := NewComplexityAnalyzer()
+
+	testCases := []struct {
+		path     string
+		expected string
+	}{
+		{"/path/to/file.go", "file.go"},
+		{"file.go", "file.go"},
+		{"/path/to/complex_file.go", "complex_file.go"},
+		{"", ""},
+		{"/path/to/", ""},
+	}
+
+	for _, tc := range testCases {
+		result := analyzer.getFileName(tc.path)
+		if result != tc.expected {
+			t.Errorf("Expected %s for path %s, got %s", tc.expected, tc.path, result)
+		}
+	}
+}
+
+// TestComplexityAnalyzer_QualityAssessment tests quality assessment generation
+func TestComplexityAnalyzer_QualityAssessment(t *testing.T) {
+	analyzer := NewComplexityAnalyzer()
+
+	project := &ProjectComplexity{
+		Summary: ComplexitySummary{
+			QualityGrade:                "B",
+			TotalFiles:                  10,
+			TotalFunctions:              50,
+			AverageCyclomaticComplexity: 4.2,
+			MaintainabilityIndex:        75.5,
+			TechnicalDebtDays:           1.2,
+			ViolationCount:              8,
+		},
+	}
+
+	var buf bytes.Buffer
+	analyzer.writeQualityAssessment(&buf, &project.Summary)
+
+	output := buf.String()
+
+	expectedSections := []string{
+		"Code Quality Indicators",
+		"**Complexity**:",
+		"**Maintainability**:",
+		"**Technical Debt**:",
+		"**Violations**:",
+	}
+
+	for _, section := range expectedSections {
+		if !strings.Contains(output, section) {
+			t.Errorf("Quality assessment missing section: %s", section)
+		}
+	}
+}
+
+// TestComplexityAnalyzer_SeverityIcon tests severity icon mapping
+func TestComplexityAnalyzer_SeverityIcon(t *testing.T) {
+	analyzer := NewComplexityAnalyzer()
+
+	testCases := []struct {
+		severity string
+		expected string
+	}{
+		{"Critical", "🔴"},
+		{"Major", "🟠"},
+		{"Minor", "🟡"},
+		{"Warning", "⚠️"},
+		{"Unknown", "⚠️"}, // Default case returns ⚠️
+	}
+
+	for _, tc := range testCases {
+		result := analyzer.getSeverityIcon(tc.severity)
+		if result != tc.expected {
+			t.Errorf("Expected %s for severity %s, got %s", tc.expected, tc.severity, result)
+		}
+	}
+}
+
+// TestComplexityAnalyzer_EdgeCases tests various edge cases
+func TestComplexityAnalyzer_EdgeCases(t *testing.T) {
+	analyzer := NewComplexityAnalyzer()
+
+	t.Run("Empty file analysis", func(t *testing.T) {
+		emptyFile := createTempGoFile(t, "empty.go", "package test\n")
+		defer os.Remove(emptyFile)
+
+		result, err := analyzer.AnalyzeFile(emptyFile)
+		if err != nil {
+			t.Fatalf("Failed to analyze empty file: %v", err)
+		}
+
+		if len(result.Functions) != 0 {
+			t.Errorf("Expected 0 functions in empty file, got %d", len(result.Functions))
+		}
+
+		if result.LinesOfCode != 1 {
+			t.Errorf("Expected 1 line of code, got %d", result.LinesOfCode)
+		}
+	})
+
+	t.Run("File with only comments", func(t *testing.T) {
+		commentFile := `package test
+// This is a comment
+/* This is a block comment */
+// Another comment
+`
+		testFile := createTempGoFile(t, "comments.go", commentFile)
+		defer os.Remove(testFile)
+
+		result, err := analyzer.AnalyzeFile(testFile)
+		if err != nil {
+			t.Fatalf("Failed to analyze comment file: %v", err)
+		}
+
+		if result.LinesOfCode != 1 { // Only package declaration
+			t.Errorf("Expected 1 line of code (excluding comments), got %d", result.LinesOfCode)
+		}
+	})
+
+	t.Run("Non-existent file", func(t *testing.T) {
+		_, err := analyzer.AnalyzeFile("/non/existent/file.go")
+		if err == nil {
+			t.Error("Expected error for non-existent file")
+		}
+	})
+
+	t.Run("Invalid Go file", func(t *testing.T) {
+		invalidFile := createTempGoFile(t, "invalid.go", "this is not valid go code")
+		defer os.Remove(invalidFile)
+
+		_, err := analyzer.AnalyzeFile(invalidFile)
+		if err == nil {
+			t.Error("Expected error for invalid Go file")
+		}
+	})
+}

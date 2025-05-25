@@ -253,12 +253,16 @@
 - [x] Test cross-component integration
 **Status**: ✅ **COMPLETED** - Comprehensive integration test suite for CLI workflows
 
-### 🔄 Task 8: Implement code complexity metrics
-- [ ] Add cyclomatic complexity measurement
-- [ ] Create maintainability index calculation
-- [ ] Implement technical debt tracking
-- [ ] Add complexity reporting to CI
-**Status**: 🔄 **IN PROGRESS** - Planning and design phase
+### ✅ Task 8: Implement code complexity metrics
+- [x] Add cyclomatic complexity measurement
+- [x] Create maintainability index calculation
+- [x] Implement technical debt tracking
+- [x] Add complexity reporting to CI
+- [x] Create CLI command interface (`go-sentinel complexity`)
+- [x] Implement multiple output formats (text, JSON, HTML)
+- [x] Add comprehensive test suite (13 tests, 60.3% coverage)
+- [x] Integrate with Makefile and CI/CD pipeline
+**Status**: ✅ **COMPLETED** - Full complexity metrics system operational
 
 ### ⏳ Task 9: Add pre-commit hooks
 - [ ] Implement git hooks for code quality
@@ -301,6 +305,158 @@ The modular architecture migration that was identified as critical has been **su
 **Migration Achievement**: ✅ **37 test files migrated**, **0 test files remain in CLI**
 
 See [PHASE_9_COMPLETION_SUMMARY.md](mdc:PHASE_9_COMPLETION_SUMMARY.md) for complete migration details.
+
+---
+
+## 📊 Code Quality Improvement Plan (Based on Complexity Analysis)
+
+**STATUS**: 🎯 **ACTIVE IMPROVEMENT PLAN**  
+**Current Quality Grade**: `D` (51.06% maintainability, 3.44 complexity)  
+**Target Quality Grade**: `A` (90%+ maintainability, ≤3.0 complexity)
+
+### 🚨 CRITICAL ISSUES (Fix Immediately - Week 1-2)
+Based on complexity analysis results, these issues require immediate attention:
+
+- [ ] **Critical Violation #1**: `pkg/models/examples.go:Example_coverage` (85 lines)
+  - **Issue**: Function exceeds 50-line threshold by 70%
+  - **Impact**: Major maintainability issue
+  - **Solution**: Split into 3-4 smaller functions
+  - **Time Estimate**: 2 hours
+  - **Priority**: CRITICAL
+
+- [ ] **Critical Violation #2**: `pkg/models/errors.go:UserMessage` (complexity: 11)
+  - **Issue**: Cyclomatic complexity exceeds threshold
+  - **Impact**: Hard to test and maintain
+  - **Solution**: Extract error formatting logic
+  - **Time Estimate**: 1.5 hours
+  - **Priority**: CRITICAL
+
+- [ ] **Critical Violation #3**: Technical Debt Hotspot - `pkg/models/examples.go`
+  - **Issue**: 9.4% technical debt ratio (target: <5%)
+  - **Impact**: 29 minutes accumulated debt
+  - **Solution**: Refactor example functions
+  - **Time Estimate**: 3 hours
+  - **Priority**: CRITICAL
+
+- [ ] **Critical Violation #4**: Zero Maintainability Files
+  - **Files**: `pkg/models/test_types.go`, `stress_tests/main.go`
+  - **Issue**: 0% maintainability index
+  - **Solution**: Add meaningful content or remove if unused
+  - **Time Estimate**: 1 hour
+  - **Priority**: CRITICAL
+
+- [ ] **Critical Violation #5**: Multiple Function Length Violations
+  - **Count**: 15+ functions between 51-70 lines
+  - **Issue**: Functions too long for easy maintenance
+  - **Solution**: Apply extract method refactoring
+  - **Time Estimate**: 8 hours
+  - **Priority**: CRITICAL
+
+### 🔧 MAJOR IMPROVEMENTS (Month 1 - Quality Grade C Target)
+
+- [ ] **Package Refactoring**: `pkg/models/` (10 violations, 28.01% maintainability)
+  - [ ] Split large example functions into smaller utilities
+  - [ ] Improve error handling patterns
+  - [ ] Add comprehensive documentation
+  - [ ] Reduce coupling between model types
+  - **Target**: >70% maintainability, <5 violations
+  - **Time Estimate**: 16 hours
+
+- [ ] **Legacy CLI Cleanup**: `internal/cli/` (High complexity hotspot)
+  - [ ] Continue modular migration for remaining files
+  - [ ] Reduce complexity in remaining legacy compatibility layers
+  - [ ] Improve test coverage for complex functions
+  - [ ] Add interfaces to reduce coupling
+  - **Target**: Average complexity <3.5
+  - **Time Estimate**: 20 hours
+
+- [ ] **Function Complexity Reduction**: (20+ functions with complexity 11-15)
+  - [ ] Apply single responsibility principle
+  - [ ] Use guard clauses to reduce nesting
+  - [ ] Extract complex conditions into named functions
+  - [ ] Implement strategy pattern for complex logic
+  - **Target**: Max complexity ≤10 for all functions
+  - **Time Estimate**: 12 hours
+
+- [ ] **Technical Debt Reduction**: (Current: 2.58 days → Target: <1.5 days)
+  - [ ] Address all function length violations
+  - [ ] Fix parameter count violations (>5 params)
+  - [ ] Reduce nesting depth violations
+  - [ ] Implement consistent error handling
+  - **Target**: <1.5 days total debt
+  - **Time Estimate**: 24 hours
+
+### 🎯 QUALITY ENHANCEMENT (Month 2-3 - Quality Grade B Target)
+
+- [ ] **Advanced Refactoring**: (Target: 80%+ maintainability)
+  - [ ] Eliminate all functions >30 lines
+  - [ ] Implement design patterns for complex logic
+  - [ ] Add comprehensive function documentation
+  - [ ] Optimize performance-critical code paths
+  - **Target**: 80%+ maintainability across all packages
+  - **Time Estimate**: 32 hours
+
+- [ ] **Architecture Improvements**:
+  - [ ] Complete removal of legacy CLI compatibility layers
+  - [ ] Implement clean architecture principles
+  - [ ] Reduce package coupling through better interfaces
+  - [ ] Add dependency injection where appropriate
+  - **Target**: Clear package boundaries, minimal coupling
+  - **Time Estimate**: 40 hours
+
+- [ ] **Testing Excellence**: (Current: 60.3% coverage → Target: >90%)
+  - [ ] Add tests for all complex functions (complexity >5)
+  - [ ] Implement mutation testing for critical paths
+  - [ ] Add property-based testing for algorithms
+  - [ ] Create complexity-focused integration tests
+  - **Target**: >90% test coverage, zero untested complex functions
+  - **Time Estimate**: 24 hours
+
+### 🏆 EXCELLENCE ACHIEVEMENT (Month 4-6 - Quality Grade A Target)
+
+- [ ] **Code Quality Excellence**: (Target: 90%+ maintainability)
+  - [ ] Achieve 90%+ maintainability for all files
+  - [ ] Reduce average complexity to ≤2.5
+  - [ ] Zero violations above "Warning" level
+  - [ ] Implement automated quality monitoring
+  - **Target**: Quality Grade A (90%+ overall score)
+  - **Time Estimate**: 48 hours
+
+### 📊 Progress Tracking Metrics
+
+**Current Baseline** (2025-05-25):
+- Overall Quality Grade: `D`
+- Maintainability Index: 51.06%
+- Average Complexity: 3.44
+- Technical Debt: 2.58 days
+- Total Violations: 126
+- Critical Violations: 5
+
+**3-Month Target**:
+- Overall Quality Grade: `C`
+- Maintainability Index: ≥70%
+- Average Complexity: ≤3.2
+- Technical Debt: ≤1.5 days
+- Total Violations: ≤100
+- Critical Violations: ≤3
+
+**6-Month Target**:
+- Overall Quality Grade: `B`
+- Maintainability Index: ≥80%
+- Average Complexity: ≤3.0
+- Technical Debt: ≤1.0 days
+- Total Violations: ≤75
+- Critical Violations: ≤2
+
+**12-Month Target**:
+- Overall Quality Grade: `A`
+- Maintainability Index: ≥90%
+- Average Complexity: ≤2.5
+- Technical Debt: ≤0.5 days
+- Total Violations: ≤50
+- Critical Violations: 0
+
+See [docs/CODE_COMPLEXITY_METRICS.md](docs/CODE_COMPLEXITY_METRICS.md) for complete complexity analysis documentation.
 
 ---
 
