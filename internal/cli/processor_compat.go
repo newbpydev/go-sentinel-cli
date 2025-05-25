@@ -2,11 +2,14 @@ package cli
 
 import (
 	"io"
+	"strings"
 	"time"
 
 	"github.com/newbpydev/go-sentinel/internal/test/cache"
 	"github.com/newbpydev/go-sentinel/internal/test/processor"
 	"github.com/newbpydev/go-sentinel/internal/test/runner"
+	"github.com/newbpydev/go-sentinel/internal/ui/colors"
+	"github.com/newbpydev/go-sentinel/internal/ui/display"
 	"github.com/newbpydev/go-sentinel/internal/watch/coordinator"
 	"github.com/newbpydev/go-sentinel/internal/watch/core"
 	"github.com/newbpydev/go-sentinel/internal/watch/debouncer"
@@ -397,14 +400,11 @@ func NewTestWatchCoordinator(options core.WatchOptions) (*coordinator.TestWatchC
 
 // Re-export types from internal/ui/colors for backward compatibility
 
-// ColorFormatter re-exports colors.ColorFormatter
-// type ColorFormatter = colors.ColorFormatter
+// Note: We cannot directly alias the old CLI types to new UI types because they have different interfaces
+// Instead, we keep the original CLI types and add compatibility adapters where needed
 
-// IconProvider re-exports colors.IconProvider
-// type IconProvider = colors.IconProvider
-
-// TerminalDetector re-exports colors.TerminalDetector
-// type TerminalDetector = colors.TerminalDetector
+// The original CLI ColorFormatter and IconProvider are defined in colors.go
+// This compatibility layer provides bridges to the new modular UI components
 
 // Re-export types from internal/ui/display for backward compatibility
 
@@ -471,3 +471,113 @@ func NewTestWatchCoordinator(options core.WatchOptions) (*coordinator.TestWatchC
 // func FormatTestStatus(status TestStatus, formatter *ColorFormatter, icons *IconProvider) string {
 // 	return colors.FormatTestStatus(status, formatter, icons)
 // }
+
+// Re-export UI types from internal/ui for backward compatibility during TIER 7 migration
+// Note: FailedTestRenderer is already declared in failed_tests.go, so we use a compatibility wrapper
+
+// FailedTestRendererCompat provides backward compatibility for the old FailedTestRenderer
+type FailedTestRendererCompat struct {
+	writer    io.Writer
+	formatter *ColorFormatter
+	icons     *IconProvider
+	width     int
+	// New modular components
+	failureRenderer display.FailureDisplayInterface
+	errorFormatter  display.ErrorFormatterInterface
+}
+
+// NewFailedTestRendererCompat creates a new FailedTestRenderer compatibility wrapper
+func NewFailedTestRendererCompat(writer io.Writer, formatter *ColorFormatter, icons *IconProvider, width int) *FailedTestRendererCompat {
+	// Create the new modular color formatter and icon provider
+	// Access the useColors field directly since old formatter doesn't have IsEnabled() method
+	colorFormatter := colors.NewColorFormatter(formatter.useColors)
+	// Access the unicodeSupport field directly since old icon provider doesn't have SupportsUnicode() method
+	iconProvider := colors.NewIconProvider(icons.unicodeSupport)
+
+	// Create the new modular components
+	errorFormatter := display.NewErrorFormatterWithDefaults(writer, colorFormatter)
+	failureRenderer := display.NewFailureRenderer(writer, colorFormatter, iconProvider, errorFormatter, width)
+
+	return &FailedTestRendererCompat{
+		writer:          writer,
+		formatter:       formatter,
+		icons:           icons,
+		width:           width,
+		failureRenderer: failureRenderer,
+		errorFormatter:  errorFormatter,
+	}
+}
+
+// RenderFailedTestsHeaderCompat renders the header for the failed tests section (compatibility method)
+func (r *FailedTestRendererCompat) RenderFailedTestsHeaderCompat(failCount int) error {
+	return r.failureRenderer.RenderFailedTestsHeader(failCount)
+}
+
+// RenderFailedTestCompat renders a detailed view of a failed test with source context (compatibility method)
+func (r *FailedTestRendererCompat) RenderFailedTestCompat(test *TestResult) error {
+	// Convert old TestResult to new models.TestResult
+	newTest := r.convertTestResult(test)
+	return r.failureRenderer.RenderFailedTest(newTest)
+}
+
+// RenderFailedTestsCompat renders a section with all failed tests (compatibility method)
+func (r *FailedTestRendererCompat) RenderFailedTestsCompat(tests []*TestResult) error {
+	// Convert old TestResult slice to new models.TestResult slice
+	newTests := make([]*models.TestResult, len(tests))
+	for i, test := range tests {
+		newTests[i] = r.convertTestResult(test)
+	}
+	return r.failureRenderer.RenderFailedTests(newTests)
+}
+
+// getTerminalWidthCompat returns the current terminal width or default (compatibility method)
+func (r *FailedTestRendererCompat) getTerminalWidthCompat() int {
+	return r.failureRenderer.GetTerminalWidth()
+}
+
+// convertTestResult converts old CLI TestResult to new models.TestResult
+func (r *FailedTestRendererCompat) convertTestResult(oldTest *TestResult) *models.TestResult {
+	if oldTest == nil {
+		return nil
+	}
+
+	newTest := &models.TestResult{
+		Name:     oldTest.Name,
+		Status:   models.TestStatus(oldTest.Status),
+		Duration: oldTest.Duration,
+		Package:  oldTest.Package,
+		// Convert single string Output to []string slice
+		Output: []string{oldTest.Output},
+	}
+
+	// Convert error information if present
+	if oldTest.Error != nil {
+		newTest.Error = &models.TestError{
+			Message:    oldTest.Error.Message,
+			Type:       oldTest.Error.Type,
+			StackTrace: strings.Split(oldTest.Error.Stack, "\n"),
+			Expected:   oldTest.Error.Expected,
+			Actual:     oldTest.Error.Actual,
+		}
+
+		// Convert location information
+		if oldTest.Error.Location != nil {
+			newTest.Error.SourceFile = oldTest.Error.Location.File
+			newTest.Error.SourceLine = oldTest.Error.Location.Line
+			newTest.Error.SourceColumn = oldTest.Error.Location.Column
+		}
+
+		// Convert source context information
+		if len(oldTest.Error.SourceContext) > 0 {
+			newTest.Error.SourceContext = oldTest.Error.SourceContext
+			// Calculate context start line based on highlighted line
+			if oldTest.Error.HighlightedLine >= 0 && oldTest.Error.HighlightedLine < len(oldTest.Error.SourceContext) {
+				if oldTest.Error.Location != nil {
+					newTest.Error.ContextStartLine = oldTest.Error.Location.Line - oldTest.Error.HighlightedLine
+				}
+			}
+		}
+	}
+
+	return newTest
+}
