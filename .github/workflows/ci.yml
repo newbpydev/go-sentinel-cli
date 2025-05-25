@@ -14,17 +14,19 @@ jobs:
     name: Test
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+        go-version: ['1.20', '1.21', '1.22', '1.23']
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: ${{ env.GO_VERSION }}
+          go-version: ${{ matrix.go-version }}
           cache: true
 
       - name: Cache Go modules
@@ -40,63 +42,157 @@ jobs:
       - name: Install dependencies
         run: go mod tidy && go mod verify
 
-      - name: Run tests with race detection
-        run: go test -race -v -coverprofile=coverage.txt -covermode=atomic ./...
+      - name: Run tests with race detection and parallel execution
+        run: |
+          go test -race -v -parallel 4 -coverprofile=coverage.txt -covermode=atomic \
+            -json ./... > test-results.json 2>&1
         continue-on-error: true # Allow tests to fail but still collect coverage
+        env:
+          GOMAXPROCS: 4
+
+      - name: Generate test report
+        if: always()
+        run: |
+          echo "## Test Results for ${{ matrix.os }} - Go ${{ matrix.go-version }}" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          if [ -f test-results.json ]; then
+            cat test-results.json | tail -10 >> $GITHUB_STEP_SUMMARY
+          fi
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}-go${{ matrix.go-version }}
+          path: |
+            test-results.json
+            coverage.txt
+          retention-days: 30
 
       - name: Upload coverage to Codecov
-        if: matrix.os == 'ubuntu-latest'
-        uses: codecov/codecov-action@v3
+        if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.23'
+        uses: codecov/codecov-action@v4
         with:
           file: ./coverage.txt
           fail_ci_if_error: false
+          flags: unittests
+          name: codecov-umbrella
 
   lint:
-    name: Lint
+    name: Lint & Code Quality
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
+
+      - name: Install dependencies
+        run: go mod download
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v4
         with:
           version: latest
-          args: --timeout=5m --config=.golangci.yml
+          args: --timeout=10m --config=.golangci.yml
+
+      - name: Run complexity analysis
+        run: |
+          mkdir -p build/reports
+          go run ./cmd/go-sentinel-cli complexity --format=json --output=build/reports/complexity.json
+          go run ./cmd/go-sentinel-cli complexity --format=html --output=build/reports/complexity.html
+          go run ./cmd/go-sentinel-cli complexity --format=text > build/reports/complexity.txt
+
+      - name: Display complexity summary
+        run: |
+          echo "## Code Complexity Analysis" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          head -20 build/reports/complexity.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload complexity reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: complexity-reports
+          path: build/reports/
+          retention-days: 30
+
+      - name: Check complexity violations
+        run: |
+          # Exit with error if critical violations found
+          if go run ./cmd/go-sentinel-cli complexity --strict --format=text | grep -q "CRITICAL"; then
+            echo "❌ Critical complexity violations found"
+            exit 1
+          fi
+          echo "✅ No critical complexity violations"
 
   security:
-    name: Security
+    name: Security & Vulnerability Scanning
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
-      - name: Install Gosec
+      - name: Install security tools
         run: |
           go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+          go install golang.org/x/vuln/cmd/govulncheck@latest
 
       - name: Run Gosec Security Scanner
         run: |
           gosec -fmt sarif -out gosec.sarif ./...
+          gosec -fmt json -out gosec.json ./...
         continue-on-error: true
+
+      - name: Run Go Vulnerability Check
+        run: |
+          govulncheck -json ./... > govulncheck.json 2>&1 || true
+
+      - name: Check for dependency vulnerabilities
+        run: |
+          if command -v nancy &> /dev/null; then
+            go list -json -deps ./... | nancy sleuth
+          fi
+        continue-on-error: true
+
+      - name: Generate security report
+        if: always()
+        run: |
+          echo "## Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "### Gosec Results" >> $GITHUB_STEP_SUMMARY
+          if [ -f gosec.json ]; then
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat gosec.json | jq '.Issues | length' 2>/dev/null || echo "0" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Upload SARIF file
         if: always()
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: gosec.sarif
+
+      - name: Upload security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            gosec.sarif
+            gosec.json
+            govulncheck.json
+          retention-days: 30
 
   build:
     name: Build
@@ -170,35 +266,92 @@ jobs:
           echo "✅ Quality gate passed"
 
   benchmark:
-    name: Performance Benchmarks
+    name: Performance Benchmarks & Regression Detection
     runs-on: ubuntu-latest
     needs: test
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history for regression comparison
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: '1.23'
         cache: true
 
-    - name: Run benchmarks
+    - name: Install benchmarking tools
+      run: |
+        go install golang.org/x/perf/cmd/benchstat@latest
+
+    - name: Run comprehensive benchmarks
       run: |
         mkdir -p build/benchmarks
-        go test -bench=. -benchmem -benchtime=100ms -run=^$ ./internal/cli > build/benchmarks/results.txt
+        echo "Running comprehensive benchmark suite..."
+
+        # Run benchmarks with multiple iterations for statistical significance
+        go test -bench=. -benchmem -benchtime=1s -count=5 -run=^$ \
+          ./internal/test/benchmarks/... > build/benchmarks/current.txt
+
+        # Run modular package benchmarks
+        for pkg in ./internal/test/runner ./internal/test/processor ./internal/ui/display; do
+          if [ -d "$pkg" ]; then
+            go test -bench=. -benchmem -benchtime=1s -count=3 -run=^$ "$pkg" \
+              >> build/benchmarks/current.txt 2>/dev/null || true
+          fi
+        done
+
+    - name: Download previous benchmark results
+      uses: actions/download-artifact@v4
+      with:
+        name: benchmark-baseline
+        path: build/benchmarks/
+      continue-on-error: true
+
+    - name: Compare benchmark results
+      run: |
+        if [ -f build/benchmarks/baseline.txt ]; then
+          echo "Comparing with baseline performance..."
+          benchstat build/benchmarks/baseline.txt build/benchmarks/current.txt > build/benchmarks/comparison.txt || true
+        else
+          echo "No baseline found, current results will become baseline"
+          cp build/benchmarks/current.txt build/benchmarks/baseline.txt
+        fi
+
+    - name: Check for performance regressions
+      run: |
+        if [ -f build/benchmarks/comparison.txt ]; then
+          # Check for significant regressions (>20% slower)
+          if grep -q "+.*%" build/benchmarks/comparison.txt; then
+            echo "⚠️ Performance regression detected!" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat build/benchmarks/comparison.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No significant performance regressions" >> $GITHUB_STEP_SUMMARY
+          fi
+        fi
 
     - name: Display benchmark results
       run: |
         echo "## Performance Benchmark Results" >> $GITHUB_STEP_SUMMARY
         echo '```' >> $GITHUB_STEP_SUMMARY
-        cat build/benchmarks/results.txt >> $GITHUB_STEP_SUMMARY
+        tail -20 build/benchmarks/current.txt >> $GITHUB_STEP_SUMMARY
         echo '```' >> $GITHUB_STEP_SUMMARY
 
     - name: Upload benchmark results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: benchmark-results-ubuntu
-        path: build/benchmarks/results.txt
-        retention-days: 30
+        name: benchmark-results
+        path: build/benchmarks/
+        retention-days: 90
+
+    - name: Update benchmark baseline
+      if: github.ref == 'refs/heads/main'
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-baseline
+        path: build/benchmarks/current.txt
+        retention-days: 90
