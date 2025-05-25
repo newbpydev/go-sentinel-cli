@@ -20,7 +20,7 @@ find . -name "*.go" -not -path "./test*" -not -path "./.trunk/*" -not -path "./v
                 if (char == "{") brace_count++
                 if (char == "}") brace_count--
             }
-            
+
             # Function ends when braces balance
             if (brace_count == 0 && in_func && NR > func_start) {
                 func_lines = NR - func_start + 1
@@ -32,4 +32,4 @@ find . -name "*.go" -not -path "./test*" -not -path "./.trunk/*" -not -path "./v
         }
         ' "$file"
     fi
-done | sort 
+done | sort

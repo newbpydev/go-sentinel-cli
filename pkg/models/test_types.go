@@ -1,3 +1,38 @@
+// Package models provides type definitions and interfaces for test execution and processing.
+//
+// This file contains legacy types and interfaces used during the migration from the
+// monolithic CLI package to the modular architecture. These types provide backward
+// compatibility while the system transitions to the new model architecture.
+//
+// Key components:
+//   - TestEvent: JSON event structure from Go test output
+//   - TestProgress: Real-time test execution progress tracking
+//   - TestRunStats: Comprehensive statistics about test runs
+//   - TestSuite: Collection of tests from a single file
+//   - TestProcessorInterface: Interface for test output processors
+//
+// Legacy compatibility:
+//   - StatusPassed, StatusFailed, etc.: Deprecated constants for backward compatibility
+//   - Will be removed in favor of TestStatus* constants
+//
+// Example usage:
+//
+//	// Processing test events
+//	event := &TestEvent{
+//		Time:    time.Now().Format(time.RFC3339Nano),
+//		Action:  "pass",
+//		Package: "github.com/example/pkg",
+//		Test:    "TestExample",
+//		Elapsed: 0.15,
+//	}
+//
+//	// Tracking test progress
+//	progress := &TestProgress{
+//		CompletedTests: 5,
+//		TotalTests:     10,
+//		CurrentFile:    "main_test.go",
+//		Status:         TestStatusRunning,
+//	}
 package models
 
 import (

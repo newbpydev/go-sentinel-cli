@@ -117,12 +117,12 @@ func ComplexFunction(x int) string {
 	} else if x == 0 {
 		return "zero"
 	}
-	
+
 	for i := 0; i < x; i++ {
 		if i%2 == 0 {
 			continue
 		}
-		
+
 		switch i {
 		case 1:
 			return "one"
@@ -134,7 +134,7 @@ func ComplexFunction(x int) string {
 			}
 		}
 	}
-	
+
 	return "positive"
 }
 `
@@ -532,7 +532,7 @@ func BenchmarkFunction(x int) int {
 	if x < 0 {
 		return -1
 	}
-	
+
 	result := 0
 	for i := 0; i < x; i++ {
 		if i%2 == 0 {
@@ -541,7 +541,7 @@ func BenchmarkFunction(x int) int {
 			result -= i
 		}
 	}
-	
+
 	return result
 }
 `
@@ -583,13 +583,13 @@ func ComplexFunc(a int) string {
 	} else if a == 0 {
 		return "zero"
 	}
-	
+
 	for i := 0; i < a; i++ {
 		if i%2 == 0 {
 			continue
 		}
 	}
-	
+
 	return "positive"
 }
 `

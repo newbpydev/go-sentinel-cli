@@ -75,6 +75,3 @@ tmp_dir = "tmp"
 [misc]
   # clean the tmp directory on exit
   clean_on_exit = true
-
-
-

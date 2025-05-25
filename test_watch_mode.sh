@@ -26,4 +26,4 @@ sleep 3
 echo "Stopping watch mode..."
 kill $WATCH_PID
 
-echo "Test completed." 
+echo "Test completed."

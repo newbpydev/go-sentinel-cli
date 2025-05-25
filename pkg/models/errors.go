@@ -121,29 +121,33 @@ func (e *SentinelError) Is(target error) bool {
 // UserMessage returns a sanitized message safe for end users
 func (e *SentinelError) UserMessage() string {
 	if !e.UserSafe {
-		// Return generic message for internal errors
-		switch e.Type {
-		case ErrorTypeConfig:
-			return "Configuration error occurred"
-		case ErrorTypeFileSystem:
-			return "File system error occurred"
-		case ErrorTypeTestExecution:
-			return "Test execution failed"
-		case ErrorTypeWatch:
-			return "File watching error occurred"
-		case ErrorTypeDependency:
-			return "Dependency resolution failed"
-		case ErrorTypeLifecycle:
-			return "Application lifecycle error"
-		case ErrorTypeValidation:
-			return "Validation failed"
-		case ErrorTypeExternal:
-			return "External service error"
-		default:
-			return "An internal error occurred"
-		}
+		return getGenericErrorMessage(e.Type)
 	}
 	return e.Message
+}
+
+// getGenericErrorMessage returns a generic user-safe message for the given error type
+func getGenericErrorMessage(errorType ErrorType) string {
+	switch errorType {
+	case ErrorTypeConfig:
+		return "Configuration error occurred"
+	case ErrorTypeFileSystem:
+		return "File system error occurred"
+	case ErrorTypeTestExecution:
+		return "Test execution failed"
+	case ErrorTypeWatch:
+		return "File watching error occurred"
+	case ErrorTypeDependency:
+		return "Dependency resolution failed"
+	case ErrorTypeLifecycle:
+		return "Application lifecycle error"
+	case ErrorTypeValidation:
+		return "Validation failed"
+	case ErrorTypeExternal:
+		return "External service error"
+	default:
+		return "An internal error occurred"
+	}
 }
 
 // WithContext adds additional context to the error

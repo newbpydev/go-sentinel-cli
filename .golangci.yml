@@ -24,17 +24,17 @@ linters:
 linters-settings:
   govet:
     check-shadowing: true
-  
+
   gosec:
     includes:
       - G101-G505
-  
+
   gocyclo:
     min-complexity: 10
-  
+
   gocognit:
     min-complexity: 10
-  
+
   funlen:
     lines: 50
     statements: 30

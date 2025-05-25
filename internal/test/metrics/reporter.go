@@ -280,7 +280,7 @@ func (a *DefaultComplexityAnalyzer) generateHTMLReport(complexity *ProjectComple
     <div class="container">
         <h1>🔍 Go Sentinel CLI - Complexity Report</h1>
         <p><strong>Generated:</strong> %s</p>
-        
+
         <div class="summary">
             <div class="metric grade-%s">
                 <h3>Quality Grade</h3>
@@ -354,7 +354,7 @@ func (a *DefaultComplexityAnalyzer) generateHTMLReport(complexity *ProjectComple
 
 	fmt.Fprintf(output, `
         </div>
-        
+
         <div class="recommendations">
             <h2>💡 Recommendations</h2>
             <ul>

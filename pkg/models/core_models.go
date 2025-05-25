@@ -1,3 +1,43 @@
+// Package models provides core data structures for test execution and result management.
+//
+// This file contains fundamental data models used throughout the Go Sentinel CLI
+// for representing test results, error contexts, and package-level information.
+// These models form the foundation of the test execution and reporting system.
+//
+// Key components:
+//   - SourceLocation: Precise location information for code references
+//   - TestPackage: Package-level test aggregation and statistics
+//   - FailedTestDetail: Comprehensive information about test failures
+//   - LegacyTestResult: Backward compatibility during migration
+//   - LegacyTestError: Error representation for legacy compatibility
+//
+// Design principles:
+//   - Immutable data structures where possible
+//   - Rich metadata for debugging and reporting
+//   - Backward compatibility during migration phase
+//   - Clear separation between data and behavior
+//
+// Example usage:
+//
+//	// Creating a test package result
+//	pkg := &TestPackage{
+//		Package:     "github.com/example/auth",
+//		Duration:    150 * time.Millisecond,
+//		TestCount:   5,
+//		PassedCount: 4,
+//		FailedCount: 1,
+//		Passed:      false,
+//	}
+//
+//	// Creating source location information
+//	location := &SourceLocation{
+//		File:        "auth.go",
+//		Line:        42,
+//		Column:      15,
+//		Function:    "ValidatePassword",
+//		Context:     []string{"func ValidatePassword(pass string) bool {", "    return len(pass) > 8", "}"},
+//		ContextLine: 1,
+//	}
 package models
 
 import (

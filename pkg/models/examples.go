@@ -80,13 +80,37 @@ func Example_errorHandling() {
 // This example shows how to create test results, manage package results,
 // and generate comprehensive test summaries.
 func Example_testResults() {
-	// Create a new test result
+	// Create sample tests
+	test := createExamplePassingTest()
+	failingTest := createExampleFailingTest()
+
+	// Create package and summary
+	pkg := createExamplePackageResult(test, failingTest)
+	summary := createExampleTestSummary(pkg)
+
+	// Display results
+	displayTestResults(pkg, summary, test, failingTest)
+
+	// Output:
+	// Package: github.com/example/auth
+	// Success rate: 50.0%
+	// Tests: 1 passed, 1 failed
+	// Overall success rate: 50.0%
+	// Test TestUserLogin passed
+	// Test TestInvalidPassword failed: Expected authentication to fail, but got success
+}
+
+// createExamplePassingTest creates a sample passing test result.
+func createExamplePassingTest() *TestResult {
 	test := NewTestResult("TestUserLogin", "github.com/example/auth")
 	test.Status = TestStatusPassed
 	test.Duration = 150 * time.Millisecond
 	test.Output = []string{"=== RUN   TestUserLogin", "--- PASS: TestUserLogin (0.15s)"}
+	return test
+}
 
-	// Create a failing test with error details
+// createExampleFailingTest creates a sample failing test result.
+func createExampleFailingTest() *TestResult {
 	failingTest := NewTestResult("TestInvalidPassword", "github.com/example/auth")
 	failingTest.Status = TestStatusFailed
 	failingTest.Duration = 50 * time.Millisecond
@@ -98,38 +122,40 @@ func Example_testResults() {
 		Expected:   "false",
 		Actual:     "true",
 	}
+	return failingTest
+}
 
-	// Create a package result and add tests
+// createExamplePackageResult creates a sample package result with tests.
+func createExamplePackageResult(test, failingTest *TestResult) *PackageResult {
 	pkg := NewPackageResult("github.com/example/auth")
 	pkg.AddTest(test)
 	pkg.AddTest(failingTest)
 	pkg.Duration = 200 * time.Millisecond
+	return pkg
+}
 
-	// Create a test summary
+// createExampleTestSummary creates a sample test summary.
+func createExampleTestSummary(pkg *PackageResult) *TestSummary {
 	summary := NewTestSummary()
 	summary.AddPackageResult(pkg)
+	return summary
+}
 
-	// Display results
+// displayTestResults displays test results and status information.
+func displayTestResults(pkg *PackageResult, summary *TestSummary, test, failingTest *TestResult) {
+	// Display package results
 	fmt.Printf("Package: %s\n", pkg.Package)
 	fmt.Printf("Success rate: %.1f%%\n", pkg.GetSuccessRate()*100)
 	fmt.Printf("Tests: %d passed, %d failed\n", pkg.PassedCount, pkg.FailedCount)
 	fmt.Printf("Overall success rate: %.1f%%\n", summary.GetSuccessRate()*100)
 
-	// Check test status
+	// Check individual test status
 	if test.IsSuccess() {
 		fmt.Printf("Test %s passed\n", test.Name)
 	}
 	if failingTest.IsFailure() {
 		fmt.Printf("Test %s failed: %s\n", failingTest.Name, failingTest.Error.Message)
 	}
-
-	// Output:
-	// Package: github.com/example/auth
-	// Success rate: 50.0%
-	// Tests: 1 passed, 1 failed
-	// Overall success rate: 50.0%
-	// Test TestUserLogin passed
-	// Test TestInvalidPassword failed: Expected authentication to fail, but got success
 }
 
 // Example_fileChanges demonstrates tracking file system changes.
@@ -181,43 +207,12 @@ func Example_fileChanges() {
 // This example shows how to set up test and watch configurations
 // for different scenarios.
 func Example_configuration() {
-	// Create a test configuration for unit tests
-	testConfig := &TestConfiguration{
-		Packages:        []string{"./internal/...", "./pkg/..."},
-		Verbose:         true,
-		Coverage:        true,
-		JSONOutput:      true,
-		Parallel:        4,
-		Timeout:         5 * time.Minute,
-		Tags:            []string{"unit", "integration"},
-		Environment:     map[string]string{"TEST_ENV": "development"},
-		CoverageProfile: "coverage.out",
-	}
+	// Create configurations
+	testConfig := createExampleTestConfiguration()
+	watchConfig := createExampleWatchConfiguration()
 
-	// Create a watch configuration
-	watchConfig := &WatchConfiguration{
-		Enabled:          true,
-		Paths:            []string{"./internal", "./pkg", "./cmd"},
-		IgnorePatterns:   []string{"*.tmp", "vendor/", ".git/"},
-		TestPatterns:     []string{"*_test.go"},
-		DebounceInterval: 500 * time.Millisecond,
-		RunOnStart:       true,
-		ClearOnRerun:     true,
-		NotifyOnFailure:  true,
-	}
-
-	// Display configuration
-	fmt.Printf("Test Configuration:\n")
-	fmt.Printf("- Packages: %v\n", testConfig.Packages)
-	fmt.Printf("- Coverage: %t\n", testConfig.Coverage)
-	fmt.Printf("- Parallel: %d\n", testConfig.Parallel)
-	fmt.Printf("- Timeout: %v\n", testConfig.Timeout)
-
-	fmt.Printf("\nWatch Configuration:\n")
-	fmt.Printf("- Enabled: %t\n", watchConfig.Enabled)
-	fmt.Printf("- Paths: %v\n", watchConfig.Paths)
-	fmt.Printf("- Debounce: %v\n", watchConfig.DebounceInterval)
-	fmt.Printf("- Clear on rerun: %t\n", watchConfig.ClearOnRerun)
+	// Display configurations
+	displayConfigurations(testConfig, watchConfig)
 
 	// Output:
 	// Test Configuration:
@@ -231,6 +226,52 @@ func Example_configuration() {
 	// - Paths: [./internal ./pkg ./cmd]
 	// - Debounce: 500ms
 	// - Clear on rerun: true
+}
+
+// createExampleTestConfiguration creates a sample test configuration.
+func createExampleTestConfiguration() *TestConfiguration {
+	return &TestConfiguration{
+		Packages:        []string{"./internal/...", "./pkg/..."},
+		Verbose:         true,
+		Coverage:        true,
+		JSONOutput:      true,
+		Parallel:        4,
+		Timeout:         5 * time.Minute,
+		Tags:            []string{"unit", "integration"},
+		Environment:     map[string]string{"TEST_ENV": "development"},
+		CoverageProfile: "coverage.out",
+	}
+}
+
+// createExampleWatchConfiguration creates a sample watch configuration.
+func createExampleWatchConfiguration() *WatchConfiguration {
+	return &WatchConfiguration{
+		Enabled:          true,
+		Paths:            []string{"./internal", "./pkg", "./cmd"},
+		IgnorePatterns:   []string{"*.tmp", "vendor/", ".git/"},
+		TestPatterns:     []string{"*_test.go"},
+		DebounceInterval: 500 * time.Millisecond,
+		RunOnStart:       true,
+		ClearOnRerun:     true,
+		NotifyOnFailure:  true,
+	}
+}
+
+// displayConfigurations displays test and watch configuration information.
+func displayConfigurations(testConfig *TestConfiguration, watchConfig *WatchConfiguration) {
+	// Display test configuration
+	fmt.Printf("Test Configuration:\n")
+	fmt.Printf("- Packages: %v\n", testConfig.Packages)
+	fmt.Printf("- Coverage: %t\n", testConfig.Coverage)
+	fmt.Printf("- Parallel: %d\n", testConfig.Parallel)
+	fmt.Printf("- Timeout: %v\n", testConfig.Timeout)
+
+	// Display watch configuration
+	fmt.Printf("\nWatch Configuration:\n")
+	fmt.Printf("- Enabled: %t\n", watchConfig.Enabled)
+	fmt.Printf("- Paths: %v\n", watchConfig.Paths)
+	fmt.Printf("- Debounce: %v\n", watchConfig.DebounceInterval)
+	fmt.Printf("- Clear on rerun: %t\n", watchConfig.ClearOnRerun)
 }
 
 // Example_testStatus demonstrates working with test status values.
@@ -286,8 +327,29 @@ func Example_testStatus() {
 // This example shows how to create and analyze coverage information
 // at different levels (test, file, function, package).
 func Example_coverage() {
-	// Create function coverage
-	funcCoverage := &FunctionCoverage{
+	// Create sample coverage data
+	funcCoverage := createExampleFunctionCoverage()
+	fileCoverage := createExampleFileCoverage()
+	pkgCoverage := createExamplePackageCoverage(fileCoverage, funcCoverage)
+	testCoverage := createExampleTestCoverage(fileCoverage)
+
+	// Display coverage information
+	displayCoverageInformation(pkgCoverage, fileCoverage, funcCoverage, testCoverage)
+
+	// Output:
+	// Package Coverage: github.com/example/handlers
+	// - Overall: 82.3% (234/284 lines)
+	// File Coverage: handler.go
+	// - Coverage: 78.5% (89/113 statements)
+	// Function Coverage: ProcessRequest
+	// - Coverage: 85.7% (called 15 times)
+	// - Lines: 10-25 in handler.go
+	// ✓ Coverage meets threshold of 80.0%
+}
+
+// createExampleFunctionCoverage creates a sample function coverage object.
+func createExampleFunctionCoverage() *FunctionCoverage {
+	return &FunctionCoverage{
 		Name:       "ProcessRequest",
 		FilePath:   "handler.go",
 		StartLine:  10,
@@ -296,9 +358,11 @@ func Example_coverage() {
 		IsCovered:  true,
 		CallCount:  15,
 	}
+}
 
-	// Create file coverage
-	fileCoverage := &FileCoverage{
+// createExampleFileCoverage creates a sample file coverage object.
+func createExampleFileCoverage() *FileCoverage {
+	return &FileCoverage{
 		FilePath:          "handler.go",
 		Percentage:        78.5,
 		CoveredLines:      157,
@@ -308,9 +372,11 @@ func Example_coverage() {
 		LinesCovered:      []int{1, 2, 3, 5, 7, 8, 10, 11, 12},
 		LinesUncovered:    []int{4, 6, 9, 13, 14},
 	}
+}
 
-	// Create package coverage
-	pkgCoverage := &PackageCoverage{
+// createExamplePackageCoverage creates a sample package coverage object.
+func createExamplePackageCoverage(fileCoverage *FileCoverage, funcCoverage *FunctionCoverage) *PackageCoverage {
+	return &PackageCoverage{
 		Package:           "github.com/example/handlers",
 		Percentage:        82.3,
 		CoveredLines:      234,
@@ -324,9 +390,11 @@ func Example_coverage() {
 			"ProcessRequest": funcCoverage,
 		},
 	}
+}
 
-	// Create test coverage
-	testCoverage := &TestCoverage{
+// createExampleTestCoverage creates a sample test coverage object.
+func createExampleTestCoverage(fileCoverage *FileCoverage) *TestCoverage {
+	return &TestCoverage{
 		Percentage:        82.3,
 		CoveredLines:      234,
 		TotalLines:        284,
@@ -336,16 +404,21 @@ func Example_coverage() {
 			"handler.go": fileCoverage,
 		},
 	}
+}
 
-	// Display coverage information
+// displayCoverageInformation displays coverage information for different levels.
+func displayCoverageInformation(pkgCoverage *PackageCoverage, fileCoverage *FileCoverage, funcCoverage *FunctionCoverage, testCoverage *TestCoverage) {
+	// Display package coverage
 	fmt.Printf("Package Coverage: %s\n", pkgCoverage.Package)
 	fmt.Printf("- Overall: %.1f%% (%d/%d lines)\n",
 		pkgCoverage.Percentage, pkgCoverage.CoveredLines, pkgCoverage.TotalLines)
 
+	// Display file coverage
 	fmt.Printf("File Coverage: %s\n", fileCoverage.FilePath)
 	fmt.Printf("- Coverage: %.1f%% (%d/%d statements)\n",
 		fileCoverage.Percentage, fileCoverage.CoveredStatements, fileCoverage.TotalStatements)
 
+	// Display function coverage
 	fmt.Printf("Function Coverage: %s\n", funcCoverage.Name)
 	fmt.Printf("- Coverage: %.1f%% (called %d times)\n",
 		funcCoverage.Percentage, funcCoverage.CallCount)
@@ -359,14 +432,4 @@ func Example_coverage() {
 	} else {
 		fmt.Printf("✗ Coverage below threshold of %.1f%%\n", threshold)
 	}
-
-	// Output:
-	// Package Coverage: github.com/example/handlers
-	// - Overall: 82.3% (234/284 lines)
-	// File Coverage: handler.go
-	// - Coverage: 78.5% (89/113 statements)
-	// Function Coverage: ProcessRequest
-	// - Coverage: 85.7% (called 15 times)
-	// - Lines: 10-25 in handler.go
-	// ✓ Coverage meets threshold of 80.0%
 }

@@ -459,6 +459,57 @@ deps: ## Show dependency information
 	go list -m all
 
 # ==============================================================================
+# Pre-commit Hook Commands
+# ==============================================================================
+
+.PHONY: setup-hooks
+setup-hooks: ## Install and configure pre-commit hooks
+	@echo "$(BLUE)Setting up pre-commit hooks...$(RESET)"
+	@chmod +x scripts/setup-hooks.sh
+	@./scripts/setup-hooks.sh
+	@echo "$(GREEN)✓ Pre-commit hooks installed$(RESET)"
+
+.PHONY: test-hooks
+test-hooks: ## Test pre-commit hooks functionality
+	@echo "$(BLUE)Testing pre-commit hooks...$(RESET)"
+	@python3 scripts/test_commit_validator.py
+	@echo "$(GREEN)✓ Hook tests passed$(RESET)"
+
+.PHONY: validate-commit
+validate-commit: ## Validate commit message format (usage: make validate-commit MSG="feat: add feature")
+ifndef MSG
+	@echo "$(RED)ERROR: MSG is required. Usage: make validate-commit MSG=\"feat: add feature\"$(RESET)"
+	@exit 1
+endif
+	@python3 scripts/validate_commit_msg.py "$(MSG)"
+
+.PHONY: hooks-help
+hooks-help: ## Show commit message format help
+	@python3 scripts/validate_commit_msg.py --help
+
+.PHONY: run-hooks
+run-hooks: ## Run pre-commit hooks on all files
+	@echo "$(BLUE)Running pre-commit hooks on all files...$(RESET)"
+	@if command -v pre-commit >/dev/null 2>&1; then \
+		pre-commit run --all-files; \
+	else \
+		echo "$(RED)pre-commit not installed. Run: make setup-hooks$(RESET)"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)✓ Pre-commit hooks completed$(RESET)"
+
+.PHONY: update-hooks
+update-hooks: ## Update pre-commit hook repositories
+	@echo "$(BLUE)Updating pre-commit hooks...$(RESET)"
+	@if command -v pre-commit >/dev/null 2>&1; then \
+		pre-commit autoupdate; \
+	else \
+		echo "$(RED)pre-commit not installed. Run: make setup-hooks$(RESET)"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)✓ Pre-commit hooks updated$(RESET)"
+
+# ==============================================================================
 # Quality Gate Commands
 # ==============================================================================
 
@@ -520,4 +571,4 @@ ci-local: quality-gate ## Run full CI pipeline locally
 	@echo "$(GREEN)✓ Local CI pipeline complete$(RESET)"
 
 # Default target
-.DEFAULT_GOAL := help 
+.DEFAULT_GOAL := help

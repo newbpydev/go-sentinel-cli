@@ -66,6 +66,11 @@ dist/
 dist-ssr/
 *.local
 
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
 # Editor directories and files
 .idea
 .vscode/*
@@ -171,4 +176,3 @@ build/go-sentinel-cli
 build/go-sentinel-cli-v2
 build/go-sentinel-cli-v2.exe
 build/go-sentinel-cli.exe
-

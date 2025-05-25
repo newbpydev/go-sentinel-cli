@@ -17,7 +17,7 @@ linters:
     - staticcheck # Comprehensive static analyzer
     - ineffassign # Detects ineffectual assignments
     - unused      # Checks for unused constants, variables, functions and types
-    
+
     # Additional linters confirmed working
     - misspell    # Finds commonly misspelled English words
     - revive      # Fast, configurable, extensible, flexible, and beautiful linter for Go

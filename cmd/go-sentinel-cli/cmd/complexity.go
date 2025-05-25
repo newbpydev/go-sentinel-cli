@@ -14,12 +14,12 @@ import (
 var complexityCmd = &cobra.Command{
 	Use:   "complexity [path]",
 	Short: "Analyze code complexity metrics for Go files",
-	Long: `Analyze code complexity metrics including cyclomatic complexity, 
+	Long: `Analyze code complexity metrics including cyclomatic complexity,
 maintainability index, and technical debt for Go source files.
 
 This command provides comprehensive code quality analysis with:
 - Cyclomatic complexity measurement per function
-- Maintainability index calculation using industry standards  
+- Maintainability index calculation using industry standards
 - Technical debt estimation in time units
 - Violation detection and severity assessment
 - Actionable recommendations for code improvement

@@ -10,7 +10,7 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "go-sentinel",
 	Short: "A modern test runner for Go with beautiful output",
-	Long: `go-sentinel is a modern test runner for Go that provides beautiful, 
+	Long: `go-sentinel is a modern test runner for Go that provides beautiful,
 Vitest-style output and a great developer experience.
 
 Features:
