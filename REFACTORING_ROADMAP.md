@@ -271,7 +271,7 @@
 
 **Current Reality**: We have modular packages but 25 files (7,565 lines) remain in `internal/cli`
 
-**CRITICAL DISCOVERY (December 2024)**: Despite appearing to have "completed" TIER 7 UI components, a directory analysis reveals that **all UI components are still in `internal/cli`** and have NOT been migrated. The `internal/ui/` directory contains duplicate/test components, but the actual monolithic UI components remain in CLI.
+**CRITICAL DISCOVERY (May 2025)**: Despite appearing to have "completed" TIER 7 UI components, a directory analysis reveals that **all UI components are still in `internal/cli`** and have NOT been migrated. The `internal/ui/` directory contains duplicate/test components, but the actual monolithic UI components remain in CLI.
 
 **Actual Files Still in `internal/cli/` requiring migration**:
 - `app_controller.go` (557 lines) - Main application orchestration
