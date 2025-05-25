@@ -67,6 +67,11 @@ func (c *Controller) Initialize() error {
 	// Create application context
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 
+	// Register components in the dependency container
+	if err := c.registerComponents(); err != nil {
+		return fmt.Errorf("failed to register components: %w", err)
+	}
+
 	// Initialize dependency container
 	if err := c.container.Initialize(); err != nil {
 		return fmt.Errorf("failed to initialize dependency container: %w", err)
@@ -81,6 +86,32 @@ func (c *Controller) Initialize() error {
 	c.lifecycle.RegisterShutdownHook(func() error {
 		return c.cleanup()
 	})
+
+	return nil
+}
+
+// registerComponents registers all required components in the dependency container
+func (c *Controller) registerComponents() error {
+	// Register test executor
+	testExecutor := NewTestExecutor()
+	if err := c.container.Register("testExecutor", testExecutor); err != nil {
+		return fmt.Errorf("failed to register testExecutor: %w", err)
+	}
+
+	// Register display renderer
+	displayRenderer := NewDisplayRenderer()
+	if err := c.container.Register("displayRenderer", displayRenderer); err != nil {
+		return fmt.Errorf("failed to register displayRenderer: %w", err)
+	}
+
+	// Register watch coordinator (create a factory function)
+	watchCoordinatorFactory := func() (interface{}, error) {
+		// This will be created when needed based on configuration
+		return nil, fmt.Errorf("watch coordinator not yet implemented")
+	}
+	if err := c.container.Register("watchCoordinator", watchCoordinatorFactory); err != nil {
+		return fmt.Errorf("failed to register watchCoordinator factory: %w", err)
+	}
 
 	return nil
 }

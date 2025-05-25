@@ -161,7 +161,11 @@ func (r *DefaultDisplayRenderer) RenderTestResults(ctx context.Context, results 
 	// Use the test display component to render individual test results
 	if r.testDisplay != nil {
 		for _, result := range results {
-			if err := r.testDisplay.RenderTestResult(result); err != nil {
+			// Convert models.TestResult to models.LegacyTestResult for compatibility
+			legacyResult := r.convertToLegacyTestResult(result)
+			indentLevel := 0 // Default indent level for top-level tests
+
+			if err := r.testDisplay.RenderTestResult(legacyResult, indentLevel); err != nil {
 				return models.WrapError(
 					err,
 					models.ErrorTypeInternal,
@@ -173,6 +177,70 @@ func (r *DefaultDisplayRenderer) RenderTestResults(ctx context.Context, results 
 	}
 
 	return nil
+}
+
+// convertToLegacyTestResult converts a models.TestResult to models.LegacyTestResult for UI compatibility
+func (r *DefaultDisplayRenderer) convertToLegacyTestResult(result *models.TestResult) *models.LegacyTestResult {
+	if result == nil {
+		return nil
+	}
+
+	// Convert output from []string to string
+	var outputStr string
+	if len(result.Output) > 0 {
+		// Join output lines with newlines
+		outputStr = ""
+		for _, line := range result.Output {
+			outputStr += line + "\n"
+		}
+	}
+
+	// Create a new LegacyTestResult with converted fields
+	legacyResult := &models.LegacyTestResult{
+		Name:     result.Name,
+		Package:  result.Package,
+		Status:   result.Status,
+		Duration: result.Duration,
+		Output:   outputStr,
+		Test:     result.Name, // Use Name for Test field
+		Parent:   result.Parent,
+	}
+
+	// Convert error if present
+	if result.Error != nil {
+		legacyResult.Error = &models.LegacyTestError{
+			Message: result.Error.Message,
+			Type:    "TestError", // Default type
+			Stack:   "",          // Initialize empty stack
+		}
+
+		// Convert stack trace if present
+		if len(result.Error.StackTrace) > 0 {
+			stackStr := ""
+			for _, line := range result.Error.StackTrace {
+				stackStr += line + "\n"
+			}
+			legacyResult.Error.Stack = stackStr
+		}
+
+		// Convert source location if present
+		if result.Error.SourceFile != "" {
+			legacyResult.Error.Location = &models.SourceLocation{
+				File: result.Error.SourceFile,
+				Line: result.Error.SourceLine,
+			}
+		}
+	}
+
+	// Convert subtests if present
+	if len(result.Subtests) > 0 {
+		legacyResult.Subtests = make([]*models.LegacyTestResult, len(result.Subtests))
+		for i, subtest := range result.Subtests {
+			legacyResult.Subtests[i] = r.convertToLegacyTestResult(subtest)
+		}
+	}
+
+	return legacyResult
 }
 
 // RenderFailedTests renders failed test results with detailed error information
