@@ -1,15 +1,18 @@
-package cli
+package display
 
 import (
 	"bytes"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/newbpydev/go-sentinel/internal/ui/colors"
+	"github.com/newbpydev/go-sentinel/pkg/models"
 )
 
 // Test 2.1.1: Format test file path with colorized file name
 func TestFormatTestFilePath(t *testing.T) {
-	formatter := NewColorFormatter(true)
+	formatter := colors.NewColorFormatter(true)
 
 	// Test basic file path formatting
 	filePath := "github.com/user/project/pkg/example_test.go"
@@ -44,7 +47,7 @@ func TestFormatTestFilePath(t *testing.T) {
 	}
 
 	// Test with colors disabled
-	noColorFormatter := NewColorFormatter(false)
+	noColorFormatter := colors.NewColorFormatter(false)
 	plainFormatted := FormatFilePath(noColorFormatter, filePath)
 
 	// Should be the same as the original path or at least contain all parts
@@ -55,7 +58,7 @@ func TestFormatTestFilePath(t *testing.T) {
 
 // Test 2.1.2: Display test counts with failed test highlighting
 func TestDisplayTestCounts(t *testing.T) {
-	formatter := NewColorFormatter(true)
+	formatter := colors.NewColorFormatter(true)
 
 	// Test with all tests passing
 	allPassed := formatTestCounts(formatter, 10, 10, 0, 0)
@@ -79,7 +82,7 @@ func TestDisplayTestCounts(t *testing.T) {
 	}
 
 	// Test with colors disabled
-	noColorFormatter := NewColorFormatter(false)
+	noColorFormatter := colors.NewColorFormatter(false)
 	plainFormatted := formatTestCounts(noColorFormatter, 10, 7, 3, 0)
 	if !containsSubstringWithCase(plainFormatted, "7") || !containsSubstringWithCase(plainFormatted, "pass") ||
 		!containsSubstringWithCase(plainFormatted, "3") || !containsSubstringWithCase(plainFormatted, "fail") {
@@ -89,7 +92,7 @@ func TestDisplayTestCounts(t *testing.T) {
 
 // Test 2.1.3: Show accurate test duration with proper formatting
 func TestFormatTestDuration(t *testing.T) {
-	formatter := NewColorFormatter(true)
+	formatter := colors.NewColorFormatter(true)
 
 	// Test millisecond formatting
 	ms := FormatDuration(formatter, 50*time.Millisecond)
@@ -116,7 +119,7 @@ func TestFormatTestDuration(t *testing.T) {
 	}
 
 	// Test with colors disabled
-	noColorFormatter := NewColorFormatter(false)
+	noColorFormatter := colors.NewColorFormatter(false)
 	plainFormatted := FormatDuration(noColorFormatter, 50*time.Millisecond)
 	if !strings.Contains(plainFormatted, "50ms") {
 		t.Errorf("Expected plain duration to contain '50ms', got: %s", plainFormatted)
@@ -125,7 +128,7 @@ func TestFormatTestDuration(t *testing.T) {
 
 // Test 2.1.4: Include memory usage information
 func TestFormatMemoryUsage(t *testing.T) {
-	formatter := NewColorFormatter(true)
+	formatter := colors.NewColorFormatter(true)
 
 	// Test KB formatting
 	kb := FormatMemoryUsage(formatter, 1024)
@@ -152,7 +155,7 @@ func TestFormatMemoryUsage(t *testing.T) {
 	}
 
 	// Test with colors disabled
-	noColorFormatter := NewColorFormatter(false)
+	noColorFormatter := colors.NewColorFormatter(false)
 	plainFormatted := FormatMemoryUsage(noColorFormatter, 1024*1024)
 	if !strings.Contains(plainFormatted, "1 MB") {
 		t.Errorf("Expected plain memory usage to contain '1 MB', got: %s", plainFormatted)
@@ -161,11 +164,11 @@ func TestFormatMemoryUsage(t *testing.T) {
 
 // Test 2.1.5: Handle multiline headers gracefully
 func TestMultilineHeaders(t *testing.T) {
-	formatter := NewColorFormatter(true)
-	icons := NewIconProvider(true)
+	formatter := colors.NewColorFormatter(true)
+	icons := colors.NewIconProvider(true)
 
 	// Create a test suite with a very long file path
-	suite := &TestSuite{
+	suite := &models.TestSuite{
 		FilePath:    "github.com/very/long/path/to/module/with/many/nested/directories/that/will/likely/cause/wrapping/in/the/terminal/example_test.go",
 		TestCount:   10,
 		PassedCount: 7,
