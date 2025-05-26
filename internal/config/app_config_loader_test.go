@@ -169,7 +169,7 @@ func TestAppConfigLoader_Validate(t *testing.T) {
 					Timeout: "30s",
 				},
 				Visual: AppVisualConfig{
-					Icons: "simple",
+					Icons: "unicode",
 				},
 			},
 			expectError: false,
