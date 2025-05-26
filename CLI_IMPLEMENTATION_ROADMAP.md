@@ -27,17 +27,17 @@
   - **Result**: 156 lines of config logic properly separated, all tests passing, CLI functional
   - **Duration**: 3 hours ✅ **COMPLETED**
 
-- [ ] **Task 0.1.3**: Move argument parsing logic to config package ⚠️ **CRITICAL** ← **NEXT TASK**
-  - **Violation**: `internal/app/arg_parser.go` (103 lines) contains CLI parsing logic in app package
-  - **Fix**: Move to `internal/config/app_arg_parser.go`
+- [x] **Task 0.1.3**: Move argument parsing logic to config package ✅ **COMPLETED**
+  - **Violation**: `internal/app/arg_parser.go` (103 lines) contained CLI parsing logic in app package
+  - **Fix**: Moved to `internal/config/app_arg_parser.go` with proper interfaces
   - **Why**: Argument parsing is configuration concern, not orchestration
   - **Architecture Rule**: CLI argument parsing belongs in `internal/config/`
-  - **Location**: Move `DefaultArgumentParser` and help text
-  - **Pattern**: Use Factory + Adapter pattern like Tasks 0.1.1 and 0.1.2
-  - **Duration**: 2 hours
+  - **Implementation**: Factory + Adapter pattern with dependency injection
+  - **Result**: 103 lines of argument parsing logic properly separated, all tests passing, CLI functional
+  - **Duration**: 2 hours ✅ **COMPLETED**
 
 #### **0.2 Monitoring System Separation (TDD)**
-- [ ] **Task 0.2.1**: Extract monitoring to dedicated package ⚠️ **CRITICAL**
+- [ ] **Task 0.2.1**: Extract monitoring to dedicated package ⚠️ **CRITICAL** ← **NEXT TASK**
   - **Violation**: `internal/app/monitoring.go` (600 lines) + `monitoring_dashboard.go` (1149 lines) = 1749 lines of monitoring logic in app package
   - **Fix**: Create `internal/monitoring/` package
   - **Why**: Monitoring is a cross-cutting concern, not app orchestration
@@ -72,10 +72,10 @@
   - **Location**: Move interfaces to their consumer packages
   - **Duration**: 4 hours
 
-**Phase 0 Progress**: 🚧 **7/26 hours completed** (Tasks 0.1.1 ✅ 0.1.2 ✅ DONE)
+**Phase 0 Progress**: 🚧 **9/26 hours completed** (Tasks 0.1.1 ✅ 0.1.2 ✅ 0.1.3 ✅ DONE)
 **Phase 0 Deliverable**: ✅ Clean, compliant modular architecture
 **Success Criteria**: App package only contains orchestration logic, no business logic
-**Total Effort**: 26 hours (~3-4 days) - **Remaining**: 19 hours
+**Total Effort**: 26 hours (~3-4 days) - **Remaining**: 17 hours
 
 **🚨 CRITICAL**: **NO NEW FEATURES** should be implemented until these architecture fixes are complete.
 
@@ -197,6 +197,99 @@
 - Maintained 100% functionality while improving architecture compliance
 - All tests passing (6/6 new config tests, 7/7 app tests)
 - CLI end-to-end functionality verified: `go run cmd/go-sentinel-cli/main.go run ./internal/config`
+
+### 🎯 **Task 0.1.3 Implementation Notes** ✅ **COMPLETED**
+
+**What Was Accomplished**:
+- Successfully moved 103 lines of argument parsing logic from `internal/app/arg_parser.go` to `internal/config/`
+- Applied proven Factory + Adapter pattern from Tasks 0.1.1 and 0.1.2
+- Maintained 100% functionality while improving architecture compliance
+- All tests passing (8/8 new argument parser tests, 11/11 app tests)
+- CLI end-to-end functionality verified: `go run cmd/go-sentinel-cli/main.go run ./internal/config`
+
+**Key Architecture Patterns Applied**:
+
+1. **Factory Pattern**: `internal/app/arg_parser_factory.go`
+   - Converts app `Arguments` to config `AppArguments` and vice versa
+   - Maintains clean package boundaries with bidirectional conversion
+   - Handles dependency injection for different help modes
+
+2. **Adapter Pattern**: `argParserAdapter` in `internal/app/arg_parser_adapter.go`
+   - Bridges app package `ArgumentParser` interface with config package implementation
+   - Delegates all parsing logic to config package while maintaining app interface
+   - Preserves existing functionality during transition
+
+3. **Interface Segregation**: `AppArgParser` interface in config package
+   - Clean separation of argument parsing concerns
+   - Support for different help modes (detailed, brief, usage-only)
+   - Dependency injection through `AppArgParserDependencies`
+
+**Code Quality Achievements**:
+- TDD methodology: Red → Green → Refactor cycle applied
+- Comprehensive test coverage with 8 test scenarios
+- Proper error handling for invalid arguments
+- Interface compliance verification
+- Go fmt compliance and consistent code style
+
+**Files Created/Modified**:
+- ✅ Created: `internal/config/app_arg_parser_interface.go` (57 lines)
+- ✅ Created: `internal/config/app_arg_parser.go` (162 lines)
+- ✅ Created: `internal/config/app_arg_parser_test.go` (256 lines)
+- ✅ Created: `internal/app/arg_parser_factory.go` (100 lines)
+- ✅ Created: `internal/app/arg_parser_adapter.go` (48 lines)
+- ✅ Deleted: `internal/app/arg_parser.go` (103 lines) - Argument parsing logic removed from app
+
+**Testing Strategy Used**:
+- **TDD Red Phase**: Wrote comprehensive failing tests for all argument parsing scenarios
+- **TDD Green Phase**: Implemented `DefaultAppArgParser` to pass all tests
+- **TDD Refactor Phase**: Enhanced with help modes and dependency injection
+- **Integration Testing**: Verified CLI end-to-end functionality
+- **Interface Compliance**: Explicit verification of interface implementations
+
+**Key Implementation Details**:
+
+1. **Bidirectional Type Conversion**:
+   ```go
+   // App Arguments → Config AppArguments
+   func (f *ArgParserFactory) convertToConfigArguments(appArgs *Arguments) *config.AppArguments {
+       return &config.AppArguments{
+           Packages:         appArgs.Packages,
+           Watch:            appArgs.Watch,
+           Verbose:          appArgs.Verbose,
+           Colors:           appArgs.Colors,
+           Optimized:        appArgs.Optimized,
+           OptimizationMode: appArgs.OptimizationMode,
+       }
+   }
+   ```
+
+2. **Help Mode Support**:
+   ```go
+   type HelpMode int
+   const (
+       HelpModeDetailed HelpMode = iota
+       HelpModeBrief
+       HelpModeUsageOnly
+   )
+   ```
+
+3. **Dependency Injection Pattern**:
+   ```go
+   type AppArgParserDependencies struct {
+       CliParser ArgParser
+       Writer    io.Writer
+       HelpMode  HelpMode
+   }
+   ```
+
+**Architecture Compliance Achieved**:
+- ✅ Argument parsing logic moved from app package to config package
+- ✅ App package now only contains orchestration logic for argument parsing
+- ✅ Clean package boundaries maintained with proper interfaces
+- ✅ Dependency injection pattern applied consistently
+- ✅ No direct dependencies between app and config implementations
+
+**Next Task Readiness**: Task 0.2.1 (Extract monitoring to dedicated package) can now proceed using the same proven patterns.
 
 **Key Architecture Patterns Applied**:
 

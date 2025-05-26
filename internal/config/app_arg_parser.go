@@ -1,27 +1,54 @@
-// Package app provides argument parsing implementation
-package app
+// Package config provides application argument parsing implementation
+package config
 
 import (
+	"io"
 	"os"
 
-	"github.com/newbpydev/go-sentinel/internal/config"
 	"github.com/newbpydev/go-sentinel/pkg/models"
 )
 
-// DefaultArgumentParser implements the ArgumentParser interface
-type DefaultArgumentParser struct {
-	cliParser config.ArgParser
+// DefaultAppArgParser implements the AppArgParser interface using modular config components.
+// This implementation follows dependency injection principles and the Single Responsibility Principle.
+type DefaultAppArgParser struct {
+	// Config component dependencies (injected)
+	cliParser ArgParser
+	writer    io.Writer
+	helpMode  HelpMode
 }
 
-// NewArgumentParser creates a new argument parser
-func NewArgumentParser() ArgumentParser {
-	return &DefaultArgumentParser{
-		cliParser: &config.DefaultArgParser{},
+// NewAppArgParser creates a new DefaultAppArgParser with default dependencies.
+// This follows the Factory pattern and dependency injection principles.
+func NewAppArgParser() AppArgParser {
+	return &DefaultAppArgParser{
+		cliParser: &DefaultArgParser{},
+		writer:    os.Stdout,
+		helpMode:  HelpModeDetailed,
+	}
+}
+
+// NewAppArgParserWithDependencies creates a new DefaultAppArgParser with injected dependencies.
+// This constructor promotes testability and follows dependency inversion principles.
+func NewAppArgParserWithDependencies(deps AppArgParserDependencies) AppArgParser {
+	cliParser := deps.CliParser
+	if cliParser == nil {
+		cliParser = &DefaultArgParser{}
+	}
+
+	writer := deps.Writer
+	if writer == nil {
+		writer = os.Stdout
+	}
+
+	return &DefaultAppArgParser{
+		cliParser: cliParser,
+		writer:    writer,
+		helpMode:  deps.HelpMode,
 	}
 }
 
 // Parse parses command-line arguments into a structured format
-func (p *DefaultArgumentParser) Parse(args []string) (*Arguments, error) {
+func (p *DefaultAppArgParser) Parse(args []string) (*AppArguments, error) {
 	// Use the existing CLI argument parser
 	cliArgs, err := p.cliParser.Parse(args)
 	if err != nil {
@@ -34,21 +61,32 @@ func (p *DefaultArgumentParser) Parse(args []string) (*Arguments, error) {
 	}
 
 	// Convert CLI args to app Arguments
-	appArgs := &Arguments{
+	appArgs := &AppArguments{
 		Packages:         cliArgs.Packages,
 		Watch:            cliArgs.Watch,
 		Verbose:          cliArgs.Verbosity > 0,
 		Colors:           cliArgs.Colors,
 		Optimized:        cliArgs.Optimized,
 		OptimizationMode: cliArgs.OptimizationMode,
-		Writer:           os.Stdout,
 	}
 
 	return appArgs, nil
 }
 
 // Help returns help text for the application
-func (p *DefaultArgumentParser) Help() string {
+func (p *DefaultAppArgParser) Help() string {
+	switch p.helpMode {
+	case HelpModeBrief:
+		return p.getBriefHelp()
+	case HelpModeUsageOnly:
+		return p.getUsageOnly()
+	default:
+		return p.getDetailedHelp()
+	}
+}
+
+// getDetailedHelp returns full help text with examples
+func (p *DefaultAppArgParser) getDetailedHelp() string {
 	return `go-sentinel - Beautiful Go Test Runner
 
 Usage:
@@ -80,8 +118,29 @@ For more information, visit: https://github.com/newbpydev/go-sentinel
 `
 }
 
+// getBriefHelp returns concise help text
+func (p *DefaultAppArgParser) getBriefHelp() string {
+	return `go-sentinel - Beautiful Go Test Runner
+
+Usage: go-sentinel [flags] [packages]
+
+Common flags:
+  -c, --color     Use colored output
+  -v, --verbose   Enable verbose output
+  -w, --watch     Enable watch mode
+  --help          Show full help
+
+Run 'go-sentinel --help' for detailed options.
+`
+}
+
+// getUsageOnly returns only usage line
+func (p *DefaultAppArgParser) getUsageOnly() string {
+	return "Usage: go-sentinel [flags] [packages]"
+}
+
 // Version returns version information
-func (p *DefaultArgumentParser) Version() string {
+func (p *DefaultAppArgParser) Version() string {
 	return `go-sentinel v2.0.0
 A beautiful, Vitest-style test runner for Go projects
 Built with ❤️  for the Go community
@@ -98,5 +157,5 @@ License: MIT
 `
 }
 
-// Ensure DefaultArgumentParser implements ArgumentParser interface
-var _ ArgumentParser = (*DefaultArgumentParser)(nil)
+// Ensure DefaultAppArgParser implements AppArgParser interface
+var _ AppArgParser = (*DefaultAppArgParser)(nil)
