@@ -211,7 +211,7 @@ For comprehensive documentation of all exported symbols, interfaces, and usage e
 ### Architecture Documentation
 - **[Architecture Analysis](ARCHITECTURE_ANALYSIS.md)** - System architecture overview
 - **[Refactoring Roadmap](REFACTORING_ROADMAP.md)** - Development phases and progress
-- **[Phase 4 Progress](PHASE_4_PROGRESS_SUMMARY.md)** - Current development status
+- **[Phase 4 Progress](./docs/refactoring-v2/migrations/PHASE_4_PROGRESS_SUMMARY.md)** - Current development status
 
 ### Key Packages
 
