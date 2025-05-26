@@ -14,14 +14,17 @@ var runCmd = &cobra.Command{
 	Long: `Run Go tests with beautiful, Vitest-style output.
 If no packages are specified, runs tests in the current directory and subdirectories.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Create the legacy application controller
-		controller := app.NewLegacyAppController()
+		// Create the modular application controller
+		controller := app.NewApplicationController()
 
 		// Build CLI arguments from cobra flags
 		cliArgs := buildCLIArgs(cmd, args)
 
+		// Prepend the command name as expected by the application controller
+		fullArgs := append([]string{"run"}, cliArgs...)
+
 		// Run the application
-		return controller.Run(cliArgs)
+		return controller.Run(fullArgs)
 	},
 }
 
