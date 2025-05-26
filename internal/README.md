@@ -1,187 +1,285 @@
 # Go Sentinel Internal Packages
 
-This directory contains the core implementation of Go Sentinel, organized into focused, well-encapsulated packages. These packages are internal to the project and not intended for direct use by external applications.
+This directory contains the core implementation of Go Sentinel CLI, organized into focused, well-encapsulated packages following clean architecture principles. These packages are internal to the project and implement the modular architecture established after comprehensive refactoring.
+
+## 🏗️ Architecture Overview
+
+The internal packages implement a layered, modular architecture with clear separation of concerns:
+
+```
+internal/
+├── app/          # Application orchestration & lifecycle management
+├── config/       # Configuration management & CLI argument parsing  
+├── test/         # Test execution, processing & caching system
+├── watch/        # File monitoring & intelligent watch mode
+└── ui/           # User interface & display components
+```
 
 ## 📦 Package Overview
 
-### Core Components
+### Core Application Layer
 
-#### `api/`
-RESTful API server implementation with OpenAPI/Swagger documentation.
-- **Handlers**: HTTP request handlers for API endpoints
-- **Middleware**: Authentication, logging, and request processing
-- **Models**: Data structures and validation
-- **Server**: API server setup and configuration
+#### `app/` - Application Orchestration
+**Purpose**: Coordinates all application components and manages the overall application lifecycle.
 
-#### `config/`
-Configuration management with support for multiple sources (flags, env vars, config files).
-- Environment-aware configuration loading
-- Type-safe configuration access
-- Default values and validation
+**Key Components**:
+- **ApplicationController**: Main application flow orchestration
+- **LifecycleManager**: Startup/shutdown lifecycle management
+- **DependencyContainer**: Component dependency injection
+- **Event Handling**: Application-level event processing
+- **Monitoring**: Comprehensive monitoring and observability
 
-#### `debouncer/`
-Efficient event debouncing to handle rapid file system events.
-- Configurable debounce intervals
-- Per-package event coalescing
-- Thread-safe implementation
+**Key Interfaces**:
+- `ApplicationController` - Main application coordination
+- `LifecycleManager` - Application lifecycle management
+- `DependencyContainer` - Dependency injection and component management
 
-#### `event/`
-Event types and interfaces used for inter-package communication.
-- Centralized event definitions
-- Type-safe event publishing/subscribing
-- Event filtering and transformation
+#### `config/` - Configuration Management
+**Purpose**: Handles all configuration loading, validation, and CLI argument parsing.
 
-#### `parser/`
-Test output parsing and result extraction.
+**Key Components**:
+- **Configuration Loading**: JSON config file parsing with defaults
+- **CLI Arguments**: Command-line argument parsing and validation
+- **Configuration Merging**: Merging CLI args with config files (CLI takes precedence)
+- **Validation**: Comprehensive configuration validation and error reporting
+
+**Key Types**:
+- `Config` - Main configuration structure
+- `Args` - CLI argument structure
+- `ConfigLoader` - Configuration loading interface
+
+### Test Execution System
+
+#### `test/` - Test Execution & Processing
+**Purpose**: Comprehensive test execution, result processing, and caching system.
+
+**Subpackages**:
+- `runner/` - Test execution engines (basic, optimized, parallel)
+- `processor/` - Test output parsing, aggregation, and result processing
+- `cache/` - Test result caching and optimization
+- `metrics/` - Performance metrics and benchmarking
+- `recovery/` - Error recovery and resilience mechanisms
+
+**Key Features**:
 - `go test -json` output parsing
-- Test result aggregation
-- Failure analysis and categorization
+- Parallel test execution with resource management
+- Intelligent test result caching
+- Performance metrics collection
+- Comprehensive error recovery
 
-#### `runner/`
-Test execution and process management.
-- Concurrent test execution
-- Timeout and cancellation support
-- Process lifecycle management
+### File Monitoring System
 
-#### `ui/`
-Terminal user interface components.
-- Interactive console output
-- Progress indicators
-- Keyboard event handling
+#### `watch/` - File Monitoring & Watch Mode
+**Purpose**: Intelligent file system monitoring with debounced test execution.
 
-#### `watcher/`
-File system monitoring with efficient event handling.
-- Recursive directory watching
-- Configurable file patterns
-- Cross-platform file system notifications
+**Subpackages**:
+- `core/` - Core watch interfaces and types
+- `watcher/` - File system monitoring implementation
+- `debouncer/` - Event debouncing and deduplication
+- `coordinator/` - Watch mode orchestration and coordination
 
-### Web Components
+**Key Features**:
+- Cross-platform file system monitoring
+- Intelligent debouncing of rapid file changes
+- Pattern-based file filtering
+- Smart test selection based on changed files
+- Watch mode lifecycle management
 
-#### `web/server/`
-HTTP server implementation with support for both API and web UI.
-- Static file serving
-- Template rendering
-- WebSocket support
+### User Interface System
 
-#### `web/handlers/`
-HTTP request handlers for web interface.
-- Page rendering
-- Form handling
-- Error pages
+#### `ui/` - User Interface & Display
+**Purpose**: Beautiful terminal UI with Vitest-style output and rich display components.
 
-#### `web/middleware/`
-HTTP middleware components.
-- Request logging
-- Error handling
-- Security headers
-- Session management
+**Subpackages**:
+- `display/` - Test result rendering and formatting
+- `colors/` - Color themes and terminal detection
+- `icons/` - Icon providers and visual elements
+- `renderer/` - Progressive rendering and live updates
 
-## 🛠 Development Guidelines
+**Key Features**:
+- Three-part display structure (header, content, summary)
+- Color themes with terminal capability detection
+- Multiple icon sets (Unicode, ASCII, minimal, none)
+- Real-time progress indicators
+- Live updating during test execution
+
+## 🛠️ Development Guidelines
 
 ### Package Principles
 
-1. **Single Responsibility**: Each package should have a single, well-defined purpose
-2. **Encapsulation**: Hide implementation details behind clean interfaces
-3. **Dependency Direction**: Dependencies should point inward, toward more stable packages
-4. **Testability**: Design for easy testing with minimal mocking
+1. **Single Responsibility**: Each package has one clear, well-defined purpose
+2. **Dependency Inversion**: Packages depend on interfaces, not concrete implementations
+3. **Interface Segregation**: Small, focused interfaces rather than large ones
+4. **Open/Closed**: Open for extension, closed for modification
+5. **Clean Boundaries**: Clear package boundaries with minimal coupling
 
-### Code Organization
+### Code Organization Patterns
 
-- Keep package interfaces small and focused
-- Use subpackages to break down large packages
-- Document exported types and functions
-- Follow Go's standard project layout
+- **Interfaces First**: Define interfaces before implementations
+- **Composition over Inheritance**: Use embedding and composition
+- **Testable Design**: All components designed for easy testing
+- **Context Awareness**: Use `context.Context` for cancellation and timeouts
+- **Error Handling**: Rich error context with proper error wrapping
 
-### Error Handling
+### Dependency Rules
 
-- Use sentinel errors for expected error conditions
-- Wrap errors with context using `fmt.Errorf("%w", err)`
-- Log errors at the appropriate level
-- Return errors that are useful to callers
+```
+app/ ←────────────── (orchestrates all)
+├─── config/        (configuration)
+├─── test/          (test execution)
+├─── watch/         (file monitoring)  
+└─── ui/            (display)
+     └─── pkg/      (shared models)
+```
 
-### Concurrency
+**Rules**:
+- `app/` can import from all other internal packages
+- Other packages can only import from `pkg/` and standard library
+- No circular dependencies between internal packages
+- All external dependencies managed at package level
 
-- Use `sync` primitives for synchronization
-- Prefer channels for communication between goroutines
-- Use `context.Context` for cancellation and timeouts
-- Document goroutine ownership and lifecycle
+### Testing Standards
 
-## 🔍 Testing
+Each package must include:
 
-Each package should include:
+1. **Unit Tests**: ≥90% coverage for all exported functionality
+2. **Integration Tests**: Test component interactions
+3. **Interface Tests**: Test against interface contracts
+4. **Benchmark Tests**: For performance-critical code
+5. **Example Tests**: Demonstrating package usage
 
-1. Unit tests for all exported functionality
-2. Table-driven tests for functions with multiple code paths
-3. Test helpers for common test scenarios
-4. Benchmarks for performance-critical code
+### Quality Standards
 
-Run tests with:
+- **Complexity**: ≤2.5 average cyclomatic complexity
+- **Maintainability**: ≥90% maintainability index
+- **Documentation**: All exported symbols documented
+- **Linting**: Zero violations above "Warning" level
+- **Performance**: Benchmarked critical paths
+
+## 🧪 Testing
+
+### Running Tests
 
 ```bash
-# Run all tests
-go test ./...
+# Run all internal package tests
+go test ./internal/...
 
-# Run tests with race detection
-go test -race ./...
+# Run with coverage
+go test -cover ./internal/...
+
+# Run with race detection
+go test -race ./internal/...
+
+# Run specific package
+go test ./internal/app/...
+
+# Run benchmarks
+go test -bench=. ./internal/...
 
 # Generate coverage report
-go test -coverprofile=coverage.out ./...
+go test -coverprofile=coverage.out ./internal/...
 go tool cover -html=coverage.out
 ```
 
+### Test Organization
+
+- **Package Tests**: `*_test.go` files alongside source
+- **Integration Tests**: `integration_test.go` files  
+- **Benchmark Tests**: `*_bench_test.go` files
+- **Example Tests**: `example_*_test.go` files
+
 ## 📚 Documentation
 
-- Document all exported types and functions
-- Include usage examples in package documentation
-- Keep README.md files up to date
-- Document any non-obvious implementation details
+### Package Documentation
+
+Each package contains:
+- **README.md**: Package overview, usage, examples
+- **doc.go**: Package-level documentation
+- **examples/**: Usage examples and tutorials
+
+### API Documentation
+
+- All exported types and functions documented
+- Usage examples in documentation
+- Integration examples between packages
+- Performance characteristics documented
 
 ## 🔄 Dependencies
 
-Internal packages may depend on:
+### Allowed Dependencies
 
-- Standard library packages
-- Other internal packages (with care to avoid cycles)
-- A minimal set of well-vetted external dependencies
+**Internal packages may depend on**:
+- Go standard library
+- `pkg/models` and `pkg/events` (shared packages)
+- Well-vetted external dependencies (minimal)
 
-Avoid depending on:
+**External Dependencies**:
+- `github.com/spf13/cobra` - CLI framework
+- `github.com/fsnotify/fsnotify` - File system notifications
+- `github.com/fatih/color` - Terminal colors
+- Testing and development tools only
 
-- Implementation details of other packages
-- External packages when standard library alternatives exist
+### Forbidden Dependencies
+
+- Direct dependencies between internal packages (except through interfaces)
+- Large external frameworks
+- Platform-specific libraries (use build tags instead)
 - Packages with restrictive licenses
 
 ## 🚀 Performance Considerations
 
-- Profile before optimizing
-- Use sync.Pool for frequently allocated objects
-- Be mindful of memory allocations in hot paths
-- Consider using `-race` during development
+- **Memory Efficiency**: Use `sync.Pool` for frequently allocated objects
+- **Goroutine Management**: Proper lifecycle management for goroutines
+- **Context Propagation**: Use context for cancellation and timeouts
+- **Resource Cleanup**: Proper cleanup in defer statements
+- **Profiling**: Regular profiling of performance-critical paths
 
-## 🔒 Security
+## 🔒 Security Guidelines
 
-- Validate all inputs
-- Use context timeouts for all external operations
-- Sanitize output to prevent XSS
-- Keep dependencies updated
+- **Input Validation**: Validate all inputs at package boundaries
+- **Context Timeouts**: Use timeouts for all external operations
+- **Error Sanitization**: Sanitize error messages (no sensitive data)
+- **Dependency Updates**: Keep dependencies updated
+- **Secure Defaults**: Use secure defaults for all configuration
 
-## 📈 Monitoring
+## 📈 Monitoring & Observability
 
-- Use structured logging
-- Include request IDs for tracing
-- Expose metrics for key operations
-- Monitor error rates and performance metrics
+- **Structured Logging**: Use structured logging throughout
+- **Metrics Collection**: Collect key performance metrics
+- **Error Tracking**: Comprehensive error tracking and reporting
+- **Tracing**: Request/operation tracing where applicable
+- **Health Checks**: Health check endpoints for monitoring
+
+## 🔧 Package-Specific Guidelines
+
+### Configuration Package (`config/`)
+- Immutable configuration objects
+- Validation at load time
+- Clear error messages for invalid config
+- Support for configuration hot-reloading
+
+### Test Package (`test/`)
+- Resource cleanup after test execution
+- Timeout handling for long-running tests
+- Proper isolation between test runs
+- Streaming output processing
+
+### Watch Package (`watch/`)
+- Efficient file system event handling
+- Proper debouncing of rapid events
+- Resource cleanup on watch cancellation
+- Cross-platform compatibility
+
+### UI Package (`ui/`)
+- Terminal capability detection
+- Graceful degradation for limited terminals
+- Responsive layout handling
+- Accessible color schemes
 
 ## 📝 License
 
 This code is part of the Go Sentinel project and is licensed under the [MIT License](../LICENSE).
 
-## WebSocket Integration
-- WebSocket handler for real-time test updates
-- Broadcaster pattern for pushing updates to all clients
-
-## API Overview
-- RESTful endpoints for tests, metrics, history, coverage, and settings
-- All endpoints documented in `ROADMAP-API.md`
-
 ---
-For more details, see `web/server/server.go` and `ROADMAP-API.md`.
+
+For detailed package-specific documentation, see the README.md file in each package directory.
