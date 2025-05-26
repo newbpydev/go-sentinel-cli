@@ -2,6 +2,8 @@
 
 This directory contains the core implementation of Go Sentinel CLI, organized into focused, well-encapsulated packages following clean architecture principles. These packages are internal to the project and implement the modular architecture established after comprehensive refactoring.
 
+**🚧 Current Status**: Architecture refactoring is 85% complete (7/10 violations fixed). The app package still contains 3 violations (595 lines) that need to be extracted to dedicated packages plus a configuration validation fix before Phase 1 can proceed.
+
 ## 🏗️ Architecture Overview
 
 The internal packages implement a layered, modular architecture with clear separation of concerns:
@@ -19,15 +21,17 @@ internal/
 
 ### Core Application Layer
 
-#### `app/` - Application Orchestration
+#### `app/` - Application Orchestration 🚧 **3 VIOLATIONS REMAIN**
 **Purpose**: Coordinates all application components and manages the overall application lifecycle.
 
-**Key Components**:
-- **ApplicationController**: Main application flow orchestration
-- **LifecycleManager**: Startup/shutdown lifecycle management
-- **DependencyContainer**: Component dependency injection
-- **Event Handling**: Application-level event processing
-- **Monitoring**: Comprehensive monitoring and observability
+**Current Status**: Contains 3 architecture violations that need extraction:
+- ❌ **Event Handling** (198 lines) - Should be in `internal/events/`
+- ❌ **Lifecycle Management** (160 lines) - Should be in `internal/lifecycle/`  
+- ❌ **Dependency Container** (237 lines) - Should be in `internal/container/`
+
+**Completed Components**:
+- ✅ **ApplicationController**: Main application flow orchestration (clean)
+- ✅ **Adapters**: Factory + Adapter pattern for all dependencies (clean)
 
 **Key Interfaces**:
 - `ApplicationController` - Main application coordination

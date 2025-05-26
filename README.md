@@ -11,6 +11,8 @@
 
 Go Sentinel CLI transforms the standard `go test` experience into a modern, beautiful test runner with real-time feedback, smart file watching, and comprehensive reporting. Built for Go developers who want the productivity and aesthetic of modern JavaScript testing tools like Vitest, but native to the Go ecosystem.
 
+**🚧 Current Status**: Architecture refactoring is 85% complete (3 violations remain in app package). CLI structure is fully implemented but execution is blocked by configuration validation issues. See [CLI_IMPLEMENTATION_ROADMAP.md](CLI_IMPLEMENTATION_ROADMAP.md) for detailed current state and next steps.
+
 **Key Features:**
 - 🎨 **Beautiful Vitest-style Output** - Clean, colorful test results with intuitive indicators
 - 👁️ **Smart Watch Mode** - Intelligent file monitoring with debounced re-runs
@@ -165,11 +167,12 @@ go-sentinel-cli/
 │   └── go-sentinel-cli-v2/        # Main CLI entry point
 │       ├── cmd/                   # Cobra command definitions
 │       └── main.go               # Application entry point
-├── internal/                      # ✅ Modular Architecture Complete
-│   ├── app/                       # Application orchestration & lifecycle
-│   │   ├── controller.go         # Main application controller
-│   │   ├── lifecycle.go          # Lifecycle management
-│   │   └── dependency.go         # Dependency injection
+├── internal/                      # 🚧 Modular Architecture 85% Complete
+│   ├── app/                       # Application orchestration (3 violations remain)
+│   │   ├── application_controller.go  # Main application controller
+│   │   ├── event_handler.go      # ❌ Event handling (needs extraction)
+│   │   ├── lifecycle.go          # ❌ Lifecycle management (needs extraction)
+│   │   └── container.go          # ❌ DI container (needs extraction)
 │   ├── config/                    # Configuration management
 │   │   ├── loader.go             # Configuration loading & validation
 │   │   ├── args.go               # CLI argument parsing
@@ -198,7 +201,7 @@ go-sentinel-cli/
 └── REFACTORING_ROADMAP.md        # 📋 Completed refactoring phases
 ```
 
-> **🚧 Current Status**: Modular architecture migration **100% complete**. Now implementing CLI functionality using the new architecture. See [CLI_IMPLEMENTATION_ROADMAP.md](CLI_IMPLEMENTATION_ROADMAP.md) for current development plan.
+> **🚧 Current Status**: Modular architecture refactoring **85% complete** (3 violations remain in app package). CLI structure is fully implemented but execution blocked by configuration validation. See [CLI_IMPLEMENTATION_ROADMAP.md](CLI_IMPLEMENTATION_ROADMAP.md) for detailed current state and immediate next steps.
 
 ## 📚 Documentation
 
