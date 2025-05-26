@@ -14,6 +14,9 @@ func ConvertPackagesToWatchPaths(packages []string) []string {
 		case ".":
 			// Watch current directory only
 			paths = append(paths, ".")
+		case "...":
+			// Root recursive pattern
+			paths = append(paths, ".")
 		default:
 			if strings.HasSuffix(pkg, "/...") {
 				// Package with recursive subdirectories

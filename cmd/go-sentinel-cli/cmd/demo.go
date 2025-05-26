@@ -25,4 +25,7 @@ This command is used for development and validation.`,
 
 func init() {
 	rootCmd.AddCommand(demoCmd)
+
+	// Add phase flag for demonstration phases
+	demoCmd.Flags().StringP("phase", "p", "", "Demonstration phase to run (1d-7d)")
 }
