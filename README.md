@@ -156,42 +156,49 @@ Create a `sentinel.config.json` file in your project root:
 | `watch.debounce` | string | `"500ms"` | File change debounce interval |
 | `watch.clearOnRerun` | boolean | `true` | Clear terminal between test runs |
 
-## 📁 Directory Structure (Post-Refactoring)
+## 📁 Directory Structure (Modular Architecture)
 
 ```
 go-sentinel-cli/
 ├── cmd/
-│   ├── go-sentinel-cli/           # Main CLI entry point
-│   │   ├── cmd/                   # Cobra command definitions
-│   │   └── main.go               # Application entry point
-│   └── go-sentinel-cli-v2/        # V2 CLI (development)
-├── internal/
-│   ├── app/                       # Core application logic
+│   ├── go-sentinel-cli/           # Legacy CLI (compatibility layer)
+│   └── go-sentinel-cli-v2/        # Main CLI entry point
+│       ├── cmd/                   # Cobra command definitions
+│       └── main.go               # Application entry point
+├── internal/                      # ✅ Modular Architecture Complete
+│   ├── app/                       # Application orchestration & lifecycle
 │   │   ├── controller.go         # Main application controller
-│   │   └── controller_test.go    # Application tests
-│   ├── watch/                     # File watching functionality
-│   │   ├── core/                 # Core watch interfaces
-│   │   ├── debouncer/            # File change debouncing
-│   │   ├── watcher/              # File system watching
-│   │   └── runner/               # Watch-triggered test running
-│   ├── test/                      # Test execution & processing
+│   │   ├── lifecycle.go          # Lifecycle management
+│   │   └── dependency.go         # Dependency injection
+│   ├── config/                    # Configuration management
+│   │   ├── loader.go             # Configuration loading & validation
+│   │   ├── args.go               # CLI argument parsing
+│   │   └── validation.go         # Configuration validation
+│   ├── test/                      # Test execution & processing system
 │   │   ├── runner/               # Test execution engines
-│   │   ├── processor/            # Test output processing
-│   │   └── cache/                # Test result caching
-│   ├── ui/                        # User interface components
-│   │   ├── display/              # Test result display
-│   │   ├── colors/               # Color formatting
-│   │   └── icons/                # Icon providers
-│   └── config/                    # Configuration management
-│       ├── loader.go             # Configuration loading
-│       └── validation.go         # Configuration validation
-├── pkg/
+│   │   ├── processor/            # Test output parsing & aggregation
+│   │   └── cache/                # Test result caching & optimization
+│   ├── watch/                     # File monitoring & watch mode
+│   │   ├── core/                 # Core watch interfaces & types
+│   │   ├── watcher/              # File system monitoring
+│   │   ├── debouncer/            # Event debouncing & deduplication
+│   │   └── coordinator/          # Watch mode orchestration
+│   ├── ui/                        # User interface & display system
+│   │   ├── display/              # Test result rendering & formatting
+│   │   ├── colors/               # Color themes & terminal detection
+│   │   └── icons/                # Icon providers & visual elements
+│   └── README.md                 # Internal architecture documentation
+├── pkg/                           # Shared packages (external-safe)
 │   ├── events/                    # Event system for inter-component communication
-│   └── models/                    # Shared data models
-├── docs/                          # Documentation
+│   └── models/                    # Shared data models & value objects
+├── docs/                          # Documentation & guides
 ├── demo-configs/                  # Example configurations
-└── stress_tests/                  # Performance and stress tests
+├── stress_tests/                  # Performance & stress testing
+├── CLI_IMPLEMENTATION_ROADMAP.md  # 📋 Implementation roadmap (current focus)
+└── REFACTORING_ROADMAP.md        # 📋 Completed refactoring phases
 ```
+
+> **🚧 Current Status**: Modular architecture migration **100% complete**. Now implementing CLI functionality using the new architecture. See [CLI_IMPLEMENTATION_ROADMAP.md](CLI_IMPLEMENTATION_ROADMAP.md) for current development plan.
 
 ## 📚 Documentation
 
