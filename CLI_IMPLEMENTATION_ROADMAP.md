@@ -1,22 +1,119 @@
 # 🗺️ Go Sentinel CLI Implementation Roadmap
 
+## 🚨 **CRITICAL ARCHITECTURE FIXES** (URGENT - Top Priority)
+
+**❌ ARCHITECTURE VIOLATIONS FOUND**: The `internal/app/` package has become a God Package with mixed responsibilities that violate our modular architecture principles. These MUST be fixed before continuing with new features.
+
+### **🔥 Phase 0: Architecture Compliance Fixes (Week 0)**
+
+**Objective**: Fix architecture violations in `internal/app/` to restore modular architecture compliance.
+
+#### **0.1 Package Responsibility Cleanup (TDD)**
+- [ ] **Task 0.1.1**: Move display rendering logic to UI package ⚠️ **CRITICAL**
+  - **Violation**: `internal/app/display_renderer.go` (318 lines) contains UI logic in app package
+  - **Fix**: Move to `internal/ui/display/app_renderer.go`
+  - **Why**: App package should only orchestrate, not implement UI logic
+  - **Architecture Rule**: UI logic belongs in `internal/ui/`, not `internal/app/`
+  - **Location**: Move `DefaultDisplayRenderer` and related logic
+  - **Duration**: 4 hours
+
+- [ ] **Task 0.1.2**: Move configuration logic to config package ⚠️ **CRITICAL**
+  - **Violation**: `internal/app/config_loader.go` (156 lines) contains config logic in app package
+  - **Fix**: Move to `internal/config/app_config_loader.go`
+  - **Why**: Config logic belongs in config package, app should only use it
+  - **Architecture Rule**: Configuration management belongs in `internal/config/`
+  - **Location**: Move `DefaultConfigurationLoader` and conversion logic
+  - **Duration**: 3 hours
+
+- [ ] **Task 0.1.3**: Move argument parsing logic to config package ⚠️ **CRITICAL**
+  - **Violation**: `internal/app/arg_parser.go` (103 lines) contains CLI parsing logic in app package
+  - **Fix**: Move to `internal/config/app_arg_parser.go`
+  - **Why**: Argument parsing is configuration concern, not orchestration
+  - **Architecture Rule**: CLI argument parsing belongs in `internal/config/`
+  - **Location**: Move `DefaultArgumentParser` and help text
+  - **Duration**: 2 hours
+
+#### **0.2 Monitoring System Separation (TDD)**
+- [ ] **Task 0.2.1**: Extract monitoring to dedicated package ⚠️ **CRITICAL**
+  - **Violation**: `internal/app/monitoring.go` (600 lines) + `monitoring_dashboard.go` (1149 lines) = 1749 lines of monitoring logic in app package
+  - **Fix**: Create `internal/monitoring/` package
+  - **Why**: Monitoring is a cross-cutting concern, not app orchestration
+  - **Architecture Rule**: Monitoring should be separate system that observes app
+  - **Location**: Create `internal/monitoring/collector.go` and `internal/monitoring/dashboard.go`
+  - **Duration**: 6 hours
+
+#### **0.3 Dependency Injection Cleanup (TDD)**
+- [ ] **Task 0.3.1**: Fix direct dependency violations ⚠️ **CRITICAL**
+  - **Violation**: App package directly imports and instantiates internal packages
+  - **Current**: `display_renderer.go` imports `internal/test/cache`, `internal/ui/colors`, etc.
+  - **Fix**: Use dependency injection instead of direct instantiation
+  - **Why**: Violates Dependency Inversion Principle
+  - **Architecture Rule**: App should depend on interfaces, not concrete implementations
+  - **Location**: Update `internal/app/application_controller.go` to use proper DI
+  - **Duration**: 4 hours
+
+- [ ] **Task 0.3.2**: Clean up controller redundancy ⚠️ **CRITICAL**
+  - **Violation**: Multiple controllers: `application_controller.go`, `controller.go`, `simple_controller.go`
+  - **Fix**: Consolidate to single `ApplicationController` with clear responsibilities
+  - **Why**: Violates Single Responsibility and creates confusion
+  - **Architecture Rule**: One clear orchestrator per package
+  - **Location**: Merge and clean up controller files
+  - **Duration**: 3 hours
+
+#### **0.4 Interface Segregation Fixes (TDD)**
+- [ ] **Task 0.4.1**: Split God interfaces ⚠️ **CRITICAL**
+  - **Violation**: `internal/app/interfaces.go` (191 lines) contains too many large interfaces
+  - **Fix**: Split interfaces by responsibility and move to appropriate packages
+  - **Why**: Violates Interface Segregation Principle
+  - **Architecture Rule**: Small, focused interfaces in the packages that use them
+  - **Location**: Move interfaces to their consumer packages
+  - **Duration**: 4 hours
+
+**Phase 0 Deliverable**: ✅ Clean, compliant modular architecture
+**Success Criteria**: App package only contains orchestration logic, no business logic
+**Total Effort**: 26 hours (~3-4 days)
+
+**🚨 CRITICAL**: **NO NEW FEATURES** should be implemented until these architecture fixes are complete.
+
+---
+
 ## 🎯 Project Status Overview
 
-**Current State**: Modular architecture complete, CLI working with basic test execution  
-**Next Phase**: Beautiful output rendering and watch mode integration  
-**Target**: Modern Vitest-style Go test runner with watch mode and rich UI  
+**Current State**: Architecture violations found, CLI working with basic test execution  
+**Next Phase**: Architecture fixes, then beautiful output rendering  
+**Target**: Modern Vitest-style Go test runner with clean modular architecture  
 **Last Updated**: January 2025  
 
 ### 📊 Project Statistics
-- **Architecture Migration**: ✅ **100% Complete** (8/8 tiers)
-- **Modular Packages**: ✅ **100% Complete** (app, test, watch, ui, config)
-- **Code Quality**: ✅ **Grade A** (90%+ maintainability, <2.5 complexity)
+- **Architecture Migration**: ⚠️ **VIOLATIONS FOUND** (need immediate fixes)
+- **Modular Packages**: 🚧 **75% Complete** (app package needs cleanup)
+- **Code Quality**: ⚠️ **Grade B** (architecture violations impact quality)
 - **Test Coverage**: 🎯 **~85% Current** (comprehensive test suite exists)
 - **CLI Implementation**: 🚧 **25% Complete** (basic execution working)
 
 ### 🏗️ Current Architecture Status
 
-**✅ COMPLETED INFRASTRUCTURE**:
+**❌ ARCHITECTURE VIOLATIONS IN APP PACKAGE**:
+```
+internal/app/ ❌ VIOLATIONS FOUND
+├── application_controller.go    # ✅ GOOD - Orchestration only
+├── interfaces.go               # ❌ BAD - God interfaces (191 lines)
+├── display_renderer.go         # ❌ BAD - UI logic in app (318 lines)
+├── config_loader.go            # ❌ BAD - Config logic in app (156 lines)
+├── arg_parser.go               # ❌ BAD - CLI parsing in app (103 lines)
+├── monitoring.go               # ❌ BAD - Monitoring logic in app (600 lines)
+├── monitoring_dashboard.go     # ❌ BAD - Dashboard in app (1149 lines)
+├── controller.go               # ❌ BAD - Duplicate controller (338 lines)
+├── simple_controller.go        # ❌ BAD - Another controller (27 lines)
+├── test_executor.go            # ❌ BAD - Test logic in app (242 lines)
+├── event_handler.go            # ❌ BAD - Event logic in app (198 lines)
+├── lifecycle.go                # ❌ BAD - Lifecycle logic in app (160 lines)
+└── container.go                # ❌ BAD - DI container in app (237 lines)
+
+TOTAL: 16 files, ~4000+ lines in app package (should be ~500 lines max)
+```
+
+**✅ COMPLETED INFRASTRUCTURE** (Once fixes applied):
 ```
 cmd/go-sentinel-cli/
 ├── main.go                    # Entry point ✅ WORKING
@@ -26,29 +123,19 @@ cmd/go-sentinel-cli/
 │   └── demo.go               # Demo command ✅ WORKING
 
 internal/
-├── app/                      # Application orchestration ✅ WORKING
-│   ├── interfaces.go         # ApplicationController interface ✅
-│   ├── application_controller.go # Modular controller impl ✅ WORKING
-│   ├── display_renderer.go   # BasicRenderer implementation ✅
-│   └── controller_integration_test.go # Integration tests ✅ PASSING
+├── app/                      # Application orchestration ⚠️ NEEDS CLEANUP
+│   └── application_controller.go # Main orchestrator ✅ WORKING
 ├── config/                   # Configuration management ✅ WORKING
 │   ├── args.go              # CLI argument parsing ✅ WORKING
 │   ├── loader.go            # Config file loading ✅ WORKING
 │   └── compat.go            # Legacy compatibility ✅
+├── monitoring/               # 🆕 NEW - Monitoring system
+│   ├── collector.go         # Metrics collection
+│   └── dashboard.go         # Monitoring dashboard
 ├── test/                     # Test execution & processing ✅ WORKING
 │   ├── runner/              # Test execution engines ✅ WORKING
-│   │   ├── interfaces.go    # TestExecutor interface ✅
-│   │   ├── executor.go      # DefaultExecutor impl ✅ WORKING
-│   │   ├── basic_runner.go  # Basic test runner ✅
-│   │   ├── optimized_runner.go # Optimized runner ✅
-│   │   └── parallel_runner.go # Parallel runner ✅
 │   ├── processor/           # Test output processing ✅ WORKING
-│   │   ├── interfaces.go    # Processor interfaces ✅
-│   │   ├── json_parser.go   # JSON output parser ✅
-│   │   └── test_processor.go # Test result processor ✅
 │   └── cache/               # Test result caching ✅ WORKING
-│       ├── interfaces.go    # Cache interfaces ✅
-│       └── result_cache.go  # Result cache impl ✅
 ├── watch/                   # File watching system ✅ WORKING
 │   ├── core/               # Watch interfaces ✅
 │   ├── debouncer/          # Event debouncing ✅ WORKING
@@ -57,41 +144,31 @@ internal/
 ├── ui/                     # User interface components ✅ WORKING
 │   ├── display/            # Test result rendering ✅ WORKING
 │   │   ├── interfaces.go   # Renderer interface ✅
+│   │   ├── app_renderer.go # 🆕 MOVED - App-specific renderer
 │   │   ├── basic_display.go # Basic display impl ✅
 │   │   ├── test_display.go # Test result display ✅
 │   │   ├── suite_display.go # Suite display ✅
 │   │   ├── summary_display.go # Summary display ✅
 │   │   └── error_formatter.go # Error formatting ✅
 │   ├── colors/             # Color management ✅ WORKING
-│   │   ├── color_formatter.go # Color formatting ✅
-│   │   └── icon_provider.go # Icon provider ✅
 │   └── icons/              # Icon providers ✅
-│       └── interfaces.go   # Icon interfaces ✅
 └── config/                 # Configuration validation ✅ WORKING
 
 pkg/
 ├── events/                 # Event system ✅
-│   └── interfaces.go      # Event interfaces ✅
 └── models/                # Shared data models ✅
-    ├── interfaces.go      # Core interfaces ✅
-    ├── core_models.go     # Core data models ✅
-    ├── test_types.go      # Test result types ✅
-    └── errors.go          # Error types ✅
 ```
 
-**🎉 CURRENT WORKING STATE**:
+**🎉 CURRENT WORKING STATE** (After fixes):
 - ✅ CLI executes real tests: `go run cmd/go-sentinel-cli/main.go run ./internal/config`
-- ✅ Basic output with emojis: "🚀 Test Execution Summary", "✅ Passed: 20"
-- ✅ All CLI flags working: --verbose, --color, --watch, --parallel, etc.
-- ✅ Modular architecture: app orchestrates config, test, and ui packages
+- ✅ Clean modular architecture: Each package has single responsibility
+- ✅ Proper dependency injection: App orchestrates via interfaces
 - ✅ Test coverage: 85%+ with comprehensive test suites
 
-**🚧 IMPLEMENTATION NEEDED**:
+**🚧 IMPLEMENTATION NEEDED** (After architecture fixes):
 - Beautiful Vitest-style output (currently basic emoji summary)
 - Watch mode integration (components exist but not wired to CLI)
 - Advanced display features (progress bars, live updates, three-part layout)
-- Error handling and recovery improvements
-- Performance optimizations
 
 ### 🎭 Target CLI Experience (Based on Original Images)
 
@@ -166,64 +243,48 @@ pkg/
 
 ---
 
-## 📋 Phase 2: Beautiful Output & Display (Week 2) 🚧 **CURRENT FOCUS**
+## 📋 Phase 2: Beautiful Output & Display (Week 2) 🚧 **PENDING ARCHITECTURE FIXES**
+
+**⚠️ BLOCKED**: This phase is blocked until Phase 0 (Architecture Fixes) is completed.
 
 **Objective**: Implement Vitest-style beautiful output with colors, icons, and structured display.
 
 ### 2.1 Display System Implementation (TDD)
 - [ ] **Task 2.1.1**: Enhanced color system integration
-  - **Existing**: `internal/ui/colors/color_formatter.go` ✅ IMPLEMENTED
-  - **Tests**: `internal/ui/colors/color_formatter_test.go` ✅ PASSING
-  - **Need**: Integration with main display renderer
-  - **Location**: Update `internal/app/display_renderer.go` to use color system
+  - **Dependency**: Task 0.1.1 must be completed first (move display logic to UI package)
+  - **Location**: `internal/ui/display/app_renderer.go` (after move)
   - **Duration**: 4 hours
 
-- [ ] **Task 2.1.2**: Enhanced icon system integration
-  - **Existing**: `internal/ui/colors/icon_provider.go` ✅ IMPLEMENTED
-  - **Tests**: `internal/ui/colors/colors_test.go` ✅ PASSING
-  - **Need**: Integration with main display renderer
-  - **Location**: Update `internal/app/display_renderer.go` to use icon system
+- [ ] **Task 2.1.2**: Enhanced icon system integration  
+  - **Dependency**: Task 0.1.1 must be completed first
+  - **Location**: `internal/ui/display/app_renderer.go` (after move)
   - **Duration**: 4 hours
 
 - [ ] **Task 2.1.3**: Progress indicators implementation
-  - **Interface**: `internal/ui/display/interfaces.go` ProgressRenderer ✅ EXISTS
-  - **Need**: Implementation of progress rendering
+  - **Dependency**: Clean architecture needed first
   - **Location**: Create `internal/ui/display/progress_renderer.go`
-  - **Integration**: Wire to `internal/app/display_renderer.go`
   - **Duration**: 6 hours
 
 ### 2.2 Three-Part Display Structure (TDD)
 - [ ] **Task 2.2.1**: Header section implementation
-  - **Existing**: Basic header in `internal/app/display_renderer.go`
-  - **Need**: Enhanced header with status, timing, progress
-  - **Location**: Enhance `RenderResults` method
+  - **Dependency**: Clean UI architecture needed
   - **Duration**: 6 hours
 
 - [ ] **Task 2.2.2**: Main content section enhancement
-  - **Existing**: `internal/ui/display/test_display.go` ✅ IMPLEMENTED
-  - **Tests**: `internal/ui/display/test_display_test.go` ✅ PASSING
-  - **Need**: Integration with main renderer for structured output
-  - **Location**: Update `internal/app/display_renderer.go` to use test_display
+  - **Dependency**: Clean UI architecture needed
   - **Duration**: 8 hours
 
 - [ ] **Task 2.2.3**: Summary footer enhancement
-  - **Existing**: `internal/ui/display/summary_display.go` ✅ IMPLEMENTED
-  - **Tests**: `internal/ui/display/summary_display_test.go` ✅ PASSING
-  - **Need**: Integration with main renderer
-  - **Location**: Update `internal/app/display_renderer.go` to use summary_display
+  - **Dependency**: Clean UI architecture needed
   - **Duration**: 4 hours
 
 ### 2.3 Layout Management (TDD)
 - [ ] **Task 2.3.1**: Terminal layout implementation
-  - **Interface**: `internal/ui/display/interfaces.go` LayoutManager ✅ EXISTS
-  - **Need**: Implementation of layout management
-  - **Location**: Create `internal/ui/display/layout_manager.go`
+  - **Dependency**: Clean UI architecture needed
   - **Duration**: 6 hours
 
 - [ ] **Task 2.3.2**: Live updating system
-  - **Interface**: `internal/ui/display/interfaces.go` supports live updates
-  - **Need**: Real-time display updates during test execution
-  - **Location**: Enhance `internal/app/display_renderer.go` with live updates
+  - **Dependency**: Clean UI architecture needed
   - **Duration**: 8 hours
 
 **Phase 2 Deliverable**: Beautiful Vitest-style output with colors, icons, and structured display
@@ -232,61 +293,43 @@ pkg/
 
 ---
 
-## 📋 Phase 3: Watch Mode & File Monitoring (Week 3) 🔄 **READY FOR IMPLEMENTATION**
+## 📋 Phase 3: Watch Mode & File Monitoring (Week 3) 🔄 **PENDING ARCHITECTURE FIXES**
+
+**⚠️ BLOCKED**: This phase is blocked until Phase 0 (Architecture Fixes) is completed.
 
 **Objective**: Integrate existing watch system components with CLI.
 
 ### 3.1 Watch System Integration (TDD)
 - [ ] **Task 3.1.1**: File watcher CLI integration
-  - **Existing**: `internal/watch/watcher/fs_watcher.go` ✅ IMPLEMENTED
-  - **Need**: Integration with CLI run command
-  - **Location**: Update `cmd/go-sentinel-cli/cmd/run.go` watch flag handling
-  - **Integration**: Wire to `internal/app/application_controller.go`
+  - **Dependency**: Clean app orchestration needed first
   - **Duration**: 6 hours
 
 - [ ] **Task 3.1.2**: Event debouncing integration
-  - **Existing**: `internal/watch/debouncer/file_debouncer.go` ✅ IMPLEMENTED
-  - **Tests**: `internal/watch/debouncer/file_debouncer_test.go` ✅ PASSING
-  - **Need**: Integration with watch mode
-  - **Location**: Use in watch coordinator
+  - **Dependency**: Clean architecture needed
   - **Duration**: 4 hours
 
 - [ ] **Task 3.1.3**: Watch coordination integration
-  - **Existing**: `internal/watch/coordinator/watch_coordinator.go` ✅ IMPLEMENTED
-  - **Tests**: `internal/watch/coordinator/watch_coordinator_test.go` ✅ PASSING
-  - **Need**: Integration with application controller
-  - **Location**: Update `internal/app/application_controller.go` for watch mode
+  - **Dependency**: Clean app controller needed
   - **Duration**: 6 hours
 
 ### 3.2 Watch Mode CLI Integration (TDD)
 - [ ] **Task 3.2.1**: Watch flag handling enhancement
-  - **Existing**: `--watch` flag in `cmd/go-sentinel-cli/cmd/run.go` ✅ EXISTS
-  - **Need**: Actual watch mode activation
-  - **Location**: Update run command to start watch mode
+  - **Dependency**: Clean arg parsing architecture needed
   - **Duration**: 4 hours
 
 - [ ] **Task 3.2.2**: Watch mode display
-  - **Interface**: Watch display interfaces exist in `internal/ui/display/`
-  - **Need**: Watch-specific display components
-  - **Location**: Create watch mode display integration
+  - **Dependency**: Clean UI architecture needed
   - **Duration**: 6 hours
 
 - [ ] **Task 3.2.3**: Watch mode test execution
-  - **Existing**: Test execution pipeline ✅ WORKING
-  - **Need**: Watch-triggered test execution
-  - **Location**: Integrate watch events with test execution
+  - **Dependency**: Clean orchestration needed
   - **Duration**: 8 hours
 
 ### 3.3 Smart Test Selection (TDD)
 - [ ] **Task 3.3.1**: Related test detection
-  - **Need**: Smart test selection algorithms
-  - **Location**: Create `internal/test/selector/` package
   - **Duration**: 8 hours
 
 - [ ] **Task 3.3.2**: Watch mode optimization
-  - **Existing**: `internal/test/cache/result_cache.go` ✅ IMPLEMENTED
-  - **Need**: Integration with watch mode
-  - **Location**: Use cache for incremental testing
   - **Duration**: 6 hours
 
 **Phase 3 Deliverable**: Fully functional watch mode with intelligent file monitoring
@@ -419,33 +462,62 @@ pkg/
 
 ## 🎯 **NEXT IMMEDIATE STEPS**
 
-### **Priority 1: Task 2.1.1 - Enhanced Color System Integration**
-- **What**: Integrate existing color system with main display renderer
-- **Where**: Update `internal/app/display_renderer.go` 
-- **Why**: Colors already implemented but not used in main output
-- **How**: Use `internal/ui/colors/color_formatter.go` in BasicRenderer
+### **🚨 CRITICAL PRIORITY: Fix Architecture Violations First**
+
+Before implementing any new features, these architecture fixes MUST be completed:
+
+### **Priority 1: Task 0.1.1 - Move Display Logic to UI Package**
+- **What**: Move `internal/app/display_renderer.go` to `internal/ui/display/app_renderer.go`
+- **Why**: UI logic must not be in app package (violates Single Responsibility)
+- **Impact**: 318 lines of misplaced UI logic
 - **Duration**: 4 hours
 
-### **Priority 2: Task 2.1.2 - Enhanced Icon System Integration**  
-- **What**: Integrate existing icon system with main display renderer
-- **Where**: Update `internal/app/display_renderer.go`
-- **Why**: Icons already implemented but not fully utilized
-- **How**: Use `internal/ui/colors/icon_provider.go` in BasicRenderer
-- **Duration**: 4 hours
+### **Priority 2: Task 0.2.1 - Extract Monitoring System**
+- **What**: Create `internal/monitoring/` package and move monitoring logic
+- **Why**: 1749 lines of monitoring logic violates app package responsibility
+- **Impact**: Massive reduction in app package complexity
+- **Duration**: 6 hours
 
-### **Priority 3: Task 2.2.2 - Main Content Section Enhancement**
-- **What**: Use existing test display components for structured output
-- **Where**: Update `internal/app/display_renderer.go`
-- **Why**: Rich display components exist but not integrated
-- **How**: Use `internal/ui/display/test_display.go` and related components
-- **Duration**: 8 hours
+### **Priority 3: Task 0.1.2 + 0.1.3 - Move Config Logic**
+- **What**: Move config loading and arg parsing to config package
+- **Why**: Configuration concerns don't belong in app orchestration
+- **Impact**: 259 lines of misplaced config logic
+- **Duration**: 5 hours
 
 ---
 
-## 📚 **ARCHITECTURE REFERENCE**
+## 📚 **UPDATED ARCHITECTURE REFERENCE**
+
+### **🚫 ARCHITECTURE VIOLATIONS TO AVOID**:
+
+#### **❌ God Package Anti-Pattern**
+```go
+// WRONG - App package doing everything
+internal/app/
+├── display_renderer.go      // UI logic (should be in ui/)
+├── config_loader.go         // Config logic (should be in config/)
+├── monitoring.go            // Monitoring logic (should be in monitoring/)
+└── arg_parser.go           // CLI parsing (should be in config/)
+```
+
+#### **✅ Correct Modular Structure**
+```go
+// RIGHT - Single responsibility per package
+internal/
+├── app/
+│   └── application_controller.go  // ONLY orchestration
+├── ui/display/
+│   └── app_renderer.go            // UI logic HERE
+├── config/
+│   ├── app_config_loader.go       // Config logic HERE
+│   └── app_arg_parser.go          // CLI parsing HERE
+└── monitoring/
+    ├── collector.go               // Monitoring HERE
+    └── dashboard.go
+```
 
 ### **Key Interfaces for AI Agents**:
-- `internal/app/interfaces.go` - ApplicationController
+- `internal/app/interfaces.go` - ApplicationController (needs cleanup)
 - `internal/test/runner/interfaces.go` - TestExecutor  
 - `internal/ui/display/interfaces.go` - Renderer
 - `internal/config/args.go` - ArgParser
@@ -453,12 +525,11 @@ pkg/
 
 ### **Working Entry Points**:
 - `cmd/go-sentinel-cli/main.go` - CLI entry
-- `internal/app/application_controller.go` - Main orchestration
-- `internal/app/display_renderer.go` - Current basic renderer
+- `internal/app/application_controller.go` - Main orchestration (needs cleanup)
 
 ### **Test Commands for Validation**:
 - `go run cmd/go-sentinel-cli/main.go run ./internal/config` - Basic execution
 - `go run cmd/go-sentinel-cli/main.go run --verbose ./internal/config` - Verbose mode
 - `go test ./...` - Run all tests (85%+ passing)
 
-This roadmap now serves as the definitive guide for AI agents to understand exactly what exists, what works, and what needs to be implemented next. 
+**⚠️ IMPORTANT**: This roadmap now prioritizes architecture compliance. No new features should be implemented until the architecture violations are resolved. 
