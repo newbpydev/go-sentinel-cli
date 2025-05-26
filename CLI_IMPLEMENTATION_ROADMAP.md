@@ -56,16 +56,17 @@
   - **Location**: Update `internal/app/application_controller.go` to use proper DI
   - **Duration**: 4 hours ✅ **COMPLETED**
 
-- [ ] **Task 0.3.2**: Clean up controller redundancy ⚠️ **CRITICAL** ← **NEXT TASK**
+- [x] **Task 0.3.2**: Clean up controller redundancy ✅ **COMPLETED**
   - **Violation**: Multiple controllers: `application_controller.go`, `controller.go`, `simple_controller.go`
-  - **Fix**: Consolidate to single `ApplicationController` with clear responsibilities
+  - **Fix**: Consolidated to single `ApplicationController` with clear responsibilities
   - **Why**: Violates Single Responsibility and creates confusion
   - **Architecture Rule**: One clear orchestrator per package
-  - **Location**: Merge and clean up controller files
-  - **Duration**: 3 hours
+  - **Implementation**: Merged 3 controllers into single 397-line `application_controller.go`
+  - **Result**: Single responsibility achieved, controller redundancy eliminated
+  - **Duration**: 3 hours ✅ **COMPLETED**
 
 #### **0.4 Interface Segregation Fixes (TDD)**
-- [ ] **Task 0.4.1**: Split God interfaces ⚠️ **CRITICAL**
+- [ ] **Task 0.4.1**: Split God interfaces ⚠️ **CRITICAL** ← **NEXT TASK**
   - **Violation**: `internal/app/interfaces.go` (191 lines) contains too many large interfaces
   - **Fix**: Split interfaces by responsibility and move to appropriate packages
   - **Why**: Violates Interface Segregation Principle
@@ -73,7 +74,7 @@
   - **Location**: Move interfaces to their consumer packages
   - **Duration**: 4 hours
 
-**Phase 0 Progress**: 🚧 **19/26 hours completed** (Tasks 0.1.1 ✅ 0.1.2 ✅ 0.1.3 ✅ 0.2.1 ✅ 0.3.1 ✅ DONE)
+**Phase 0 Progress**: 🚧 **22/26 hours completed** (Tasks 0.1.1 ✅ 0.1.2 ✅ 0.1.3 ✅ 0.2.1 ✅ 0.3.1 ✅ 0.3.2 ✅ DONE)
 **Phase 0 Deliverable**: ✅ Clean, compliant modular architecture
 **Success Criteria**: App package only contains orchestration logic, no business logic
 **Total Effort**: 26 hours (~3-4 days) - **Remaining**: 7 hours
@@ -619,7 +620,7 @@ internal/app/ 🚧 EXCELLENT PROGRESS MADE
 ├── monitoring_adapter.go       # ✅ GOOD - Adapter pattern (86 lines)
 ├── test_executor_adapter.go    # ✅ NEW - Adapter pattern (235 lines) (Task 0.3.1)
 ├── watch_coordinator_adapter.go # ✅ NEW - Adapter pattern (93 lines) (Task 0.3.1)
-├── simple_controller.go        # ❌ BAD - Another controller (27 lines)
+├── simple_controller.go        # ✅ FIXED - Deleted legacy controller (Task 0.3.2)
 ├── test_executor.go            # ✅ FIXED - Deleted, logic moved to adapter (Task 0.3.1)
 ├── event_handler.go            # ❌ BAD - Event logic in app (198 lines)
 ├── lifecycle.go                # ❌ BAD - Lifecycle logic in app (160 lines)
