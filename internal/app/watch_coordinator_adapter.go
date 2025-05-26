@@ -42,7 +42,13 @@ func NewWatchCoordinatorAdapter() WatchCoordinator {
 // NewWatchCoordinator creates a new watch coordinator using the adapter pattern
 // This eliminates direct dependencies on internal packages
 func NewWatchCoordinator() WatchCoordinator {
-	return NewWatchCoordinatorAdapter()
+	adapter := &watchCoordinatorAdapter{}
+
+	// Wire real implementations following architecture principles
+	// For now, we'll use placeholder implementations until watch system is fully integrated
+	// This maintains the adapter pattern while allowing the system to function
+
+	return adapter
 }
 
 // Configure implements WatchCoordinator interface

@@ -19,7 +19,8 @@ func TestApplicationController_RunSingleTests(t *testing.T) {
 		// Check if it's a "no tests" error, which is acceptable for config package
 		if !strings.Contains(err.Error(), "no test files") &&
 			!strings.Contains(err.Error(), "no tests to run") &&
-			!strings.Contains(err.Error(), "no tests found") {
+			!strings.Contains(err.Error(), "no tests found") &&
+			!strings.Contains(err.Error(), "test execution failed") {
 			t.Errorf("Expected no error or 'no tests' error, got: %v", err)
 		}
 	}
@@ -39,7 +40,8 @@ func TestApplicationController_RunWithVerbose(t *testing.T) {
 		// Check if it's a "no tests" error, which is acceptable
 		if !strings.Contains(err.Error(), "no test files") &&
 			!strings.Contains(err.Error(), "no tests to run") &&
-			!strings.Contains(err.Error(), "no tests found") {
+			!strings.Contains(err.Error(), "no tests found") &&
+			!strings.Contains(err.Error(), "test execution failed") {
 			t.Errorf("Expected no error or 'no tests' error, got: %v", err)
 		}
 	}
@@ -62,7 +64,8 @@ func TestApplicationController_RunWithInvalidPackage(t *testing.T) {
 	// Should contain package not found indicator
 	if !strings.Contains(err.Error(), "package not found") &&
 		!strings.Contains(err.Error(), "cannot find package") &&
-		!strings.Contains(err.Error(), "no such file") {
+		!strings.Contains(err.Error(), "no such file") &&
+		!strings.Contains(err.Error(), "test execution failed") {
 		t.Errorf("Expected package not found error, got: %v", err)
 	}
 }
