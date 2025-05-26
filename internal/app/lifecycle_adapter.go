@@ -29,6 +29,11 @@ func (a *lifecycleManagerAdapter) RegisterShutdownHook(hook func() error) {
 	a.manager.RegisterShutdownHook(hook)
 }
 
+// Context returns the lifecycle context for signal handling
+func (a *lifecycleManagerAdapter) Context() context.Context {
+	return a.manager.Context()
+}
+
 // LifecycleManagerFactory creates and manages lifecycle manager adapters.
 // This factory follows dependency injection principles and maintains package boundaries.
 type LifecycleManagerFactory struct {

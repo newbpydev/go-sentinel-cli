@@ -75,34 +75,61 @@ func (r *ParallelTestRunner) RunParallel(ctx context.Context, testPaths []string
 
 	var wg sync.WaitGroup
 
-	// Start workers for each test path
+	// Start workers for each test path with proper context handling
 	for _, testPath := range testPaths {
 		wg.Add(1)
 		go func(path string) {
 			defer wg.Done()
 
-			// Acquire semaphore
-			semaphore <- struct{}{}
+			// Check for context cancellation before acquiring semaphore
+			select {
+			case <-ctx.Done():
+				results <- &ParallelTestResult{
+					TestPath: path,
+					Error:    fmt.Errorf("execution cancelled for %s: %w", path, ctx.Err()),
+					Duration: 0,
+				}
+				return
+			case semaphore <- struct{}{}:
+				// Acquired semaphore, continue
+			}
+
 			defer func() { <-semaphore }()
 
+			// Execute with proper error handling
 			result := r.executeTestPath(ctx, path, cfg)
-			results <- result
+
+			// Send result with timeout protection
+			select {
+			case results <- result:
+			case <-ctx.Done():
+				// Context cancelled while sending result
+				return
+			}
 		}(testPath)
 	}
 
-	// Close results channel when all workers complete
+	// Close results channel when all workers complete with timeout protection
 	go func() {
 		wg.Wait()
 		close(results)
 	}()
 
-	// Collect results
+	// Collect results with context cancellation handling
 	allResults := make([]*ParallelTestResult, 0, len(testPaths))
-	for result := range results {
-		allResults = append(allResults, result)
+	for {
+		select {
+		case result, ok := <-results:
+			if !ok {
+				// Channel closed, all results collected
+				return allResults, nil
+			}
+			allResults = append(allResults, result)
+		case <-ctx.Done():
+			// Context cancelled, return partial results
+			return allResults, fmt.Errorf("parallel execution cancelled: %w", ctx.Err())
+		}
 	}
-
-	return allResults, nil
 }
 
 // executeTestPath executes a single test path with caching
@@ -170,19 +197,44 @@ func (r *ParallelTestRunner) runSingleTestPath(ctx context.Context, testPath str
 
 	// Process the stream
 	progress := make(chan models.TestProgress, 10)
-	defer close(progress)
 
-	// Start progress monitoring in background (optional)
+	// CRITICAL FIX: Ensure proper goroutine cleanup with context cancellation
+	progressCtx, progressCancel := context.WithCancel(testCtx)
+	defer progressCancel()
+
+	// Start progress monitoring in background with proper cleanup
+	progressDone := make(chan struct{})
 	go func() {
-		for range progress {
-			// Consume progress updates without action for parallel execution
+		defer close(progressDone)
+		for {
+			select {
+			case <-progressCtx.Done():
+				// Drain remaining progress updates
+				for len(progress) > 0 {
+					<-progress
+				}
+				return
+			case _, ok := <-progress:
+				if !ok {
+					return
+				}
+				// Consume progress updates without action for parallel execution
+			}
 		}
 	}()
 
 	// Process the stream
 	if err := testProcessor.ProcessStream(stream, progress); err != nil {
+		close(progress)
+		progressCancel()
+		<-progressDone // Wait for cleanup
 		return nil, fmt.Errorf("failed to process test stream for %s: %w", testPath, err)
 	}
+
+	// Clean shutdown
+	close(progress)
+	progressCancel()
+	<-progressDone // Wait for cleanup
 
 	// Extract the test suite for this path
 	if suite, exists := testProcessor.GetSuites()[testPath]; exists {

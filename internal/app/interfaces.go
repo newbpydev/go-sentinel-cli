@@ -29,6 +29,9 @@ type LifecycleManager interface {
 
 	// RegisterShutdownHook adds a function to be called during shutdown
 	RegisterShutdownHook(hook func() error)
+
+	// Context returns the lifecycle context for signal handling
+	Context() context.Context
 }
 
 // DependencyContainer manages component dependencies - minimal interface

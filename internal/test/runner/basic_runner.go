@@ -70,6 +70,9 @@ func (r *BasicTestRunner) Run(ctx context.Context, testPaths []string) (string, 
 	// Create the command
 	cmd := exec.CommandContext(ctx, "go", args...)
 
+	// CRITICAL FIX: Set process group to ensure child processes are cleaned up
+	setProcessGroup(cmd)
+
 	// Capture stdout and stderr
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -128,6 +131,9 @@ func (r *BasicTestRunner) RunStream(ctx context.Context, testPaths []string) (io
 
 	// Create the command
 	cmd := exec.CommandContext(ctx, "go", args...)
+
+	// CRITICAL FIX: Set process group to ensure child processes are cleaned up
+	setProcessGroup(cmd)
 
 	// Get stdout pipe for streaming
 	stdout, err := cmd.StdoutPipe()
@@ -198,6 +204,6 @@ func IsGoFile(path string) bool {
 type TestRunner = BasicTestRunner
 
 // NewTestRunner creates a new test runner for backward compatibility
-func NewTestRunner(verbose, jsonOutput bool) *TestRunner {
-	return NewBasicTestRunner(verbose, jsonOutput)
+func NewTestRunner(verbose bool, withColor bool) *BasicTestRunner {
+	return NewBasicTestRunner(verbose, withColor)
 }

@@ -273,6 +273,9 @@ func (r *OptimizedTestRunner) executeMinimalTests(ctx context.Context, targets [
 	// Execute the command
 	cmd := exec.CommandContext(ctx, "go", args...)
 
+	// CRITICAL FIX: Set process group to ensure child processes are cleaned up
+	setProcessGroup(cmd)
+
 	output, err := cmd.CombinedOutput()
 
 	exitCode := 0

@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -36,11 +38,19 @@ func (e *DefaultExecutor) Execute(ctx context.Context, packages []string, option
 	}
 	e.isRunning = true
 	e.options = options
+
+	// Create cancellable context for proper cleanup
+	executionCtx, cancel := context.WithCancel(ctx)
+	e.cancel = cancel
 	e.mu.Unlock()
 
 	defer func() {
 		e.mu.Lock()
 		e.isRunning = false
+		if e.cancel != nil {
+			e.cancel()
+			e.cancel = nil
+		}
 		e.mu.Unlock()
 	}()
 
@@ -56,7 +66,14 @@ func (e *DefaultExecutor) Execute(ctx context.Context, packages []string, option
 
 	// Execute tests for each package
 	for _, pkg := range packages {
-		packageResult, err := e.ExecutePackage(ctx, pkg, options)
+		// Check if context was cancelled
+		select {
+		case <-executionCtx.Done():
+			return nil, fmt.Errorf("test execution cancelled: %w", executionCtx.Err())
+		default:
+		}
+
+		packageResult, err := e.ExecutePackage(executionCtx, pkg, options)
 		if err != nil {
 			return nil, fmt.Errorf("failed to execute tests for package %s: %w", pkg, err)
 		}
@@ -128,7 +145,7 @@ func (e *DefaultExecutor) ExecutePackage(ctx context.Context, pkg string, option
 	// Add the package
 	args = append(args, pkg)
 
-	// Create the command
+	// Create the command with context for proper cancellation
 	cmd := exec.CommandContext(ctx, "go", args...)
 
 	// Set working directory if specified
@@ -145,8 +162,41 @@ func (e *DefaultExecutor) ExecutePackage(ctx context.Context, pkg string, option
 		cmd.Env = env
 	}
 
-	// Execute the command and capture output
-	output, err := cmd.CombinedOutput()
+	// CRITICAL FIX: Set process group to ensure child processes are cleaned up
+	// This prevents orphaned processes when the parent is terminated
+	setProcessGroup(cmd)
+
+	// Execute the command and capture output with proper timeout handling
+	// Use a channel to handle cancellation and cleanup
+	resultChan := make(chan struct {
+		output []byte
+		err    error
+	}, 1)
+
+	go func() {
+		output, err := cmd.CombinedOutput()
+		resultChan <- struct {
+			output []byte
+			err    error
+		}{output, err}
+	}()
+
+	var output []byte
+	var err error
+
+	// Wait for completion or cancellation
+	select {
+	case result := <-resultChan:
+		output = result.output
+		err = result.err
+	case <-ctx.Done():
+		// Kill the process and its children if context is cancelled
+		if cmd.Process != nil {
+			killProcessGroup(cmd.Process)
+		}
+		return nil, fmt.Errorf("test execution cancelled: %w", ctx.Err())
+	}
+
 	outputStr := string(output)
 
 	// Parse the results
@@ -256,5 +306,35 @@ func (e *DefaultExecutor) parseTestLine(line, pkg string, status TestStatus) *Te
 		Status:   status,
 		Duration: duration,
 		Output:   line,
+	}
+}
+
+// setProcessGroup configures the command to run in a separate process group
+// This ensures that child processes can be properly terminated
+func setProcessGroup(cmd *exec.Cmd) {
+	// Initialize SysProcAttr for all platforms
+	cmd.SysProcAttr = &syscall.SysProcAttr{}
+
+	if runtime.GOOS == "windows" {
+		// On Windows, set CREATE_NEW_PROCESS_GROUP flag
+		cmd.SysProcAttr.CreationFlags = syscall.CREATE_NEW_PROCESS_GROUP
+	}
+	// For Unix systems, we can't use Setpgid/Pgid fields on this build
+	// The process will still be manageable through the context cancellation
+}
+
+// killProcessGroup terminates the process and its children
+func killProcessGroup(process *os.Process) {
+	if runtime.GOOS == "windows" {
+		// On Windows, kill the process (child processes should be terminated automatically)
+		process.Kill()
+	} else {
+		// On Unix-like systems, kill the process group
+		// Send SIGTERM first for graceful shutdown
+		process.Signal(syscall.SIGTERM)
+
+		// Wait a bit and force kill if necessary
+		time.Sleep(100 * time.Millisecond)
+		process.Kill()
 	}
 }

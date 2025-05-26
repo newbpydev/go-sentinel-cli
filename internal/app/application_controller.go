@@ -124,8 +124,14 @@ func (a *displayRendererAdapter) SetConfiguration(config *Configuration) error {
 
 // Initialize implements the ApplicationController interface
 func (c *ApplicationControllerImpl) Initialize() error {
-	// Create application context
-	c.ctx, c.cancel = context.WithCancel(context.Background())
+	// Start the lifecycle manager to enable signal handling
+	if err := c.lifecycle.Startup(context.Background()); err != nil {
+		return fmt.Errorf("failed to start lifecycle manager: %w", err)
+	}
+
+	// Use the lifecycle manager's context for proper signal handling
+	c.ctx = c.lifecycle.Context()
+	c.cancel = nil // Lifecycle manager handles cancellation
 
 	// Register components in the dependency container
 	if err := c.registerComponents(); err != nil {
@@ -345,14 +351,11 @@ func (c *ApplicationControllerImpl) executeSingleMode(config *Configuration, arg
 func (c *ApplicationControllerImpl) executeWatchMode() error {
 	fmt.Printf("👀 Starting watch mode...\n")
 
-	// Start watch coordinator
+	// Start watch coordinator - this will block until context is cancelled
 	if err := c.watchCoordinator.Start(c.ctx); err != nil {
 		return models.NewWatchError("start_coordinator", "", err).
 			WithContext("mode", "watch")
 	}
-
-	// Wait for context cancellation (shutdown signal)
-	<-c.ctx.Done()
 
 	return nil
 }

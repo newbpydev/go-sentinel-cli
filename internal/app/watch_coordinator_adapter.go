@@ -75,10 +75,12 @@ func (w *watchCoordinatorAdapter) Start(ctx context.Context) error {
 	fmt.Printf("⚠️  Watch mode not yet fully implemented in adapter pattern\n")
 	fmt.Printf("📁 Would watch paths: %v\n", w.options.Paths)
 	fmt.Printf("🚫 Would ignore patterns: %v\n", w.options.IgnorePatterns)
+	fmt.Printf("⏸️  Press Ctrl+C to exit watch mode...\n")
 
 	// Wait for context cancellation (simulating watch mode)
 	<-ctx.Done()
-	return nil
+	fmt.Printf("\n🛑 Watch mode stopped\n")
+	return ctx.Err()
 }
 
 // SetConfiguration configures the watch coordinator adapter
