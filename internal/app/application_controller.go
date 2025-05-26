@@ -97,11 +97,7 @@ func NewDisplayRenderer() DisplayRenderer {
 	}
 }
 
-// DisplayRenderer interface for result display (will be moved to ui package)
-type DisplayRenderer interface {
-	RenderResults(ctx context.Context) error
-	SetConfiguration(config *Configuration) error
-}
+// DisplayRenderer interface is now defined in interfaces.go
 
 // displayRendererAdapter adapts the UI package renderer to the app package interface.
 // This adapter pattern allows us to maintain compatibility while moving to proper architecture.

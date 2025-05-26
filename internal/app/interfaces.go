@@ -4,7 +4,6 @@ package app
 import (
 	"context"
 	"io"
-	"time"
 )
 
 // ApplicationController orchestrates the main application flow
@@ -192,57 +191,28 @@ type ArgumentParser interface {
 	Version() string
 }
 
-// ExecutionOptions represents test execution configuration
-type ExecutionOptions struct {
-	JSONOutput       bool
-	Verbose          bool
-	Coverage         bool
-	Parallel         int
-	Args             []string
-	Env              map[string]string
-	WorkingDirectory string
+// WatchCoordinator interface for watch mode coordination - defined in app package as consumer
+type WatchCoordinator interface {
+	Start(ctx context.Context) error
+	Configure(options *WatchOptions) error
 }
 
-// ExecutionResult represents test execution results
-type ExecutionResult struct {
-	Packages      []*PackageResult
-	TotalDuration time.Duration
-	StartTime     time.Time
-	EndTime       time.Time
-	TotalTests    int
-	PassedTests   int
-	FailedTests   int
-	SkippedTests  int
-	Coverage      float64
-	Success       bool
+// WatchOptions represents watch mode configuration
+type WatchOptions struct {
+	Paths            []string
+	IgnorePatterns   []string
+	TestPatterns     []string
+	DebounceInterval string
+	ClearTerminal    bool
+	RunOnStart       bool
 }
 
-// PackageResult represents results for a single package
-type PackageResult struct {
-	Package  string
-	Success  bool
-	Duration time.Duration
-	Coverage float64
-	Output   string
-	Error    error
-	Tests    []*TestResult
+// DisplayRenderer interface for UI rendering - defined in app package as consumer
+type DisplayRenderer interface {
+	RenderResults(ctx context.Context) error
+	SetConfiguration(config *Configuration) error
 }
 
-// TestResult represents a single test result
-type TestResult struct {
-	Name     string
-	Package  string
-	Status   TestStatus
-	Duration time.Duration
-	Output   string
-	Error    string
-}
-
-// TestStatus represents the status of a test
-type TestStatus string
-
-const (
-	TestStatusPassed  TestStatus = "PASS"
-	TestStatusFailed  TestStatus = "FAIL"
-	TestStatusSkipped TestStatus = "SKIP"
-)
+// Note: Test execution types (ExecutionOptions, ExecutionResult, etc.) are defined
+// in internal/test/runner/interfaces.go where they belong according to the
+// Interface Segregation Principle. App package should not duplicate these types.

@@ -30,12 +30,6 @@ type TestProcessor interface {
 	GetStats() *TestStats
 }
 
-// WatchCoordinator interface for watch mode - defined in app package as consumer
-type WatchCoordinator interface {
-	Start(ctx context.Context) error
-	Configure(options *WatchOptions) error
-}
-
 // ColorFormatter interface for color formatting - defined in app package as consumer
 type ColorFormatter interface {
 	FormatSuccess(text string) string
@@ -82,16 +76,6 @@ type TestStats struct {
 	PassedTests int
 	FailedTests int
 	Duration    string
-}
-
-// WatchOptions represents watch mode configuration
-type WatchOptions struct {
-	Paths            []string
-	IgnorePatterns   []string
-	TestPatterns     []string
-	DebounceInterval string
-	ClearTerminal    bool
-	RunOnStart       bool
 }
 
 // NewTestExecutorAdapter creates a new test executor adapter with dependency injection
