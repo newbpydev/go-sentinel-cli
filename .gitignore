@@ -176,3 +176,6 @@ build/go-sentinel-cli
 build/go-sentinel-cli-v2
 build/go-sentinel-cli-v2.exe
 build/go-sentinel-cli.exe
+
+# windsurf
+.windsurf/
