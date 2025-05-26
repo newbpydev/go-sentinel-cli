@@ -4,9 +4,11 @@ package app
 import (
 	"context"
 	"io"
+	"time"
 )
 
 // ApplicationController orchestrates the main application flow
+// This is the core interface for app package - keeps only essential orchestration methods
 type ApplicationController interface {
 	// Run executes the main application flow with the given arguments
 	Run(args []string) error
@@ -18,7 +20,7 @@ type ApplicationController interface {
 	Shutdown(ctx context.Context) error
 }
 
-// LifecycleManager manages application startup and shutdown
+// LifecycleManager manages application startup and shutdown - minimal interface
 type LifecycleManager interface {
 	// Startup initializes all application components
 	Startup(ctx context.Context) error
@@ -26,14 +28,11 @@ type LifecycleManager interface {
 	// Shutdown gracefully stops all application components
 	Shutdown(ctx context.Context) error
 
-	// IsRunning returns whether the application is currently running
-	IsRunning() bool
-
 	// RegisterShutdownHook adds a function to be called during shutdown
 	RegisterShutdownHook(hook func() error)
 }
 
-// DependencyContainer manages component dependencies and injection
+// DependencyContainer manages component dependencies - minimal interface
 type DependencyContainer interface {
 	// Register registers a component with the container
 	Register(name string, component interface{}) error
@@ -51,34 +50,7 @@ type DependencyContainer interface {
 	Cleanup() error
 }
 
-// ArgumentParser handles command-line argument parsing
-type ArgumentParser interface {
-	// Parse parses command-line arguments into a structured format
-	Parse(args []string) (*Arguments, error)
-
-	// Help returns help text for the application
-	Help() string
-
-	// Version returns version information
-	Version() string
-}
-
-// ConfigurationLoader handles application configuration loading
-type ConfigurationLoader interface {
-	// LoadFromFile loads configuration from a file
-	LoadFromFile(path string) (*Configuration, error)
-
-	// LoadFromDefaults returns default configuration
-	LoadFromDefaults() *Configuration
-
-	// Merge merges CLI arguments with configuration
-	Merge(config *Configuration, args *Arguments) *Configuration
-
-	// Validate validates the final configuration
-	Validate(config *Configuration) error
-}
-
-// ApplicationEventHandler handles application-level events
+// ApplicationEventHandler handles application-level events - minimal interface
 type ApplicationEventHandler interface {
 	// OnStartup is called when the application starts
 	OnStartup(ctx context.Context) error
@@ -86,14 +58,15 @@ type ApplicationEventHandler interface {
 	// OnShutdown is called when the application shuts down
 	OnShutdown(ctx context.Context) error
 
-	// OnError is called when an error occurs
-	OnError(err error)
-
 	// OnConfigChanged is called when configuration changes
 	OnConfigChanged(config *Configuration)
+
+	// OnError is called when an error occurs
+	OnError(err error)
 }
 
 // Arguments represents parsed command-line arguments
+// Kept in app package as it's used by ApplicationController.Run()
 type Arguments struct {
 	// Packages to test
 	Packages []string
@@ -118,6 +91,7 @@ type Arguments struct {
 }
 
 // Configuration represents application configuration
+// Kept in app package as it's used throughout app orchestration
 type Configuration struct {
 	// Watch configuration
 	Watch WatchConfig
@@ -188,3 +162,87 @@ type TestConfig struct {
 	// Coverage settings
 	Coverage bool
 }
+
+// ConfigurationLoader interface for loading app configuration
+// Defined in app package because app package is the consumer
+type ConfigurationLoader interface {
+	// LoadFromFile loads configuration from a file
+	LoadFromFile(path string) (*Configuration, error)
+
+	// LoadFromDefaults returns default configuration
+	LoadFromDefaults() *Configuration
+
+	// Merge merges CLI arguments with configuration
+	Merge(config *Configuration, args *Arguments) *Configuration
+
+	// Validate validates the final configuration
+	Validate(config *Configuration) error
+}
+
+// ArgumentParser interface for parsing command-line arguments
+// Defined in app package because app package is the consumer
+type ArgumentParser interface {
+	// Parse parses command-line arguments into a structured format
+	Parse(args []string) (*Arguments, error)
+
+	// Help returns help text for the application
+	Help() string
+
+	// Version returns version information
+	Version() string
+}
+
+// ExecutionOptions represents test execution configuration
+type ExecutionOptions struct {
+	JSONOutput       bool
+	Verbose          bool
+	Coverage         bool
+	Parallel         int
+	Args             []string
+	Env              map[string]string
+	WorkingDirectory string
+}
+
+// ExecutionResult represents test execution results
+type ExecutionResult struct {
+	Packages      []*PackageResult
+	TotalDuration time.Duration
+	StartTime     time.Time
+	EndTime       time.Time
+	TotalTests    int
+	PassedTests   int
+	FailedTests   int
+	SkippedTests  int
+	Coverage      float64
+	Success       bool
+}
+
+// PackageResult represents results for a single package
+type PackageResult struct {
+	Package  string
+	Success  bool
+	Duration time.Duration
+	Coverage float64
+	Output   string
+	Error    error
+	Tests    []*TestResult
+}
+
+// TestResult represents a single test result
+type TestResult struct {
+	Name     string
+	Package  string
+	Status   TestStatus
+	Duration time.Duration
+	Output   string
+	Error    string
+}
+
+// TestStatus represents the status of a test
+type TestStatus string
+
+const (
+	TestStatusPassed  TestStatus = "PASS"
+	TestStatusFailed  TestStatus = "FAIL"
+	TestStatusSkipped TestStatus = "SKIP"
+)

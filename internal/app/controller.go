@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/newbpydev/go-sentinel/internal/ui/display"
-	"github.com/newbpydev/go-sentinel/internal/watch/core"
 	"github.com/newbpydev/go-sentinel/pkg/models"
 )
 
@@ -23,7 +22,7 @@ type Controller struct {
 
 	// Component interfaces (to be injected)
 	testExecutor     TestExecutor
-	watchCoordinator core.WatchCoordinator
+	watchCoordinator WatchCoordinator
 	displayRenderer  DisplayRenderer
 
 	// Internal state
@@ -137,13 +136,10 @@ func (c *Controller) registerComponents() error {
 		return fmt.Errorf("failed to register displayRenderer: %w", err)
 	}
 
-	// Register watch coordinator (create a factory function)
-	watchCoordinatorFactory := func() (interface{}, error) {
-		// This will be created when needed based on configuration
-		return nil, fmt.Errorf("watch coordinator not yet implemented")
-	}
-	if err := c.container.Register("watchCoordinator", watchCoordinatorFactory); err != nil {
-		return fmt.Errorf("failed to register watchCoordinator factory: %w", err)
+	// Register watch coordinator
+	watchCoordinator := NewWatchCoordinator()
+	if err := c.container.Register("watchCoordinator", watchCoordinator); err != nil {
+		return fmt.Errorf("failed to register watchCoordinator: %w", err)
 	}
 
 	return nil
@@ -256,15 +252,13 @@ func (c *Controller) configureComponents(config *Configuration) error {
 
 	// Configure watch coordinator if watch mode is enabled
 	if config.Watch.Enabled && c.watchCoordinator != nil {
-		watchOptions := core.WatchOptions{
+		watchOptions := &WatchOptions{
 			Paths:            config.Paths.IncludePatterns,
 			IgnorePatterns:   config.Watch.IgnorePatterns,
 			TestPatterns:     []string{"*_test.go"},
-			Mode:             core.WatchAll,          // Default mode
-			DebounceInterval: 100 * time.Millisecond, // Parse from config.Watch.Debounce
+			DebounceInterval: config.Watch.Debounce, // Use string from config
 			ClearTerminal:    config.Watch.ClearOnRerun,
 			RunOnStart:       config.Watch.RunOnStart,
-			Writer:           os.Stdout,
 		}
 
 		if err := c.watchCoordinator.Configure(watchOptions); err != nil {
