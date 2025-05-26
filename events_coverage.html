@@ -55,9 +55,9 @@
 			<div id="nav">
 				<select id="files">
 
-				<option value="file0">github.com/newbpydev/go-sentinel/internal/events/factory.go (100.0%)</option>
+				<option value="file0">github.com/newbpydev/go-sentinel/pkg/events/examples.go (98.7%)</option>
 
-				<option value="file1">github.com/newbpydev/go-sentinel/internal/events/handler.go (100.0%)</option>
+				<option value="file1">github.com/newbpydev/go-sentinel/pkg/events/interfaces.go (100.0%)</option>
 
 				</select>
 			</div>
@@ -71,270 +71,781 @@
 		</div>
 		<div id="content">
 
-		<pre class="file" id="file0" style="display: none">// Package events provides factory for creating event handlers
+		<pre class="file" id="file0" style="display: none">// Package events provides event system interfaces for inter-component communication.
+//
+// This package defines the core event system architecture used throughout the Go Sentinel CLI
+// for decoupled communication between components. It provides interfaces for event publishing,
+// subscription, filtering, and persistence.
+//
+// Key components:
+//   - EventBus: Central event publishing and subscription management
+//   - Event: Core event interface with metadata and data
+//   - EventHandler: Interface for processing events
+//   - EventStore: Interface for event persistence and retrieval
+//   - EventProcessor: Interface for batch and async event processing
+//
+// Example usage:
+//
+//        // Create and publish events
+//        event := events.NewTestStartedEvent("TestExample", "github.com/example/pkg")
+//        bus.Publish(ctx, event)
+//
+//        // Subscribe to events
+//        subscription, err := bus.Subscribe("test.started", handler)
+//        if err != nil {
+//                log.Fatal(err)
+//        }
+//        defer subscription.Cancel()
+//
+//        // Query stored events
+//        query := &amp;events.EventQuery{
+//                EventTypes: []string{"test.completed"},
+//                StartTime:  &amp;yesterday,
+//                Limit:      100,
+//        }
+//        events, err := store.Retrieve(ctx, query)
 package events
 
 import (
-        "log"
+        "fmt"
+        "time"
 )
 
-// DefaultAppEventHandlerFactory implements the AppEventHandlerFactory interface.
-// This factory follows the Factory pattern and dependency injection principles.
-type DefaultAppEventHandlerFactory struct {
-        // Dependencies for creating event handlers
-        defaultLogger *log.Logger
+// Example_eventBusUsage demonstrates basic event bus operations.
+//
+// This example shows how to publish events, subscribe to them,
+// and manage subscriptions in a typical application scenario.
+func Example_eventBusUsage() <span class="cov8" title="1">{
+        // This is a conceptual example - actual implementation would require
+        // a concrete EventBus implementation
+
+        // Create test events
+        testStarted := NewTestStartedEvent("TestUserAuth", "github.com/example/auth")
+        testCompleted := NewTestCompletedEvent("TestUserAuth", "github.com/example/auth",
+                150*time.Millisecond, true)
+
+        fmt.Printf("Test Started Event: %s\n", testStarted.String())
+        fmt.Printf("- Type: %s\n", testStarted.Type())
+        fmt.Printf("- Source: %s\n", testStarted.Source())
+        fmt.Printf("- Timestamp: %s\n", testStarted.Timestamp().Format("15:04:05"))
+
+        fmt.Printf("\nTest Completed Event: %s\n", testCompleted.String())
+        fmt.Printf("- Duration: %v\n", testCompleted.Duration)
+        fmt.Printf("- Success: %t\n", testCompleted.Success)
+
+        // Output:
+        // Test Started Event: test.started:20240101150405.000000
+        // - Type: test.started
+        // - Source: test.runner
+        // - Timestamp: 15:04:05
+        //
+        // Test Completed Event: test.completed:20240101150405.000000
+        // - Duration: 150ms
+        // - Success: true
+}</span>
+
+// Example_eventQuery demonstrates querying stored events.
+//
+// This example shows how to construct queries for retrieving
+// events from an event store with various filters.
+func Example_eventQuery() <span class="cov8" title="1">{
+        // Create a query for test events from the last hour
+        lastHour := time.Now().Add(-1 * time.Hour)
+
+        query := &amp;EventQuery{
+                EventTypes: []string{"test.started", "test.completed"},
+                Sources:    []string{"test.runner"},
+                StartTime:  &amp;lastHour,
+                Limit:      50,
+                OrderBy:    "timestamp",
+                OrderDesc:  true,
+                Metadata: map[string]interface{}{
+                        "package": "github.com/example/auth",
+                },
+        }
+
+        fmt.Printf("Event Query Configuration:\n")
+        fmt.Printf("- Event Types: %v\n", query.EventTypes)
+        fmt.Printf("- Sources: %v\n", query.Sources)
+        fmt.Printf("- Start Time: %s\n", query.StartTime.Format("15:04:05"))
+        fmt.Printf("- Limit: %d\n", query.Limit)
+        fmt.Printf("- Order: %s (%s)\n", query.OrderBy,
+                map[bool]string{true: "DESC", false: "ASC"}[query.OrderDesc])
+
+        // Output:
+        // Event Query Configuration:
+        // - Event Types: [test.started test.completed]
+        // - Sources: [test.runner]
+        // - Start Time: 14:04:05
+        // - Limit: 50
+        // - Order: timestamp (DESC)
+}</span>
+
+// Example_eventMetrics demonstrates working with event system metrics.
+//
+// This example shows how to monitor event bus performance and
+// subscription statistics for system observability.
+func Example_eventMetrics() <span class="cov8" title="1">{
+        // Create sample metrics (in real usage, these would come from the event bus)
+        busMetrics := &amp;EventBusMetrics{
+                TotalEvents:           1250,
+                TotalSubscriptions:    8,
+                EventsPerSecond:       15.7,
+                AverageProcessingTime: 25 * time.Millisecond,
+                ErrorCount:            3,
+                LastEventTime:         time.Now(),
+        }
+
+        subscriptionStats := &amp;SubscriptionStats{
+                EventsReceived:        450,
+                EventsProcessed:       447,
+                ProcessingErrors:      3,
+                AverageProcessingTime: 12 * time.Millisecond,
+                LastEventTime:         time.Now(),
+                CreatedAt:             time.Now().Add(-2 * time.Hour),
+        }
+
+        processingStats := &amp;ProcessingStats{
+                TotalProcessed:        1247,
+                TotalErrors:           3,
+                AverageProcessingTime: 18 * time.Millisecond,
+                ProcessingRate:        69.3,
+                QueueSize:             12,
+                MaxQueueSize:          45,
+        }
+
+        // Display metrics
+        fmt.Printf("Event Bus Metrics:\n")
+        fmt.Printf("- Total Events: %d\n", busMetrics.TotalEvents)
+        fmt.Printf("- Active Subscriptions: %d\n", busMetrics.TotalSubscriptions)
+        fmt.Printf("- Events/Second: %.1f\n", busMetrics.EventsPerSecond)
+        fmt.Printf("- Avg Processing Time: %v\n", busMetrics.AverageProcessingTime)
+        fmt.Printf("- Error Count: %d\n", busMetrics.ErrorCount)
+
+        fmt.Printf("\nSubscription Statistics:\n")
+        fmt.Printf("- Events Received: %d\n", subscriptionStats.EventsReceived)
+        fmt.Printf("- Events Processed: %d\n", subscriptionStats.EventsProcessed)
+        fmt.Printf("- Processing Errors: %d\n", subscriptionStats.ProcessingErrors)
+        fmt.Printf("- Success Rate: %.1f%%\n",
+                float64(subscriptionStats.EventsProcessed)/float64(subscriptionStats.EventsReceived)*100)
+
+        fmt.Printf("\nProcessing Statistics:\n")
+        fmt.Printf("- Total Processed: %d\n", processingStats.TotalProcessed)
+        fmt.Printf("- Total Errors: %d\n", processingStats.TotalErrors)
+        fmt.Printf("- Processing Rate: %.1f events/sec\n", processingStats.ProcessingRate)
+        fmt.Printf("- Current Queue Size: %d\n", processingStats.QueueSize)
+        fmt.Printf("- Max Queue Size: %d\n", processingStats.MaxQueueSize)
+
+        // Output:
+        // Event Bus Metrics:
+        // - Total Events: 1250
+        // - Active Subscriptions: 8
+        // - Events/Second: 15.7
+        // - Avg Processing Time: 25ms
+        // - Error Count: 3
+        //
+        // Subscription Statistics:
+        // - Events Received: 450
+        // - Events Processed: 447
+        // - Processing Errors: 3
+        // - Success Rate: 99.3%
+        //
+        // Processing Statistics:
+        // - Total Processed: 1247
+        // - Total Errors: 3
+        // - Processing Rate: 69.3 events/sec
+        // - Current Queue Size: 12
+        // - Max Queue Size: 45
+}</span>
+
+// Example_fileChangeEvents demonstrates working with file change events.
+//
+// This example shows how to create and handle file system change events
+// that are commonly used in watch mode functionality.
+func Example_fileChangeEvents() <span class="cov8" title="1">{
+        // Create different types of file change events
+        fileCreated := NewFileChangedEvent("/src/new_test.go", "created")
+        fileModified := NewFileChangedEvent("/src/existing_test.go", "modified")
+        fileDeleted := NewFileChangedEvent("/src/old_test.go", "deleted")
+
+        events := []*FileChangedEvent{fileCreated, fileModified, fileDeleted}
+
+        fmt.Printf("File Change Events:\n")
+        for i, event := range events </span><span class="cov8" title="1">{
+                fmt.Printf("%d. %s\n", i+1, event.String())
+                fmt.Printf("   - File: %s\n", event.FilePath)
+                fmt.Printf("   - Change: %s\n", event.ChangeType)
+                fmt.Printf("   - Time: %s\n", event.Timestamp().Format("15:04:05"))
+
+                // Access event metadata
+                if metadata := event.Metadata(); len(metadata) &gt; 0 </span><span class="cov0" title="0">{
+                        fmt.Printf("   - Metadata: %v\n", metadata)
+                }</span>
+        }
+
+        // Output:
+        // File Change Events:
+        // 1. file.changed:20240101150405.000000
+        //    - File: /src/new_test.go
+        //    - Change: created
+        //    - Time: 15:04:05
+        // 2. file.changed:20240101150405.000000
+        //    - File: /src/existing_test.go
+        //    - Change: modified
+        //    - Time: 15:04:05
+        // 3. file.changed:20240101150405.000000
+        //    - File: /src/old_test.go
+        //    - Change: deleted
+        //    - Time: 15:04:05
 }
 
-// NewAppEventHandlerFactory creates a new event handler factory.
-func NewAppEventHandlerFactory() AppEventHandlerFactory <span class="cov8" title="1">{
-        return &amp;DefaultAppEventHandlerFactory{
-                defaultLogger: nil, // Will use default logger in handlers
+// Example_baseEvent demonstrates working with the base event implementation.
+//
+// This example shows how to create custom events using the BaseEvent
+// struct and how to access event properties.
+func Example_baseEvent() <span class="cov8" title="1">{
+        // Create a custom event using BaseEvent
+        customData := map[string]interface{}{
+                "severity":  "high",
+                "component": "test-runner",
+                "details":   "Memory usage exceeded threshold",
         }
-}</span>
 
-// NewAppEventHandlerFactoryWithDependencies creates a factory with injected dependencies.
-func NewAppEventHandlerFactoryWithDependencies(deps AppEventHandlerDependencies) AppEventHandlerFactory <span class="cov8" title="1">{
-        return &amp;DefaultAppEventHandlerFactory{
-                defaultLogger: deps.Logger,
+        event := NewBaseEvent("system.alert", "monitoring", customData)
+
+        // Add metadata
+        event.EventMetadata = map[string]interface{}{
+                "host": "test-server-01",
+                "pid":  12345,
+                "user": "ci-runner",
         }
-}</span>
 
-// CreateEventHandler creates a new event handler with default configuration.
-func (f *DefaultAppEventHandlerFactory) CreateEventHandler() AppEventHandler <span class="cov8" title="1">{
-        if f.defaultLogger != nil </span><span class="cov8" title="1">{
-                return NewAppEventHandlerWithLogger(f.defaultLogger)
+        fmt.Printf("Custom Event Details:\n")
+        fmt.Printf("- ID: %s\n", event.ID())
+        fmt.Printf("- Type: %s\n", event.Type())
+        fmt.Printf("- Source: %s\n", event.Source())
+        fmt.Printf("- Timestamp: %s\n", event.Timestamp().Format("2006-01-02 15:04:05"))
+        fmt.Printf("- String: %s\n", event.String())
+
+        // Access event data
+        if data := event.Data(); data != nil </span><span class="cov8" title="1">{
+                if dataMap, ok := data.(map[string]interface{}); ok </span><span class="cov8" title="1">{
+                        fmt.Printf("- Data:\n")
+                        for key, value := range dataMap </span><span class="cov8" title="1">{
+                                fmt.Printf("  - %s: %v\n", key, value)
+                        }</span>
+                }
+        }
+
+        // Access metadata
+        <span class="cov8" title="1">if metadata := event.Metadata(); len(metadata) &gt; 0 </span><span class="cov8" title="1">{
+                fmt.Printf("- Metadata:\n")
+                for key, value := range metadata </span><span class="cov8" title="1">{
+                        fmt.Printf("  - %s: %v\n", key, value)
+                }</span>
+        }
+
+        // Output:
+        // Custom Event Details:
+        // - ID: 20240101150405.000000
+        // - Type: system.alert
+        // - Source: monitoring
+        // - Timestamp: 2024-01-01 15:04:05
+        // - String: system.alert:20240101150405.000000
+        // - Data:
+        //   - severity: high
+        //   - component: test-runner
+        //   - details: Memory usage exceeded threshold
+        // - Metadata:
+        //   - host: test-server-01
+        //   - pid: 12345
+        //   - user: ci-runner
+}
+
+// Example_eventConstants demonstrates the predefined event constants.
+//
+// This example shows the available event types, sources, and priorities
+// that are commonly used throughout the application.
+func Example_eventConstants() <span class="cov8" title="1">{
+        // Event types
+        eventTypes := []string{
+                EventTypeTestStarted,
+                EventTypeTestCompleted,
+                EventTypeFileChanged,
+                EventTypeConfigChanged,
+                EventTypeAppStarted,
+        }
+
+        // Event sources
+        eventSources := []string{
+                SourceTestRunner,
+                SourceFileWatcher,
+                SourceAppController,
+                SourceConfig,
+        }
+
+        // Event priorities
+        priorities := []struct {
+                name  string
+                value int
+        }{
+                {"Low", PriorityLow},
+                {"Normal", PriorityNormal},
+                {"High", PriorityHigh},
+                {"Critical", PriorityCritical},
+        }
+
+        fmt.Printf("Available Event Types:\n")
+        for i, eventType := range eventTypes </span><span class="cov8" title="1">{
+                fmt.Printf("  %d. %s\n", i+1, eventType)
         }</span>
-        <span class="cov8" title="1">return NewAppEventHandler()</span>
+
+        <span class="cov8" title="1">fmt.Printf("\nAvailable Event Sources:\n")
+        for i, source := range eventSources </span><span class="cov8" title="1">{
+                fmt.Printf("  %d. %s\n", i+1, source)
+        }</span>
+
+        <span class="cov8" title="1">fmt.Printf("\nEvent Priorities:\n")
+        for _, priority := range priorities </span><span class="cov8" title="1">{
+                fmt.Printf("  - %s: %d\n", priority.name, priority.value)
+        }</span>
+
+        // Output:
+        // Available Event Types:
+        //   1. test.started
+        //   2. test.completed
+        //   3. file.changed
+        //   4. config.changed
+        //   5. app.started
+        //
+        // Available Event Sources:
+        //   1. test.runner
+        //   2. file.watcher
+        //   3. app.controller
+        //   4. config
+        //
+        // Event Priorities:
+        //   - Low: 1
+        //   - Normal: 5
+        //   - High: 10
+        //   - Critical: 15
 }
-
-// CreateEventHandlerWithLogger creates a new event handler with a custom logger.
-func (f *DefaultAppEventHandlerFactory) CreateEventHandlerWithLogger(logger *log.Logger) AppEventHandler <span class="cov8" title="1">{
-        return NewAppEventHandlerWithLogger(logger)
-}</span>
-
-// CreateEventHandlerWithDefaults creates an event handler using factory defaults.
-// This method demonstrates the Factory pattern providing sensible defaults.
-func (f *DefaultAppEventHandlerFactory) CreateEventHandlerWithDefaults() AppEventHandler <span class="cov8" title="1">{
-        handler := f.CreateEventHandler()
-
-        // Set default verbosity if none set
-        handler.SetVerbosity(0)
-
-        return handler
-}</span>
-
-// Ensure DefaultAppEventHandlerFactory implements AppEventHandlerFactory interface
-var _ AppEventHandlerFactory = (*DefaultAppEventHandlerFactory)(nil)
 </pre>
 
-		<pre class="file" id="file1" style="display: none">// Package events provides application event handling implementation
+		<pre class="file" id="file1" style="display: none">// Package events provides event system interfaces for inter-component communication
 package events
 
 import (
         "context"
-        "log"
-        "os"
-
-        "github.com/newbpydev/go-sentinel/pkg/models"
+        "time"
 )
 
-// DefaultAppEventHandler implements the AppEventHandler interface.
-// This implementation follows the Single Responsibility Principle by focusing only on event handling.
-type DefaultAppEventHandler struct {
-        logger *log.Logger
-        config *AppConfig
+// EventBus manages event publishing and subscription
+type EventBus interface {
+        // Publish publishes an event to all subscribers
+        Publish(ctx context.Context, event Event) error
+
+        // PublishAsync publishes an event asynchronously
+        PublishAsync(ctx context.Context, event Event) error
+
+        // Subscribe subscribes to events of a specific type
+        Subscribe(eventType string, handler EventHandler) (Subscription, error)
+
+        // SubscribeWithFilter subscribes with a custom filter
+        SubscribeWithFilter(filter EventFilter, handler EventHandler) (Subscription, error)
+
+        // Unsubscribe removes a subscription
+        Unsubscribe(subscription Subscription) error
+
+        // Close closes the event bus and cleans up resources
+        Close() error
+
+        // GetMetrics returns event bus metrics
+        GetMetrics() *EventBusMetrics
 }
 
-// NewAppEventHandler creates a new application event handler with default logger.
-func NewAppEventHandler() AppEventHandler <span class="cov8" title="1">{
-        return &amp;DefaultAppEventHandler{
-                logger: log.New(os.Stderr, "[go-sentinel] ", log.LstdFlags|log.Lshortfile),
+// EventHandler processes events
+type EventHandler interface {
+        // Handle processes an event
+        Handle(ctx context.Context, event Event) error
+
+        // CanHandle returns whether this handler can process the event
+        CanHandle(event Event) bool
+
+        // Priority returns the handler priority (higher values = higher priority)
+        Priority() int
+}
+
+// EventFilter filters events based on criteria
+type EventFilter interface {
+        // Match returns whether the event matches the filter
+        Match(event Event) bool
+
+        // String returns a string representation of the filter
+        String() string
+}
+
+// Subscription represents an active event subscription
+type Subscription interface {
+        // ID returns the subscription ID
+        ID() string
+
+        // EventType returns the subscribed event type
+        EventType() string
+
+        // IsActive returns whether the subscription is active
+        IsActive() bool
+
+        // Cancel cancels the subscription
+        Cancel() error
+
+        // GetStats returns subscription statistics
+        GetStats() *SubscriptionStats
+}
+
+// EventStore provides event persistence and retrieval
+type EventStore interface {
+        // Store persists an event
+        Store(ctx context.Context, event Event) error
+
+        // Retrieve retrieves events by criteria
+        Retrieve(ctx context.Context, query *EventQuery) ([]Event, error)
+
+        // Count returns the number of events matching criteria
+        Count(ctx context.Context, query *EventQuery) (int, error)
+
+        // Delete removes events by criteria
+        Delete(ctx context.Context, query *EventQuery) error
+
+        // Clear removes all events
+        Clear(ctx context.Context) error
+}
+
+// EventProcessor processes events with various strategies
+type EventProcessor interface {
+        // ProcessSync processes events synchronously
+        ProcessSync(ctx context.Context, events []Event) error
+
+        // ProcessAsync processes events asynchronously
+        ProcessAsync(ctx context.Context, events []Event) error
+
+        // ProcessBatch processes events in batches
+        ProcessBatch(ctx context.Context, events []Event, batchSize int) error
+
+        // GetProcessingStats returns processing statistics
+        GetProcessingStats() *ProcessingStats
+}
+
+// Event represents a system event
+type Event interface {
+        // ID returns the event ID
+        ID() string
+
+        // Type returns the event type
+        Type() string
+
+        // Timestamp returns when the event occurred
+        Timestamp() time.Time
+
+        // Source returns the event source
+        Source() string
+
+        // Data returns the event data
+        Data() interface{}
+
+        // Metadata returns event metadata
+        Metadata() map[string]interface{}
+
+        // String returns a string representation of the event
+        String() string
+}
+
+// BaseEvent provides a basic event implementation
+type BaseEvent struct {
+        // EventID is the unique event identifier
+        EventID string
+
+        // EventType is the type of event
+        EventType string
+
+        // EventTimestamp is when the event occurred
+        EventTimestamp time.Time
+
+        // EventSource is the source of the event
+        EventSource string
+
+        // EventData is the event payload
+        EventData interface{}
+
+        // EventMetadata contains additional event information
+        EventMetadata map[string]interface{}
+}
+
+// ID implements the Event interface
+func (e *BaseEvent) ID() string <span class="cov8" title="1">{
+        return e.EventID
+}</span>
+
+// Type implements the Event interface
+func (e *BaseEvent) Type() string <span class="cov8" title="1">{
+        return e.EventType
+}</span>
+
+// Timestamp implements the Event interface
+func (e *BaseEvent) Timestamp() time.Time <span class="cov8" title="1">{
+        return e.EventTimestamp
+}</span>
+
+// Source implements the Event interface
+func (e *BaseEvent) Source() string <span class="cov8" title="1">{
+        return e.EventSource
+}</span>
+
+// Data implements the Event interface
+func (e *BaseEvent) Data() interface{} <span class="cov8" title="1">{
+        return e.EventData
+}</span>
+
+// Metadata implements the Event interface
+func (e *BaseEvent) Metadata() map[string]interface{} <span class="cov8" title="1">{
+        return e.EventMetadata
+}</span>
+
+// String implements the Event interface
+func (e *BaseEvent) String() string <span class="cov8" title="1">{
+        return e.EventType + ":" + e.EventID
+}</span>
+
+// EventQuery represents criteria for querying events
+type EventQuery struct {
+        // EventTypes filters by event types
+        EventTypes []string
+
+        // Sources filters by event sources
+        Sources []string
+
+        // StartTime filters events after this time
+        StartTime *time.Time
+
+        // EndTime filters events before this time
+        EndTime *time.Time
+
+        // Limit limits the number of results
+        Limit int
+
+        // Offset skips this number of results
+        Offset int
+
+        // OrderBy specifies the ordering field
+        OrderBy string
+
+        // OrderDesc specifies descending order
+        OrderDesc bool
+
+        // Metadata filters by metadata values
+        Metadata map[string]interface{}
+}
+
+// EventBusMetrics provides metrics about event bus usage
+type EventBusMetrics struct {
+        // TotalEvents is the total number of events published
+        TotalEvents int64
+
+        // TotalSubscriptions is the total number of active subscriptions
+        TotalSubscriptions int
+
+        // EventsPerSecond is the current events per second rate
+        EventsPerSecond float64
+
+        // AverageProcessingTime is the average event processing time
+        AverageProcessingTime time.Duration
+
+        // ErrorCount is the number of processing errors
+        ErrorCount int64
+
+        // LastEventTime is when the last event was published
+        LastEventTime time.Time
+}
+
+// SubscriptionStats provides statistics about a subscription
+type SubscriptionStats struct {
+        // EventsReceived is the number of events received
+        EventsReceived int64
+
+        // EventsProcessed is the number of events successfully processed
+        EventsProcessed int64
+
+        // ProcessingErrors is the number of processing errors
+        ProcessingErrors int64
+
+        // AverageProcessingTime is the average processing time
+        AverageProcessingTime time.Duration
+
+        // LastEventTime is when the last event was received
+        LastEventTime time.Time
+
+        // CreatedAt is when the subscription was created
+        CreatedAt time.Time
+}
+
+// ProcessingStats provides statistics about event processing
+type ProcessingStats struct {
+        // TotalProcessed is the total number of events processed
+        TotalProcessed int64
+
+        // TotalErrors is the total number of processing errors
+        TotalErrors int64
+
+        // AverageProcessingTime is the average processing time per event
+        AverageProcessingTime time.Duration
+
+        // ProcessingRate is the current processing rate (events/second)
+        ProcessingRate float64
+
+        // QueueSize is the current queue size
+        QueueSize int
+
+        // MaxQueueSize is the maximum queue size reached
+        MaxQueueSize int
+}
+
+// Common event type constants
+const (
+        // Test execution events
+        EventTypeTestStarted   = "test.started"
+        EventTypeTestCompleted = "test.completed"
+        EventTypeTestFailed    = "test.failed"
+        EventTypeTestSkipped   = "test.skipped"
+
+        // Package execution events
+        EventTypePackageStarted   = "package.started"
+        EventTypePackageCompleted = "package.completed"
+        EventTypePackageFailed    = "package.failed"
+
+        // Watch mode events
+        EventTypeFileChanged     = "file.changed"
+        EventTypeWatchStarted    = "watch.started"
+        EventTypeWatchStopped    = "watch.stopped"
+        EventTypeWatchModeChange = "watch.mode_changed"
+
+        // Application events
+        EventTypeAppStarted  = "app.started"
+        EventTypeAppStopped  = "app.stopped"
+        EventTypeAppError    = "app.error"
+        EventTypeAppShutdown = "app.shutdown"
+
+        // Configuration events
+        EventTypeConfigLoaded  = "config.loaded"
+        EventTypeConfigChanged = "config.changed"
+        EventTypeConfigError   = "config.error"
+
+        // Cache events
+        EventTypeCacheHit   = "cache.hit"
+        EventTypeCacheMiss  = "cache.miss"
+        EventTypeCacheStore = "cache.store"
+        EventTypeCacheClear = "cache.clear"
+
+        // UI events
+        EventTypeDisplayUpdate  = "display.update"
+        EventTypeProgressUpdate = "progress.update"
+        EventTypeThemeChanged   = "theme.changed"
+        EventTypeIconSetChanged = "iconset.changed"
+)
+
+// Event source constants
+const (
+        // Component sources
+        SourceTestRunner      = "test.runner"
+        SourceTestProcessor   = "test.processor"
+        SourceFileWatcher     = "file.watcher"
+        SourceAppController   = "app.controller"
+        SourceCacheManager    = "cache.manager"
+        SourceDisplayRenderer = "display.renderer"
+
+        // System sources
+        SourceFileSystem      = "filesystem"
+        SourceOperatingSystem = "os"
+        SourceUserInput       = "user"
+        SourceConfig          = "config"
+)
+
+// Priority levels for event handlers
+const (
+        PriorityLow      = 1
+        PriorityNormal   = 5
+        PriorityHigh     = 10
+        PriorityCritical = 15
+)
+
+// NewBaseEvent creates a new BaseEvent
+func NewBaseEvent(eventType, source string, data interface{}) *BaseEvent <span class="cov8" title="1">{
+        return &amp;BaseEvent{
+                EventID:        generateEventID(),
+                EventType:      eventType,
+                EventTimestamp: time.Now(),
+                EventSource:    source,
+                EventData:      data,
+                EventMetadata:  make(map[string]interface{}),
         }
 }</span>
 
-// NewAppEventHandlerWithLogger creates a new application event handler with custom logger.
-func NewAppEventHandlerWithLogger(logger *log.Logger) AppEventHandler <span class="cov8" title="1">{
-        if logger == nil </span><span class="cov8" title="1">{
-                logger = log.New(os.Stderr, "[go-sentinel] ", log.LstdFlags|log.Lshortfile)
-        }</span>
-        <span class="cov8" title="1">return &amp;DefaultAppEventHandler{
-                logger: logger,
-        }</span>
+// generateEventID generates a unique event ID
+func generateEventID() string <span class="cov8" title="1">{
+        // Simple timestamp-based ID for now
+        return time.Now().Format("20060102150405.000000")
+}</span>
+
+// TestStartedEvent represents a test starting
+type TestStartedEvent struct {
+        *BaseEvent
+        TestName    string
+        PackageName string
 }
 
-// OnStartup is called when the application starts
-func (h *DefaultAppEventHandler) OnStartup(ctx context.Context) error <span class="cov8" title="1">{
-        h.logger.Printf("Application starting up...")
+// TestCompletedEvent represents a test completion
+type TestCompletedEvent struct {
+        *BaseEvent
+        TestName    string
+        PackageName string
+        Duration    time.Duration
+        Success     bool
+}
 
-        // Check if context is already cancelled
-        select </span>{
-        case &lt;-ctx.Done():<span class="cov8" title="1">
-                return ctx.Err()</span>
-        default:<span class="cov8" title="1"></span>
+// FileChangedEvent represents a file change
+type FileChangedEvent struct {
+        *BaseEvent
+        FilePath   string
+        ChangeType string
+}
+
+// NewTestStartedEvent creates a new test started event
+func NewTestStartedEvent(testName, packageName string) *TestStartedEvent <span class="cov8" title="1">{
+        return &amp;TestStartedEvent{
+                BaseEvent:   NewBaseEvent(EventTypeTestStarted, SourceTestRunner, nil),
+                TestName:    testName,
+                PackageName: packageName,
         }
+}</span>
 
-        // Log startup success
-        <span class="cov8" title="1">h.logger.Printf("Application startup completed successfully")
-        return nil</span>
-}
-
-// OnShutdown is called when the application shuts down
-func (h *DefaultAppEventHandler) OnShutdown(ctx context.Context) error <span class="cov8" title="1">{
-        h.logger.Printf("Application shutting down...")
-
-        // Check if context is already cancelled
-        select </span>{
-        case &lt;-ctx.Done():<span class="cov8" title="1">
-                // Still try to log shutdown even if context is cancelled
-                h.logger.Printf("Application shutdown initiated due to context cancellation")</span>
-        default:<span class="cov8" title="1"></span>
+// NewTestCompletedEvent creates a new test completed event
+func NewTestCompletedEvent(testName, packageName string, duration time.Duration, success bool) *TestCompletedEvent <span class="cov8" title="1">{
+        return &amp;TestCompletedEvent{
+                BaseEvent:   NewBaseEvent(EventTypeTestCompleted, SourceTestRunner, nil),
+                TestName:    testName,
+                PackageName: packageName,
+                Duration:    duration,
+                Success:     success,
         }
+}</span>
 
-        // Log shutdown completion
-        <span class="cov8" title="1">h.logger.Printf("Application shutdown completed")
-        return nil</span>
-}
-
-// OnError is called when an error occurs
-func (h *DefaultAppEventHandler) OnError(err error) <span class="cov8" title="1">{
-        if err == nil </span><span class="cov8" title="1">{
-                return
-        }</span>
-
-        // Check if it's a SentinelError with additional context
-        <span class="cov8" title="1">if sentinelErr, ok := err.(*models.SentinelError); ok </span><span class="cov8" title="1">{
-                // Log with severity level
-                switch sentinelErr.Severity </span>{
-                case models.SeverityCritical:<span class="cov8" title="1">
-                        h.logger.Printf("CRITICAL ERROR [%s]: %s", sentinelErr.Type, sentinelErr.Message)</span>
-                case models.SeverityError:<span class="cov8" title="1">
-                        h.logger.Printf("ERROR [%s]: %s", sentinelErr.Type, sentinelErr.Message)</span>
-                case models.SeverityWarning:<span class="cov8" title="1">
-                        h.logger.Printf("WARNING [%s]: %s", sentinelErr.Type, sentinelErr.Message)</span>
-                case models.SeverityInfo:<span class="cov8" title="1">
-                        h.logger.Printf("INFO [%s]: %s", sentinelErr.Type, sentinelErr.Message)</span>
-                default:<span class="cov8" title="1">
-                        h.logger.Printf("ERROR [%s]: %s", sentinelErr.Type, sentinelErr.Message)</span>
-                }
-
-                // Log context if available
-                <span class="cov8" title="1">if len(sentinelErr.Context.Metadata) &gt; 0 </span><span class="cov8" title="1">{
-                        h.logger.Printf("Error context: %+v", sentinelErr.Context.Metadata)
-                }</span>
-
-                // Log cause if available
-                <span class="cov8" title="1">if sentinelErr.Cause != nil </span><span class="cov8" title="1">{
-                        h.logger.Printf("Caused by: %v", sentinelErr.Cause)
-                }</span>
-        } else<span class="cov8" title="1"> {
-                // Log regular error
-                h.logger.Printf("ERROR: %v", err)
-        }</span>
-}
-
-// OnConfigChanged is called when configuration changes
-func (h *DefaultAppEventHandler) OnConfigChanged(config *AppConfig) <span class="cov8" title="1">{
-        if config == nil </span><span class="cov8" title="1">{
-                h.logger.Printf("Configuration updated: &lt;nil&gt;")
-                return
-        }</span>
-
-        <span class="cov8" title="1">h.config = config
-
-        // Log configuration changes
-        h.logger.Printf("Configuration updated:")
-        h.logger.Printf("  Colors: %t", config.Colors)
-        h.logger.Printf("  Verbosity: %d", config.Verbosity)
-        h.logger.Printf("  Watch enabled: %t", config.Watch.Enabled)
-
-        if config.Watch.Enabled </span><span class="cov8" title="1">{
-                h.logger.Printf("  Watch debounce: %s", config.Watch.Debounce)
-                h.logger.Printf("  Watch run on start: %t", config.Watch.RunOnStart)
-                h.logger.Printf("  Watch clear on rerun: %t", config.Watch.ClearOnRerun)
-        }</span>
-
-        <span class="cov8" title="1">if len(config.Paths.IncludePatterns) &gt; 0 </span><span class="cov8" title="1">{
-                h.logger.Printf("  Include patterns: %v", config.Paths.IncludePatterns)
-        }</span>
-
-        <span class="cov8" title="1">if len(config.Paths.ExcludePatterns) &gt; 0 </span><span class="cov8" title="1">{
-                h.logger.Printf("  Exclude patterns: %v", config.Paths.ExcludePatterns)
-        }</span>
-
-        <span class="cov8" title="1">if len(config.Paths.IgnorePatterns) &gt; 0 </span><span class="cov8" title="1">{
-                h.logger.Printf("  Watch ignore patterns: %v", config.Paths.IgnorePatterns)
-        }</span>
-}
-
-// OnTestStart is called when a test starts (optional extension)
-func (h *DefaultAppEventHandler) OnTestStart(testName string) <span class="cov8" title="1">{
-        if h.config != nil &amp;&amp; h.config.Verbosity &gt; 1 </span><span class="cov8" title="1">{
-                h.logger.Printf("Test started: %s", testName)
-        }</span>
-}
-
-// OnTestComplete is called when a test completes (optional extension)
-func (h *DefaultAppEventHandler) OnTestComplete(testName string, success bool) <span class="cov8" title="1">{
-        if h.config != nil &amp;&amp; h.config.Verbosity &gt; 1 </span><span class="cov8" title="1">{
-                status := "PASS"
-                if !success </span><span class="cov8" title="1">{
-                        status = "FAIL"
-                }</span>
-                <span class="cov8" title="1">h.logger.Printf("Test completed: %s [%s]", testName, status)</span>
+// NewFileChangedEvent creates a new file changed event
+func NewFileChangedEvent(filePath, changeType string) *FileChangedEvent <span class="cov8" title="1">{
+        return &amp;FileChangedEvent{
+                BaseEvent:  NewBaseEvent(EventTypeFileChanged, SourceFileWatcher, nil),
+                FilePath:   filePath,
+                ChangeType: changeType,
         }
-}
-
-// OnWatchEvent is called when a file watch event occurs (optional extension)
-func (h *DefaultAppEventHandler) OnWatchEvent(filePath string, eventType string) <span class="cov8" title="1">{
-        if h.config != nil &amp;&amp; h.config.Verbosity &gt; 0 </span><span class="cov8" title="1">{
-                h.logger.Printf("File watch event: %s [%s]", filePath, eventType)
-        }</span>
-}
-
-// SetLogger sets a custom logger
-func (h *DefaultAppEventHandler) SetLogger(logger *log.Logger) <span class="cov8" title="1">{
-        if logger != nil </span><span class="cov8" title="1">{
-                h.logger = logger
-        }</span>
-}
-
-// SetVerbosity sets the verbosity level for logging
-func (h *DefaultAppEventHandler) SetVerbosity(level int) <span class="cov8" title="1">{
-        if h.config == nil </span><span class="cov8" title="1">{
-                h.config = &amp;AppConfig{}
-        }</span>
-        <span class="cov8" title="1">h.config.Verbosity = level</span>
-}
-
-// GetLogger returns the current logger
-func (h *DefaultAppEventHandler) GetLogger() *log.Logger <span class="cov8" title="1">{
-        return h.logger
 }</span>
-
-// LogDebug logs a debug message if verbosity is high enough
-func (h *DefaultAppEventHandler) LogDebug(format string, args ...interface{}) <span class="cov8" title="1">{
-        if h.config != nil &amp;&amp; h.config.Verbosity &gt; 1 </span><span class="cov8" title="1">{
-                h.logger.Printf("[DEBUG] "+format, args...)
-        }</span>
-}
-
-// LogInfo logs an info message
-func (h *DefaultAppEventHandler) LogInfo(format string, args ...interface{}) <span class="cov8" title="1">{
-        h.logger.Printf("[INFO] "+format, args...)
-}</span>
-
-// LogWarning logs a warning message
-func (h *DefaultAppEventHandler) LogWarning(format string, args ...interface{}) <span class="cov8" title="1">{
-        h.logger.Printf("[WARNING] "+format, args...)
-}</span>
-
-// LogError logs an error message
-func (h *DefaultAppEventHandler) LogError(format string, args ...interface{}) <span class="cov8" title="1">{
-        h.logger.Printf("[ERROR] "+format, args...)
-}</span>
-
-// Ensure DefaultAppEventHandler implements AppEventHandler interface
-var _ AppEventHandler = (*DefaultAppEventHandler)(nil)
 </pre>
 
 		</div>

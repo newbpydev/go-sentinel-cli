@@ -1,0 +1,1447 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>models: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+
+				<option value="file0">github.com/newbpydev/go-sentinel/pkg/models/errors.go (99.1%)</option>
+
+				<option value="file1">github.com/newbpydev/go-sentinel/pkg/models/examples.go (100.0%)</option>
+
+				<option value="file2">github.com/newbpydev/go-sentinel/pkg/models/interfaces.go (100.0%)</option>
+
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+
+			</div>
+		</div>
+		<div id="content">
+
+		<pre class="file" id="file0" style="display: none">// Package models provides shared error types and error handling utilities
+package models
+
+import (
+        "fmt"
+        "runtime"
+        "strings"
+)
+
+// ErrorType represents the category of error
+type ErrorType string
+
+const (
+        // Configuration errors
+        ErrorTypeConfig ErrorType = "CONFIG"
+
+        // File system and I/O errors
+        ErrorTypeFileSystem ErrorType = "FILESYSTEM"
+
+        // Test execution errors
+        ErrorTypeTestExecution ErrorType = "TEST_EXECUTION"
+
+        // Watch system errors
+        ErrorTypeWatch ErrorType = "WATCH"
+
+        // Dependency injection errors
+        ErrorTypeDependency ErrorType = "DEPENDENCY"
+
+        // Application lifecycle errors
+        ErrorTypeLifecycle ErrorType = "LIFECYCLE"
+
+        // Validation errors
+        ErrorTypeValidation ErrorType = "VALIDATION"
+
+        // Network/external service errors
+        ErrorTypeExternal ErrorType = "EXTERNAL"
+
+        // Internal system errors
+        ErrorTypeInternal ErrorType = "INTERNAL"
+)
+
+// ErrorSeverity represents how critical an error is
+type ErrorSeverity string
+
+const (
+        SeverityInfo     ErrorSeverity = "INFO"
+        SeverityWarning  ErrorSeverity = "WARNING"
+        SeverityError    ErrorSeverity = "ERROR"
+        SeverityCritical ErrorSeverity = "CRITICAL"
+)
+
+// SentinelError is the base error type for all application errors
+type SentinelError struct {
+        Type     ErrorType     `json:"type"`
+        Severity ErrorSeverity `json:"severity"`
+        Message  string        `json:"message"`
+        Cause    error         `json:"cause,omitempty"`
+        Context  ErrorContext  `json:"context"`
+        Stack    []StackFrame  `json:"stack,omitempty"`
+        UserSafe bool          `json:"userSafe"` // Whether safe to show to end users
+}
+
+// ErrorContext provides additional context about where/when the error occurred
+type ErrorContext struct {
+        Operation string            `json:"operation"` // What operation was being performed
+        Component string            `json:"component"` // Which component generated the error
+        Resource  string            `json:"resource"`  // What resource was involved (file, package, etc.)
+        Metadata  map[string]string `json:"metadata"`  // Additional context-specific data
+        RequestID string            `json:"requestId"` // For tracing across operations
+        UserID    string            `json:"userId"`    // For user-specific operations
+}
+
+// StackFrame represents a single frame in the call stack
+type StackFrame struct {
+        Function string `json:"function"`
+        File     string `json:"file"`
+        Line     int    `json:"line"`
+}
+
+// Error implements the error interface
+func (e *SentinelError) Error() string <span class="cov8" title="1">{
+        var parts []string
+
+        // Add type and severity prefix
+        parts = append(parts, fmt.Sprintf("[%s:%s]", e.Type, e.Severity))
+
+        // Add component if available
+        if e.Context.Component != "" </span><span class="cov8" title="1">{
+                parts = append(parts, fmt.Sprintf("(%s)", e.Context.Component))
+        }</span>
+
+        // Add main message
+        <span class="cov8" title="1">parts = append(parts, e.Message)
+
+        // Add resource context if available
+        if e.Context.Resource != "" </span><span class="cov8" title="1">{
+                parts = append(parts, fmt.Sprintf("resource=%s", e.Context.Resource))
+        }</span>
+
+        // Add operation context if available
+        <span class="cov8" title="1">if e.Context.Operation != "" </span><span class="cov8" title="1">{
+                parts = append(parts, fmt.Sprintf("operation=%s", e.Context.Operation))
+        }</span>
+
+        <span class="cov8" title="1">return strings.Join(parts, " ")</span>
+}
+
+// Unwrap returns the underlying cause for error unwrapping
+func (e *SentinelError) Unwrap() error <span class="cov8" title="1">{
+        return e.Cause
+}</span>
+
+// Is implements error comparison for errors.Is
+func (e *SentinelError) Is(target error) bool <span class="cov8" title="1">{
+        if t, ok := target.(*SentinelError); ok </span><span class="cov8" title="1">{
+                return e.Type == t.Type &amp;&amp; e.Message == t.Message
+        }</span>
+        <span class="cov8" title="1">return false</span>
+}
+
+// UserMessage returns a sanitized message safe for end users
+func (e *SentinelError) UserMessage() string <span class="cov8" title="1">{
+        if !e.UserSafe </span><span class="cov8" title="1">{
+                return getGenericErrorMessage(e.Type)
+        }</span>
+        <span class="cov8" title="1">return e.Message</span>
+}
+
+// getGenericErrorMessage returns a generic user-safe message for the given error type
+func getGenericErrorMessage(errorType ErrorType) string <span class="cov8" title="1">{
+        switch errorType </span>{
+        case ErrorTypeConfig:<span class="cov8" title="1">
+                return "Configuration error occurred"</span>
+        case ErrorTypeFileSystem:<span class="cov8" title="1">
+                return "File system error occurred"</span>
+        case ErrorTypeTestExecution:<span class="cov8" title="1">
+                return "Test execution failed"</span>
+        case ErrorTypeWatch:<span class="cov8" title="1">
+                return "File watching error occurred"</span>
+        case ErrorTypeDependency:<span class="cov8" title="1">
+                return "Dependency resolution failed"</span>
+        case ErrorTypeLifecycle:<span class="cov8" title="1">
+                return "Application lifecycle error"</span>
+        case ErrorTypeValidation:<span class="cov8" title="1">
+                return "Validation failed"</span>
+        case ErrorTypeExternal:<span class="cov8" title="1">
+                return "External service error"</span>
+        default:<span class="cov8" title="1">
+                return "An internal error occurred"</span>
+        }
+}
+
+// WithContext adds additional context to the error
+func (e *SentinelError) WithContext(key, value string) *SentinelError <span class="cov8" title="1">{
+        if e.Context.Metadata == nil </span><span class="cov8" title="1">{
+                e.Context.Metadata = make(map[string]string)
+        }</span>
+        <span class="cov8" title="1">e.Context.Metadata[key] = value
+        return e</span>
+}
+
+// WithRequestID adds a request ID for tracing
+func (e *SentinelError) WithRequestID(requestID string) *SentinelError <span class="cov8" title="1">{
+        e.Context.RequestID = requestID
+        return e
+}</span>
+
+// WithUserID adds a user ID for user-specific operations
+func (e *SentinelError) WithUserID(userID string) *SentinelError <span class="cov8" title="1">{
+        e.Context.UserID = userID
+        return e
+}</span>
+
+// captureStack captures the current call stack
+func captureStack(skip int) []StackFrame <span class="cov8" title="1">{
+        var frames []StackFrame
+
+        // Capture up to 10 stack frames
+        for i := skip; i &lt; skip+10; i++ </span><span class="cov8" title="1">{
+                pc, file, line, ok := runtime.Caller(i)
+                if !ok </span><span class="cov8" title="1">{
+                        break</span>
+                }
+
+                <span class="cov8" title="1">fn := runtime.FuncForPC(pc)
+                if fn == nil </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">frames = append(frames, StackFrame{
+                        Function: fn.Name(),
+                        File:     file,
+                        Line:     line,
+                })</span>
+        }
+
+        <span class="cov8" title="1">return frames</span>
+}
+
+// NewError creates a new SentinelError with the specified type and message
+func NewError(errorType ErrorType, severity ErrorSeverity, message string) *SentinelError <span class="cov8" title="1">{
+        return &amp;SentinelError{
+                Type:     errorType,
+                Severity: severity,
+                Message:  message,
+                Context:  ErrorContext{},
+                Stack:    captureStack(2), // Skip NewError and caller
+                UserSafe: severity == SeverityInfo || severity == SeverityWarning,
+        }
+}</span>
+
+// WrapError wraps an existing error with additional context
+func WrapError(err error, errorType ErrorType, severity ErrorSeverity, message string) *SentinelError <span class="cov8" title="1">{
+        if err == nil </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+
+        <span class="cov8" title="1">return &amp;SentinelError{
+                Type:     errorType,
+                Severity: severity,
+                Message:  message,
+                Cause:    err,
+                Context:  ErrorContext{},
+                Stack:    captureStack(2), // Skip WrapError and caller
+                UserSafe: severity == SeverityInfo || severity == SeverityWarning,
+        }</span>
+}
+
+// NewConfigError creates a configuration-related error
+func NewConfigError(message string, userSafe bool) *SentinelError <span class="cov8" title="1">{
+        severity := SeverityError
+        if userSafe </span><span class="cov8" title="1">{
+                severity = SeverityWarning
+        }</span>
+
+        <span class="cov8" title="1">err := NewError(ErrorTypeConfig, severity, message)
+        err.UserSafe = userSafe
+        err.Context.Component = "config"
+        return err</span>
+}
+
+// NewValidationError creates a validation error (always user-safe)
+func NewValidationError(field, message string) *SentinelError <span class="cov8" title="1">{
+        err := NewError(ErrorTypeValidation, SeverityWarning, message)
+        err.UserSafe = true
+        err.Context.Component = "validation"
+        err.Context.Resource = field
+        return err
+}</span>
+
+// NewFileSystemError creates a file system error
+func NewFileSystemError(operation, path string, cause error) *SentinelError <span class="cov8" title="1">{
+        message := fmt.Sprintf("file system operation failed: %s", operation)
+        err := WrapError(cause, ErrorTypeFileSystem, SeverityError, message)
+        err.Context.Operation = operation
+        err.Context.Resource = path
+        err.Context.Component = "filesystem"
+        return err
+}</span>
+
+// NewTestExecutionError creates a test execution error
+func NewTestExecutionError(testPath string, cause error) *SentinelError <span class="cov8" title="1">{
+        message := "test execution failed"
+        err := WrapError(cause, ErrorTypeTestExecution, SeverityError, message)
+        err.Context.Operation = "test_execution"
+        err.Context.Resource = testPath
+        err.Context.Component = "test_runner"
+        return err
+}</span>
+
+// NewWatchError creates a watch system error
+func NewWatchError(operation, path string, cause error) *SentinelError <span class="cov8" title="1">{
+        message := fmt.Sprintf("watch operation failed: %s", operation)
+        err := WrapError(cause, ErrorTypeWatch, SeverityError, message)
+        err.Context.Operation = operation
+        err.Context.Resource = path
+        err.Context.Component = "watcher"
+        return err
+}</span>
+
+// NewDependencyError creates a dependency injection error
+func NewDependencyError(component string, cause error) *SentinelError <span class="cov8" title="1">{
+        message := fmt.Sprintf("dependency resolution failed for: %s", component)
+        err := WrapError(cause, ErrorTypeDependency, SeverityCritical, message)
+        err.Context.Operation = "dependency_resolution"
+        err.Context.Resource = component
+        err.Context.Component = "container"
+        return err
+}</span>
+
+// NewLifecycleError creates an application lifecycle error
+func NewLifecycleError(operation string, cause error) *SentinelError <span class="cov8" title="1">{
+        message := fmt.Sprintf("lifecycle operation failed: %s", operation)
+        err := WrapError(cause, ErrorTypeLifecycle, SeverityError, message)
+        err.Context.Operation = operation
+        err.Context.Component = "lifecycle"
+        return err
+}</span>
+
+// NewInternalError creates an internal system error (never user-safe)
+func NewInternalError(component, operation string, cause error) *SentinelError <span class="cov8" title="1">{
+        message := "internal system error occurred"
+        err := WrapError(cause, ErrorTypeInternal, SeverityCritical, message)
+        err.Context.Operation = operation
+        err.Context.Component = component
+        err.UserSafe = false
+        return err
+}</span>
+
+// IsErrorType checks if an error is of a specific type
+func IsErrorType(err error, errorType ErrorType) bool <span class="cov8" title="1">{
+        if sentinelErr, ok := err.(*SentinelError); ok </span><span class="cov8" title="1">{
+                return sentinelErr.Type == errorType
+        }</span>
+        <span class="cov8" title="1">return false</span>
+}
+
+// IsErrorSeverity checks if an error has a specific severity
+func IsErrorSeverity(err error, severity ErrorSeverity) bool <span class="cov8" title="1">{
+        if sentinelErr, ok := err.(*SentinelError); ok </span><span class="cov8" title="1">{
+                return sentinelErr.Severity == severity
+        }</span>
+        <span class="cov8" title="1">return false</span>
+}
+
+// GetErrorContext extracts context from a SentinelError
+func GetErrorContext(err error) *ErrorContext <span class="cov8" title="1">{
+        if sentinelErr, ok := err.(*SentinelError); ok </span><span class="cov8" title="1">{
+                return &amp;sentinelErr.Context
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+// SanitizeError returns a user-safe version of any error
+func SanitizeError(err error) error <span class="cov8" title="1">{
+        if err == nil </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+
+        <span class="cov8" title="1">if sentinelErr, ok := err.(*SentinelError); ok </span><span class="cov8" title="1">{
+                if sentinelErr.UserSafe </span><span class="cov8" title="1">{
+                        return sentinelErr
+                }</span>
+                // Return sanitized version
+                <span class="cov8" title="1">return NewError(sentinelErr.Type, sentinelErr.Severity, sentinelErr.UserMessage())</span>
+        }
+
+        // For non-SentinelError, return generic message
+        <span class="cov8" title="1">return NewError(ErrorTypeInternal, SeverityError, "An error occurred")</span>
+}
+</pre>
+
+		<pre class="file" id="file1" style="display: none">// Package models provides shared data models and value objects for the Go Sentinel CLI.
+//
+// This package contains core data structures used throughout the application for representing
+// test results, error handling, file changes, and configuration. It follows the principle of
+// providing clean value objects without business logic.
+//
+// Key components:
+//   - Error handling: SentinelError with comprehensive error context and stack traces
+//   - Test results: TestResult, PackageResult, and TestSummary for test execution data
+//   - File changes: FileChange for representing file system modifications
+//   - Configuration: TestConfiguration and WatchConfiguration for application settings
+//
+// Example usage:
+//
+//        // Creating and using test results
+//        result := models.NewTestResult("TestExample", "github.com/example/pkg")
+//        result.Status = models.TestStatusPassed
+//        result.Duration = 100 * time.Millisecond
+//
+//        // Creating and handling errors
+//        err := models.NewValidationError("config.timeout", "timeout must be positive")
+//        if models.IsErrorType(err, models.ErrorTypeValidation) {
+//                fmt.Println("Validation error:", err.UserMessage())
+//        }
+//
+//        // Creating file change events
+//        change := models.NewFileChange("main.go", models.ChangeTypeModified)
+//        fmt.Printf("File %s was %s at %v\n", change.FilePath, change.ChangeType, change.Timestamp)
+package models
+
+import (
+        "fmt"
+        "time"
+)
+
+// Example_errorHandling demonstrates the comprehensive error handling system.
+//
+// This example shows how to create, wrap, and handle different types of errors
+// with proper context and user-safe messaging.
+func Example_errorHandling() <span class="cov8" title="1">{
+        // Create a configuration error with user-safe message
+        configErr := NewConfigError("invalid timeout value: must be greater than 0", true)
+        fmt.Printf("Config error: %s\n", configErr.UserMessage())
+
+        // Create a validation error for a specific field
+        validationErr := NewValidationError("email", "email format is invalid")
+        fmt.Printf("Validation error: %s\n", validationErr.UserMessage())
+
+        // Create a file system error by wrapping an underlying error
+        originalErr := fmt.Errorf("permission denied")
+        fsErr := NewFileSystemError("read", "/etc/config.yaml", originalErr)
+        fmt.Printf("File system error: %s\n", fsErr.Error())
+
+        // Check error types
+        if IsErrorType(configErr, ErrorTypeConfig) </span><span class="cov8" title="1">{
+                fmt.Println("This is a configuration error")
+        }</span>
+
+        // Get error context
+        <span class="cov8" title="1">context := GetErrorContext(fsErr)
+        if context != nil </span><span class="cov8" title="1">{
+                fmt.Printf("Operation: %s, Resource: %s\n", context.Operation, context.Resource)
+        }</span>
+
+        // Sanitize errors for user display
+        <span class="cov8" title="1">sanitized := SanitizeError(fsErr)
+        fmt.Printf("User-safe message: %s\n", sanitized.Error())</span>
+
+        // Output:
+        // Config error: invalid timeout value: must be greater than 0
+        // Validation error: email format is invalid
+        // File system error: [FILESYSTEM:ERROR] (filesystem) file system operation failed: read resource=/etc/config.yaml operation=read
+        // This is a configuration error
+        // Operation: read, Resource: /etc/config.yaml
+        // User-safe message: [FILESYSTEM:ERROR] File system error occurred
+}
+
+// Example_testResults demonstrates working with test execution results.
+//
+// This example shows how to create test results, manage package results,
+// and generate comprehensive test summaries.
+func Example_testResults() <span class="cov8" title="1">{
+        // Create sample tests
+        test := createExamplePassingTest()
+        failingTest := createExampleFailingTest()
+
+        // Create package and summary
+        pkg := createExamplePackageResult(test, failingTest)
+        summary := createExampleTestSummary(pkg)
+
+        // Display results
+        displayTestResults(pkg, summary, test, failingTest)
+
+        // Output:
+        // Package: github.com/example/auth
+        // Success rate: 50.0%
+        // Tests: 1 passed, 1 failed
+        // Overall success rate: 50.0%
+        // Test TestUserLogin passed
+        // Test TestInvalidPassword failed: Expected authentication to fail, but got success
+}</span>
+
+// createExamplePassingTest creates a sample passing test result.
+func createExamplePassingTest() *TestResult <span class="cov8" title="1">{
+        test := NewTestResult("TestUserLogin", "github.com/example/auth")
+        test.Status = TestStatusPassed
+        test.Duration = 150 * time.Millisecond
+        test.Output = []string{"=== RUN   TestUserLogin", "--- PASS: TestUserLogin (0.15s)"}
+        return test
+}</span>
+
+// createExampleFailingTest creates a sample failing test result.
+func createExampleFailingTest() *TestResult <span class="cov8" title="1">{
+        failingTest := NewTestResult("TestInvalidPassword", "github.com/example/auth")
+        failingTest.Status = TestStatusFailed
+        failingTest.Duration = 50 * time.Millisecond
+        failingTest.Error = &amp;TestError{
+                Message:    "Expected authentication to fail, but got success",
+                Type:       "assertion",
+                SourceFile: "auth_test.go",
+                SourceLine: 42,
+                Expected:   "false",
+                Actual:     "true",
+        }
+        return failingTest
+}</span>
+
+// createExamplePackageResult creates a sample package result with tests.
+func createExamplePackageResult(test, failingTest *TestResult) *PackageResult <span class="cov8" title="1">{
+        pkg := NewPackageResult("github.com/example/auth")
+        pkg.AddTest(test)
+        pkg.AddTest(failingTest)
+        pkg.Duration = 200 * time.Millisecond
+        return pkg
+}</span>
+
+// createExampleTestSummary creates a sample test summary.
+func createExampleTestSummary(pkg *PackageResult) *TestSummary <span class="cov8" title="1">{
+        summary := NewTestSummary()
+        summary.AddPackageResult(pkg)
+        return summary
+}</span>
+
+// displayTestResults displays test results and status information.
+func displayTestResults(pkg *PackageResult, summary *TestSummary, test, failingTest *TestResult) <span class="cov8" title="1">{
+        // Display package results
+        fmt.Printf("Package: %s\n", pkg.Package)
+        fmt.Printf("Success rate: %.1f%%\n", pkg.GetSuccessRate()*100)
+        fmt.Printf("Tests: %d passed, %d failed\n", pkg.PassedCount, pkg.FailedCount)
+        fmt.Printf("Overall success rate: %.1f%%\n", summary.GetSuccessRate()*100)
+
+        // Check individual test status
+        if test.IsSuccess() </span><span class="cov8" title="1">{
+                fmt.Printf("Test %s passed\n", test.Name)
+        }</span>
+        <span class="cov8" title="1">if failingTest.IsFailure() </span><span class="cov8" title="1">{
+                fmt.Printf("Test %s failed: %s\n", failingTest.Name, failingTest.Error.Message)
+        }</span>
+}
+
+// Example_fileChanges demonstrates tracking file system changes.
+//
+// This example shows how to create and work with file change events
+// for watch mode functionality.
+func Example_fileChanges() <span class="cov8" title="1">{
+        // Create different types of file changes
+        created := NewFileChange("new_test.go", ChangeTypeCreated)
+        created.Size = 1024
+        created.Checksum = "abc123def456"
+
+        modified := NewFileChange("existing_test.go", ChangeTypeModified)
+        modified.Size = 2048
+        modified.OldPath = "old_test.go" // For renamed files
+
+        deleted := NewFileChange("obsolete_test.go", ChangeTypeDeleted)
+
+        // Track changes over time
+        changes := []*FileChange{created, modified, deleted}
+
+        fmt.Printf("File change summary:\n")
+        for _, change := range changes </span><span class="cov8" title="1">{
+                fmt.Printf("- %s: %s (at %s)\n",
+                        change.ChangeType,
+                        change.FilePath,
+                        change.Timestamp.Format("15:04:05"))
+
+                if change.Size &gt; 0 </span><span class="cov8" title="1">{
+                        fmt.Printf("  Size: %d bytes\n", change.Size)
+                }</span>
+                <span class="cov8" title="1">if change.OldPath != "" </span><span class="cov8" title="1">{
+                        fmt.Printf("  Previous path: %s\n", change.OldPath)
+                }</span>
+        }
+
+        // Output:
+        // File change summary:
+        // - created: new_test.go (at 15:04:05)
+        //   Size: 1024 bytes
+        // - modified: existing_test.go (at 15:04:05)
+        //   Size: 2048 bytes
+        //   Previous path: old_test.go
+        // - deleted: obsolete_test.go (at 15:04:05)
+}
+
+// Example_configuration demonstrates creating and using configuration objects.
+//
+// This example shows how to set up test and watch configurations
+// for different scenarios.
+func Example_configuration() <span class="cov8" title="1">{
+        // Create configurations
+        testConfig := createExampleTestConfiguration()
+        watchConfig := createExampleWatchConfiguration()
+
+        // Display configurations
+        displayConfigurations(testConfig, watchConfig)
+
+        // Output:
+        // Test Configuration:
+        // - Packages: [./internal/... ./pkg/...]
+        // - Coverage: true
+        // - Parallel: 4
+        // - Timeout: 5m0s
+        //
+        // Watch Configuration:
+        // - Enabled: true
+        // - Paths: [./internal ./pkg ./cmd]
+        // - Debounce: 500ms
+        // - Clear on rerun: true
+}</span>
+
+// createExampleTestConfiguration creates a sample test configuration.
+func createExampleTestConfiguration() *TestConfiguration <span class="cov8" title="1">{
+        return &amp;TestConfiguration{
+                Packages:        []string{"./internal/...", "./pkg/..."},
+                Verbose:         true,
+                Coverage:        true,
+                JSONOutput:      true,
+                Parallel:        4,
+                Timeout:         5 * time.Minute,
+                Tags:            []string{"unit", "integration"},
+                Environment:     map[string]string{"TEST_ENV": "development"},
+                CoverageProfile: "coverage.out",
+        }
+}</span>
+
+// createExampleWatchConfiguration creates a sample watch configuration.
+func createExampleWatchConfiguration() *WatchConfiguration <span class="cov8" title="1">{
+        return &amp;WatchConfiguration{
+                Enabled:          true,
+                Paths:            []string{"./internal", "./pkg", "./cmd"},
+                IgnorePatterns:   []string{"*.tmp", "vendor/", ".git/"},
+                TestPatterns:     []string{"*_test.go"},
+                DebounceInterval: 500 * time.Millisecond,
+                RunOnStart:       true,
+                ClearOnRerun:     true,
+                NotifyOnFailure:  true,
+        }
+}</span>
+
+// displayConfigurations displays test and watch configuration information.
+func displayConfigurations(testConfig *TestConfiguration, watchConfig *WatchConfiguration) <span class="cov8" title="1">{
+        // Display test configuration
+        fmt.Printf("Test Configuration:\n")
+        fmt.Printf("- Packages: %v\n", testConfig.Packages)
+        fmt.Printf("- Coverage: %t\n", testConfig.Coverage)
+        fmt.Printf("- Parallel: %d\n", testConfig.Parallel)
+        fmt.Printf("- Timeout: %v\n", testConfig.Timeout)
+
+        // Display watch configuration
+        fmt.Printf("\nWatch Configuration:\n")
+        fmt.Printf("- Enabled: %t\n", watchConfig.Enabled)
+        fmt.Printf("- Paths: %v\n", watchConfig.Paths)
+        fmt.Printf("- Debounce: %v\n", watchConfig.DebounceInterval)
+        fmt.Printf("- Clear on rerun: %t\n", watchConfig.ClearOnRerun)
+}</span>
+
+// Example_testStatus demonstrates working with test status values.
+//
+// This example shows the different test statuses and how to check them.
+func Example_testStatus() <span class="cov8" title="1">{
+        // Create tests with different statuses
+        statuses := []TestStatus{
+                TestStatusPending,
+                TestStatusRunning,
+                TestStatusPassed,
+                TestStatusFailed,
+                TestStatusSkipped,
+                TestStatusTimeout,
+                TestStatusError,
+        }
+
+        fmt.Printf("Test status examples:\n")
+        for _, status := range statuses </span><span class="cov8" title="1">{
+                // Create a test result with this status
+                test := NewTestResult("ExampleTest", "example/pkg")
+                test.Status = status
+
+                // Check status conditions
+                var condition string
+                switch </span>{
+                case test.IsSuccess():<span class="cov8" title="1">
+                        condition = "success"</span>
+                case test.IsFailure():<span class="cov8" title="1">
+                        condition = "failure"</span>
+                case test.IsComplete():<span class="cov8" title="1">
+                        condition = "complete"</span>
+                default:<span class="cov8" title="1">
+                        condition = "in progress"</span>
+                }
+
+                <span class="cov8" title="1">fmt.Printf("- %s: %s\n", status, condition)</span>
+        }
+
+        // Output:
+        // Test status examples:
+        // - pending: in progress
+        // - running: in progress
+        // - passed: success
+        // - failed: failure
+        // - skipped: complete
+        // - timeout: failure
+        // - error: failure
+}
+
+// Example_coverage demonstrates working with test coverage data.
+//
+// This example shows how to create and analyze coverage information
+// at different levels (test, file, function, package).
+func Example_coverage() <span class="cov8" title="1">{
+        // Create sample coverage data
+        funcCoverage := createExampleFunctionCoverage()
+        fileCoverage := createExampleFileCoverage()
+        pkgCoverage := createExamplePackageCoverage(fileCoverage, funcCoverage)
+        testCoverage := createExampleTestCoverage(fileCoverage)
+
+        // Display coverage information
+        displayCoverageInformation(pkgCoverage, fileCoverage, funcCoverage, testCoverage)
+
+        // Output:
+        // Package Coverage: github.com/example/handlers
+        // - Overall: 82.3% (234/284 lines)
+        // File Coverage: handler.go
+        // - Coverage: 78.5% (89/113 statements)
+        // Function Coverage: ProcessRequest
+        // - Coverage: 85.7% (called 15 times)
+        // - Lines: 10-25 in handler.go
+        // ✓ Coverage meets threshold of 80.0%
+}</span>
+
+// createExampleFunctionCoverage creates a sample function coverage object.
+func createExampleFunctionCoverage() *FunctionCoverage <span class="cov8" title="1">{
+        return &amp;FunctionCoverage{
+                Name:       "ProcessRequest",
+                FilePath:   "handler.go",
+                StartLine:  10,
+                EndLine:    25,
+                Percentage: 85.7,
+                IsCovered:  true,
+                CallCount:  15,
+        }
+}</span>
+
+// createExampleFileCoverage creates a sample file coverage object.
+func createExampleFileCoverage() *FileCoverage <span class="cov8" title="1">{
+        return &amp;FileCoverage{
+                FilePath:          "handler.go",
+                Percentage:        78.5,
+                CoveredLines:      157,
+                TotalLines:        200,
+                CoveredStatements: 89,
+                TotalStatements:   113,
+                LinesCovered:      []int{1, 2, 3, 5, 7, 8, 10, 11, 12},
+                LinesUncovered:    []int{4, 6, 9, 13, 14},
+        }
+}</span>
+
+// createExamplePackageCoverage creates a sample package coverage object.
+func createExamplePackageCoverage(fileCoverage *FileCoverage, funcCoverage *FunctionCoverage) *PackageCoverage <span class="cov8" title="1">{
+        return &amp;PackageCoverage{
+                Package:           "github.com/example/handlers",
+                Percentage:        82.3,
+                CoveredLines:      234,
+                TotalLines:        284,
+                CoveredStatements: 156,
+                TotalStatements:   189,
+                Files: map[string]*FileCoverage{
+                        "handler.go": fileCoverage,
+                },
+                Functions: map[string]*FunctionCoverage{
+                        "ProcessRequest": funcCoverage,
+                },
+        }
+}</span>
+
+// createExampleTestCoverage creates a sample test coverage object.
+func createExampleTestCoverage(fileCoverage *FileCoverage) *TestCoverage <span class="cov8" title="1">{
+        return &amp;TestCoverage{
+                Percentage:        82.3,
+                CoveredLines:      234,
+                TotalLines:        284,
+                CoveredStatements: 156,
+                TotalStatements:   189,
+                Files: map[string]*FileCoverage{
+                        "handler.go": fileCoverage,
+                },
+        }
+}</span>
+
+// displayCoverageInformation displays coverage information for different levels.
+func displayCoverageInformation(pkgCoverage *PackageCoverage, fileCoverage *FileCoverage, funcCoverage *FunctionCoverage, testCoverage *TestCoverage) <span class="cov8" title="1">{
+        // Display package coverage
+        fmt.Printf("Package Coverage: %s\n", pkgCoverage.Package)
+        fmt.Printf("- Overall: %.1f%% (%d/%d lines)\n",
+                pkgCoverage.Percentage, pkgCoverage.CoveredLines, pkgCoverage.TotalLines)
+
+        // Display file coverage
+        fmt.Printf("File Coverage: %s\n", fileCoverage.FilePath)
+        fmt.Printf("- Coverage: %.1f%% (%d/%d statements)\n",
+                fileCoverage.Percentage, fileCoverage.CoveredStatements, fileCoverage.TotalStatements)
+
+        // Display function coverage
+        fmt.Printf("Function Coverage: %s\n", funcCoverage.Name)
+        fmt.Printf("- Coverage: %.1f%% (called %d times)\n",
+                funcCoverage.Percentage, funcCoverage.CallCount)
+        fmt.Printf("- Lines: %d-%d in %s\n",
+                funcCoverage.StartLine, funcCoverage.EndLine, funcCoverage.FilePath)
+
+        // Check coverage thresholds
+        threshold := 80.0
+        if testCoverage.Percentage &gt;= threshold </span><span class="cov8" title="1">{
+                fmt.Printf("✓ Coverage meets threshold of %.1f%%\n", threshold)
+        }</span> else<span class="cov8" title="1"> {
+                fmt.Printf("✗ Coverage below threshold of %.1f%%\n", threshold)
+        }</span>
+}
+</pre>
+
+		<pre class="file" id="file2" style="display: none">// Package models provides shared data models and value objects
+package models
+
+import (
+        "time"
+)
+
+// TestResult represents the result of a test execution
+type TestResult struct {
+        // ID is the unique test result identifier
+        ID string
+
+        // Name is the test name
+        Name string
+
+        // Package is the package containing the test
+        Package string
+
+        // Status is the test execution status
+        Status TestStatus
+
+        // Duration is the test execution time
+        Duration time.Duration
+
+        // StartTime is when the test started
+        StartTime time.Time
+
+        // EndTime is when the test finished
+        EndTime time.Time
+
+        // Output contains the test output lines
+        Output []string
+
+        // Error contains error details if the test failed
+        Error *TestError
+
+        // Coverage contains coverage information
+        Coverage *TestCoverage
+
+        // Subtests contains any subtest results
+        Subtests []*TestResult
+
+        // Parent is the parent test name (for subtests)
+        Parent string
+
+        // Metadata contains additional test metadata
+        Metadata map[string]interface{}
+}
+
+// PackageResult represents the result of testing a package
+type PackageResult struct {
+        // Package is the package name/path
+        Package string
+
+        // Success indicates if all tests in the package passed
+        Success bool
+
+        // Duration is the total execution time for the package
+        Duration time.Duration
+
+        // StartTime is when package testing started
+        StartTime time.Time
+
+        // EndTime is when package testing finished
+        EndTime time.Time
+
+        // Tests contains individual test results
+        Tests []*TestResult
+
+        // Coverage contains package coverage information
+        Coverage *PackageCoverage
+
+        // TestCount is the total number of tests
+        TestCount int
+
+        // PassedCount is the number of passed tests
+        PassedCount int
+
+        // FailedCount is the number of failed tests
+        FailedCount int
+
+        // SkippedCount is the number of skipped tests
+        SkippedCount int
+
+        // Output contains the raw package output
+        Output string
+
+        // Error contains any package-level error
+        Error error
+
+        // Metadata contains additional package metadata
+        Metadata map[string]interface{}
+}
+
+// TestSummary contains aggregated test statistics
+type TestSummary struct {
+        // TotalTests is the total number of tests executed
+        TotalTests int
+
+        // PassedTests is the number of tests that passed
+        PassedTests int
+
+        // FailedTests is the number of tests that failed
+        FailedTests int
+
+        // SkippedTests is the number of tests that were skipped
+        SkippedTests int
+
+        // TotalDuration is the total execution time
+        TotalDuration time.Duration
+
+        // AverageDuration is the average test execution time
+        AverageDuration time.Duration
+
+        // PackageCount is the number of packages tested
+        PackageCount int
+
+        // CoveragePercentage is the overall coverage percentage
+        CoveragePercentage float64
+
+        // Success indicates if all tests passed
+        Success bool
+
+        // StartTime is when testing started
+        StartTime time.Time
+
+        // EndTime is when testing finished
+        EndTime time.Time
+
+        // FailedPackages contains names of packages with failed tests
+        FailedPackages []string
+
+        // Metadata contains additional summary metadata
+        Metadata map[string]interface{}
+}
+
+// TestError contains detailed error information for a failed test
+type TestError struct {
+        // Message is the primary error message
+        Message string
+
+        // Type is the error type or category
+        Type string
+
+        // StackTrace contains the stack trace lines
+        StackTrace []string
+
+        // SourceFile is the source file where the error occurred
+        SourceFile string
+
+        // SourceLine is the line number where the error occurred
+        SourceLine int
+
+        // SourceColumn is the column number where the error occurred
+        SourceColumn int
+
+        // SourceContext contains surrounding source code lines
+        SourceContext []string
+
+        // ContextStartLine is the starting line number for the context
+        ContextStartLine int
+
+        // Expected contains the expected value (for assertion errors)
+        Expected string
+
+        // Actual contains the actual value (for assertion errors)
+        Actual string
+
+        // Metadata contains additional error metadata
+        Metadata map[string]interface{}
+}
+
+// TestCoverage contains coverage information for a test
+type TestCoverage struct {
+        // Percentage is the coverage percentage
+        Percentage float64
+
+        // CoveredLines is the number of covered lines
+        CoveredLines int
+
+        // TotalLines is the total number of lines
+        TotalLines int
+
+        // CoveredStatements is the number of covered statements
+        CoveredStatements int
+
+        // TotalStatements is the total number of statements
+        TotalStatements int
+
+        // Files contains per-file coverage information
+        Files map[string]*FileCoverage
+
+        // Metadata contains additional coverage metadata
+        Metadata map[string]interface{}
+}
+
+// PackageCoverage contains coverage information for a package
+type PackageCoverage struct {
+        // Package is the package name
+        Package string
+
+        // Percentage is the overall coverage percentage
+        Percentage float64
+
+        // CoveredLines is the total number of covered lines
+        CoveredLines int
+
+        // TotalLines is the total number of lines in the package
+        TotalLines int
+
+        // CoveredStatements is the total number of covered statements
+        CoveredStatements int
+
+        // TotalStatements is the total number of statements in the package
+        TotalStatements int
+
+        // Files contains coverage for each file in the package
+        Files map[string]*FileCoverage
+
+        // Functions contains coverage for each function
+        Functions map[string]*FunctionCoverage
+
+        // Metadata contains additional coverage metadata
+        Metadata map[string]interface{}
+}
+
+// FileCoverage contains coverage information for a single file
+type FileCoverage struct {
+        // FilePath is the path to the file
+        FilePath string
+
+        // Percentage is the coverage percentage for this file
+        Percentage float64
+
+        // CoveredLines is the number of covered lines
+        CoveredLines int
+
+        // TotalLines is the total number of lines
+        TotalLines int
+
+        // CoveredStatements is the number of covered statements
+        CoveredStatements int
+
+        // TotalStatements is the total number of statements
+        TotalStatements int
+
+        // LinesCovered contains the specific lines that are covered
+        LinesCovered []int
+
+        // LinesUncovered contains the specific lines that are not covered
+        LinesUncovered []int
+
+        // Metadata contains additional file coverage metadata
+        Metadata map[string]interface{}
+}
+
+// FunctionCoverage contains coverage information for a single function
+type FunctionCoverage struct {
+        // Name is the function name
+        Name string
+
+        // FilePath is the file containing the function
+        FilePath string
+
+        // StartLine is the starting line of the function
+        StartLine int
+
+        // EndLine is the ending line of the function
+        EndLine int
+
+        // Percentage is the coverage percentage for this function
+        Percentage float64
+
+        // IsCovered indicates if the function is covered by tests
+        IsCovered bool
+
+        // CallCount is the number of times the function was called during tests
+        CallCount int
+
+        // Metadata contains additional function coverage metadata
+        Metadata map[string]interface{}
+}
+
+// FileChange represents a change to a file
+type FileChange struct {
+        // FilePath is the path to the changed file
+        FilePath string
+
+        // ChangeType is the type of change (created, modified, deleted, renamed)
+        ChangeType ChangeType
+
+        // Timestamp is when the change occurred
+        Timestamp time.Time
+
+        // OldPath is the old path (for rename operations)
+        OldPath string
+
+        // Size is the file size after the change
+        Size int64
+
+        // Checksum is the file checksum after the change
+        Checksum string
+
+        // Metadata contains additional change metadata
+        Metadata map[string]interface{}
+}
+
+// TestConfiguration represents test execution configuration
+type TestConfiguration struct {
+        // Packages contains the packages to test
+        Packages []string
+
+        // TestFiles contains specific test files to run
+        TestFiles []string
+
+        // TestPatterns contains test name patterns to match
+        TestPatterns []string
+
+        // Verbose enables verbose output
+        Verbose bool
+
+        // Coverage enables coverage reporting
+        Coverage bool
+
+        // CoverageProfile specifies the coverage profile file
+        CoverageProfile string
+
+        // JSONOutput enables JSON output format
+        JSONOutput bool
+
+        // Parallel specifies the number of parallel test processes
+        Parallel int
+
+        // Timeout specifies the test execution timeout
+        Timeout time.Duration
+
+        // Tags contains build tags to use
+        Tags []string
+
+        // Args contains additional arguments to pass to go test
+        Args []string
+
+        // Environment contains environment variables for test execution
+        Environment map[string]string
+
+        // WorkingDirectory specifies the working directory for execution
+        WorkingDirectory string
+
+        // Metadata contains additional configuration metadata
+        Metadata map[string]interface{}
+}
+
+// WatchConfiguration represents watch mode configuration
+type WatchConfiguration struct {
+        // Enabled indicates if watch mode is enabled
+        Enabled bool
+
+        // Paths contains the paths to watch
+        Paths []string
+
+        // IgnorePatterns contains patterns to ignore
+        IgnorePatterns []string
+
+        // TestPatterns contains test file patterns
+        TestPatterns []string
+
+        // DebounceInterval is the debounce interval for file changes
+        DebounceInterval time.Duration
+
+        // RunOnStart indicates if tests should run on startup
+        RunOnStart bool
+
+        // ClearOnRerun indicates if the terminal should be cleared between runs
+        ClearOnRerun bool
+
+        // NotifyOnSuccess indicates if notifications should be sent on success
+        NotifyOnSuccess bool
+
+        // NotifyOnFailure indicates if notifications should be sent on failure
+        NotifyOnFailure bool
+
+        // Metadata contains additional watch configuration metadata
+        Metadata map[string]interface{}
+}
+
+// TestStatus represents the status of a test
+type TestStatus string
+
+const (
+        // TestStatusPending indicates the test is pending execution
+        TestStatusPending TestStatus = "pending"
+
+        // TestStatusRunning indicates the test is currently running
+        TestStatusRunning TestStatus = "running"
+
+        // TestStatusPassed indicates the test passed
+        TestStatusPassed TestStatus = "passed"
+
+        // TestStatusFailed indicates the test failed
+        TestStatusFailed TestStatus = "failed"
+
+        // TestStatusSkipped indicates the test was skipped
+        TestStatusSkipped TestStatus = "skipped"
+
+        // TestStatusTimeout indicates the test timed out
+        TestStatusTimeout TestStatus = "timeout"
+
+        // TestStatusError indicates an error occurred during test execution
+        TestStatusError TestStatus = "error"
+)
+
+// ChangeType represents the type of file change
+type ChangeType string
+
+const (
+        // ChangeTypeCreated indicates a file was created
+        ChangeTypeCreated ChangeType = "created"
+
+        // ChangeTypeModified indicates a file was modified
+        ChangeTypeModified ChangeType = "modified"
+
+        // ChangeTypeDeleted indicates a file was deleted
+        ChangeTypeDeleted ChangeType = "deleted"
+
+        // ChangeTypeRenamed indicates a file was renamed
+        ChangeTypeRenamed ChangeType = "renamed"
+
+        // ChangeTypeMoved indicates a file was moved
+        ChangeTypeMoved ChangeType = "moved"
+)
+
+// NewTestResult creates a new TestResult with default values
+func NewTestResult(name, pkg string) *TestResult <span class="cov8" title="1">{
+        return &amp;TestResult{
+                ID:        generateID(),
+                Name:      name,
+                Package:   pkg,
+                Status:    TestStatusPending,
+                StartTime: time.Now(),
+                Output:    make([]string, 0),
+                Subtests:  make([]*TestResult, 0),
+                Metadata:  make(map[string]interface{}),
+        }
+}</span>
+
+// NewPackageResult creates a new PackageResult with default values
+func NewPackageResult(pkg string) *PackageResult <span class="cov8" title="1">{
+        return &amp;PackageResult{
+                Package:   pkg,
+                StartTime: time.Now(),
+                Tests:     make([]*TestResult, 0),
+                Metadata:  make(map[string]interface{}),
+        }
+}</span>
+
+// NewTestSummary creates a new TestSummary with default values
+func NewTestSummary() *TestSummary <span class="cov8" title="1">{
+        return &amp;TestSummary{
+                StartTime:      time.Now(),
+                FailedPackages: make([]string, 0),
+                Metadata:       make(map[string]interface{}),
+        }
+}</span>
+
+// NewFileChange creates a new FileChange
+func NewFileChange(filePath string, changeType ChangeType) *FileChange <span class="cov8" title="1">{
+        return &amp;FileChange{
+                FilePath:   filePath,
+                ChangeType: changeType,
+                Timestamp:  time.Now(),
+                Metadata:   make(map[string]interface{}),
+        }
+}</span>
+
+// IsSuccess returns whether the test result represents a successful test
+func (tr *TestResult) IsSuccess() bool <span class="cov8" title="1">{
+        return tr.Status == TestStatusPassed
+}</span>
+
+// IsFailure returns whether the test result represents a failed test
+func (tr *TestResult) IsFailure() bool <span class="cov8" title="1">{
+        return tr.Status == TestStatusFailed || tr.Status == TestStatusTimeout || tr.Status == TestStatusError
+}</span>
+
+// IsComplete returns whether the test has completed execution
+func (tr *TestResult) IsComplete() bool <span class="cov8" title="1">{
+        return tr.Status != TestStatusPending &amp;&amp; tr.Status != TestStatusRunning
+}</span>
+
+// AddSubtest adds a subtest result
+func (tr *TestResult) AddSubtest(subtest *TestResult) <span class="cov8" title="1">{
+        subtest.Parent = tr.Name
+        tr.Subtests = append(tr.Subtests, subtest)
+}</span>
+
+// GetSuccessRate returns the success rate for the package
+func (pr *PackageResult) GetSuccessRate() float64 <span class="cov8" title="1">{
+        if pr.TestCount == 0 </span><span class="cov8" title="1">{
+                return 0.0
+        }</span>
+        <span class="cov8" title="1">return float64(pr.PassedCount) / float64(pr.TestCount)</span>
+}
+
+// AddTest adds a test result to the package
+func (pr *PackageResult) AddTest(test *TestResult) <span class="cov8" title="1">{
+        pr.Tests = append(pr.Tests, test)
+        pr.TestCount++
+
+        switch test.Status </span>{
+        case TestStatusPassed:<span class="cov8" title="1">
+                pr.PassedCount++</span>
+        case TestStatusFailed, TestStatusTimeout, TestStatusError:<span class="cov8" title="1">
+                pr.FailedCount++
+                pr.Success = false</span>
+        case TestStatusSkipped:<span class="cov8" title="1">
+                pr.SkippedCount++</span>
+        }
+}
+
+// GetSuccessRate returns the overall success rate
+func (ts *TestSummary) GetSuccessRate() float64 <span class="cov8" title="1">{
+        if ts.TotalTests == 0 </span><span class="cov8" title="1">{
+                return 0.0
+        }</span>
+        <span class="cov8" title="1">return float64(ts.PassedTests) / float64(ts.TotalTests)</span>
+}
+
+// AddPackageResult adds a package result to the summary
+func (ts *TestSummary) AddPackageResult(pkg *PackageResult) <span class="cov8" title="1">{
+        ts.PackageCount++
+        ts.TotalTests += pkg.TestCount
+        ts.PassedTests += pkg.PassedCount
+        ts.FailedTests += pkg.FailedCount
+        ts.SkippedTests += pkg.SkippedCount
+        ts.TotalDuration += pkg.Duration
+
+        if !pkg.Success </span><span class="cov8" title="1">{
+                ts.Success = false
+                ts.FailedPackages = append(ts.FailedPackages, pkg.Package)
+        }</span>
+
+        // Update average duration
+        <span class="cov8" title="1">if ts.TotalTests &gt; 0 </span><span class="cov8" title="1">{
+                ts.AverageDuration = ts.TotalDuration / time.Duration(ts.TotalTests)
+        }</span>
+}
+
+// generateID generates a unique identifier
+func generateID() string <span class="cov8" title="1">{
+        return time.Now().Format("20060102150405.000000")
+}</span>
+</pre>
+
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
