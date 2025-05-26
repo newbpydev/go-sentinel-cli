@@ -11,6 +11,7 @@
 **This specification is based on PIXEL-PERFECT analysis of reference terminal output. Every character, space, and symbol has been documented exactly as shown. NO creative interpretation is allowed.**
 
 **Key Requirements:**
+
 - ✅ **Character-perfect matching** - Every icon, space, separator must match exactly
 - ✅ **Spacing precision** - 2-space indents, 4-space error details, exact alignment
 - ✅ **Unicode exactness** - Use specified Unicode points, not similar-looking characters
@@ -25,7 +26,8 @@
 **ALL modes must implement this EXACT structure (based on reference terminal output):**
 
 ### **Part 1: Individual Test Execution** (Real-time test results)
-```
+
+```bash
   ✓ TestFileSystemOperations/read_nonexistent_file 0ms
   ✓ TestFileSystemOperations/permission_denied 0ms
   ✓ TestFileSystemOperations 0ms
@@ -37,7 +39,8 @@
 ```
 
 ### **Part 2: File Summary & Detailed Results**
-```
+
+```txt
 cli_test.go (127 tests) 0ms 0 MB heap used
   ✓ Suite passed (127 tests)
 
@@ -54,7 +57,8 @@ stress_tests_test.go (48 tests | 26 failed) 0ms 0 MB heap used
 ```
 
 ### **Part 3: Failed Tests Detail Section & Summary**
-```
+
+```bash
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
                                                  Failed Tests 26
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -86,7 +90,8 @@ Duration: 12.96s (setup 7.61s, tests 4.36s, teardown 979ms)
 ## 🎨 **VISUAL DESIGN STANDARDS**
 
 ### **Color Scheme** (Vitest-inspired)
-```
+
+```bash
 Success:   #10b981 (emerald-500)    ✅ Passed tests, success messages
 Error:     #ef4444 (red-500)        ❌ Failed tests, error messages  
 Warning:   #f59e0b (amber-500)      ⚠️  Warnings, skipped tests
@@ -96,7 +101,8 @@ Accent:    #8b5cf6 (violet-500)     🎯 Highlights, special status
 ```
 
 ### **Icon System** (EXACT Unicode characters from reference output)
-```
+
+```bash
 Status Icons (Primary):
 ✓         - Passed test (Unicode U+2713 CHECK MARK)
 ✗         - Failed test (Unicode U+2717 BALLOT X) 
@@ -119,7 +125,8 @@ ASCII Fallbacks (Limited terminals):
 ```
 
 ### **Typography & Spacing** (EXACT formatting from reference)
-```
+
+```bash
 Individual Tests:    2-space indent + icon + space + test name + space + timing
                     "  ✓ TestName 0ms"
 
@@ -155,7 +162,8 @@ Code Context:       Right-aligned line numbers with | separator
 ## 📋 **MODE-SPECIFIC IMPLEMENTATIONS** (Reference-Based)
 
 ### **Normal Mode** (EXACT format from reference)
-```
+
+```txt
   ✓ TestFileSystemOperations/read_nonexistent_file 0ms
   ✓ TestFileSystemOperations/permission_denied 0ms
   ✓ TestFileSystemOperations 0ms
@@ -197,7 +205,8 @@ Duration: 12.96s (setup 7.61s, tests 4.36s, teardown 979ms)
 ```
 
 ### **Watch Mode** (Same format with watch-specific context)
-```
+
+```txt
 [Watch Context Header - if needed]
 📁 Changed: internal/config/loader.go
 ⚡ Re-running affected tests...
@@ -221,7 +230,8 @@ Duration: 65ms (setup 12ms, tests 45ms, teardown 8ms)
 ```
 
 ### **Verbose Mode** (Enhanced detail but same format)
-```
+
+```txt
   ✓ TestFileSystemOperations/create_temp_file 5ms
   ✓ TestFileSystemOperations/read_nonexistent_file 0ms
   ✓ TestFileSystemOperations/permission_denied 0ms
@@ -253,6 +263,7 @@ Performance: 800 tests/second average
 ## 🔧 **PROGRESSIVE ENHANCEMENT STANDARDS**
 
 ### **Terminal Capability Detection**
+
 ```go
 type TerminalCapability int
 
@@ -265,6 +276,7 @@ const (
 ```
 
 ### **Fallback Hierarchy**
+
 1. **TrueColor + Unicode**: Full Vitest experience
 2. **256 Color + Unicode**: Rich colors with full icons
 3. **Basic Color + Unicode**: Limited colors, full icons
@@ -275,7 +287,8 @@ const (
 ## 📐 **EXACT FORMATTING STANDARDS** (Based on Reference Output)
 
 ### **1. Individual Test Execution Format**
-```
+
+```txt
 Format:  {2_spaces}{icon} {test_name} {timing}
 Example: "  ✓ TestFileSystemOperations/read_nonexistent_file 0ms"
          "  ✗ TestEnvironmentDependencies 0ms" 
@@ -286,7 +299,8 @@ Timing Format: Integer + "ms" (no decimals, no parentheses)
 ```
 
 ### **2. File Summary Format**
-```
+
+```txt
 Format:  {filename} ({test_count} tests[ | {failed_count} failed]) {timing} {memory}
 Example: "cli_test.go (127 tests) 0ms 0 MB heap used"
          "stress_tests_test.go (48 tests | 26 failed) 0ms 0 MB heap used"
@@ -296,7 +310,8 @@ Memory Format: "0 MB heap used" (always 0 MB in examples)
 ```
 
 ### **3. Detailed Test Results Within File**
-```
+
+```txt
 Format:  {2_spaces}{icon} {test_name} {timing}
 Example: "  ✓ TestBasicPass 0ms"
          "  ✗ TestBasicFail 0ms"
@@ -309,7 +324,8 @@ Example: "    → Expected 1+1 to equal 3, but got 2"
 ```
 
 ### **4. Failed Tests Detail Section**
-```
+
+```txt
 Section Header: 110+ ─ characters, centered text
 "──────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
 "                                                 Failed Tests 26"
@@ -331,7 +347,8 @@ Test Counter: "─────────────────────�
 ```
 
 ### **5. Test Summary Section**
-```
+
+```txt
 Header: "────────────────────────────────────────────────── Test Summary ──────────────────────────────────────────────────"
 
 Statistics Format:
@@ -346,7 +363,8 @@ Final timing: "⏱️  Tests completed in {X.XXXXXXX}s"
 ```
 
 ### **6. Spacing Rules**
-```
+
+```txt
 Between sections: 1 empty line
 Between test files: 1 empty line  
 Between failed test details: 1 empty line
@@ -360,6 +378,7 @@ Error pointer: Spaces to align ^ under error column
 ## 🎯 **CONSISTENCY VALIDATION CHECKLIST**
 
 ### **Required for ALL Modes (Based on Reference Output):**
+
 - [ ] **EXACT three-part structure**: Individual Tests → File Summaries → Failed Tests Detail + Summary
 - [ ] **Precise icon usage**: ✓ ✗ ⃠ → ↳ ^ | ⏱️ (exact Unicode characters)
 - [ ] **Exact spacing**: 2-space indents, 4-space error details, right-aligned line numbers
@@ -376,6 +395,7 @@ Error pointer: Spaces to align ^ under error column
 ## 🔗 **IMPLEMENTATION REFERENCE**
 
 ### **Required Components (For Reference-Based Implementation)**
+
 - `internal/ui/icons/reference_icons.go` - EXACT Unicode icons (✓ ✗ ⃠ → ↳ ^ |)
 - `internal/ui/display/test_execution_renderer.go` - Individual test output formatting
 - `internal/ui/display/file_summary_renderer.go` - File summary with heap usage
@@ -386,6 +406,7 @@ Error pointer: Spaces to align ^ under error column
 - `internal/ui/display/code_context_formatter.go` - 5-line code snippets with line numbers
 
 ### **Phase Implementation Requirements**
+
 - **Phase 2**: Implement foundation components and three-part structure
 - **Phase 3**: Apply guidelines to watch mode with live updates
 - **Phase 4**: Extend to advanced features while maintaining consistency
@@ -397,4 +418,4 @@ Error pointer: Spaces to align ^ under error column
 
 This document serves as the **single source of truth** for visual output standards across the entire Go Sentinel CLI project. The formatting specifications are based on detailed analysis of reference terminal output and must be implemented EXACTLY as documented - no approximations, no creative interpretations, no "close enough" implementations.
 
-**Implementation Verification**: Every component must produce output that is character-for-character identical to the reference patterns shown in this document. 
+**Implementation Verification**: Every component must produce output that is character-for-character identical to the reference patterns shown in this document.

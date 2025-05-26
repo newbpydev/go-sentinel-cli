@@ -13,6 +13,7 @@
 ## 📊 **Current State Analysis**
 
 ### **✅ COMPLETED FOUNDATION** (Phase 0 + Phase 1 delivered)
+
 - ✅ **UI Package Structure**: Clean separation achieved with `internal/ui/display/app_renderer.go` (387 lines)
 - ✅ **Basic Display**: Working emoji summary output (`🚀 Test Execution Summary`, `✅ Passed: 20`)
 - ✅ **Color System**: `internal/ui/colors/` package exists with basic color management
@@ -20,7 +21,8 @@
 - ✅ **Architecture**: App package contains only orchestration, UI logic properly separated
 
 ### **🎯 TARGET STANDARDIZED OUTPUT** (Pixel-Perfect Reference)
-```
+
+```bash
   ✓ TestFileSystemOperations/read_nonexistent_file 0ms
   ✓ TestFileSystemOperations/permission_denied 0ms
   ✓ TestFileSystemOperations 0ms
@@ -68,7 +70,8 @@ Duration: 12.96s (setup 7.61s, tests 4.36s, teardown 979ms)
 ### **🔍 CURRENT VS TARGET COMPARISON**
 
 **Current Output** (Basic):
-```
+
+```bash
 🚀 Test Execution Summary
 ✅ Passed: 20
 ❌ Failed: 0
@@ -76,6 +79,7 @@ Duration: 12.96s (setup 7.61s, tests 4.36s, teardown 979ms)
 ```
 
 **Target Output** (Vitest-style):
+
 - **Header Section**: Status bar with progress, timing, memory usage
 - **Main Content**: File-grouped results with icons, colors, pass/fail indicators
 - **Failed Tests Section**: Detailed error display with source context
@@ -88,6 +92,7 @@ Duration: 12.96s (setup 7.61s, tests 4.36s, teardown 979ms)
 ### **2.1 Display System Enhancement** (18 hours)
 
 #### **Task 2.1.1**: Reference-based color system implementation ✅ **READY**
+
 - **Target**: Implement EXACT color scheme from standardized guidelines (✓ = green, ✗ = red, ⃠ = amber)
 - **Fix**: Create pixel-perfect color matching with specified hex codes (#10b981, #ef4444, #f59e0b)
 - **Location**: Enhance `internal/ui/colors/color_manager.go` and create reference theme
@@ -103,6 +108,7 @@ Duration: 12.96s (setup 7.61s, tests 4.36s, teardown 979ms)
 - **Duration**: 6 hours
 
 #### **Task 2.1.2**: EXACT Unicode icon implementation ✅ **READY**
+
 - **Target**: Implement precise Unicode icons from guidelines (✓ U+2713, ✗ U+2717, ⃠ U+20E0, → U+2192, ↳ U+21B3)
 - **Fix**: Create exact Unicode character mapping with character-perfect fallbacks
 - **Location**: Enhance `internal/ui/icons/icon_provider.go` and create reference providers
@@ -118,6 +124,7 @@ Duration: 12.96s (setup 7.61s, tests 4.36s, teardown 979ms)
 - **Duration**: 6 hours
 
 #### **Task 2.1.3**: Progress indicators implementation ✅ **ARCHITECTURE READY**
+
 - **Violation**: Current static output needs real-time progress indicators and live updates
 - **Fix**: Implement progress bars, spinners, and real-time status updates
 - **Location**: Create `internal/ui/display/progress_renderer.go` and enhance app renderer
@@ -135,6 +142,7 @@ Duration: 12.96s (setup 7.61s, tests 4.36s, teardown 979ms)
 ### **2.2 Three-Part Display Structure** (18 hours)
 
 #### **Task 2.2.1**: Individual test execution renderer ✅ **UI ARCHITECTURE READY**
+
 - **Target**: Implement EXACT Part 1 format: "  ✓ TestName 0ms" with precise 2-space indentation
 - **Fix**: Create individual test line renderer with exact spacing and timing format
 - **Location**: Create `internal/ui/display/test_execution_renderer.go` and integrate with app renderer
@@ -150,6 +158,7 @@ Duration: 12.96s (setup 7.61s, tests 4.36s, teardown 979ms)
 - **Duration**: 6 hours
 
 #### **Task 2.2.2**: File summary & detailed results renderer ✅ **UI STRUCTURE READY**
+
 - **Target**: Implement EXACT Part 2 format: "filename (X tests[ | Y failed]) Zms 0 MB heap used" + detailed test results
 - **Fix**: Create file summary renderer with exact spacing, heap usage, and 4-space error indentation
 - **Location**: Create `internal/ui/display/file_summary_renderer.go` and detailed results formatting
@@ -165,6 +174,7 @@ Duration: 12.96s (setup 7.61s, tests 4.36s, teardown 979ms)
 - **Duration**: 8 hours
 
 #### **Task 2.2.3**: Failed tests detail & summary renderer ✅ **FOUNDATION READY**
+
 - **Target**: Implement EXACT Part 3 format: 110+ ─ characters, centered headers, code context with ^ pointers
 - **Fix**: Create failed tests section with precise formatting and final summary with pipe-separated stats
 - **Location**: Create `internal/ui/display/failed_tests_renderer.go` and final summary formatting
@@ -182,6 +192,7 @@ Duration: 12.96s (setup 7.61s, tests 4.36s, teardown 979ms)
 ### **2.3 Layout Management** (10 hours)
 
 #### **Task 2.3.1**: Terminal layout implementation ✅ **TERMINAL DETECTION READY**
+
 - **Violation**: Current output doesn't adapt to terminal size or capabilities
 - **Fix**: Implement responsive layout management with terminal size detection
 - **Location**: Create `internal/ui/display/layout_manager.go` and terminal utilities
@@ -197,6 +208,7 @@ Duration: 12.96s (setup 7.61s, tests 4.36s, teardown 979ms)
 - **Duration**: 6 hours
 
 #### **Task 2.3.2**: Live updating system ✅ **EVENT SYSTEM READY**
+
 - **Violation**: Current static output needs live updates during test execution
 - **Fix**: Implement live terminal updates with cursor management and real-time refresh
 - **Location**: Create `internal/ui/display/live_renderer.go` and terminal control utilities
@@ -215,14 +227,16 @@ Duration: 12.96s (setup 7.61s, tests 4.36s, teardown 979ms)
 
 ## 📋 **Phase 2 Deliverable Requirements**
 
-### **Success Criteria** (Pixel-Perfect Compliance):
+### **Success Criteria** (Pixel-Perfect Compliance)
+
 - ✅ **Standardized Three-Part Structure**: Individual Tests → File Summaries → Failed Tests Detail + Summary
 - ✅ **Exact Unicode Implementation**: ✓ ✗ ⃠ → ↳ ^ | ⏱️ characters matching visual guidelines
 - ✅ **Precise Spacing**: 2-space test indents, 4-space error details, exact alignment
 - ✅ **Character-Perfect Formatting**: File summary format, 110+ ─ headers, pipe-separated stats
 - ✅ **Reference-Based Colors**: Exact hex codes (#10b981, #ef4444, #f59e0b) with fallbacks
 
-### **Acceptance Tests** (Reference Validation):
+### **Acceptance Tests** (Reference Validation)
+
 ```bash
 # Must show EXACT standardized output format:
 go run cmd/go-sentinel-cli/main.go run ./internal/config
@@ -246,7 +260,8 @@ TERM=dumb go run cmd/go-sentinel-cli/main.go run ./internal/config
 # Expected: [P] [F] [S] -> \-> fallbacks matching guidelines
 ```
 
-### **Quality Gates**:
+### **Quality Gates**
+
 - ✅ All existing tests pass (127/127 tests)
 - ✅ Beautiful output matching Vitest aesthetic
 - ✅ Proper fallbacks for limited terminals
@@ -258,20 +273,24 @@ TERM=dumb go run cmd/go-sentinel-cli/main.go run ./internal/config
 ## 🎯 **Implementation Strategy**
 
 ### **Phase 2.1: Display Foundation** (18 hours)
+
 1. **Enhanced Color System** (6 hours) - Rich theming with terminal detection
 2. **Enhanced Icon System** (6 hours) - Comprehensive iconography with fallbacks  
 3. **Progress Indicators** (6 hours) - Live progress bars and status updates
 
 ### **Phase 2.2: Three-Part Layout** (18 hours)
+
 1. **Header Section** (6 hours) - Status bar with timing and memory
 2. **Main Content** (8 hours) - File-grouped results with rich formatting
 3. **Summary Footer** (4 hours) - Comprehensive statistics display
 
 ### **Phase 2.3: Advanced Features** (10 hours)
+
 1. **Layout Management** (6 hours) - Responsive design for terminals
 2. **Live Updates** (4 hours) - Real-time display during execution
 
-### **Validation After Each Task**:
+### **Validation After Each Task**
+
 ```bash
 # Verify visual output and functionality:
 go run cmd/go-sentinel-cli/main.go run ./internal/config
@@ -284,12 +303,14 @@ go build ./cmd/go-sentinel-cli/...
 ## 🚀 **Phase 2 to Phase 3 Transition**
 
 **Once Phase 2 Complete**:
+
 - ✅ Beautiful Vitest-style output working perfectly
 - ✅ Three-part display with colors, icons, and rich formatting
 - ✅ Live updates and responsive layout
 - ✅ Foundation ready for watch mode integration
 
 **Phase 3 Ready**: Watch mode and file monitoring can begin
+
 - UI system ready for watch mode display
 - Live update system ready for file change notifications
 - Event system ready for watch coordination
@@ -303,6 +324,7 @@ go build ./cmd/go-sentinel-cli/...
 ### **MANDATORY REFERENCE**: [Go Sentinel CLI Visual Guidelines](./GO_SENTINEL_CLI_VISUAL_GUIDELINES.md)
 
 **ALL implementations in this phase MUST:**
+
 - ✅ Follow the **three-part structure** (Header + Content + Summary)
 - ✅ Implement **Vitest color scheme** with terminal detection
 - ✅ Use **standardized icon system** with Unicode + ASCII fallbacks
@@ -310,6 +332,7 @@ go build ./cmd/go-sentinel-cli/...
 - ✅ Support **progressive enhancement** based on terminal capabilities
 
 **Implementation Validation**:
+
 ```bash
 # Every task completion must verify output against guidelines:
 go run cmd/go-sentinel-cli/main.go run ./internal/config
@@ -319,4 +342,4 @@ TERM=dumb go run cmd/go-sentinel-cli/main.go run ./internal/config
 # Expected: ASCII fallback with guidelines compliance
 ```
 
-**Quality Gate**: No task is complete until visual output matches the standardized guidelines exactly. 
+**Quality Gate**: No task is complete until visual output matches the standardized guidelines exactly.
