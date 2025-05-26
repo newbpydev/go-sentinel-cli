@@ -356,7 +356,44 @@ install-tools: ## Install development tools
 		echo "Installing gotestsum..."; \
 		go install gotest.tools/gotestsum@latest; \
 	fi
+	# Install jq for JSON parsing (Windows)
+	@if ! command -v jq >/dev/null 2>&1; then \
+		echo "jq not found. Install it manually:"; \
+		echo "  Windows: Download from https://github.com/jqlang/jq/releases"; \
+		echo "  Or use chocolatey: choco install jq"; \
+		echo "  Or use scoop: scoop install jq"; \
+		echo "  Linux: sudo apt-get install jq"; \
+		echo "  macOS: brew install jq"; \
+	fi
 	@echo "$(GREEN)✓ Development tools installed$(RESET)"
+
+.PHONY: install-jq
+install-jq: ## Install jq JSON processor (cross-platform)
+	@echo "$(BLUE)Installing jq JSON processor...$(RESET)"
+	@if command -v jq >/dev/null 2>&1; then \
+		echo "$(GREEN)✓ jq is already installed$(RESET)"; \
+	elif command -v scoop >/dev/null 2>&1; then \
+		echo "Installing jq using scoop..."; \
+		scoop install jq; \
+	elif command -v brew >/dev/null 2>&1; then \
+		echo "Installing jq using homebrew..."; \
+		brew install jq; \
+	elif command -v apt-get >/dev/null 2>&1; then \
+		echo "Installing jq using apt..."; \
+		sudo apt-get update && sudo apt-get install -y jq; \
+	elif [[ "$$(uname -s)" == "MINGW"* ]] || [[ "$$(uname -s)" == "CYGWIN"* ]] || [[ "$$OS" == "Windows_NT" ]]; then \
+		echo "Downloading jq binary for Windows..."; \
+		mkdir -p $(shell go env GOPATH)/bin; \
+		curl -L -o $(shell go env GOPATH)/bin/jq.exe https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-win64.exe 2>/dev/null || curl -L -o $(shell go env GOPATH)/bin/jq.exe https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-windows-amd64.exe; \
+		chmod +x $(shell go env GOPATH)/bin/jq.exe; \
+		echo "$(GREEN)✓ jq binary downloaded to $(shell go env GOPATH)/bin/jq.exe$(RESET)"; \
+	else \
+		echo "$(YELLOW)Manual installation required:$(RESET)"; \
+		echo "  Windows: Download from https://github.com/jqlang/jq/releases"; \
+		echo "  Linux: sudo apt-get install jq"; \
+		echo "  macOS: brew install jq"; \
+		echo "  Or use package manager: choco install jq / scoop install jq"; \
+	fi
 
 # ==============================================================================
 # Cleanup Commands
@@ -541,15 +578,7 @@ test-coverage-check: ## Run tests and enforce coverage threshold
 	go tool cover -html=$(COVERAGE_DIR)/coverage.out -o $(COVERAGE_DIR)/coverage.html
 	@echo "$(GREEN)✓ Coverage report: $(COVERAGE_DIR)/coverage.html$(RESET)"
 
-.PHONY: security-scan
-security-scan: ## Run security vulnerability scan
-	@echo "$(BLUE)Running security scan...$(RESET)"
-	@if ! command -v gosec >/dev/null 2>&1; then \
-		echo "Installing gosec..."; \
-		go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest; \
-	fi
-	gosec -fmt json -out $(BUILD_DIR)/gosec-report.json ./...
-	@echo "$(GREEN)✓ Security scan complete: $(BUILD_DIR)/gosec-report.json$(RESET)"
+
 
 .PHONY: lint-fix
 lint-fix: ## Auto-fix linting issues where possible
@@ -712,12 +741,7 @@ quality-help: ## Show quality automation help and examples
 # Performance Monitoring Commands
 # ==============================================================================
 
-.PHONY: benchmark
-benchmark: ## Run performance benchmarks with regression detection
-	@echo "$(BLUE)Running performance benchmarks...$(RESET)"
-	@mkdir -p $(BUILD_DIR)/benchmarks
-	go run ./cmd/go-sentinel-cli benchmark --format=text
-	@echo "$(GREEN)✓ Benchmark analysis complete$(RESET)"
+
 
 .PHONY: benchmark-json
 benchmark-json: ## Run benchmarks and generate JSON report
@@ -765,18 +789,7 @@ benchmark-verbose: ## Run benchmarks with verbose output for debugging
 	go run ./cmd/go-sentinel-cli benchmark --verbose --format=text
 	@echo "$(GREEN)✓ Verbose benchmark analysis complete$(RESET)"
 
-.PHONY: benchmark-compare
-benchmark-compare: ## Compare current benchmarks with baseline and show detailed analysis
-	@echo "$(BLUE)Comparing benchmarks with baseline...$(RESET)"
-	@mkdir -p $(BUILD_DIR)/benchmarks
-	@if [ ! -f "$(BUILD_DIR)/benchmarks/baseline.json" ]; then \
-		echo "$(YELLOW)⚠️  No baseline found. Creating baseline first...$(RESET)"; \
-		$(MAKE) benchmark-baseline; \
-		echo "$(YELLOW)⚠️  Baseline created. Run 'make benchmark-compare' again after making changes.$(RESET)"; \
-	else \
-		go run ./cmd/go-sentinel-cli benchmark --format=text --baseline-file=$(BUILD_DIR)/benchmarks/baseline.json; \
-		echo "$(GREEN)✓ Benchmark comparison complete$(RESET)"; \
-	fi
+
 
 .PHONY: benchmark-trend
 benchmark-trend: ## Generate performance trend analysis (requires multiple baseline runs)
@@ -949,21 +962,41 @@ monitoring-test: ## Test monitoring endpoints
 	@echo "$(BLUE)Testing monitoring endpoints...$(RESET)"
 	@echo ""
 	@echo "$(CYAN)Testing health endpoint...$(RESET)"
-	@curl -s http://localhost:8080/health | jq . || echo "Health endpoint not available"
+	@if command -v jq >/dev/null 2>&1; then \
+		curl -s http://localhost:8080/health | jq . || echo "Health endpoint not available"; \
+	else \
+		curl -s http://localhost:8080/health || echo "Health endpoint not available"; \
+	fi
 	@echo ""
 	@echo "$(CYAN)Testing metrics endpoint...$(RESET)"
-	@curl -s http://localhost:8080/metrics | jq . || echo "Metrics endpoint not available"
+	@if command -v jq >/dev/null 2>&1; then \
+		curl -s http://localhost:8080/metrics | jq . || echo "Metrics endpoint not available"; \
+	else \
+		curl -s http://localhost:8080/metrics || echo "Metrics endpoint not available"; \
+	fi
 	@echo ""
 	@echo "$(CYAN)Testing readiness endpoint...$(RESET)"
-	@curl -s http://localhost:8080/health/ready | jq . || echo "Readiness endpoint not available"
+	@if command -v jq >/dev/null 2>&1; then \
+		curl -s http://localhost:8080/health/ready | jq . || echo "Readiness endpoint not available"; \
+	else \
+		curl -s http://localhost:8080/health/ready || echo "Readiness endpoint not available"; \
+	fi
 	@echo ""
 	@echo "$(CYAN)Testing liveness endpoint...$(RESET)"
-	@curl -s http://localhost:8080/health/live | jq . || echo "Liveness endpoint not available"
+	@if command -v jq >/dev/null 2>&1; then \
+		curl -s http://localhost:8080/health/live | jq . || echo "Liveness endpoint not available"; \
+	else \
+		curl -s http://localhost:8080/health/live || echo "Liveness endpoint not available"; \
+	fi
 
 .PHONY: monitoring-metrics
 monitoring-metrics: ## Fetch current metrics from running application
 	@echo "$(BLUE)Fetching current metrics...$(RESET)"
-	@curl -s http://localhost:8080/metrics | jq .
+	@if command -v jq >/dev/null 2>&1; then \
+		curl -s http://localhost:8080/metrics | jq .; \
+	else \
+		curl -s http://localhost:8080/metrics || echo "Metrics endpoint not available"; \
+	fi
 
 .PHONY: monitoring-metrics-prometheus
 monitoring-metrics-prometheus: ## Fetch metrics in Prometheus format
@@ -973,17 +1006,13 @@ monitoring-metrics-prometheus: ## Fetch metrics in Prometheus format
 .PHONY: monitoring-health
 monitoring-health: ## Check application health status
 	@echo "$(BLUE)Checking application health...$(RESET)"
-	@curl -s http://localhost:8080/health | jq .
+	@if command -v jq >/dev/null 2>&1; then \
+		curl -s http://localhost:8080/health | jq .; \
+	else \
+		curl -s http://localhost:8080/health || echo "Health endpoint not available"; \
+	fi
 
-.PHONY: monitoring-dashboard
-monitoring-dashboard: ## Generate monitoring dashboard (requires application to be running)
-	@echo "$(BLUE)Generating monitoring dashboard...$(RESET)"
-	@mkdir -p $(BUILD_DIR)/monitoring
-	@echo "Collecting metrics and health data..."
-	@curl -s http://localhost:8080/metrics > $(BUILD_DIR)/monitoring/metrics.json 2>/dev/null || echo "{\"error\": \"metrics not available\"}" > $(BUILD_DIR)/monitoring/metrics.json
-	@curl -s http://localhost:8080/health > $(BUILD_DIR)/monitoring/health.json 2>/dev/null || echo "{\"error\": \"health not available\"}" > $(BUILD_DIR)/monitoring/health.json
-	@echo "Dashboard data saved to $(BUILD_DIR)/monitoring/"
-	@echo "$(GREEN)✓ Monitoring dashboard data generated$(RESET)"
+
 
 .PHONY: monitoring-load-test
 monitoring-load-test: ## Run load test to generate monitoring data
