@@ -18,21 +18,22 @@
   - **Result**: 318 lines of UI logic properly separated, all tests passing, CLI functional
   - **Duration**: 4 hours ✅ **COMPLETED**
 
-- [ ] **Task 0.1.2**: Move configuration logic to config package ⚠️ **CRITICAL** ← **NEXT TASK**
-  - **Violation**: `internal/app/config_loader.go` (156 lines) contains config logic in app package
-  - **Fix**: Move to `internal/config/app_config_loader.go`
+- [x] **Task 0.1.2**: Move configuration logic to config package ✅ **COMPLETED**
+  - **Violation**: `internal/app/config_loader.go` (156 lines) contained config logic in app package
+  - **Fix**: Moved to `internal/config/app_config_loader.go` with proper interfaces
   - **Why**: Config logic belongs in config package, app should only use it
   - **Architecture Rule**: Configuration management belongs in `internal/config/`
-  - **Location**: Move `DefaultConfigurationLoader` and conversion logic
-  - **Pattern**: Use Factory + Adapter pattern like Task 0.1.1
-  - **Duration**: 3 hours
+  - **Implementation**: Factory + Adapter pattern with dependency injection
+  - **Result**: 156 lines of config logic properly separated, all tests passing, CLI functional
+  - **Duration**: 3 hours ✅ **COMPLETED**
 
-- [ ] **Task 0.1.3**: Move argument parsing logic to config package ⚠️ **CRITICAL**
+- [ ] **Task 0.1.3**: Move argument parsing logic to config package ⚠️ **CRITICAL** ← **NEXT TASK**
   - **Violation**: `internal/app/arg_parser.go` (103 lines) contains CLI parsing logic in app package
   - **Fix**: Move to `internal/config/app_arg_parser.go`
   - **Why**: Argument parsing is configuration concern, not orchestration
   - **Architecture Rule**: CLI argument parsing belongs in `internal/config/`
   - **Location**: Move `DefaultArgumentParser` and help text
+  - **Pattern**: Use Factory + Adapter pattern like Tasks 0.1.1 and 0.1.2
   - **Duration**: 2 hours
 
 #### **0.2 Monitoring System Separation (TDD)**
@@ -71,10 +72,10 @@
   - **Location**: Move interfaces to their consumer packages
   - **Duration**: 4 hours
 
-**Phase 0 Progress**: 🚧 **4/26 hours completed** (Task 0.1.1 ✅ DONE)
+**Phase 0 Progress**: 🚧 **7/26 hours completed** (Tasks 0.1.1 ✅ 0.1.2 ✅ DONE)
 **Phase 0 Deliverable**: ✅ Clean, compliant modular architecture
 **Success Criteria**: App package only contains orchestration logic, no business logic
-**Total Effort**: 26 hours (~3-4 days) - **Remaining**: 22 hours
+**Total Effort**: 26 hours (~3-4 days) - **Remaining**: 19 hours
 
 **🚨 CRITICAL**: **NO NEW FEATURES** should be implemented until these architecture fixes are complete.
 
@@ -188,6 +189,94 @@
 
 **Next Task Readiness**: Task 0.1.2 (Move configuration logic) can now proceed using the same patterns.
 
+### 🎯 **Task 0.1.2 Implementation Notes** ✅ **COMPLETED**
+
+**What Was Accomplished**:
+- Successfully moved 156 lines of config logic from `internal/app/config_loader.go` to `internal/config/`
+- Applied proven Factory + Adapter pattern from Task 0.1.1
+- Maintained 100% functionality while improving architecture compliance
+- All tests passing (6/6 new config tests, 7/7 app tests)
+- CLI end-to-end functionality verified: `go run cmd/go-sentinel-cli/main.go run ./internal/config`
+
+**Key Architecture Patterns Applied**:
+
+1. **Factory Pattern**: `internal/app/config_loader_factory.go`
+   - Converts app `Configuration` to config `AppConfig` and vice versa
+   - Maintains clean package boundaries with bidirectional conversion
+   - Handles dependency injection properly
+
+2. **Adapter Pattern**: `configLoaderAdapter` in `internal/app/config_loader_adapter.go`
+   - Bridges app package `ConfigurationLoader` interface with config package `AppConfigLoader`
+   - Delegates all operations to config package while maintaining app interface
+   - Preserves existing functionality during transition
+
+3. **Dependency Injection**: `AppConfigLoaderDependencies` struct
+   - Clean separation of concerns with `ValidationMode` options
+   - Testable components with injectable `ConfigLoader` dependency
+   - Interface-based design for flexibility
+
+4. **Interface Segregation**: Small, focused interfaces
+   - `AppConfigLoader` interface with specific config responsibilities
+   - `AppConfigLoaderFactory` for clean object creation
+   - Separate validation modes for different use cases
+
+**Code Quality Achievements**:
+- TDD methodology: Tests written first, implementation followed
+- 100% interface compliance verification
+- Proper error handling with context-rich error messages
+- Go fmt compliance and proper package organization
+
+**Files Created/Modified**:
+- ✅ Created: `internal/config/app_config_loader_interface.go` (114 lines)
+- ✅ Created: `internal/config/app_config_loader.go` (200 lines)
+- ✅ Created: `internal/config/app_config_loader_test.go` (235 lines)
+- ✅ Created: `internal/app/config_loader_factory.go` (131 lines)
+- ✅ Created: `internal/app/config_loader_adapter.go` (67 lines)
+- ✅ Deleted: `internal/app/config_loader.go` (156 lines) - Config logic removed from app
+
+**Testing Strategy Used**:
+- **TDD Red Phase**: Wrote failing tests first for all interfaces
+- **TDD Green Phase**: Implemented minimal code to pass tests
+- **TDD Refactor Phase**: Enhanced implementation while maintaining test coverage
+- **Integration Testing**: Verified CLI end-to-end functionality
+- **Interface Compliance**: Explicit verification of interface implementations
+
+**Lessons Reinforced**:
+
+1. **Bidirectional Conversion Pattern**:
+   ```go
+   // App to Config conversion
+   func (f *ConfigLoaderFactory) convertToConfigConfiguration(appConfig *Configuration) *config.AppConfig
+   
+   // Config to App conversion  
+   func (f *ConfigLoaderFactory) convertFromConfigConfiguration(appConfig *config.AppConfig) *Configuration
+   ```
+
+2. **Adapter Delegation Pattern**:
+   ```go
+   func (a *configLoaderAdapter) LoadFromFile(path string) (*Configuration, error) {
+       // Delegate to config package
+       appConfig, err := a.appLoader.LoadFromFile(path)
+       if err != nil {
+           return nil, err
+       }
+       // Convert and return
+       return a.factory.convertFromConfigConfiguration(appConfig), nil
+   }
+   ```
+
+3. **Validation Mode Flexibility**:
+   ```go
+   type ValidationMode int
+   const (
+       ValidationModeStrict ValidationMode = iota
+       ValidationModeLenient
+       ValidationModeOff
+   )
+   ```
+
+**Next Task Readiness**: Task 0.1.3 (Move argument parsing logic) can now proceed using the same proven patterns.
+
 ---
 
 ## 🎯 Project Status Overview
@@ -214,7 +303,9 @@ internal/app/ 🚧 FIXES IN PROGRESS
 ├── display_renderer.go         # ✅ FIXED - Moved to internal/ui/display/
 ├── renderer_factory.go         # ✅ GOOD - Factory pattern (89 lines)
 ├── controller.go               # ✅ IMPROVED - Uses adapter pattern (371 lines)
-├── config_loader.go            # ❌ BAD - Config logic in app (156 lines) ← NEXT
+├── config_loader.go            # ✅ FIXED - Moved to internal/config/
+├── config_loader_factory.go   # ✅ GOOD - Factory pattern (131 lines)
+├── config_loader_adapter.go   # ✅ GOOD - Adapter pattern (67 lines)
 ├── arg_parser.go               # ❌ BAD - CLI parsing in app (103 lines) ← NEXT
 ├── monitoring.go               # ❌ BAD - Monitoring logic in app (600 lines)
 ├── monitoring_dashboard.go     # ❌ BAD - Dashboard in app (1149 lines)
@@ -224,8 +315,8 @@ internal/app/ 🚧 FIXES IN PROGRESS
 ├── lifecycle.go                # ❌ BAD - Lifecycle logic in app (160 lines)
 └── container.go                # ❌ BAD - DI container in app (237 lines)
 
-PROGRESS: 1/16 files fixed, ~318 lines moved to proper location
-REMAINING: 15 files, ~3700+ lines still need architecture fixes
+PROGRESS: 2/16 files fixed, ~474 lines moved to proper location
+REMAINING: 14 files, ~3500+ lines still need architecture fixes
 ```
 
 **✅ COMPLETED INFRASTRUCTURE** (Once fixes applied):
