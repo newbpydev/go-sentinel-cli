@@ -1,5 +1,5 @@
-// Package app provides dependency injection container implementation
-package app
+// Package container provides dependency injection container implementation
+package container
 
 import (
 	"fmt"
@@ -7,28 +7,35 @@ import (
 	"sync"
 )
 
-// DefaultContainer implements the DependencyContainer interface
-type DefaultContainer struct {
+// DefaultAppDependencyContainer implements the AppDependencyContainer interface.
+// This implementation follows the Single Responsibility Principle by focusing only on dependency management.
+type DefaultAppDependencyContainer struct {
 	mu         sync.RWMutex
 	components map[string]interface{}
 	factories  map[string]func() (interface{}, error)
 	singletons map[string]interface{}
 }
 
-// ComponentFactory is a function that creates a component instance
-type ComponentFactory func() (interface{}, error)
-
-// NewContainer creates a new dependency injection container
-func NewContainer() DependencyContainer {
-	return &DefaultContainer{
+// NewAppDependencyContainer creates a new dependency injection container with default configuration.
+func NewAppDependencyContainer() AppDependencyContainer {
+	return &DefaultAppDependencyContainer{
 		components: make(map[string]interface{}),
 		factories:  make(map[string]func() (interface{}, error)),
 		singletons: make(map[string]interface{}),
 	}
 }
 
-// Register implements the DependencyContainer interface
-func (c *DefaultContainer) Register(name string, component interface{}) error {
+// NewAppDependencyContainerWithCapacity creates a new container with specified initial capacity.
+func NewAppDependencyContainerWithCapacity(capacity int) AppDependencyContainer {
+	return &DefaultAppDependencyContainer{
+		components: make(map[string]interface{}, capacity),
+		factories:  make(map[string]func() (interface{}, error), capacity),
+		singletons: make(map[string]interface{}, capacity),
+	}
+}
+
+// Register registers a component with the container
+func (c *DefaultAppDependencyContainer) Register(name string, component interface{}) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -51,7 +58,7 @@ func (c *DefaultContainer) Register(name string, component interface{}) error {
 }
 
 // RegisterSingleton registers a component as a singleton
-func (c *DefaultContainer) RegisterSingleton(name string, factory ComponentFactory) error {
+func (c *DefaultAppDependencyContainer) RegisterSingleton(name string, factory AppComponentFactory) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -67,8 +74,8 @@ func (c *DefaultContainer) RegisterSingleton(name string, factory ComponentFacto
 	return nil
 }
 
-// Resolve implements the DependencyContainer interface
-func (c *DefaultContainer) Resolve(name string) (interface{}, error) {
+// Resolve retrieves a component from the container
+func (c *DefaultAppDependencyContainer) Resolve(name string) (interface{}, error) {
 	c.mu.RLock()
 
 	// Check if it's already a created singleton
@@ -105,8 +112,8 @@ func (c *DefaultContainer) Resolve(name string) (interface{}, error) {
 	return component, nil
 }
 
-// ResolveAs implements the DependencyContainer interface
-func (c *DefaultContainer) ResolveAs(name string, target interface{}) error {
+// ResolveAs retrieves a component and casts it to the specified type
+func (c *DefaultAppDependencyContainer) ResolveAs(name string, target interface{}) error {
 	if target == nil {
 		return fmt.Errorf("target cannot be nil")
 	}
@@ -140,14 +147,14 @@ func (c *DefaultContainer) ResolveAs(name string, target interface{}) error {
 	return nil
 }
 
-// Initialize implements the DependencyContainer interface
-func (c *DefaultContainer) Initialize() error {
+// Initialize initializes all registered components
+func (c *DefaultAppDependencyContainer) Initialize() error {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	// Initialize any components that implement Initializer interface
+	// Initialize any components that implement AppInitializer interface
 	for name, component := range c.components {
-		if initializer, ok := component.(Initializer); ok {
+		if initializer, ok := component.(AppInitializer); ok {
 			if err := initializer.Initialize(); err != nil {
 				return fmt.Errorf("failed to initialize component '%s': %w", name, err)
 			}
@@ -157,8 +164,8 @@ func (c *DefaultContainer) Initialize() error {
 	return nil
 }
 
-// Cleanup implements the DependencyContainer interface
-func (c *DefaultContainer) Cleanup() error {
+// Cleanup cleans up all registered components
+func (c *DefaultAppDependencyContainer) Cleanup() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -166,7 +173,7 @@ func (c *DefaultContainer) Cleanup() error {
 
 	// Cleanup singletons first
 	for name, component := range c.singletons {
-		if cleaner, ok := component.(Cleaner); ok {
+		if cleaner, ok := component.(AppCleaner); ok {
 			if err := cleaner.Cleanup(); err != nil {
 				errors = append(errors, fmt.Errorf("failed to cleanup singleton '%s': %w", name, err))
 			}
@@ -175,7 +182,7 @@ func (c *DefaultContainer) Cleanup() error {
 
 	// Cleanup regular components
 	for name, component := range c.components {
-		if cleaner, ok := component.(Cleaner); ok {
+		if cleaner, ok := component.(AppCleaner); ok {
 			if err := cleaner.Cleanup(); err != nil {
 				errors = append(errors, fmt.Errorf("failed to cleanup component '%s': %w", name, err))
 			}
@@ -196,41 +203,39 @@ func (c *DefaultContainer) Cleanup() error {
 }
 
 // ListComponents returns a list of all registered component names
-func (c *DefaultContainer) ListComponents() []string {
+func (c *DefaultAppDependencyContainer) ListComponents() []string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	names := make([]string, 0, len(c.components)+len(c.factories))
-
+	var names []string
 	for name := range c.components {
 		names = append(names, name)
 	}
-
 	for name := range c.factories {
-		names = append(names, name)
+		// Avoid duplicates
+		found := false
+		for _, existing := range names {
+			if existing == name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			names = append(names, name)
+		}
 	}
-
 	return names
 }
 
-// HasComponent checks if a component is registered
-func (c *DefaultContainer) HasComponent(name string) bool {
+// HasComponent returns true if a component with the given name is registered
+func (c *DefaultAppDependencyContainer) HasComponent(name string) bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	_, hasComponent := c.components[name]
 	_, hasFactory := c.factories[name]
-	_, hasSingleton := c.singletons[name]
-
-	return hasComponent || hasFactory || hasSingleton
+	return hasComponent || hasFactory
 }
 
-// Initializer interface for components that need initialization
-type Initializer interface {
-	Initialize() error
-}
-
-// Cleaner interface for components that need cleanup
-type Cleaner interface {
-	Cleanup() error
-}
+// Ensure DefaultAppDependencyContainer implements AppDependencyContainer interface
+var _ AppDependencyContainer = (*DefaultAppDependencyContainer)(nil)

@@ -35,14 +35,17 @@ type DefaultArgParser struct{}
 
 // Parse parses command line arguments into Args structure
 func (p *DefaultArgParser) Parse(args []string) (*Args, error) {
+	// Strip known command names from the beginning of arguments
+	filteredArgs := p.stripCommandName(args)
+
 	// Handle multiple -v flags manually
-	verbosity, filteredArgs := p.extractVerbosityFlags(args)
+	verbosity, finalArgs := p.extractVerbosityFlags(filteredArgs)
 
 	// Create flag set and define flags
 	fs, flagValues := p.createFlagSet()
 
 	// Parse the filtered arguments
-	if err := fs.Parse(filteredArgs); err != nil {
+	if err := fs.Parse(finalArgs); err != nil {
 		return nil, fmt.Errorf("failed to parse arguments: %w", err)
 	}
 
@@ -53,6 +56,30 @@ func (p *DefaultArgParser) Parse(args []string) (*Args, error) {
 	}
 
 	return parsedArgs, nil
+}
+
+// stripCommandName removes known command names from the beginning of arguments
+func (p *DefaultArgParser) stripCommandName(args []string) []string {
+	if len(args) == 0 {
+		return args
+	}
+
+	// Known command names that should be stripped
+	knownCommands := []string{"run", "demo", "help", "version"}
+
+	// Check if first argument is a known command
+	for _, cmd := range knownCommands {
+		if args[0] == cmd {
+			// Return arguments without the command name
+			if len(args) > 1 {
+				return args[1:]
+			}
+			return []string{}
+		}
+	}
+
+	// No known command found, return original arguments
+	return args
 }
 
 // extractVerbosityFlags handles multiple -v flags and returns verbosity level and filtered args

@@ -146,21 +146,22 @@ func (l *DefaultAppConfigLoader) Validate(config *AppConfig) error {
 		}
 	}
 
-	// Validate visual configuration
+	// Validate visual configuration (consistent with main config loader)
 	validIcons := map[string]bool{
-		"none":   true,
-		"simple": true,
-		"rich":   true,
+		"unicode": true,
+		"ascii":   true,
+		"minimal": true,
+		"none":    true,
 	}
 	if !validIcons[config.Visual.Icons] {
 		if l.validationMode == ValidationModeStrict {
 			return models.NewValidationError(
 				"visual.icons",
-				fmt.Sprintf("invalid icons setting: %s (valid: none, simple, rich)", config.Visual.Icons),
+				fmt.Sprintf("invalid icons setting: %s (valid: unicode, ascii, minimal, none)", config.Visual.Icons),
 			)
 		}
 		// In lenient mode, set default
-		config.Visual.Icons = "simple"
+		config.Visual.Icons = "unicode"
 	}
 
 	return nil

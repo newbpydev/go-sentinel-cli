@@ -1,5 +1,5 @@
-// Package app provides application event handling implementation
-package app
+// Package events provides application event handling implementation
+package events
 
 import (
 	"context"
@@ -9,21 +9,32 @@ import (
 	"github.com/newbpydev/go-sentinel/pkg/models"
 )
 
-// DefaultApplicationEventHandler implements the ApplicationEventHandler interface
-type DefaultApplicationEventHandler struct {
+// DefaultAppEventHandler implements the AppEventHandler interface.
+// This implementation follows the Single Responsibility Principle by focusing only on event handling.
+type DefaultAppEventHandler struct {
 	logger *log.Logger
-	config *Configuration
+	config *AppConfig
 }
 
-// NewApplicationEventHandler creates a new application event handler
-func NewApplicationEventHandler() ApplicationEventHandler {
-	return &DefaultApplicationEventHandler{
+// NewAppEventHandler creates a new application event handler with default logger.
+func NewAppEventHandler() AppEventHandler {
+	return &DefaultAppEventHandler{
 		logger: log.New(os.Stderr, "[go-sentinel] ", log.LstdFlags|log.Lshortfile),
 	}
 }
 
+// NewAppEventHandlerWithLogger creates a new application event handler with custom logger.
+func NewAppEventHandlerWithLogger(logger *log.Logger) AppEventHandler {
+	if logger == nil {
+		logger = log.New(os.Stderr, "[go-sentinel] ", log.LstdFlags|log.Lshortfile)
+	}
+	return &DefaultAppEventHandler{
+		logger: logger,
+	}
+}
+
 // OnStartup is called when the application starts
-func (h *DefaultApplicationEventHandler) OnStartup(ctx context.Context) error {
+func (h *DefaultAppEventHandler) OnStartup(ctx context.Context) error {
 	h.logger.Printf("Application starting up...")
 
 	// Check if context is already cancelled
@@ -39,7 +50,7 @@ func (h *DefaultApplicationEventHandler) OnStartup(ctx context.Context) error {
 }
 
 // OnShutdown is called when the application shuts down
-func (h *DefaultApplicationEventHandler) OnShutdown(ctx context.Context) error {
+func (h *DefaultAppEventHandler) OnShutdown(ctx context.Context) error {
 	h.logger.Printf("Application shutting down...")
 
 	// Check if context is already cancelled
@@ -56,7 +67,7 @@ func (h *DefaultApplicationEventHandler) OnShutdown(ctx context.Context) error {
 }
 
 // OnError is called when an error occurs
-func (h *DefaultApplicationEventHandler) OnError(err error) {
+func (h *DefaultAppEventHandler) OnError(err error) {
 	if err == nil {
 		return
 	}
@@ -93,7 +104,7 @@ func (h *DefaultApplicationEventHandler) OnError(err error) {
 }
 
 // OnConfigChanged is called when configuration changes
-func (h *DefaultApplicationEventHandler) OnConfigChanged(config *Configuration) {
+func (h *DefaultAppEventHandler) OnConfigChanged(config *AppConfig) {
 	if config == nil {
 		h.logger.Printf("Configuration updated: <nil>")
 		return
@@ -121,20 +132,20 @@ func (h *DefaultApplicationEventHandler) OnConfigChanged(config *Configuration) 
 		h.logger.Printf("  Exclude patterns: %v", config.Paths.ExcludePatterns)
 	}
 
-	if len(config.Watch.IgnorePatterns) > 0 {
-		h.logger.Printf("  Watch ignore patterns: %v", config.Watch.IgnorePatterns)
+	if len(config.Paths.IgnorePatterns) > 0 {
+		h.logger.Printf("  Watch ignore patterns: %v", config.Paths.IgnorePatterns)
 	}
 }
 
 // OnTestStart is called when a test starts (optional extension)
-func (h *DefaultApplicationEventHandler) OnTestStart(testName string) {
+func (h *DefaultAppEventHandler) OnTestStart(testName string) {
 	if h.config != nil && h.config.Verbosity > 1 {
 		h.logger.Printf("Test started: %s", testName)
 	}
 }
 
 // OnTestComplete is called when a test completes (optional extension)
-func (h *DefaultApplicationEventHandler) OnTestComplete(testName string, success bool) {
+func (h *DefaultAppEventHandler) OnTestComplete(testName string, success bool) {
 	if h.config != nil && h.config.Verbosity > 1 {
 		status := "PASS"
 		if !success {
@@ -145,53 +156,53 @@ func (h *DefaultApplicationEventHandler) OnTestComplete(testName string, success
 }
 
 // OnWatchEvent is called when a file watch event occurs (optional extension)
-func (h *DefaultApplicationEventHandler) OnWatchEvent(filePath string, eventType string) {
+func (h *DefaultAppEventHandler) OnWatchEvent(filePath string, eventType string) {
 	if h.config != nil && h.config.Verbosity > 0 {
 		h.logger.Printf("File watch event: %s [%s]", filePath, eventType)
 	}
 }
 
 // SetLogger sets a custom logger
-func (h *DefaultApplicationEventHandler) SetLogger(logger *log.Logger) {
+func (h *DefaultAppEventHandler) SetLogger(logger *log.Logger) {
 	if logger != nil {
 		h.logger = logger
 	}
 }
 
 // SetVerbosity sets the verbosity level for logging
-func (h *DefaultApplicationEventHandler) SetVerbosity(level int) {
+func (h *DefaultAppEventHandler) SetVerbosity(level int) {
 	if h.config == nil {
-		h.config = &Configuration{}
+		h.config = &AppConfig{}
 	}
 	h.config.Verbosity = level
 }
 
 // GetLogger returns the current logger
-func (h *DefaultApplicationEventHandler) GetLogger() *log.Logger {
+func (h *DefaultAppEventHandler) GetLogger() *log.Logger {
 	return h.logger
 }
 
 // LogDebug logs a debug message if verbosity is high enough
-func (h *DefaultApplicationEventHandler) LogDebug(format string, args ...interface{}) {
+func (h *DefaultAppEventHandler) LogDebug(format string, args ...interface{}) {
 	if h.config != nil && h.config.Verbosity > 1 {
 		h.logger.Printf("[DEBUG] "+format, args...)
 	}
 }
 
 // LogInfo logs an info message
-func (h *DefaultApplicationEventHandler) LogInfo(format string, args ...interface{}) {
+func (h *DefaultAppEventHandler) LogInfo(format string, args ...interface{}) {
 	h.logger.Printf("[INFO] "+format, args...)
 }
 
 // LogWarning logs a warning message
-func (h *DefaultApplicationEventHandler) LogWarning(format string, args ...interface{}) {
+func (h *DefaultAppEventHandler) LogWarning(format string, args ...interface{}) {
 	h.logger.Printf("[WARNING] "+format, args...)
 }
 
 // LogError logs an error message
-func (h *DefaultApplicationEventHandler) LogError(format string, args ...interface{}) {
+func (h *DefaultAppEventHandler) LogError(format string, args ...interface{}) {
 	h.logger.Printf("[ERROR] "+format, args...)
 }
 
-// Ensure DefaultApplicationEventHandler implements ApplicationEventHandler interface
-var _ ApplicationEventHandler = (*DefaultApplicationEventHandler)(nil)
+// Ensure DefaultAppEventHandler implements AppEventHandler interface
+var _ AppEventHandler = (*DefaultAppEventHandler)(nil)
