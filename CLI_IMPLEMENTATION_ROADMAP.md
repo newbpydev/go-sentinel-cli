@@ -4,14 +4,16 @@
 
 **❌ ROADMAP CORRECTION**: After comprehensive codebase review, Phase 0 is **NOT COMPLETE**. Critical architecture violations remain:
 
-### **🔍 ACTUAL CURRENT STATE** (Updated after thorough review):
+### **🔍 ACTUAL CURRENT STATE** (Updated after thorough review)
 
 **Architecture Violations Still Remaining**:
+
 - ❌ `internal/app/event_handler.go` (198 lines) - Event handling logic in app package
 - ❌ `internal/app/lifecycle.go` (160 lines) - Lifecycle management logic in app package  
 - ❌ `internal/app/container.go` (237 lines) - Dependency injection container in app package
 
 **What WAS Actually Completed**:
+
 - ✅ **Task 0.1.1**: UI logic moved to `internal/ui/display/` (318 lines)
 - ✅ **Task 0.1.2**: Config logic moved to `internal/config/` (156 lines)
 - ✅ **Task 0.1.3**: Argument parsing moved to `internal/config/` (103 lines)
@@ -29,12 +31,13 @@
 
 **Objective**: Fix architecture violations in `internal/app/` to restore modular architecture compliance.
 
-#### **0.4 Remaining Architecture Cleanup (TDD)** 
+#### **0.4 Remaining Architecture Cleanup (TDD)**
+
 - [x] **Task 0.4.2**: Extract event handling to dedicated package ✅ **COMPLETED**
   - **Violation**: `internal/app/event_handler.go` (198 lines) contained application event logic
   - **Fix**: Created `internal/events/` package and moved event handling logic
   - **Result**: 198 lines of event logic moved to proper package
-  - **New Structure**: 
+  - **New Structure**:
     - `internal/events/handler_interface.go` - Event handler interfaces ✅
     - `internal/events/handler.go` - Application event handler implementation (209 lines) ✅
     - `internal/events/factory.go` - Factory for event handler creation ✅
@@ -88,6 +91,7 @@
 **Objective**: ✅ **ACHIEVED** - Fixed all architecture violations in `internal/app/` and restored modular architecture compliance.
 
 #### **0.1 Package Responsibility Cleanup (TDD)**
+
 - [x] **Task 0.1.1**: Move display rendering logic to UI package ✅ **COMPLETED**
   - **Violation**: `internal/app/display_renderer.go` (318 lines) contained UI logic in app package
   - **Fix**: Moved to `internal/ui/display/app_renderer.go` with proper interfaces
@@ -116,6 +120,7 @@
   - **Duration**: 2 hours ✅ **COMPLETED**
 
 #### **0.2 Monitoring System Separation (TDD)**
+
 - [x] **Task 0.2.1**: Extract monitoring to dedicated package ✅ **COMPLETED**
   - **Violation**: `internal/app/monitoring.go` (600 lines) + `monitoring_dashboard.go` (1149 lines) = 1749 lines of monitoring logic in app package
   - **Fix**: Created `internal/monitoring/` package with full implementation
@@ -126,6 +131,7 @@
   - **Duration**: 6 hours ✅ **COMPLETED**
 
 #### **0.3 Dependency Injection Cleanup (TDD)**
+
 - [x] **Task 0.3.1**: Fix direct dependency violations ✅ **COMPLETED**
   - **Violation**: App package directly imports and instantiates internal packages
   - **Current**: `display_renderer.go` imports `internal/test/cache`, `internal/ui/colors`, etc.
@@ -145,6 +151,7 @@
   - **Duration**: 3 hours ✅ **COMPLETED**
 
 #### **0.4 Interface Segregation Fixes (TDD)**
+
 - [x] **Task 0.4.1**: Split God interfaces ✅ **COMPLETED**
   - **Violation**: `internal/app/interfaces.go` (249 lines) contained duplicated test execution types
   - **Fix**: Removed duplicated interfaces and consolidated interface definitions
@@ -164,6 +171,7 @@
 ### 📋 **Phase 0 Progress Summary** ✅ **100% COMPLETE**
 
 **Architecture Violations Fixed**:
+
 - ✅ **Task 0.1.1**: 318 lines UI logic moved from app to ui package
 - ✅ **Task 0.1.2**: 156 lines config logic moved from app to config package  
 - ✅ **Task 0.1.3**: 103 lines argument parsing moved from app to config package
@@ -179,12 +187,14 @@
 **Remaining Work**: ✅ **NONE** - All architecture violations resolved
 
 **Architecture Quality Achieved**:
+
 - ✅ **Single Responsibility**: Each package has one clear purpose  
 - ✅ **Dependency Inversion**: App depends on interfaces, not concrete types
 - ✅ **Interface Segregation**: Small, focused interfaces in consumer packages
 - ✅ **Open/Closed**: Extensible through adapters, closed for modification
 
 **Verification**:
+
 ```bash
 # App package builds successfully with clean dependencies
 go build ./internal/app/...  # ✅ SUCCESS
@@ -205,6 +215,7 @@ go test ./internal/app/... -v  # ✅ PASSING
 ### 🎯 **Task 0.1.1 Implementation Notes** ✅ **COMPLETED**
 
 **What Was Accomplished**:
+
 - Successfully moved 318 lines of UI logic from `internal/app/display_renderer.go` to `internal/ui/display/`
 - Applied proper dependency injection and Factory + Adapter patterns
 - Maintained 100% functionality while improving architecture compliance
@@ -214,7 +225,7 @@ go test ./internal/app/... -v  # ✅ PASSING
 **Key Architecture Patterns Applied**:
 
 1. **Factory Pattern**: `internal/app/renderer_factory.go`
-   - Converts app `Configuration` to UI `AppConfig` 
+   - Converts app `Configuration` to UI `AppConfig`
    - Maintains clean package boundaries
    - Handles dependency injection properly
 
@@ -234,20 +245,23 @@ go test ./internal/app/... -v  # ✅ PASSING
    - Separate concerns into specific interface contracts
 
 **Code Quality Achievements**:
+
 - TDD methodology: Tests written first, then implementation
 - 100% interface compliance verification
 - Proper error handling with context-rich error messages
 - Go fmt compliance and proper package organization
 
 **Files Created/Modified**:
+
 - ✅ Created: `internal/ui/display/app_renderer_interface.go` (123 lines)
-- ✅ Created: `internal/ui/display/app_renderer.go` (387 lines) 
+- ✅ Created: `internal/ui/display/app_renderer.go` (387 lines)
 - ✅ Created: `internal/ui/display/app_renderer_test.go` (208 lines)
 - ✅ Created: `internal/app/renderer_factory.go` (89 lines)
 - ✅ Modified: `internal/app/controller.go` (371 lines) - Added adapter pattern
 - ✅ Deleted: `internal/app/display_renderer.go` (318 lines) - UI logic removed from app
 
 **Testing Strategy Used**:
+
 - **TDD Red Phase**: Wrote failing tests first for all interfaces
 - **TDD Green Phase**: Implemented minimal code to pass tests
 - **TDD Refactor Phase**: Enhanced implementation while maintaining test coverage
@@ -257,6 +271,7 @@ go test ./internal/app/... -v  # ✅ PASSING
 **Lessons for Future Tasks**:
 
 1. **Package Boundary Conversion Pattern**:
+
    ```go
    // App package defines what it needs from UI
    type DisplayRenderer interface {
@@ -280,6 +295,7 @@ go test ./internal/app/... -v  # ✅ PASSING
    ```
 
 2. **Adapter Pattern for Smooth Transitions**:
+
    ```go
    type displayRendererAdapter struct {
        factory  *DisplayRendererFactory
@@ -297,6 +313,7 @@ go test ./internal/app/... -v  # ✅ PASSING
    ```
 
 3. **Dependency Injection Structure**:
+
    ```go
    type AppRendererDependencies struct {
        Writer io.Writer
@@ -311,6 +328,7 @@ go test ./internal/app/... -v  # ✅ PASSING
 ### 🎯 **Task 0.1.2 Implementation Notes** ✅ **COMPLETED**
 
 **What Was Accomplished**:
+
 - Successfully moved 156 lines of config logic from `internal/app/config_loader.go` to `internal/config/`
 - Applied proven Factory + Adapter pattern from Task 0.1.1
 - Maintained 100% functionality while improving architecture compliance
@@ -320,6 +338,7 @@ go test ./internal/app/... -v  # ✅ PASSING
 ### 🎯 **Task 0.1.3 Implementation Notes** ✅ **COMPLETED**
 
 **What Was Accomplished**:
+
 - Successfully moved 103 lines of argument parsing logic from `internal/app/arg_parser.go` to `internal/config/`
 - Applied proven Factory + Adapter pattern from Tasks 0.1.1 and 0.1.2
 - Maintained 100% functionality while improving architecture compliance
@@ -344,6 +363,7 @@ go test ./internal/app/... -v  # ✅ PASSING
    - Dependency injection through `AppArgParserDependencies`
 
 **Code Quality Achievements**:
+
 - TDD methodology: Red → Green → Refactor cycle applied
 - Comprehensive test coverage with 8 test scenarios
 - Proper error handling for invalid arguments
@@ -351,6 +371,7 @@ go test ./internal/app/... -v  # ✅ PASSING
 - Go fmt compliance and consistent code style
 
 **Files Created/Modified**:
+
 - ✅ Created: `internal/config/app_arg_parser_interface.go` (57 lines)
 - ✅ Created: `internal/config/app_arg_parser.go` (162 lines)
 - ✅ Created: `internal/config/app_arg_parser_test.go` (256 lines)
@@ -359,6 +380,7 @@ go test ./internal/app/... -v  # ✅ PASSING
 - ✅ Deleted: `internal/app/arg_parser.go` (103 lines) - Argument parsing logic removed from app
 
 **Testing Strategy Used**:
+
 - **TDD Red Phase**: Wrote comprehensive failing tests for all argument parsing scenarios
 - **TDD Green Phase**: Implemented `DefaultAppArgParser` to pass all tests
 - **TDD Refactor Phase**: Enhanced with help modes and dependency injection
@@ -368,6 +390,7 @@ go test ./internal/app/... -v  # ✅ PASSING
 **Key Implementation Details**:
 
 1. **Bidirectional Type Conversion**:
+
    ```go
    // App Arguments → Config AppArguments
    func (f *ArgParserFactory) convertToConfigArguments(appArgs *Arguments) *config.AppArguments {
@@ -383,6 +406,7 @@ go test ./internal/app/... -v  # ✅ PASSING
    ```
 
 2. **Help Mode Support**:
+
    ```go
    type HelpMode int
    const (
@@ -393,6 +417,7 @@ go test ./internal/app/... -v  # ✅ PASSING
    ```
 
 3. **Dependency Injection Pattern**:
+
    ```go
    type AppArgParserDependencies struct {
        CliParser ArgParser
@@ -402,6 +427,7 @@ go test ./internal/app/... -v  # ✅ PASSING
    ```
 
 **Architecture Compliance Achieved**:
+
 - ✅ Argument parsing logic moved from app package to config package
 - ✅ App package now only contains orchestration logic for argument parsing
 - ✅ Clean package boundaries maintained with proper interfaces
@@ -413,6 +439,7 @@ go test ./internal/app/... -v  # ✅ PASSING
 ### 🎯 **Task 0.2.1 Implementation Notes** ✅ **COMPLETED**
 
 **What Was Accomplished**:
+
 - Successfully extracted 1749 lines of monitoring logic from `internal/app/` to dedicated `internal/monitoring/` package
 - Created comprehensive monitoring package with metrics collection, health checks, alerting, and dashboard capabilities  
 - Applied Factory + Interface pattern for clean separation and dependency injection
@@ -454,6 +481,7 @@ go test ./internal/app/... -v  # ✅ PASSING
 - **Configuration**: Comprehensive configuration system with sensible defaults
 
 **Files Created**:
+
 - ✅ Created: `internal/monitoring/collector_interface.go` (67 lines) - Interface definitions
 - ✅ Created: `internal/monitoring/types.go` (260 lines) - All monitoring data types  
 - ✅ Created: `internal/monitoring/collector_test.go` (106 lines) - Comprehensive test suite
@@ -489,18 +517,21 @@ go test ./internal/app/... -v  # ✅ PASSING
 5. **Cross-cutting Concern**: Monitoring properly separated as system-wide concern
 
 **Type System Design**:
+
 - All types prefixed with `App` to avoid naming conflicts (AppMetrics, AppHealthStatus, etc.)
 - Comprehensive alert system with AppAlert, AppAlertRule, AppAlertAction types
 - Time series support with AppTimeSeriesPoint for trend analysis
 - Dashboard metrics aggregation with AppDashboardMetrics hierarchy
 
 **Backward Compatibility Strategy**:
+
 - MonitoringAdapter provides seamless integration for existing app code
 - Adapter pattern allows gradual migration of monitoring usage
 - Type conversion methods handle differences between old and new interfaces
 - Minimal changes required to existing app package code
 
 **Performance Optimizations**:
+
 - Configurable metrics collection intervals
 - Efficient data structure management with max data points limits
 - Background goroutines for non-blocking monitoring operations
@@ -511,6 +542,7 @@ go test ./internal/app/... -v  # ✅ PASSING
 ### 🎯 **Task 0.3.1 Implementation Notes** ✅ **COMPLETED**
 
 **What Was Accomplished**:
+
 - Successfully eliminated all direct dependency violations in `internal/app/` package
 - Removed direct imports: `internal/ui/display`, `internal/watch/core`, `internal/test/*`
 - Applied proven Factory + Adapter pattern from previous tasks
@@ -543,6 +575,7 @@ go test ./internal/app/... -v  # ✅ PASSING
    - Clean separation between app orchestration and business logic
 
 **Architecture Violations Fixed**:
+
 - ❌ **Before**: `internal/app/test_executor.go` directly imported 6 internal packages
 - ✅ **After**: All business logic moved to adapters with interface-based injection
 - ❌ **Before**: `internal/app/controller.go` directly imported `internal/ui/display`
@@ -551,6 +584,7 @@ go test ./internal/app/... -v  # ✅ PASSING
 - ✅ **After**: Monitoring properly separated to `internal/monitoring/` package
 
 **Files Created/Modified**:
+
 - ✅ Created: `internal/app/test_executor_adapter.go` (235 lines) - Complete test execution adapter
 - ✅ Created: `internal/app/watch_coordinator_adapter.go` (93 lines) - Watch coordination adapter
 - ✅ Modified: `internal/app/controller.go` - Removed `internal/ui/display` import
@@ -560,6 +594,7 @@ go test ./internal/app/... -v  # ✅ PASSING
 - ✅ Deleted: `internal/app/monitoring_dashboard.go` - Already moved to monitoring package
 
 **Testing Strategy Used**:
+
 - **TDD Red Phase**: Tests failed when dependencies not injected
 - **TDD Green Phase**: Minimal adapter implementations pass tests
 - **TDD Refactor Phase**: Enhanced adapters with proper interfaces
@@ -567,12 +602,14 @@ go test ./internal/app/... -v  # ✅ PASSING
 - **Dependency Verification**: Zero direct imports of internal packages
 
 **Code Quality Achievements**:
+
 - **Zero Direct Dependencies**: App package only imports `pkg/models` and standard library
 - **Clean Interfaces**: 6 new interfaces following Interface Segregation Principle
 - **Proper Error Handling**: Context-rich errors with operation tracking
 - **Go Compliance**: All code follows `go fmt` and `golangci-lint` standards
 
 **Architecture Compliance Verification**:
+
 ```bash
 # Verify no direct internal dependencies
 $ grep -r "github.com/newbpydev/go-sentinel/internal" internal/app/*.go
@@ -586,6 +623,7 @@ $ go build ./internal/app/...
 **Lessons for Future Tasks**:
 
 1. **Adapter Pattern Template**:
+
    ```go
    type businessLogicAdapter struct {
        // Dependencies injected through interfaces
@@ -600,6 +638,7 @@ $ go build ./internal/app/...
    ```
 
 2. **Interface Definition Pattern**:
+
    ```go
    // Interface defined in app package (consumer owns interface)
    type BusinessLogic interface {
@@ -609,6 +648,7 @@ $ go build ./internal/app/...
    ```
 
 3. **Graceful Degradation Pattern**:
+
    ```go
    func (a *adapter) Execute(ctx context.Context) error {
        if a.dependency == nil {
@@ -644,12 +684,14 @@ $ go build ./internal/app/...
    - Separate validation modes for different use cases
 
 **Code Quality Achievements**:
+
 - TDD methodology: Tests written first, implementation followed
 - 100% interface compliance verification
 - Proper error handling with context-rich error messages
 - Go fmt compliance and proper package organization
 
 **Files Created/Modified**:
+
 - ✅ Created: `internal/config/app_config_loader_interface.go` (114 lines)
 - ✅ Created: `internal/config/app_config_loader.go` (200 lines)
 - ✅ Created: `internal/config/app_config_loader_test.go` (235 lines)
@@ -658,6 +700,7 @@ $ go build ./internal/app/...
 - ✅ Deleted: `internal/app/config_loader.go` (156 lines) - Config logic removed from app
 
 **Testing Strategy Used**:
+
 - **TDD Red Phase**: Wrote failing tests first for all interfaces
 - **TDD Green Phase**: Implemented minimal code to pass tests
 - **TDD Refactor Phase**: Enhanced implementation while maintaining test coverage
@@ -667,6 +710,7 @@ $ go build ./internal/app/...
 **Lessons Reinforced**:
 
 1. **Bidirectional Conversion Pattern**:
+
    ```go
    // App to Config conversion
    func (f *ConfigLoaderFactory) convertToConfigConfiguration(appConfig *Configuration) *config.AppConfig
@@ -676,6 +720,7 @@ $ go build ./internal/app/...
    ```
 
 2. **Adapter Delegation Pattern**:
+
    ```go
    func (a *configLoaderAdapter) LoadFromFile(path string) (*Configuration, error) {
        // Delegate to config package
@@ -689,6 +734,7 @@ $ go build ./internal/app/...
    ```
 
 3. **Validation Mode Flexibility**:
+
    ```go
    type ValidationMode int
    const (
@@ -710,6 +756,7 @@ $ go build ./internal/app/...
 **Last Updated**: January 2025  
 
 ### 📊 Project Statistics
+
 - **Architecture Migration**: ✅ **100% COMPLETE** (All files fixed, 2921 lines moved to proper packages)
 - **Modular Packages**: ✅ **100% Compliant** (All packages follow Single Responsibility Principle)
 - **Code Quality**: ✅ **Grade A** (Clean interfaces, no architecture violations, comprehensive adapters)
@@ -720,7 +767,8 @@ $ go build ./internal/app/...
 ### 🏗️ Current Architecture Status
 
 **✅ ARCHITECTURE COMPLIANCE ACHIEVED IN APP PACKAGE** (Tasks 0.1.1-0.4.4 ✅ All Completed):
-```
+
+```bash
 internal/app/ ✅ 100% COMPLIANT - ALL VIOLATIONS RESOLVED
 ├── application_controller.go    # ✅ EXCELLENT - Pure orchestration only (392 lines)
 ├── interfaces.go               # ✅ EXCELLENT - Clean interface definitions (218 lines)
@@ -743,7 +791,8 @@ CURRENT STATE: App package contains ONLY orchestration and adapters (2078 lines 
 ```
 
 **✅ COMPLETED CLEAN MODULAR ARCHITECTURE**:
-```
+
+```bash
 cmd/go-sentinel-cli/
 ├── main.go                    # Entry point ✅ WORKING
 ├── cmd/
@@ -806,12 +855,14 @@ pkg/
 ```
 
 **🎉 CURRENT WORKING STATE** (After fixes):
+
 - ✅ CLI executes real tests: `go run cmd/go-sentinel-cli/main.go run ./internal/config`
 - ✅ Clean modular architecture: Each package has single responsibility
 - ✅ Proper dependency injection: App orchestrates via interfaces
 - ✅ Test coverage: 85%+ with comprehensive test suites
 
 **🚧 IMPLEMENTATION NEEDED** (After architecture fixes):
+
 - Beautiful Vitest-style output (currently basic emoji summary)
 - Watch mode integration (components exist but not wired to CLI)
 - Advanced display features (progress bars, live updates, three-part layout)
@@ -819,11 +870,13 @@ pkg/
 ### 🎭 Target CLI Experience (Based on Original Images)
 
 **Three-Part Display Structure**:
+
 1. **Header Section**: Test execution status, progress, timing
 2. **Main Content**: Test results with icons, colors, pass/fail indicators  
 3. **Summary Footer**: Statistics, totals, execution time
 
 **Supported Modes**:
+
 - **Normal Mode**: `go-sentinel run` ✅ WORKING
 - **Single File**: `go-sentinel run ./path/to/test.go` ✅ WORKING
 - **Watch Mode**: `go-sentinel run --watch` 🚧 NEEDS INTEGRATION
@@ -836,6 +889,7 @@ pkg/
 **Each phase has been broken down into detailed roadmaps with comprehensive task breakdowns following the proven task 0.4.4 approach:**
 
 ### **📚 Roadmap Documentation Structure**
+
 - **Main Roadmap**: [`CLI_IMPLEMENTATION_ROADMAP.md`](./CLI_IMPLEMENTATION_ROADMAP.md) (this file) - High-level overview and coordination
 - **Phase 1**: [`PHASE_1_CLI_FOUNDATION_ROADMAP.md`](./PHASE_1_CLI_FOUNDATION_ROADMAP.md) - Core CLI foundation (6 hours)
 - **Phase 2**: [`PHASE_2_BEAUTIFUL_OUTPUT_ROADMAP.md`](./PHASE_2_BEAUTIFUL_OUTPUT_ROADMAP.md) - Vitest-style output (46 hours)
@@ -844,7 +898,9 @@ pkg/
 - **Phase 5**: [`PHASE_5_PRODUCTION_ROADMAP.md`](./PHASE_5_PRODUCTION_ROADMAP.md) - Production polish (60 hours)
 
 ### **📋 Specialized Roadmap Features**
+
 Each specialized roadmap includes:
+
 - **Detailed Task Breakdown**: Following task 0.4.4 proven approach with violations, fixes, architecture rules
 - **Implementation Patterns**: Factory + Adapter patterns, dependency injection, interface segregation
 - **Current State Analysis**: Exact line counts, completed foundation, missing components
@@ -854,6 +910,7 @@ Each specialized roadmap includes:
 - **Duration Estimates**: Specific hour estimates for each task and subtask
 
 ### **🎯 Why Specialized Roadmaps**
+
 - **Detailed Planning**: Each phase gets the comprehensive treatment task 0.4.4 received
 - **Clear Dependencies**: Explicit task dependencies and readiness criteria
 - **Architecture Focus**: Each roadmap emphasizes clean architecture patterns
@@ -871,6 +928,7 @@ Each specialized roadmap includes:
 **Current Status**: ✅ CLI structure complete, ✅ Configuration working, ❌ Test execution needs dependency injection wiring.
 
 ### 1.1 CLI Command Structure ✅ **COMPLETED**
+
 - [x] **Task 1.1.1**: Root command structure ✅ **COMPLETED**
   - **Location**: `cmd/go-sentinel-cli/cmd/root.go`
   - **Tests**: `cmd/go-sentinel-cli/cmd/root_test.go` (3 tests passing)
@@ -890,6 +948,7 @@ Each specialized roadmap includes:
   - **Notes**: Full configuration system with precedence handling
 
 ### 1.2 Basic Test Execution Pipeline ✅ **COMPLETED**
+
 - [x] **Task 1.2.1**: Test runner integration ✅ **COMPLETED**
   - **Location**: `internal/test/runner/executor.go`
   - **Tests**: `internal/test/runner/` (multiple test files, all passing)
@@ -912,6 +971,7 @@ Each specialized roadmap includes:
   - **Notes**: Working but basic - needs beautiful Vitest-style upgrade
 
 ### 1.3 Application Integration ✅ **COMPLETED**
+
 - [x] **Task 1.3.1**: App controller orchestration ✅ **COMPLETED**
   - **Location**: `internal/app/application_controller.go`
   - **Tests**: `internal/app/controller_integration_test.go` (5 tests passing)
@@ -932,6 +992,7 @@ Each specialized roadmap includes:
 **Objective**: Implement Vitest-style beautiful output with colors, icons, and structured display.
 
 ### 2.1 Display System Implementation (TDD)
+
 - [ ] **Task 2.1.1**: Enhanced color system integration
   - **Ready**: ✅ Clean UI architecture achieved, app package contains only orchestration
   - **Location**: `internal/ui/display/app_renderer.go` (already exists with 387 lines)
@@ -948,6 +1009,7 @@ Each specialized roadmap includes:
   - **Duration**: 6 hours
 
 ### 2.2 Three-Part Display Structure (TDD)
+
 - [ ] **Task 2.2.1**: Header section implementation
   - **Dependency**: Clean UI architecture needed
   - **Duration**: 6 hours
@@ -961,6 +1023,7 @@ Each specialized roadmap includes:
   - **Duration**: 4 hours
 
 ### 2.3 Layout Management (TDD)
+
 - [ ] **Task 2.3.1**: Terminal layout implementation
   - **Dependency**: Clean UI architecture needed
   - **Duration**: 6 hours
@@ -982,6 +1045,7 @@ Each specialized roadmap includes:
 **Objective**: Integrate existing watch system components with CLI.
 
 ### 3.1 Watch System Integration (TDD)
+
 - [ ] **Task 3.1.1**: File watcher CLI integration
   - **Dependency**: Clean app orchestration needed first
   - **Duration**: 6 hours
@@ -995,6 +1059,7 @@ Each specialized roadmap includes:
   - **Duration**: 6 hours
 
 ### 3.2 Watch Mode CLI Integration (TDD)
+
 - [ ] **Task 3.2.1**: Watch flag handling enhancement
   - **Dependency**: Clean arg parsing architecture needed
   - **Duration**: 4 hours
@@ -1008,6 +1073,7 @@ Each specialized roadmap includes:
   - **Duration**: 8 hours
 
 ### 3.3 Smart Test Selection (TDD)
+
 - [ ] **Task 3.3.1**: Related test detection
   - **Duration**: 8 hours
 
@@ -1025,6 +1091,7 @@ Each specialized roadmap includes:
 **Objective**: Implement advanced CLI features and optimization modes.
 
 ### 4.1 Advanced CLI Features (TDD)
+
 - [ ] **Task 4.1.1**: Test pattern filtering enhancement
   - **Existing**: `--test` flag ✅ EXISTS, basic implementation ✅ WORKING
   - **Need**: Enhanced pattern matching and regex support
@@ -1045,6 +1112,7 @@ Each specialized roadmap includes:
   - **Duration**: 4 hours
 
 ### 4.2 Configuration System Enhancement (TDD)
+
 - [ ] **Task 4.2.1**: Configuration file loading enhancement
   - **Existing**: `internal/config/loader.go` ✅ IMPLEMENTED
   - **Tests**: `internal/config/config_test.go` ✅ PASSING
@@ -1065,6 +1133,7 @@ Each specialized roadmap includes:
   - **Duration**: 4 hours
 
 ### 4.3 Optimization & Caching Enhancement (TDD)
+
 - [ ] **Task 4.3.1**: Test result caching enhancement
   - **Existing**: `internal/test/cache/result_cache.go` ✅ IMPLEMENTED
   - **Tests**: `internal/test/cache/result_cache_test.go` ✅ PASSING
@@ -1095,6 +1164,7 @@ Each specialized roadmap includes:
 ### **5.1 Comprehensive Testing Suite** (24 hours)
 
 #### **Task 5.1.1**: Expanded unit test coverage ✅ **TEST FOUNDATION READY**
+
 - **Violation**: Current test coverage is good but needs expansion to 95%+ for production confidence
 - **Fix**: Comprehensive unit test coverage for all packages with edge cases and error conditions
 - **Location**: Expand existing test files and create missing test coverage across all packages
@@ -1104,6 +1174,7 @@ Each specialized roadmap includes:
 - **Duration**: 10 hours
 
 #### **Task 5.1.2**: Integration test suite ✅ **COMPONENT INTEGRATION READY**
+
 - **Violation**: Current testing is mostly unit tests, needs integration tests for component interaction
 - **Fix**: Comprehensive integration tests covering multi-component workflows and real scenarios
 - **Location**: Create integration test suite covering end-to-end workflows and component integration
@@ -1113,6 +1184,7 @@ Each specialized roadmap includes:
 - **Duration**: 8 hours
 
 #### **Task 5.1.3**: End-to-end and performance testing ✅ **SYSTEM READY**
+
 - **Violation**: Lacks end-to-end testing simulating real user scenarios and performance validation
 - **Fix**: E2E tests with real projects and performance benchmarks for production scenarios
 - **Location**: Create E2E test suite with real project scenarios and performance benchmarks
@@ -1124,6 +1196,7 @@ Each specialized roadmap includes:
 ### **5.2 Complete Documentation** (20 hours)
 
 #### **Task 5.2.1**: User documentation and guides ✅ **CONTENT FOUNDATION READY**
+
 - **Violation**: Current README is basic, needs comprehensive user documentation and guides
 - **Fix**: Complete user documentation covering installation, usage, configuration, and troubleshooting
 - **Location**: Create comprehensive documentation in `docs/` with user guides and tutorials
@@ -1133,6 +1206,7 @@ Each specialized roadmap includes:
 - **Duration**: 8 hours
 
 #### **Task 5.2.2**: API documentation and developer guides ✅ **CODE DOCUMENTATION READY**
+
 - **Violation**: Lacks comprehensive API documentation and developer contribution guides
 - **Fix**: Complete API documentation and developer guides for contributors and integrators
 - **Location**: Generate and enhance API docs with developer contribution guides
@@ -1142,6 +1216,7 @@ Each specialized roadmap includes:
 - **Duration**: 6 hours
 
 #### **Task 5.2.3**: Example projects and tutorials ✅ **PRACTICAL EXAMPLES READY**
+
 - **Violation**: Lacks practical example projects demonstrating real-world usage
 - **Fix**: Create example projects and interactive tutorials for different use cases
 - **Location**: Create example project repository with various integration scenarios
@@ -1153,6 +1228,7 @@ Each specialized roadmap includes:
 ### **5.3 CI/CD and Release Pipeline** (16 hours)
 
 #### **Task 5.3.1**: Automated testing pipeline ✅ **BASIC CI READY**
+
 - **Violation**: Current `.github/workflows/` needs comprehensive testing automation for production
 - **Fix**: Complete CI/CD pipeline with cross-platform testing, coverage, and quality gates
 - **Location**: Enhance GitHub Actions workflows with comprehensive testing and quality assurance
@@ -1162,6 +1238,7 @@ Each specialized roadmap includes:
 - **Duration**: 6 hours
 
 #### **Task 5.3.2**: Release automation ✅ **RELEASE FOUNDATION READY**
+
 - **Violation**: Lacks automated release pipeline for consistent and reliable releases
 - **Fix**: Automated release pipeline with versioning, changelog generation, and artifact creation
 - **Location**: Create release automation with GitHub Actions and release management
@@ -1171,6 +1248,7 @@ Each specialized roadmap includes:
 - **Duration**: 6 hours
 
 #### **Task 5.3.3**: Distribution and packaging ✅ **BUILD SYSTEM READY**
+
 - **Violation**: Lacks distribution methods for easy installation (Homebrew, apt, releases)
 - **Fix**: Multiple distribution channels with automated packaging and publishing
 - **Location**: Set up distribution channels and package automation
@@ -1192,18 +1270,21 @@ Each specialized roadmap includes:
 Before implementing any new features, these architecture fixes MUST be completed:
 
 ### **Priority 1: Task 0.1.1 - Move Display Logic to UI Package**
+
 - **What**: Move `internal/app/display_renderer.go` to `internal/ui/display/app_renderer.go`
 - **Why**: UI logic must not be in app package (violates Single Responsibility)
 - **Impact**: 318 lines of misplaced UI logic
 - **Duration**: 4 hours
 
 ### **Priority 2: Task 0.2.1 - Extract Monitoring System**
+
 - **What**: Create `internal/monitoring/` package and move monitoring logic
 - **Why**: 1749 lines of monitoring logic violates app package responsibility
 - **Impact**: Massive reduction in app package complexity
 - **Duration**: 6 hours
 
 ### **Priority 3: Task 0.1.2 + 0.1.3 - Move Config Logic**
+
 - **What**: Move config loading and arg parsing to config package
 - **Why**: Configuration concerns don't belong in app orchestration
 - **Impact**: 259 lines of misplaced config logic
@@ -1213,9 +1294,10 @@ Before implementing any new features, these architecture fixes MUST be completed
 
 ## 📚 **UPDATED ARCHITECTURE REFERENCE**
 
-### **🚫 ARCHITECTURE VIOLATIONS TO AVOID**:
+### **🚫 ARCHITECTURE VIOLATIONS TO AVOID**
 
 #### **❌ God Package Anti-Pattern**
+
 ```go
 // WRONG - App package doing everything
 internal/app/
@@ -1226,6 +1308,7 @@ internal/app/
 ```
 
 #### **✅ Correct Modular Structure**
+
 ```go
 // RIGHT - Single responsibility per package
 internal/
@@ -1241,18 +1324,21 @@ internal/
     └── dashboard.go
 ```
 
-### **Key Interfaces for AI Agents**:
+### **Key Interfaces for AI Agents**
+
 - `internal/app/interfaces.go` - ApplicationController (needs cleanup)
 - `internal/test/runner/interfaces.go` - TestExecutor  
 - `internal/ui/display/interfaces.go` - Renderer
 - `internal/config/args.go` - ArgParser
 - `internal/watch/core/interfaces.go` - Watch system
 
-### **Working Entry Points**:
+### **Working Entry Points**
+
 - `cmd/go-sentinel-cli/main.go` - CLI entry
 - `internal/app/application_controller.go` - Main orchestration (needs cleanup)
 
-### **Test Commands for Validation**:
+### **Test Commands for Validation**
+
 - `go run cmd/go-sentinel-cli/main.go run ./internal/config` - Basic execution
 - `go run cmd/go-sentinel-cli/main.go run --verbose ./internal/config` - Verbose mode
 - `go test ./...` - Run all tests (85%+ passing)
@@ -1263,15 +1349,17 @@ internal/
 
 ## ✅ **COMPREHENSIVE VERIFICATION REPORT** (Updated January 2025)
 
-### **🔍 Current State Verification** 
+### **🔍 Current State Verification**
 
 **CLI Structure Status**: ✅ **COMPLETE**
+
 ```bash
 $ go run cmd/go-sentinel-cli/main.go run ./internal/config --help
 # Result: Full help system working with all flags documented ✅
 ```
 
 **CLI Execution Status**: ✅ **CONFIGURATION WORKING**
+
 ```bash
 $ go run cmd/go-sentinel-cli/main.go run ./internal/config
 # Result: CLI processes configuration correctly ✅
@@ -1280,6 +1368,7 @@ $ go run cmd/go-sentinel-cli/main.go run ./internal/config
 ```
 
 **Architecture Status**: ✅ **100% COMPLETE - ALL VIOLATIONS RESOLVED**
+
 ```bash
 $ find internal/app -name "*.go" | xargs wc -l
 #   392 internal/app/application_controller.go  ✅ EXCELLENT (pure orchestration)
@@ -1299,12 +1388,14 @@ $ find internal/app -name "*.go" | xargs wc -l
 ```
 
 **Build Status**: ✅ **WORKING**
+
 ```bash
 $ go build ./internal/app/...
 # Result: SUCCESS - App package builds cleanly ✅
 ```
 
 **Test Status**: 🚧 **MOSTLY PASSING**
+
 ```bash
 $ go test ./internal/app/... -v
 # Result: Configuration validation tests failing ⚠️
@@ -1314,14 +1405,16 @@ $ go test ./internal/app/... -v
 ### **📋 Immediate Next Actions** (6 hours total)
 
 **Priority 1: Phase 1 Dependency Injection Wiring** (6 hours) ⚠️ **CURRENT FOCUS**
+
 - **Issue**: Test execution requires dependency injection setup in ApplicationController
 - **Status**: CLI structure complete, test components exist, need wiring
-- **Location**: `internal/app/application_controller.go` 
+- **Location**: `internal/app/application_controller.go`
 - **What**: Wire test execution, UI rendering, and watch coordination through DI container
 - **Why**: Enables full CLI functionality for test execution
 
 **✅ COMPLETED ITEMS**:
-- ✅ **Configuration Validation**: Fixed CLI argument parsing 
+
+- ✅ **Configuration Validation**: Fixed CLI argument parsing
 - ✅ **Task 0.4.2**: Event handling extracted to `internal/events/`
 - ✅ **Task 0.4.3**: Lifecycle management extracted to `internal/lifecycle/`
 - ✅ **Task 0.4.4**: Dependency container extracted to `internal/container/`
@@ -1329,11 +1422,13 @@ $ go test ./internal/app/... -v
 ### **🎯 Phase Readiness Assessment**
 
 **Phase 0 (Architecture Fixes)**: ✅ **100% COMPLETE**
+
 - **Delivered**: All architecture violations resolved, clean modular structure achieved
 - **Impact**: 2921 lines of business logic moved to proper packages
 - **Status**: ✅ Ready for next phase
 
 **Phase 1 (CLI Foundation)**: 🚧 **DEPENDENCY INJECTION NEEDED**
+
 - **Structure**: ✅ All CLI commands, flags, help system working perfectly
 - **Configuration**: ✅ Fixed and working (Include patterns correct)
 - **Components**: ✅ All test execution, UI, watch components exist
@@ -1341,11 +1436,13 @@ $ go test ./internal/app/... -v
 - **Readiness**: ⚠️ 6 hours of DI work needed to complete
 
 **Phase 2 (Beautiful Output)**: ✅ **READY TO PROCEED**
+
 - **Dependency**: ✅ Clean app architecture achieved (Phase 0 complete)
 - **Components**: ✅ UI package structure ready for enhancement
 - **Readiness**: ✅ Can proceed once Phase 1 DI is complete
 
 **Phase 3 (Watch Mode)**: ✅ **READY TO PROCEED**
+
 - **Dependency**: ✅ Clean architecture achieved, watch components exist
 - **Components**: ✅ All watch system components implemented
 - **Readiness**: ✅ Can proceed once Phase 1 + 2 are complete
@@ -1353,6 +1450,7 @@ $ go test ./internal/app/... -v
 ### **📊 Current Status Summary (January 2025)**
 
 **What Has Been Achieved**:
+
 - ✅ **Phase 0**: 100% complete - All architecture violations resolved
 - ✅ **Architecture Quality**: Grade A - Clean modular design achieved
 - ✅ **Code Organization**: 2921 lines moved to proper packages
@@ -1361,6 +1459,7 @@ $ go test ./internal/app/... -v
 - ✅ **Package Compliance**: All packages follow Single Responsibility Principle
 
 **Current State**:
+
 - ✅ **App Package**: Contains ONLY orchestration (2078 lines total)
 - ✅ **Events Package**: 209 lines of event handling logic
 - ✅ **Lifecycle Package**: 187 lines of lifecycle management
@@ -1370,13 +1469,15 @@ $ go test ./internal/app/... -v
 - ✅ **UI Package**: 387+ lines of display rendering
 
 **Next Immediate Step**:
+
 - 🎯 **Phase 1**: Complete dependency injection wiring (6 hours)
 - 🎯 **Goal**: Enable full test execution through clean DI container
 - 🎯 **Location**: `internal/app/application_controller.go`
 
 **Critical Notes for AI Agents**:
+
 1. **Do** proceed with Phase 1 dependency injection - architecture is ready
 2. **Do** use the existing Factory + Adapter patterns consistently  
 3. **Do** wire dependencies through the DI container in `internal/container/`
 4. **Do** maintain the clean package boundaries achieved in Phase 0
-5. **Do** focus on test execution functionality as next deliverable 
+5. **Do** focus on test execution functionality as next deliverable
