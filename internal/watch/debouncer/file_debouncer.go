@@ -41,10 +41,20 @@ func NewFileEventDebouncer(interval time.Duration) *FileEventDebouncer {
 // AddEvent adds a file event to be debounced
 // Implements core.EventDebouncer.AddEvent
 func (d *FileEventDebouncer) AddEvent(event core.FileEvent) {
+	d.mutex.Lock()
+	stopped := d.stopped
+	d.mutex.Unlock()
+
+	if stopped {
+		return // Early return if already stopped
+	}
+
 	select {
 	case d.input <- event:
 	case <-d.stopCh:
 		// Debouncer is stopped, ignore new events
+	default:
+		// Channel is full or closed, ignore the event
 	}
 }
 
@@ -78,13 +88,18 @@ func (d *FileEventDebouncer) Stop() error {
 	}
 
 	d.stopped = true
-	close(d.stopCh)
-	close(d.input)
 
 	// Stop the timer if it's running
 	if d.timer != nil {
 		d.timer.Stop()
+		d.timer = nil
 	}
+
+	// Close the stop channel first to signal the goroutine to stop
+	close(d.stopCh)
+
+	// Close the input channel to stop the run goroutine
+	close(d.input)
 
 	// Close the events channel after a brief delay to allow final events to be sent
 	go func() {
@@ -140,19 +155,23 @@ func (d *FileEventDebouncer) flushPendingEvents() {
 		events = append(events, event)
 	}
 
-	// Clear pending events
+	// Clear pending events first to prevent duplicate sends
 	d.pending = make(map[string]core.FileEvent)
 
 	// Send events (non-blocking) only if not stopped
 	if !d.stopped {
-		select {
-		case d.events <- events:
-		case <-d.stopCh:
-			// Debouncer is stopped, don't send events
-		default:
-			// Channel is full, skip this batch
-			// This prevents blocking if the consumer is slow
-		}
+		// Use a separate goroutine to avoid blocking the timer callback
+		go func() {
+			select {
+			case d.events <- events:
+				// Successfully sent events
+			case <-d.stopCh:
+				// Debouncer is stopped, don't send events
+			default:
+				// Channel is full, skip this batch
+				// This prevents blocking if the consumer is slow
+			}
+		}()
 	}
 }
 
