@@ -19,28 +19,50 @@
 - ✅ **Icon System**: `internal/ui/icons/` package exists with icon provider interface
 - ✅ **Architecture**: App package contains only orchestration, UI logic properly separated
 
-### **🎯 TARGET VITEST-STYLE OUTPUT**
+### **🎯 TARGET STANDARDIZED OUTPUT** (Pixel-Perfect Reference)
 ```
-┌─ Test Session Status ─────────────────────────────────────────────────┐
-│ ⚡ Running tests... (15s)                        Memory: 45.2MB     │
-└───────────────────────────────────────────────────────────────────────┘
+  ✓ TestFileSystemOperations/read_nonexistent_file 0ms
+  ✓ TestFileSystemOperations/permission_denied 0ms
+  ✓ TestFileSystemOperations 0ms
+  ✗ TestEnvironmentDependencies 0ms
+  ✓ TestFileWatcher/detects_changes_to_implementation_files 100ms
+  ✓ TestFileWatcher/respects_ignore_patterns 2120ms
+  ✓ TestFileWatcher 2330ms
 
-📁 internal/config/config_test.go                             ✅ 20 passed
-📁 internal/test/runner/executor_test.go                      ✅ 15 passed  
-📁 internal/ui/display/app_renderer_test.go                   ✅ 17 passed
+cli_test.go (127 tests) 0ms 0 MB heap used
+  ✓ Suite passed (127 tests)
 
-❌ Failed Tests (2)
-┌─────────────────────────────────────────────────────────────────────┐
-│ FAIL  internal/app/controller_test.go TestApplicationController_Run  │
-│                                                                     │
-│   Expected: nil                                                     │
-│   Received: "test executor not configured"                          │
-│                                                                     │
-│   app_controller.go:325                                             │
-│   controller_test.go:45                                             │
-└─────────────────────────────────────────────────────────────────────┘
+stress_tests_test.go (48 tests | 26 failed) 0ms 0 MB heap used
+  ✓ TestBasicPass 0ms
+  ✗ TestBasicFail 0ms
+    → Expected 1+1 to equal 3, but got 2
+    at basic_failures_test.go:20
+  ⃠ TestSkipped 0ms
 
-🎉 Test Results: 52 passed, 2 failed (15.2s)
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                 Failed Tests 26
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ FAIL  basic_failures_test.go > TestBasicFail
+AssertionError: Expected 1+1 to equal 3, but got 2
+↳ basic_failures_test.go:20:1
+     18|                t.Log("This should not happen")
+     19|        } else {
+     20|                t.Errorf("Expected 1+1 to equal 3, but got %d", 1+1)
+       | ^
+     21|        }
+     22| }
+
+────────────────────────────────────────────────── Test Summary ──────────────────────────────────────────────────
+
+Test Files: 1 passed | 1 failed (2)
+Tests: 142 passed | 26 failed | 7 skipped (175)
+Start at: 12:17:10
+End at: 12:17:23
+Duration: 12.96s (setup 7.61s, tests 4.36s, teardown 979ms)
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+⏱️  Tests completed in 13.1472234s
 ```
 
 ### **🔍 CURRENT VS TARGET COMPARISON**
@@ -65,34 +87,34 @@
 
 ### **2.1 Display System Enhancement** (18 hours)
 
-#### **Task 2.1.1**: Enhanced color system integration ✅ **READY**
-- **Violation**: Current basic color support in `internal/ui/colors/` needs Vitest-style enhancement
-- **Fix**: Implement comprehensive color theming with terminal detection and Vitest color schemes
-- **Location**: Enhance `internal/ui/colors/color_manager.go` and `internal/ui/colors/themes.go`
-- **Why**: Vitest-style output requires sophisticated color management for visual impact
-- **Architecture Rule**: Color management should be centralized with theme abstraction
-- **Implementation Pattern**: Strategy pattern for themes + Adapter pattern for terminal detection
+#### **Task 2.1.1**: Reference-based color system implementation ✅ **READY**
+- **Target**: Implement EXACT color scheme from standardized guidelines (✓ = green, ✗ = red, ⃠ = amber)
+- **Fix**: Create pixel-perfect color matching with specified hex codes (#10b981, #ef4444, #f59e0b)
+- **Location**: Enhance `internal/ui/colors/color_manager.go` and create reference theme
+- **Why**: Standardized output requires exact color matching, not approximations
+- **Architecture Rule**: Color management must support exact hex codes with terminal detection
+- **Implementation Pattern**: Strategy pattern for color schemes + Adapter pattern for terminal detection
 - **New Structure**:
-  - `internal/ui/colors/vitest_theme.go` - Vitest color scheme implementation (150 lines)
-  - `internal/ui/colors/terminal_detector.go` - Terminal capability detection (120 lines)
-  - `internal/ui/colors/color_formatter.go` - Enhanced formatting with gradients (180 lines)
+  - `internal/ui/colors/reference_theme.go` - Exact hex color implementation (150 lines)
+  - `internal/ui/colors/terminal_detector.go` - Unicode/color capability detection (120 lines)
+  - `internal/ui/colors/color_formatter.go` - Precise color formatting (180 lines)
   - Enhanced `internal/ui/display/app_renderer.go` - Color integration (450 lines)
-- **Result**: Rich color output matching Vitest aesthetic with proper terminal fallbacks
+- **Validation**: Output colors must match visual guidelines exactly
 - **Duration**: 6 hours
 
-#### **Task 2.1.2**: Enhanced icon system integration ✅ **READY**
-- **Violation**: Current basic icon support needs comprehensive Vitest-style iconography
-- **Fix**: Implement full icon system with Unicode symbols, fallbacks, and visual indicators
-- **Location**: Enhance `internal/ui/icons/icon_provider.go` and create specialized providers
-- **Why**: Vitest-style display requires consistent, beautiful iconography throughout
-- **Architecture Rule**: Icon management should support fallbacks and terminal capability detection
-- **Implementation Pattern**: Provider pattern with fallback chain + Factory pattern for creation
+#### **Task 2.1.2**: EXACT Unicode icon implementation ✅ **READY**
+- **Target**: Implement precise Unicode icons from guidelines (✓ U+2713, ✗ U+2717, ⃠ U+20E0, → U+2192, ↳ U+21B3)
+- **Fix**: Create exact Unicode character mapping with character-perfect fallbacks
+- **Location**: Enhance `internal/ui/icons/icon_provider.go` and create reference providers
+- **Why**: Standardized output requires exact Unicode points, not similar-looking characters
+- **Architecture Rule**: Icon system must use specified Unicode points with documented fallbacks
+- **Implementation Pattern**: Provider pattern with exact Unicode mapping + Factory for fallback chains
 - **New Structure**:
-  - `internal/ui/icons/vitest_icons.go` - Vitest-style icon definitions (200 lines)
-  - `internal/ui/icons/unicode_provider.go` - Full Unicode symbol support (150 lines)
-  - `internal/ui/icons/fallback_provider.go` - ASCII fallbacks for limited terminals (100 lines)
+  - `internal/ui/icons/reference_icons.go` - Exact Unicode definitions (✓ ✗ ⃠ → ↳ ^ | ⏱️) (200 lines)
+  - `internal/ui/icons/unicode_provider.go` - Unicode U+XXXX implementation (150 lines)
+  - `internal/ui/icons/ascii_provider.go` - [P] [F] [S] -> fallbacks (100 lines)
   - Enhanced `internal/ui/display/app_renderer.go` - Icon integration (500 lines)
-- **Result**: Beautiful consistent iconography matching Vitest with proper fallbacks
+- **Validation**: Must use exact Unicode points from visual guidelines
 - **Duration**: 6 hours
 
 #### **Task 2.1.3**: Progress indicators implementation ✅ **ARCHITECTURE READY**
@@ -112,49 +134,49 @@
 
 ### **2.2 Three-Part Display Structure** (18 hours)
 
-#### **Task 2.2.1**: Header section implementation ✅ **UI ARCHITECTURE READY**
-- **Violation**: Current output lacks informative header with status, timing, and memory usage
-- **Fix**: Implement Vitest-style header with bordered status box and real-time information
-- **Location**: Create `internal/ui/display/header_renderer.go` and integrate with app renderer
-- **Why**: Header provides essential context about test execution status and system resources
-- **Architecture Rule**: Header rendering should be composable and independently testable
-- **Implementation Pattern**: Composite pattern for header sections + Template pattern for layout
+#### **Task 2.2.1**: Individual test execution renderer ✅ **UI ARCHITECTURE READY**
+- **Target**: Implement EXACT Part 1 format: "  ✓ TestName 0ms" with precise 2-space indentation
+- **Fix**: Create individual test line renderer with exact spacing and timing format
+- **Location**: Create `internal/ui/display/test_execution_renderer.go` and integrate with app renderer
+- **Why**: Part 1 of standardized output shows individual test results in real-time
+- **Architecture Rule**: Test execution rendering should handle exact formatting with precise spacing
+- **Implementation Pattern**: Template pattern for line formatting + Strategy pattern for test states
 - **New Structure**:
-  - `internal/ui/display/header_renderer.go` - Header section implementation (200 lines)
-  - `internal/ui/display/border_formatter.go` - ASCII art borders and boxes (150 lines)
-  - `internal/ui/display/memory_tracker.go` - Memory usage monitoring (120 lines)
-  - Enhanced `internal/ui/display/app_renderer.go` - Header integration (600 lines)
-- **Result**: Beautiful bordered header with status, timing, and memory information
+  - `internal/ui/display/test_execution_renderer.go` - Individual test line formatting (200 lines)
+  - `internal/ui/display/spacing_manager.go` - Precise 2-space indentation control (150 lines)
+  - `internal/ui/display/timing_formatter.go` - "0ms" integer timing format (120 lines)
+  - Enhanced `internal/ui/display/app_renderer.go` - Test execution integration (600 lines)
+- **Validation**: Must produce exact format "  ✓ TestName 0ms" with character-perfect spacing
 - **Duration**: 6 hours
 
-#### **Task 2.2.2**: Main content section enhancement ✅ **UI STRUCTURE READY**
-- **Violation**: Current basic list output needs file-grouped display with rich visual indicators
-- **Fix**: Implement file-grouped test results with icons, colors, and hierarchical display
-- **Location**: Create `internal/ui/display/content_renderer.go` and enhance result formatting
-- **Why**: Main content section is primary interface showing test results in organized manner
-- **Architecture Rule**: Content rendering should group by file and support nested display
-- **Implementation Pattern**: Visitor pattern for result traversal + Decorator pattern for formatting
+#### **Task 2.2.2**: File summary & detailed results renderer ✅ **UI STRUCTURE READY**
+- **Target**: Implement EXACT Part 2 format: "filename (X tests[ | Y failed]) Zms 0 MB heap used" + detailed test results
+- **Fix**: Create file summary renderer with exact spacing, heap usage, and 4-space error indentation
+- **Location**: Create `internal/ui/display/file_summary_renderer.go` and detailed results formatting
+- **Why**: Part 2 of standardized output shows file summaries and detailed test results with errors
+- **Architecture Rule**: File summary rendering must handle exact format with conditional failed counts and heap usage
+- **Implementation Pattern**: Builder pattern for file summary construction + Template pattern for detailed results
 - **New Structure**:
-  - `internal/ui/display/content_renderer.go` - Main content implementation (300 lines)
-  - `internal/ui/display/file_grouper.go` - File-based result grouping (180 lines)
-  - `internal/ui/display/result_formatter.go` - Individual result formatting (220 lines)
-  - Enhanced `internal/ui/display/app_renderer.go` - Content integration (650 lines)
-- **Result**: Organized file-grouped display with beautiful formatting and icons
+  - `internal/ui/display/file_summary_renderer.go` - File summary line formatting (300 lines)
+  - `internal/ui/display/detailed_results_renderer.go` - Individual test results within files (180 lines)
+  - `internal/ui/display/error_detail_formatter.go` - 4-space "→ error" + "at filename:line" format (220 lines)
+  - Enhanced `internal/ui/display/app_renderer.go` - File summary integration (650 lines)
+- **Validation**: Must produce exact format with conditional pipe-separated failed counts and heap usage
 - **Duration**: 8 hours
 
-#### **Task 2.2.3**: Summary footer enhancement ✅ **FOUNDATION READY**
-- **Violation**: Current basic summary needs comprehensive statistics and execution details
-- **Fix**: Implement detailed summary with statistics, timing, and formatted totals
-- **Location**: Create `internal/ui/display/summary_renderer.go` and enhance summary formatting
-- **Why**: Summary provides final overview and execution statistics for user assessment
-- **Architecture Rule**: Summary should aggregate statistics and provide clear final status
-- **Implementation Pattern**: Builder pattern for summary construction + Strategy pattern for formatting
+#### **Task 2.2.3**: Failed tests detail & summary renderer ✅ **FOUNDATION READY**
+- **Target**: Implement EXACT Part 3 format: 110+ ─ characters, centered headers, code context with ^ pointers
+- **Fix**: Create failed tests section with precise formatting and final summary with pipe-separated stats
+- **Location**: Create `internal/ui/display/failed_tests_renderer.go` and final summary formatting
+- **Why**: Part 3 shows detailed failure analysis and comprehensive execution summary
+- **Architecture Rule**: Failed tests rendering must handle 110+ ─ characters, code context, and final timing
+- **Implementation Pattern**: Template pattern for section headers + Builder pattern for code context formatting
 - **New Structure**:
-  - `internal/ui/display/summary_renderer.go` - Summary section implementation (200 lines)
-  - `internal/ui/display/statistics_calculator.go` - Statistics aggregation (150 lines)
-  - `internal/ui/display/timing_formatter.go` - Execution timing display (120 lines)
-  - Enhanced `internal/ui/display/app_renderer.go` - Summary integration (700 lines)
-- **Result**: Comprehensive summary with detailed statistics and beautiful formatting
+  - `internal/ui/display/failed_tests_renderer.go` - Failed tests section with 110+ ─ headers (200 lines)
+  - `internal/ui/display/code_context_formatter.go` - 5-line snippets with right-aligned line numbers (150 lines)
+  - `internal/ui/display/final_summary_renderer.go` - Pipe-separated stats and ⏱️ timing (120 lines)
+  - Enhanced `internal/ui/display/app_renderer.go` - Failed tests & summary integration (700 lines)
+- **Validation**: Must produce exact 110+ ─ character headers and right-aligned line numbers with ^ pointers
 - **Duration**: 4 hours
 
 ### **2.3 Layout Management** (10 hours)
@@ -193,28 +215,35 @@
 
 ## 📋 **Phase 2 Deliverable Requirements**
 
-### **Success Criteria**:
-- ✅ **Beautiful Output**: Vitest-style three-part display with colors and icons
-- ✅ **Real-time Updates**: Live progress during test execution
-- ✅ **Responsive Layout**: Adapts to different terminal sizes and capabilities
-- ✅ **Rich Formatting**: Proper error display with source context
-- ✅ **File Grouping**: Test results organized by file with hierarchical display
+### **Success Criteria** (Pixel-Perfect Compliance):
+- ✅ **Standardized Three-Part Structure**: Individual Tests → File Summaries → Failed Tests Detail + Summary
+- ✅ **Exact Unicode Implementation**: ✓ ✗ ⃠ → ↳ ^ | ⏱️ characters matching visual guidelines
+- ✅ **Precise Spacing**: 2-space test indents, 4-space error details, exact alignment
+- ✅ **Character-Perfect Formatting**: File summary format, 110+ ─ headers, pipe-separated stats
+- ✅ **Reference-Based Colors**: Exact hex codes (#10b981, #ef4444, #f59e0b) with fallbacks
 
-### **Acceptance Tests**:
+### **Acceptance Tests** (Reference Validation):
 ```bash
-# Must show beautiful Vitest-style output:
+# Must show EXACT standardized output format:
 go run cmd/go-sentinel-cli/main.go run ./internal/config
-# Expected: Three-part display with header, file-grouped content, summary
+# Expected: Individual tests → File summaries → Failed tests detail + Summary
+# Validation: Output must match visual guidelines character-for-character
 
-go run cmd/go-sentinel-cli/main.go run --verbose ./internal/config  
-# Expected: Enhanced verbose output with detailed information
+# Must implement precise Unicode icons:
+go run cmd/go-sentinel-cli/main.go run ./internal/config 2>&1 | grep -o "✓\|✗\|⃠\|→\|↳"
+# Expected: Exact Unicode characters U+2713, U+2717, U+20E0, U+2192, U+21B3
 
-# Must adapt to terminal:
-TERM=xterm-256color go run cmd/go-sentinel-cli/main.go run ./internal/config
-# Expected: Full color output with Unicode icons
+# Must implement exact spacing:
+go run cmd/go-sentinel-cli/main.go run ./internal/config 2>&1 | head -20
+# Expected: "  ✓ TestName 0ms" format with 2-space indentation
 
+# Must show exact file summary format:
+go run cmd/go-sentinel-cli/main.go run ./internal/config 2>&1 | grep "(.*tests.*) .*ms .* MB heap used"
+# Expected: "filename (X tests[ | Y failed]) Zms 0 MB heap used" format
+
+# Must implement ASCII fallbacks:
 TERM=dumb go run cmd/go-sentinel-cli/main.go run ./internal/config
-# Expected: ASCII fallback output without colors
+# Expected: [P] [F] [S] -> \-> fallbacks matching guidelines
 ```
 
 ### **Quality Gates**:

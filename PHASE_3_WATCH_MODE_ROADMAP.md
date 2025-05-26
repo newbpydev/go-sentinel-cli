@@ -20,25 +20,35 @@
 - ✅ **UI System**: Ready for live updates and watch mode display
 - ✅ **Test Execution**: Working pipeline ready for triggered execution
 
-### **🎯 TARGET WATCH MODE EXPERIENCE**
+### **🎯 TARGET STANDARDIZED WATCH MODE OUTPUT**
 ```
-┌─ Watch Mode Active ───────────────────────────────────────────────────┐
-│ 👁️  Watching 23 files for changes...                    Memory: 42MB │
-│ 🎯 Smart selection: Only testing related files                       │
-└───────────────────────────────────────────────────────────────────────┘
+[Watch Context - Optional Header]
+📁 Changed: internal/config/loader.go
+⚡ Re-running affected tests...
 
-📁 Watching: internal/config/, internal/test/, internal/ui/
-⚡ Last run: 2.3s ago (triggered by internal/config/loader.go)
+  ✓ TestLoadConfig_ValidFile 45ms
+  ✓ TestLoadConfig_InvalidPath 12ms
+  ✓ TestValidateConfig_Success 8ms
 
-📝 internal/config/loader.go changed
-🔍 Analyzing dependencies...
-🎯 Running related tests: internal/config/config_test.go
+config_test.go (3 tests) 65ms 0 MB heap used
+  ✓ Suite passed (3 tests)
 
-📁 internal/config/config_test.go                              ✅ 20 passed
+────────────────────────────────────────────────── Test Summary ──────────────────────────────────────────────────
 
-✨ Watch mode: 20 tests passed in 1.2s
-💡 Press 'r' to run all tests, 'q' to quit, 'c' to clear
+Test Files: 1 passed | 0 failed (1)
+Tests: 3 passed | 0 failed | 0 skipped (3)
+Duration: 65ms (setup 12ms, tests 45ms, teardown 8ms)
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+⏱️  Watch run completed in 0.0652134s | 👀 Still watching...
 ```
+
+**CRITICAL**: Watch mode MUST maintain exact three-part structure from visual guidelines:
+- **Part 1**: Individual test execution ("  ✓ TestName 0ms")
+- **Part 2**: File summaries ("filename (X tests) Yms 0 MB heap used") + detailed results  
+- **Part 3**: Final summary with 110+ ─ characters and pipe-separated stats
+- **Watch Context**: Optional minimal header for file change notifications only
 
 ### **🔍 EXISTING WATCH ARCHITECTURE**
 ```
@@ -132,19 +142,19 @@ internal/watch/
 - **Result**: Comprehensive watch mode configuration through CLI flags and config files
 - **Duration**: 4 hours
 
-#### **Task 3.2.2**: Watch mode display ✅ **UI SYSTEM READY**
-- **Violation**: Beautiful output system needs watch mode specific display enhancements
-- **Fix**: Implement watch mode UI with file monitoring status, change notifications, and interactive controls
-- **Location**: Enhance `internal/ui/display/` for watch mode specific display requirements
-- **Why**: Watch mode requires real-time status display and user interaction capabilities
-- **Architecture Rule**: Watch mode display should be informative and provide clear user feedback
-- **Implementation Pattern**: Observer pattern for watch events + State pattern for display modes
+#### **Task 3.2.2**: Watch mode standardized display ✅ **UI SYSTEM READY**
+- **Target**: Implement watch mode using EXACT three-part structure from visual guidelines
+- **Fix**: Add minimal watch context header while preserving standardized test output format
+- **Location**: Enhance `internal/ui/display/` to maintain visual guidelines compliance in watch mode
+- **Why**: Watch mode must use same standardized output format with optional watch context only
+- **Architecture Rule**: Watch mode display MUST NOT deviate from standardized three-part structure
+- **Implementation Pattern**: Decorator pattern for watch context + Existing standardized renderers
 - **New Structure**:
-  - `internal/ui/display/watch_renderer.go` - Watch mode display implementation (300 lines)
-  - `internal/ui/display/file_monitor_display.go` - File monitoring status display (200 lines)
-  - `internal/ui/display/interactive_controls.go` - Keyboard controls for watch mode (180 lines)
-  - Enhanced `internal/ui/display/app_renderer.go` - Watch mode integration (900 lines)
-- **Result**: Beautiful watch mode display with real-time status and interactive controls
+  - `internal/ui/display/watch_context_renderer.go` - Minimal watch context display (150 lines)
+  - Enhanced `internal/ui/display/app_renderer.go` - Watch mode using standard structure (900 lines)
+  - Watch mode keyboard controls integrated with standard output
+  - File change notifications as minimal header only
+- **Validation**: Watch mode output must pass same visual guidelines validation as normal mode
 - **Duration**: 6 hours
 
 #### **Task 3.2.3**: Watch mode test execution ✅ **TEST SYSTEM READY**
@@ -198,28 +208,34 @@ internal/watch/
 
 ## 📋 **Phase 3 Deliverable Requirements**
 
-### **Success Criteria**:
-- ✅ **Watch Mode Functional**: `--watch` flag activates file monitoring and test execution
+### **Success Criteria** (Standardized Output Compliance):
+- ✅ **Watch Mode Functional**: `--watch` flag activates file monitoring with standardized output
 - ✅ **Intelligent Selection**: Only runs tests related to changed files
-- ✅ **Beautiful Display**: Watch mode has informative UI with real-time status
-- ✅ **Interactive Controls**: Keyboard shortcuts for manual test runs and controls
-- ✅ **Performance**: Responsive even with large codebases and frequent changes
+- ✅ **Standardized Display**: Watch mode uses EXACT three-part structure from visual guidelines
+- ✅ **Format Compliance**: Watch output passes same validation as normal mode
+- ✅ **Performance**: Responsive with minimal context header, no output format overhead
 
-### **Acceptance Tests**:
+### **Acceptance Tests** (Standardized Output Validation):
 ```bash
-# Must activate watch mode:
+# Must activate watch mode with standardized output:
 go run cmd/go-sentinel-cli/main.go run --watch ./internal/config
-# Expected: File monitoring active, tests run on file changes
+# Expected: File monitoring + EXACT three-part structure output
 
-# Must detect related tests:
-# Change internal/config/loader.go -> Should run internal/config/config_test.go
-# Change internal/test/runner/executor.go -> Should run related test files
+# Must maintain standardized format in watch mode:
+go run cmd/go-sentinel-cli/main.go run --watch ./internal/config 2>&1 | head -20
+# Expected: "  ✓ TestName 0ms" format with 2-space indentation (same as normal mode)
 
-# Must handle rapid changes:
-# Rapid file changes should be debounced and handled gracefully
+# Must show exact file summary format in watch mode:
+go run cmd/go-sentinel-cli/main.go run --watch ./internal/config 2>&1 | grep "(.*tests.*) .*ms .* MB heap used"
+# Expected: "filename (X tests[ | Y failed]) Zms 0 MB heap used" (identical to normal mode)
 
-# Must provide interactive controls:
-# Press 'r' to run all tests, 'q' to quit, 'c' to clear screen
+# Must implement same Unicode icons in watch mode:
+go run cmd/go-sentinel-cli/main.go run --watch ./internal/config 2>&1 | grep -o "✓\|✗\|⃠\|→\|↳"
+# Expected: Exact Unicode characters U+2713, U+2717, U+20E0, U+2192, U+21B3
+
+# Must pass visual guidelines validation:
+go run cmd/go-sentinel-cli/main.go run --watch ./internal/config
+# Validation: Output format identical to normal mode + minimal watch context only
 ```
 
 ### **Quality Gates**:
