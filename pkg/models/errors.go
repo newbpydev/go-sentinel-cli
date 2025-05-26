@@ -7,6 +7,10 @@ import (
 	"strings"
 )
 
+// funcForPC is a variable that references runtime.FuncForPC for testability
+// This allows us to mock the function in tests to achieve 100% coverage
+var funcForPC = runtime.FuncForPC
+
 // ErrorType represents the category of error
 type ErrorType string
 
@@ -182,7 +186,7 @@ func captureStack(skip int) []StackFrame {
 			break
 		}
 
-		fn := runtime.FuncForPC(pc)
+		fn := funcForPC(pc)
 		if fn == nil {
 			continue
 		}

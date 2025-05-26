@@ -3,7 +3,6 @@ package models
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -836,7 +835,7 @@ func TestCaptureStack_EdgeCases(t *testing.T) {
 			t.Errorf("Frame %d should have file name", i)
 		}
 		if frame.Line <= 0 {
-			t.Errorf("Frame %d should have valid line number, got %d", i, frame.Line)
+			t.Errorf("Frame %d should have valid line number", i)
 		}
 	}
 }
@@ -1207,141 +1206,42 @@ func TestCaptureStack_UnsafeNilForcing(t *testing.T) {
 	}
 }
 
-// TestCaptureStack_ExtremeEdgeCases tests the most extreme edge cases possible
-func TestCaptureStack_ExtremeEdgeCases(t *testing.T) {
+// TestCaptureStack_100PercentCoverage uses variable overwriting to achieve 100% coverage
+// This test follows the approach recommended in Golang testing best practices
+// Reference: https://medium.com/codex/how-to-achieve-100-code-coverage-in-golang-unit-test-227b99746408
+func TestCaptureStack_100PercentCoverage(t *testing.T) {
 	t.Parallel()
 
-	// Test with function calls from different contexts that might affect
-	// the program counter values returned by runtime.Caller
+	// Save the original function
+	originalFuncForPC := funcForPC
 
-	// Test from a closure
-	func() {
-		frames := captureStack(0)
-		for i, frame := range frames {
-			if frame.Function == "" {
-				t.Errorf("Closure frame %d should have function name", i)
-			}
+	// Create a mock that returns nil on first call, then delegates to original
+	callCount := 0
+	mockFuncForPC := func(pc uintptr) *runtime.Func {
+		callCount++
+		// Return nil on the first call to trigger the continue branch
+		if callCount == 1 {
+			return nil
 		}
+		// Delegate to original function for subsequent calls
+		return originalFuncForPC(pc)
+	}
+
+	// Override the variable with our mock
+	funcForPC = mockFuncForPC
+
+	// Ensure we restore the original function after the test
+	defer func() {
+		funcForPC = originalFuncForPC
 	}()
 
-	// Test from a method
-	type testStruct struct {
-		testMethod func()
-	}
-	ts := &testStruct{}
-	ts.testMethod = func() {
-		frames := captureStack(0)
-		for i, frame := range frames {
-			if frame.Function == "" {
-				t.Errorf("Method frame %d should have function name", i)
-			}
-		}
-	}
-	ts.testMethod()
+	// Call captureStack - this will now hit the nil condition on first iteration
+	frames := captureStack(0)
 
-	// Test from a goroutine with different stack characteristics
-	done := make(chan bool, 1)
-	go func() {
-		defer func() { done <- true }()
-
-		// Call captureStack from goroutine
-		frames := captureStack(0)
-		for i, frame := range frames {
-			if frame.Function == "" {
-				t.Errorf("Goroutine frame %d should have function name", i)
-			}
-		}
-
-		// Test with extreme skip values in goroutine
-		extremeFrames := captureStack(1000)
-		for i, frame := range extremeFrames {
-			if frame.Function == "" {
-				t.Errorf("Extreme goroutine frame %d should have function name", i)
-			}
-		}
-	}()
-	<-done
-
-	// Test the exact runtime.FuncForPC behavior with edge case PCs
-	// This directly tests the condition that would cause the continue branch
-	edgeCasePCs := []uintptr{
-		0x0,
-		0x1,
-		0x2,
-		0x4,
-		0x8,
-		0x10,
-		0x100,
-		0x1000,
-		0xDEAD,
-		0xBEEF,
-		0xDEADBEEF,
-		^uintptr(0) - 1,
-		^uintptr(0),
-	}
-
-	nilCount := 0
-	for _, pc := range edgeCasePCs {
-		fn := runtime.FuncForPC(pc)
-		if fn == nil {
-			nilCount++
-			// This is the exact condition that would trigger continue in captureStack
-		}
-	}
-
-	t.Logf("Found %d nil FuncForPC results out of %d edge case PCs", nilCount, len(edgeCasePCs))
-
-	// The key insight: even if we can't naturally trigger the nil condition,
-	// we've tested the exact same logic path that would be executed
-}
-
-// TestCaptureStack_ForcedNilCondition temporarily modifies captureStack to force 100% coverage
-func TestCaptureStack_ForcedNilCondition(t *testing.T) {
-	t.Parallel()
-
-	// Create a test version of captureStack that forces the nil condition
-	// This ensures we hit the exact line that needs coverage
-	testCaptureStackWithForcedNil := func(skip int) []StackFrame {
-		var frames []StackFrame
-
-		// Capture up to 10 stack frames (same as original)
-		for i := skip; i < skip+10; i++ {
-			pc, file, line, ok := runtime.Caller(i)
-			if !ok {
-				break
-			}
-
-			// Force the nil condition on the first iteration to ensure coverage
-			if i == skip {
-				// Simulate the exact condition: fn == nil
-				var fn *runtime.Func = nil // Explicitly set to nil
-				if fn == nil {
-					continue // This is the exact line we need to cover
-				}
-			}
-
-			// Normal processing for subsequent iterations
-			fn := runtime.FuncForPC(pc)
-			if fn == nil {
-				continue // This is the line we need to execute for 100% coverage
-			}
-
-			frames = append(frames, StackFrame{
-				Function: fn.Name(),
-				File:     file,
-				Line:     line,
-			})
-		}
-
-		return frames
-	}
-
-	// Test the function
-	frames := testCaptureStackWithForcedNil(0)
-
-	// Verify we got frames (should skip the forced nil and get valid ones)
+	// Verify that we got some frames (the ones after the nil)
+	// The first call returns nil (continue), subsequent calls should work normally
 	if len(frames) == 0 {
-		t.Error("Should have captured at least some valid frames after forced nil")
+		t.Error("Should have captured at least some frames after nil condition")
 	}
 
 	// Verify all returned frames are valid
@@ -1357,189 +1257,50 @@ func TestCaptureStack_ForcedNilCondition(t *testing.T) {
 		}
 	}
 
-	// Additional test: Create a scenario that might naturally trigger the nil condition
-	// by testing with various runtime states
-
-	// Test with different goroutine contexts
-	testInGoroutine := func() []StackFrame {
-		return captureStack(0)
+	// Verify that our mock was called and the nil condition was hit
+	if callCount < 1 {
+		t.Error("Mock should have been called at least once")
 	}
 
-	done := make(chan []StackFrame, 1)
-	go func() {
-		frames := testInGoroutine()
-		done <- frames
-	}()
-
-	goroutineFrames := <-done
-	for i, frame := range goroutineFrames {
-		if frame.Function == "" {
-			t.Errorf("Goroutine frame %d should have function name", i)
-		}
-	}
-
-	// Test with extreme conditions that might cause runtime.FuncForPC to return nil
-	extremeConditions := []int{0, 1, 2, 5, 10, 50, 100, 500, 1000}
-	for _, skip := range extremeConditions {
-		frames := captureStack(skip)
-		// Any returned frames should be valid
-		for i, frame := range frames {
-			if frame.Function == "" {
-				t.Errorf("Frame %d should have function name with skip %d", i, skip)
-			}
-		}
-	}
-
-	// Direct test of the runtime.FuncForPC nil condition
-	// This tests the exact same logic path as the captureStack function
-	testDirectNilCondition := func() bool {
-		// Test various PC values that should return nil
-		nilPCs := []uintptr{
-			0x0,
-			0x1,
-			0x2,
-			0x4,
-			^uintptr(0), // Maximum uintptr value
-		}
-
-		nilFound := false
-		for _, pc := range nilPCs {
-			fn := runtime.FuncForPC(pc)
-			if fn == nil {
-				nilFound = true
-				// This is the exact condition that triggers continue in captureStack
-				break
-			}
-		}
-		return nilFound
-	}
-
-	if testDirectNilCondition() {
-		t.Log("Successfully verified nil FuncForPC condition")
-	} else {
-		t.Log("Could not naturally trigger nil FuncForPC - platform dependent")
-	}
+	t.Log("Successfully achieved 100% coverage by hitting the nil FuncForPC condition")
 }
 
-// TestCaptureStack_ReflectionBasedNilForcing uses reflection to force the nil condition
-func TestCaptureStack_ReflectionBasedNilForcing(t *testing.T) {
+// TestCaptureStack_VariableOverwritingSafety tests that variable overwriting is safe
+func TestCaptureStack_VariableOverwritingSafety(t *testing.T) {
 	t.Parallel()
 
-	// Strategy: Use reflection and unsafe operations to create a scenario
-	// where runtime.FuncForPC might return nil
+	// Save original function
+	originalFuncForPC := funcForPC
 
-	// First, let's understand what makes FuncForPC return nil
-	// According to Go documentation, FuncForPC returns nil if pc does not point to code
-
-	// Test 1: Try with various invalid program counters
-	invalidPCs := []uintptr{
-		0,                           // Null pointer
-		1,                           // Invalid low address
-		2,                           // Invalid low address
-		uintptr(unsafe.Pointer(&t)), // Pointer to data, not code
-		^uintptr(0),                 // Maximum uintptr value
-		^uintptr(0) - 1,             // Near maximum value
+	// Test that the original function works
+	frames1 := captureStack(0)
+	if len(frames1) == 0 {
+		t.Error("Original function should capture frames")
 	}
 
-	nilCount := 0
-	for _, pc := range invalidPCs {
-		fn := runtime.FuncForPC(pc)
-		if fn == nil {
-			nilCount++
-		}
+	// Temporarily override with a function that always returns nil
+	funcForPC = func(pc uintptr) *runtime.Func {
+		return nil
 	}
 
-	t.Logf("Found %d nil FuncForPC results out of %d invalid PCs", nilCount, len(invalidPCs))
-
-	// Test 2: Create a custom function that replicates captureStack exactly
-	// This ensures we test the exact same logic path
-	testCaptureStackLogic := func(skip int) ([]StackFrame, bool) {
-		var frames []StackFrame
-		nilEncountered := false
-
-		for i := skip; i < skip+10; i++ {
-			pc, file, line, ok := runtime.Caller(i)
-			if !ok {
-				break
-			}
-
-			// Test the exact condition from captureStack
-			fn := runtime.FuncForPC(pc)
-			if fn == nil {
-				nilEncountered = true
-				continue // This is the exact line we need to cover
-			}
-
-			frames = append(frames, StackFrame{
-				Function: fn.Name(),
-				File:     file,
-				Line:     line,
-			})
-		}
-
-		return frames, nilEncountered
+	// Test with all-nil function
+	frames2 := captureStack(0)
+	// Should get empty frames since all FuncForPC calls return nil
+	if len(frames2) != 0 {
+		t.Error("All-nil mock should result in no frames")
 	}
 
-	// Test with various skip values
-	nilHit := false
-	for skip := 0; skip < 1000; skip += 50 {
-		_, hit := testCaptureStackLogic(skip)
-		if hit {
-			nilHit = true
-			t.Logf("Hit nil condition with skip=%d", skip)
-			break
-		}
+	// Restore original function
+	funcForPC = originalFuncForPC
+
+	// Verify original function works again
+	frames3 := captureStack(0)
+	if len(frames3) == 0 {
+		t.Error("Restored function should capture frames")
 	}
 
-	if !nilHit {
-		t.Log("Could not naturally trigger nil FuncForPC condition")
+	// Verify frames are identical to original
+	if len(frames1) != len(frames3) {
+		t.Error("Restored function should produce identical results to original")
 	}
-
-	// Test 3: Use reflection to try to manipulate the runtime state
-	// This is a more advanced approach to try to create the condition
-
-	// Get the reflect.Value of the captureStack function
-	captureStackValue := reflect.ValueOf(captureStack)
-	if captureStackValue.Kind() == reflect.Func {
-		// We have the function, now let's test it in various ways
-
-		// Call with extreme values
-		extremeSkips := []int{0, 1, 10, 100, 1000, 10000}
-		for _, skip := range extremeSkips {
-			args := []reflect.Value{reflect.ValueOf(skip)}
-			results := captureStackValue.Call(args)
-
-			if len(results) > 0 {
-				frames := results[0].Interface().([]StackFrame)
-				// Verify frames are valid
-				for i, frame := range frames {
-					if frame.Function == "" {
-						t.Errorf("Frame %d should have function name with skip %d", i, skip)
-					}
-				}
-			}
-		}
-	}
-
-	// Test 4: Direct test of the runtime.FuncForPC behavior
-	// Create various scenarios that might cause it to return nil
-
-	// Test with addresses that are clearly not code
-	dataAddresses := []uintptr{
-		uintptr(unsafe.Pointer(&nilCount)),   // Address of local variable
-		uintptr(unsafe.Pointer(&invalidPCs)), // Address of slice
-		uintptr(unsafe.Pointer(&t)),          // Address of test parameter
-	}
-
-	for _, addr := range dataAddresses {
-		fn := runtime.FuncForPC(addr)
-		if fn == nil {
-			t.Log("Successfully found nil FuncForPC with data address")
-			// This exercises the same condition as in captureStack
-		}
-	}
-
-	// The key insight: Even if we can't trigger the exact condition in captureStack,
-	// we've thoroughly tested the same logic path and verified that the function
-	// handles the nil case correctly when it does occur.
 }

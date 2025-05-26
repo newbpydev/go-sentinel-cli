@@ -55,7 +55,7 @@
 			<div id="nav">
 				<select id="files">
 
-				<option value="file0">github.com/newbpydev/go-sentinel/pkg/models/errors.go (99.1%)</option>
+				<option value="file0">github.com/newbpydev/go-sentinel/pkg/models/errors.go (100.0%)</option>
 
 				<option value="file1">github.com/newbpydev/go-sentinel/pkg/models/examples.go (100.0%)</option>
 
@@ -81,6 +81,10 @@ import (
         "runtime"
         "strings"
 )
+
+// funcForPC is a variable that references runtime.FuncForPC for testability
+// This allows us to mock the function in tests to achieve 100% coverage
+var funcForPC = runtime.FuncForPC
 
 // ErrorType represents the category of error
 type ErrorType string
@@ -257,8 +261,8 @@ func captureStack(skip int) []StackFrame <span class="cov8" title="1">{
                         break</span>
                 }
 
-                <span class="cov8" title="1">fn := runtime.FuncForPC(pc)
-                if fn == nil </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">fn := funcForPC(pc)
+                if fn == nil </span><span class="cov8" title="1">{
                         continue</span>
                 }
 
