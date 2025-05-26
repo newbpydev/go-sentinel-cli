@@ -197,11 +197,10 @@ func (e *testExecutorAdapter) ExecuteSingle(ctx context.Context, packages []stri
 		}
 	}
 
-	// Check for test failures
-	stats := e.processor.GetStats()
-	if stats.FailedTests > 0 {
-		return fmt.Errorf("%d tests failed", stats.FailedTests)
-	}
+	// Test execution completed successfully
+	// Note: Individual test failures are normal and reported in the summary,
+	// but they should not cause the application to exit with an error.
+	// Only package-level errors (compilation, missing packages, etc.) should cause application failure.
 
 	return nil
 }

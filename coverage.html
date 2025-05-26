@@ -1,0 +1,2231 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>runner: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+
+				<option value="file0">github.com/newbpydev/go-sentinel/internal/test/runner/basic_runner.go (46.8%)</option>
+
+				<option value="file1">github.com/newbpydev/go-sentinel/internal/test/runner/executor.go (82.5%)</option>
+
+				<option value="file2">github.com/newbpydev/go-sentinel/internal/test/runner/optimized_runner.go (0.0%)</option>
+
+				<option value="file3">github.com/newbpydev/go-sentinel/internal/test/runner/parallel_runner.go (49.0%)</option>
+
+				<option value="file4">github.com/newbpydev/go-sentinel/internal/test/runner/performance_optimizer.go (0.0%)</option>
+
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+
+				<span class="cov0">no coverage</span>
+				<span class="cov1">low coverage</span>
+				<span class="cov2">*</span>
+				<span class="cov3">*</span>
+				<span class="cov4">*</span>
+				<span class="cov5">*</span>
+				<span class="cov6">*</span>
+				<span class="cov7">*</span>
+				<span class="cov8">*</span>
+				<span class="cov9">*</span>
+				<span class="cov10">high coverage</span>
+
+			</div>
+		</div>
+		<div id="content">
+
+		<pre class="file" id="file0" style="display: none">package runner
+
+import (
+        "bytes"
+        "context"
+        "fmt"
+        "io"
+        "os"
+        "os/exec"
+        "strings"
+)
+
+// TestRunnerInterface defines the interface for test runners
+type TestRunnerInterface interface {
+        Run(ctx context.Context, testPaths []string) (string, error)
+        RunStream(ctx context.Context, testPaths []string) (io.ReadCloser, error)
+}
+
+// BasicTestRunner executes Go tests using the basic approach
+type BasicTestRunner struct {
+        // Verbose enables verbose output
+        Verbose bool
+
+        // JSONOutput enables JSON output format
+        JSONOutput bool
+}
+
+// NewBasicTestRunner creates a new basic test runner
+func NewBasicTestRunner(verbose, jsonOutput bool) *BasicTestRunner <span class="cov10" title="14">{
+        return &amp;BasicTestRunner{
+                Verbose:    verbose,
+                JSONOutput: jsonOutput,
+        }
+}</span>
+
+// Run executes the specified tests and returns the output
+func (r *BasicTestRunner) Run(ctx context.Context, testPaths []string) (string, error) <span class="cov5" title="4">{
+        // Validate test paths
+        if len(testPaths) == 0 </span><span class="cov1" title="1">{
+                return "", fmt.Errorf("no test paths provided")
+        }</span>
+
+        <span class="cov4" title="3">for _, path := range testPaths </span><span class="cov4" title="3">{
+                if path == "" </span><span class="cov1" title="1">{
+                        return "", fmt.Errorf("empty test path provided")
+                }</span>
+
+                // Check if path exists
+                <span class="cov3" title="2">if _, err := os.Stat(path); os.IsNotExist(err) </span><span class="cov1" title="1">{
+                        return "", fmt.Errorf("test path does not exist: %s", path)
+                }</span>
+        }
+
+        // Build the command arguments
+        <span class="cov1" title="1">args := []string{"test"}
+
+        // Add verbose flag if required
+        if r.Verbose </span><span class="cov1" title="1">{
+                args = append(args, "-v")
+        }</span>
+
+        // Add JSON output flag if required
+        <span class="cov1" title="1">if r.JSONOutput </span><span class="cov1" title="1">{
+                args = append(args, "-json")
+        }</span>
+
+        // Add the test paths
+        <span class="cov1" title="1">args = append(args, testPaths...)
+
+        // Create the command
+        cmd := exec.CommandContext(ctx, "go", args...)
+
+        // CRITICAL FIX: Set process group to ensure child processes are cleaned up
+        setProcessGroup(cmd)
+
+        // Capture stdout and stderr
+        var stdout, stderr bytes.Buffer
+        cmd.Stdout = &amp;stdout
+        cmd.Stderr = &amp;stderr
+
+        // Run the command
+        err := cmd.Run()
+        if err != nil </span><span class="cov0" title="0">{
+                // Return stderr if there was an error running the command itself
+                if stderr.Len() &gt; 0 </span><span class="cov0" title="0">{
+                        return "", fmt.Errorf("error running tests: %w: %s", err, stderr.String())
+                }</span>
+
+                // For test failures, we still want to return the stdout to process the results
+                <span class="cov0" title="0">if _, ok := err.(*exec.ExitError); ok </span><span class="cov0" title="0">{
+                        return stdout.String(), nil
+                }</span>
+
+                <span class="cov0" title="0">return "", fmt.Errorf("error running tests: %w", err)</span>
+        }
+
+        <span class="cov1" title="1">return stdout.String(), nil</span>
+}
+
+// RunStream executes the specified tests and returns a stream of JSON output
+func (r *BasicTestRunner) RunStream(ctx context.Context, testPaths []string) (io.ReadCloser, error) <span class="cov7" title="6">{
+        // Validate test paths
+        if len(testPaths) == 0 </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("no test paths provided")
+        }</span>
+
+        <span class="cov7" title="6">for _, path := range testPaths </span><span class="cov7" title="6">{
+                if path == "" </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("empty test path provided")
+                }</span>
+
+                // Check if path exists
+                <span class="cov7" title="6">if _, err := os.Stat(path); os.IsNotExist(err) </span><span class="cov7" title="6">{
+                        return nil, fmt.Errorf("test path does not exist: %s", path)
+                }</span>
+        }
+
+        // Build the command arguments
+        <span class="cov0" title="0">args := []string{"test"}
+
+        // Add verbose flag if required
+        if r.Verbose </span><span class="cov0" title="0">{
+                args = append(args, "-v")
+        }</span>
+
+        // Add JSON output flag - required for streaming
+        <span class="cov0" title="0">args = append(args, "-json")
+
+        // Add the test paths
+        args = append(args, testPaths...)
+
+        // Create the command
+        cmd := exec.CommandContext(ctx, "go", args...)
+
+        // CRITICAL FIX: Set process group to ensure child processes are cleaned up
+        setProcessGroup(cmd)
+
+        // Get stdout pipe for streaming
+        stdout, err := cmd.StdoutPipe()
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
+        }</span>
+
+        // Capture stderr for error reporting
+        <span class="cov0" title="0">var stderr bytes.Buffer
+        cmd.Stderr = &amp;stderr
+
+        // Start the command
+        if err := cmd.Start(); err != nil </span><span class="cov0" title="0">{
+                stdout.Close()
+                return nil, fmt.Errorf("failed to start test command: %w", err)
+        }</span>
+
+        // Return a reader that will close the process when done
+        <span class="cov0" title="0">return &amp;streamReader{
+                reader: stdout,
+                cmd:    cmd,
+                stderr: &amp;stderr,
+        }, nil</span>
+}
+
+// streamReader wraps the stdout pipe and handles process cleanup
+type streamReader struct {
+        reader io.ReadCloser
+        cmd    *exec.Cmd
+        stderr *bytes.Buffer
+}
+
+func (sr *streamReader) Read(p []byte) (n int, err error) <span class="cov0" title="0">{
+        return sr.reader.Read(p)
+}</span>
+
+func (sr *streamReader) Close() error <span class="cov0" title="0">{
+        // Close the reader first
+        sr.reader.Close()
+
+        // Wait for the command to finish
+        if err := sr.cmd.Wait(); err != nil </span><span class="cov0" title="0">{
+                // For test failures, this is expected
+                if _, ok := err.(*exec.ExitError); ok </span><span class="cov0" title="0">{
+                        return nil // Test failures are not stream errors
+                }</span>
+                // Check if there's stderr output
+                <span class="cov0" title="0">if sr.stderr.Len() &gt; 0 </span><span class="cov0" title="0">{
+                        return fmt.Errorf("test command error: %w: %s", err, sr.stderr.String())
+                }</span>
+                <span class="cov0" title="0">return fmt.Errorf("test command error: %w", err)</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// IsGoTestFile returns true if the file is a Go test file
+func IsGoTestFile(path string) bool <span class="cov7" title="6">{
+        return strings.HasSuffix(path, "_test.go")
+}</span>
+
+// IsGoFile returns true if the file is a Go source file
+func IsGoFile(path string) bool <span class="cov7" title="6">{
+        return strings.HasSuffix(path, ".go")
+}</span>
+
+// TestRunner type alias for backward compatibility
+type TestRunner = BasicTestRunner
+
+// NewTestRunner creates a new test runner for backward compatibility
+func NewTestRunner(verbose bool, withColor bool) *BasicTestRunner <span class="cov0" title="0">{
+        return NewBasicTestRunner(verbose, withColor)
+}</span>
+</pre>
+
+		<pre class="file" id="file1" style="display: none">// Package runner provides test execution implementation
+package runner
+
+import (
+        "bufio"
+        "context"
+        "fmt"
+        "io"
+        "os"
+        "os/exec"
+        "runtime"
+        "strings"
+        "sync"
+        "syscall"
+        "time"
+)
+
+// DefaultExecutor implements the TestExecutor interface
+type DefaultExecutor struct {
+        mu        sync.RWMutex
+        isRunning bool
+        cancel    context.CancelFunc
+        options   *ExecutionOptions
+}
+
+// NewExecutor creates a new test executor
+func NewExecutor() TestExecutor <span class="cov6" title="25">{
+        return &amp;DefaultExecutor{
+                isRunning: false,
+        }
+}</span>
+
+// Execute implements the TestExecutor interface
+func (e *DefaultExecutor) Execute(ctx context.Context, packages []string, options *ExecutionOptions) (*ExecutionResult, error) <span class="cov4" title="8">{
+        e.mu.Lock()
+        if e.isRunning </span><span class="cov1" title="1">{
+                e.mu.Unlock()
+                return nil, fmt.Errorf("executor is already running")
+        }</span>
+        <span class="cov4" title="7">e.isRunning = true
+        e.options = options
+
+        // Create cancellable context for proper cleanup
+        executionCtx, cancel := context.WithCancel(ctx)
+        e.cancel = cancel
+        e.mu.Unlock()
+
+        defer func() </span><span class="cov4" title="7">{
+                e.mu.Lock()
+                e.isRunning = false
+                if e.cancel != nil </span><span class="cov4" title="7">{
+                        e.cancel()
+                        e.cancel = nil
+                }</span>
+                <span class="cov4" title="7">e.mu.Unlock()</span>
+        }()
+
+        <span class="cov4" title="7">startTime := time.Now()
+        result := &amp;ExecutionResult{
+                Packages:    make([]*PackageResult, 0, len(packages)),
+                StartTime:   startTime,
+                Success:     true,
+                TotalTests:  0,
+                PassedTests: 0,
+                FailedTests: 0,
+        }
+
+        // CRITICAL FIX: Always execute packages individually to maintain full process control
+        // This prevents the resource leak issue caused by `go test ./...` spawning uncontrolled child processes
+
+        // Expand ./... patterns manually to get individual packages
+        expandedPackages, err := e.expandPackagePatterns(executionCtx, packages)
+        if err != nil </span><span class="cov1" title="1">{
+                return nil, fmt.Errorf("failed to expand package patterns: %w", err)
+        }</span>
+
+        // Execute each package individually for complete process control
+        <span class="cov4" title="6">for _, pkg := range expandedPackages </span><span class="cov4" title="6">{
+                packageResult, err := e.ExecutePackage(executionCtx, pkg, options)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to execute tests for package %s: %w", pkg, err)
+                }</span>
+
+                <span class="cov4" title="6">result.Packages = append(result.Packages, packageResult)
+                result.TotalTests += len(packageResult.Tests)
+
+                // Update success status and counts
+                if !packageResult.Success </span><span class="cov2" title="3">{
+                        result.Success = false
+                }</span>
+
+                <span class="cov4" title="6">for _, test := range packageResult.Tests </span><span class="cov4" title="9">{
+                        switch test.Status </span>{
+                        case TestStatusPass:<span class="cov4" title="6">
+                                result.PassedTests++</span>
+                        case TestStatusFail:<span class="cov0" title="0">
+                                result.FailedTests++</span>
+                        case TestStatusSkip:<span class="cov2" title="3">
+                                result.SkippedTests++</span>
+                        }
+                }
+        }
+
+        <span class="cov4" title="6">result.EndTime = time.Now()
+        result.TotalDuration = result.EndTime.Sub(result.StartTime)
+
+        return result, nil</span>
+}
+
+// ExecutePackage implements the TestExecutor interface
+func (e *DefaultExecutor) ExecutePackage(ctx context.Context, pkg string, options *ExecutionOptions) (*PackageResult, error) <span class="cov5" title="13">{
+        startTime := time.Now()
+
+        // Build the go test command
+        args := []string{"test"}
+
+        // Add JSON output if requested
+        if options.JSONOutput </span><span class="cov5" title="12">{
+                args = append(args, "-json")
+        }</span>
+
+        // Add verbose flag if requested
+        <span class="cov5" title="13">if options.Verbose </span><span class="cov2" title="3">{
+                args = append(args, "-v")
+        }</span>
+
+        // Add coverage if requested
+        <span class="cov5" title="13">if options.Coverage </span><span class="cov1" title="1">{
+                args = append(args, "-cover")
+                if options.CoverageProfile != "" </span><span class="cov1" title="1">{
+                        args = append(args, "-coverprofile="+options.CoverageProfile)
+                }</span>
+        }
+
+        // Add parallel setting if specified
+        <span class="cov5" title="13">if options.Parallel &gt; 0 </span><span class="cov5" title="13">{
+                args = append(args, fmt.Sprintf("-parallel=%d", options.Parallel))
+        }</span>
+
+        // Add timeout if specified
+        <span class="cov5" title="13">if options.Timeout &gt; 0 </span><span class="cov5" title="13">{
+                args = append(args, "-timeout="+options.Timeout.String())
+        }</span>
+
+        // Add additional arguments
+        <span class="cov5" title="13">args = append(args, options.Args...)
+
+        // Add the package
+        args = append(args, pkg)
+
+        // Create the command with context for proper cancellation
+        cmd := exec.CommandContext(ctx, "go", args...)
+
+        // Set working directory if specified
+        if options.WorkingDirectory != "" </span><span class="cov5" title="13">{
+                cmd.Dir = options.WorkingDirectory
+        }</span>
+
+        // Set environment variables
+        <span class="cov5" title="13">if len(options.Env) &gt; 0 </span><span class="cov1" title="1">{
+                env := os.Environ()
+                for key, value := range options.Env </span><span class="cov1" title="1">{
+                        env = append(env, key+"="+value)
+                }</span>
+                <span class="cov1" title="1">cmd.Env = env</span>
+        }
+
+        // CRITICAL FIX: Set process group to ensure child processes are cleaned up
+        // This prevents orphaned processes when the parent is terminated
+        <span class="cov5" title="13">setProcessGroup(cmd)
+
+        // CRITICAL FIX: Execute command with proper output capture and process cleanup
+        // This eliminates goroutine leaks and ensures processes are properly terminated
+        output, err := func() ([]byte, error) </span><span class="cov5" title="13">{
+                // Set up pipes to capture output
+                stdout, err := cmd.StdoutPipe()
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
+                }</span>
+                <span class="cov5" title="13">stderr, err := cmd.StderrPipe()
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to create stderr pipe: %w", err)
+                }</span>
+
+                // Start the command
+                <span class="cov5" title="13">if err := cmd.Start(); err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to start command: %w", err)
+                }</span>
+
+                // Read output in a separate goroutine
+                <span class="cov5" title="13">outputChan := make(chan []byte, 1)
+                errorChan := make(chan error, 1)
+
+                go func() </span><span class="cov5" title="13">{
+                        defer func() </span><span class="cov5" title="13">{
+                                stdout.Close()
+                                stderr.Close()
+                        }</span>()
+
+                        // Read stdout and stderr
+                        <span class="cov5" title="13">stdoutBytes, readErr := io.ReadAll(stdout)
+                        if readErr != nil </span><span class="cov0" title="0">{
+                                errorChan &lt;- fmt.Errorf("failed to read stdout: %w", readErr)
+                                return
+                        }</span>
+
+                        <span class="cov5" title="13">stderrBytes, readErr := io.ReadAll(stderr)
+                        if readErr != nil </span><span class="cov0" title="0">{
+                                errorChan &lt;- fmt.Errorf("failed to read stderr: %w", readErr)
+                                return
+                        }</span>
+
+                        // Combine stdout and stderr
+                        <span class="cov5" title="13">combined := append(stdoutBytes, stderrBytes...)
+                        outputChan &lt;- combined</span>
+                }()
+
+                // Wait for completion or cancellation
+                <span class="cov5" title="13">waitChan := make(chan error, 1)
+                go func() </span><span class="cov5" title="13">{
+                        waitChan &lt;- cmd.Wait()
+                }</span>()
+
+                <span class="cov5" title="13">select </span>{
+                case waitErr := &lt;-waitChan:<span class="cov5" title="10">
+                        // Process completed, get the output
+                        // CRITICAL FIX: Even on successful completion, ensure all child processes are cleaned up
+                        // This addresses the Windows issue where go test spawns child processes that don't get cleaned up
+                        if cmd.Process != nil </span><span class="cov5" title="10">{
+                                killProcessGroup(cmd.Process)
+                        }</span>
+
+                        <span class="cov5" title="10">select </span>{
+                        case output := &lt;-outputChan:<span class="cov5" title="10">
+                                return output, waitErr</span>
+                        case readErr := &lt;-errorChan:<span class="cov0" title="0">
+                                return nil, readErr</span>
+                        case &lt;-time.After(1 * time.Second):<span class="cov0" title="0">
+                                // Timeout reading output, return what we have
+                                return []byte{}, waitErr</span>
+                        }
+                case &lt;-ctx.Done():<span class="cov2" title="3">
+                        // Context cancelled, kill the process and wait for cleanup
+                        if cmd.Process != nil </span><span class="cov2" title="3">{
+                                killProcessGroup(cmd.Process)
+                        }</span>
+                        // Wait for process termination with timeout
+                        <span class="cov2" title="3">select </span>{
+                        case &lt;-waitChan:<span class="cov2" title="3"></span>
+                                // Process terminated
+                        case &lt;-time.After(2 * time.Second):<span class="cov0" title="0">
+                                // Force kill if still running
+                                if cmd.Process != nil </span><span class="cov0" title="0">{
+                                        cmd.Process.Kill()
+                                }</span>
+                        }
+                        <span class="cov2" title="3">return nil, fmt.Errorf("test execution cancelled: %w", ctx.Err())</span>
+                }
+        }()
+
+        <span class="cov5" title="13">outputStr := string(output)
+
+        // Parse test results from output first
+        tests := e.parseTestResults(outputStr, pkg)
+
+        // Determine if this is a real package error or just test failures
+        isPackageError := false
+        if err != nil </span><span class="cov3" title="5">{
+                // Check if this is just exit status 1 (test failures) with valid test results
+                if exitError, ok := err.(*exec.ExitError); ok &amp;&amp; exitError.ExitCode() == 1 </span><span class="cov2" title="2">{
+                        // Exit status 1 with parsed tests means test failures, not package error
+                        if len(tests) &gt; 0 </span><span class="cov0" title="0">{
+                                isPackageError = false // This is normal test failure, not package error
+                        }</span> else<span class="cov2" title="2"> {
+                                // Exit status 1 with no parsed tests might be a real package error
+                                isPackageError = true
+                        }</span>
+                } else<span class="cov2" title="3"> {
+                        // Other errors (compilation, missing packages, etc.) are real package errors
+                        isPackageError = true
+                }</span>
+        }
+
+        // Parse the results
+        <span class="cov5" title="13">result := &amp;PackageResult{
+                Package:  pkg,
+                Success:  err == nil,
+                Duration: time.Since(startTime),
+                Output:   outputStr,
+                Tests:    tests,
+        }
+
+        // Only set Error for real package errors, not test failures
+        if isPackageError </span><span class="cov3" title="5">{
+                result.Error = err
+        }</span>
+
+        // Update package success based on individual test results
+        <span class="cov5" title="13">for _, test := range result.Tests </span><span class="cov6" title="24">{
+                if test.Status == TestStatusFail </span><span class="cov0" title="0">{
+                        result.Success = false
+                }</span>
+        }
+
+        <span class="cov5" title="13">return result, nil</span>
+}
+
+// ExecuteMultiplePackages executes tests for multiple packages in a single command
+// This prevents the resource leak caused by spawning many separate go test processes
+func (e *DefaultExecutor) ExecuteMultiplePackages(ctx context.Context, packages []string, options *ExecutionOptions) (*ExecutionResult, error) <span class="cov2" title="3">{
+        startTime := time.Now()
+
+        // Build the go test command for multiple packages
+        args := []string{"test"}
+
+        // Add JSON output if requested
+        if options.JSONOutput </span><span class="cov2" title="3">{
+                args = append(args, "-json")
+        }</span>
+
+        // Add verbose flag if requested
+        <span class="cov2" title="3">if options.Verbose </span><span class="cov0" title="0">{
+                args = append(args, "-v")
+        }</span>
+
+        // Add coverage if requested
+        <span class="cov2" title="3">if options.Coverage </span><span class="cov0" title="0">{
+                args = append(args, "-cover")
+                if options.CoverageProfile != "" </span><span class="cov0" title="0">{
+                        args = append(args, "-coverprofile="+options.CoverageProfile)
+                }</span>
+        }
+
+        // Add parallel setting if specified
+        <span class="cov2" title="3">if options.Parallel &gt; 0 </span><span class="cov2" title="3">{
+                args = append(args, fmt.Sprintf("-parallel=%d", options.Parallel))
+        }</span>
+
+        // Add timeout if specified
+        <span class="cov2" title="3">if options.Timeout &gt; 0 </span><span class="cov2" title="3">{
+                args = append(args, "-timeout="+options.Timeout.String())
+        }</span>
+
+        // Add additional arguments
+        <span class="cov2" title="3">args = append(args, options.Args...)
+
+        // Add ALL packages to the single command
+        args = append(args, packages...)
+
+        // Create the command with context for proper cancellation
+        cmd := exec.CommandContext(ctx, "go", args...)
+
+        // Set working directory if specified
+        if options.WorkingDirectory != "" </span><span class="cov2" title="3">{
+                cmd.Dir = options.WorkingDirectory
+        }</span>
+
+        // Set environment variables
+        <span class="cov2" title="3">if len(options.Env) &gt; 0 </span><span class="cov0" title="0">{
+                env := os.Environ()
+                for key, value := range options.Env </span><span class="cov0" title="0">{
+                        env = append(env, key+"="+value)
+                }</span>
+                <span class="cov0" title="0">cmd.Env = env</span>
+        }
+
+        // Set process group to ensure child processes are cleaned up
+        <span class="cov2" title="3">setProcessGroup(cmd)
+
+        // Execute the single command for all packages
+        output, err := func() ([]byte, error) </span><span class="cov2" title="3">{
+                // Set up pipes to capture output
+                stdout, err := cmd.StdoutPipe()
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
+                }</span>
+                <span class="cov2" title="3">stderr, err := cmd.StderrPipe()
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to create stderr pipe: %w", err)
+                }</span>
+
+                // Start the command
+                <span class="cov2" title="3">if err := cmd.Start(); err != nil </span><span class="cov1" title="1">{
+                        return nil, fmt.Errorf("failed to start command: %w", err)
+                }</span>
+
+                // Read output in a separate goroutine
+                <span class="cov2" title="2">outputChan := make(chan []byte, 1)
+                errorChan := make(chan error, 1)
+
+                go func() </span><span class="cov2" title="2">{
+                        defer func() </span><span class="cov2" title="2">{
+                                stdout.Close()
+                                stderr.Close()
+                        }</span>()
+
+                        // Read stdout and stderr
+                        <span class="cov2" title="2">stdoutBytes, readErr := io.ReadAll(stdout)
+                        if readErr != nil </span><span class="cov0" title="0">{
+                                errorChan &lt;- fmt.Errorf("failed to read stdout: %w", readErr)
+                                return
+                        }</span>
+
+                        <span class="cov2" title="2">stderrBytes, readErr := io.ReadAll(stderr)
+                        if readErr != nil </span><span class="cov0" title="0">{
+                                errorChan &lt;- fmt.Errorf("failed to read stderr: %w", readErr)
+                                return
+                        }</span>
+
+                        // Combine stdout and stderr
+                        <span class="cov2" title="2">combined := append(stdoutBytes, stderrBytes...)
+                        outputChan &lt;- combined</span>
+                }()
+
+                // Wait for completion or cancellation
+                <span class="cov2" title="2">waitChan := make(chan error, 1)
+                go func() </span><span class="cov2" title="2">{
+                        waitChan &lt;- cmd.Wait()
+                }</span>()
+
+                <span class="cov2" title="2">select </span>{
+                case waitErr := &lt;-waitChan:<span class="cov2" title="2">
+                        // Process completed, get the output
+                        // CRITICAL FIX: Even on successful completion, ensure all child processes are cleaned up
+                        // This addresses the Windows issue where go test ./... spawns child processes that don't get cleaned up
+                        if cmd.Process != nil </span><span class="cov2" title="2">{
+                                killProcessGroup(cmd.Process)
+                        }</span>
+
+                        <span class="cov2" title="2">select </span>{
+                        case output := &lt;-outputChan:<span class="cov2" title="2">
+                                return output, waitErr</span>
+                        case readErr := &lt;-errorChan:<span class="cov0" title="0">
+                                return nil, readErr</span>
+                        case &lt;-time.After(1 * time.Second):<span class="cov0" title="0">
+                                // Timeout reading output, return what we have
+                                return []byte{}, waitErr</span>
+                        }
+                case &lt;-ctx.Done():<span class="cov0" title="0">
+                        // Context cancelled, kill the process and wait for cleanup
+                        if cmd.Process != nil </span><span class="cov0" title="0">{
+                                killProcessGroup(cmd.Process)
+                        }</span>
+                        // Wait for process termination with timeout
+                        <span class="cov0" title="0">select </span>{
+                        case &lt;-waitChan:<span class="cov0" title="0"></span>
+                                // Process terminated
+                        case &lt;-time.After(2 * time.Second):<span class="cov0" title="0">
+                                // Force kill if still running
+                                if cmd.Process != nil </span><span class="cov0" title="0">{
+                                        cmd.Process.Kill()
+                                }</span>
+                        }
+                        <span class="cov0" title="0">return nil, fmt.Errorf("test execution cancelled: %w", ctx.Err())</span>
+                }
+        }()
+
+        <span class="cov2" title="3">outputStr := string(output)
+
+        // Parse the combined results
+        result := &amp;ExecutionResult{
+                Packages:    make([]*PackageResult, 0),
+                StartTime:   startTime,
+                Success:     err == nil,
+                TotalTests:  0,
+                PassedTests: 0,
+                FailedTests: 0,
+        }
+
+        if err != nil </span><span class="cov1" title="1">{
+                // Check if this is just exit status 1 (test failures) or a real package error
+                isPackageError := true
+                if exitError, ok := err.(*exec.ExitError); ok &amp;&amp; exitError.ExitCode() == 1 </span><span class="cov0" title="0">{
+                        // Try to parse results - if we get valid test results, it's just test failures
+                        parsedResult := e.parseMultiplePackageResults(outputStr, packages, startTime)
+                        if parsedResult.TotalTests &gt; 0 </span><span class="cov0" title="0">{
+                                // We have valid test results, so this is just test failures, not package error
+                                result = parsedResult
+                                isPackageError = false
+                        }</span>
+                }
+
+                <span class="cov1" title="1">if isPackageError </span><span class="cov1" title="1">{
+                        // Create a single package result with the real package error
+                        result.Packages = append(result.Packages, &amp;PackageResult{
+                                Package:  strings.Join(packages, ", "),
+                                Success:  false,
+                                Duration: time.Since(startTime),
+                                Output:   outputStr,
+                                Error:    err,
+                                Tests:    make([]*TestResult, 0),
+                        })
+                }</span>
+        } else<span class="cov2" title="2"> {
+                // Parse results for all packages from the combined output
+                result = e.parseMultiplePackageResults(outputStr, packages, startTime)
+        }</span>
+
+        <span class="cov2" title="3">result.EndTime = time.Now()
+        result.TotalDuration = result.EndTime.Sub(result.StartTime)
+
+        return result, nil</span>
+}
+
+// parseMultiplePackageResults parses test results from combined output of multiple packages
+func (e *DefaultExecutor) parseMultiplePackageResults(output string, packages []string, startTime time.Time) *ExecutionResult <span class="cov3" title="4">{
+        result := &amp;ExecutionResult{
+                Packages:    make([]*PackageResult, 0),
+                StartTime:   startTime,
+                Success:     true,
+                TotalTests:  0,
+                PassedTests: 0,
+                FailedTests: 0,
+        }
+
+        // Create a map to track package results
+        packageResults := make(map[string]*PackageResult)
+        for _, pkg := range packages </span><span class="cov3" title="5">{
+                packageResults[pkg] = &amp;PackageResult{
+                        Package:  pkg,
+                        Success:  true,
+                        Duration: 0,
+                        Output:   "",
+                        Tests:    make([]*TestResult, 0),
+                }
+        }</span>
+
+        // Parse the output line by line
+        <span class="cov3" title="4">scanner := bufio.NewScanner(strings.NewReader(output))
+        currentPackage := ""
+
+        for scanner.Scan() </span><span class="cov7" title="38">{
+                line := strings.TrimSpace(scanner.Text())
+                if line == "" </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                // Try to detect package information from JSON output or test lines
+                <span class="cov7" title="38">if strings.Contains(line, "\"Package\":") </span><span class="cov7" title="36">{
+                        // JSON format - extract package name
+                        if packageName := e.extractPackageFromJSON(line); packageName != "" </span><span class="cov7" title="36">{
+                                currentPackage = packageName
+                        }</span>
+                } else<span class="cov2" title="2"> if strings.Contains(line, "--- PASS:") || strings.Contains(line, "--- FAIL:") || strings.Contains(line, "--- SKIP:") </span><span class="cov2" title="2">{
+                        // Test result line - add to current package
+                        if currentPackage != "" </span><span class="cov2" title="2">{
+                                if pkgResult, exists := packageResults[currentPackage]; exists </span><span class="cov2" title="2">{
+                                        test := e.parseTestLineForPackage(line, currentPackage)
+                                        if test != nil </span><span class="cov2" title="2">{
+                                                pkgResult.Tests = append(pkgResult.Tests, test)
+                                                result.TotalTests++
+
+                                                switch test.Status </span>{
+                                                case TestStatusPass:<span class="cov1" title="1">
+                                                        result.PassedTests++</span>
+                                                case TestStatusFail:<span class="cov1" title="1">
+                                                        result.FailedTests++
+                                                        pkgResult.Success = false
+                                                        result.Success = false</span>
+                                                case TestStatusSkip:<span class="cov0" title="0">
+                                                        result.SkippedTests++</span>
+                                                }
+                                        }
+                                }
+                        }
+                }
+
+                // Add line to current package output
+                <span class="cov7" title="38">if currentPackage != "" </span><span class="cov7" title="38">{
+                        if pkgResult, exists := packageResults[currentPackage]; exists </span><span class="cov3" title="4">{
+                                if pkgResult.Output == "" </span><span class="cov2" title="2">{
+                                        pkgResult.Output = line
+                                }</span> else<span class="cov2" title="2"> {
+                                        pkgResult.Output += "\n" + line
+                                }</span>
+                        }
+                }
+        }
+
+        // Convert map to slice
+        <span class="cov3" title="4">for _, pkg := range packages </span><span class="cov3" title="5">{
+                if pkgResult, exists := packageResults[pkg]; exists </span><span class="cov3" title="5">{
+                        result.Packages = append(result.Packages, pkgResult)
+                }</span>
+        }
+
+        <span class="cov3" title="4">return result</span>
+}
+
+// extractPackageFromJSON extracts package name from JSON output line
+func (e *DefaultExecutor) extractPackageFromJSON(line string) string <span class="cov7" title="39">{
+        // Simple JSON parsing to extract package name
+        if start := strings.Index(line, "\"Package\":\""); start != -1 </span><span class="cov7" title="37">{
+                start += len("\"Package\":\"")
+                if end := strings.Index(line[start:], "\""); end != -1 </span><span class="cov7" title="37">{
+                        return line[start : start+end]
+                }</span>
+        }
+        <span class="cov2" title="2">return ""</span>
+}
+
+// parseTestLineForPackage parses a test line for a specific package
+func (e *DefaultExecutor) parseTestLineForPackage(line, pkg string) *TestResult <span class="cov4" title="6">{
+        var status TestStatus
+        if strings.Contains(line, "--- PASS:") </span><span class="cov2" title="2">{
+                status = TestStatusPass
+        }</span> else<span class="cov3" title="4"> if strings.Contains(line, "--- FAIL:") </span><span class="cov2" title="2">{
+                status = TestStatusFail
+        }</span> else<span class="cov2" title="2"> if strings.Contains(line, "--- SKIP:") </span><span class="cov1" title="1">{
+                status = TestStatusSkip
+        }</span> else<span class="cov1" title="1"> {
+                return nil
+        }</span>
+
+        <span class="cov3" title="5">return e.parseTestLine(line, pkg, status)</span>
+}
+
+// Cancel implements the TestExecutor interface
+func (e *DefaultExecutor) Cancel() error <span class="cov2" title="2">{
+        e.mu.Lock()
+        defer e.mu.Unlock()
+
+        if !e.isRunning </span><span class="cov1" title="1">{
+                return fmt.Errorf("no test execution is currently running")
+        }</span>
+
+        <span class="cov1" title="1">if e.cancel != nil </span><span class="cov1" title="1">{
+                e.cancel()
+        }</span>
+
+        <span class="cov1" title="1">return nil</span>
+}
+
+// IsRunning implements the TestExecutor interface
+func (e *DefaultExecutor) IsRunning() bool <span class="cov5" title="14">{
+        e.mu.RLock()
+        defer e.mu.RUnlock()
+        return e.isRunning
+}</span>
+
+// parseTestResults parses test results from go test output
+func (e *DefaultExecutor) parseTestResults(output, pkg string) []*TestResult <span class="cov6" title="19">{
+        var tests []*TestResult
+        scanner := bufio.NewScanner(strings.NewReader(output))
+
+        for scanner.Scan() </span><span class="cov10" title="148">{
+                line := strings.TrimSpace(scanner.Text())
+                if line == "" </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                // Parse different line formats
+                <span class="cov10" title="148">if strings.Contains(line, "--- PASS:") </span><span class="cov6" title="18">{
+                        test := e.parseTestLine(line, pkg, TestStatusPass)
+                        if test != nil </span><span class="cov6" title="18">{
+                                tests = append(tests, test)
+                        }</span>
+                } else<span class="cov9" title="130"> if strings.Contains(line, "--- FAIL:") </span><span class="cov2" title="2">{
+                        test := e.parseTestLine(line, pkg, TestStatusFail)
+                        if test != nil </span><span class="cov2" title="2">{
+                                tests = append(tests, test)
+                        }</span>
+                } else<span class="cov9" title="128"> if strings.Contains(line, "--- SKIP:") </span><span class="cov5" title="10">{
+                        test := e.parseTestLine(line, pkg, TestStatusSkip)
+                        if test != nil </span><span class="cov5" title="10">{
+                                tests = append(tests, test)
+                        }</span>
+                }
+        }
+
+        <span class="cov6" title="19">return tests</span>
+}
+
+// parseTestLine parses a single test result line
+func (e *DefaultExecutor) parseTestLine(line, pkg string, status TestStatus) *TestResult <span class="cov7" title="38">{
+        // Example: "--- PASS: TestName (0.00s)"
+        parts := strings.Fields(line)
+        if len(parts) &lt; 3 </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        <span class="cov7" title="38">testName := parts[2]
+
+        // Parse duration if present
+        var duration time.Duration
+        if len(parts) &gt;= 4 </span><span class="cov7" title="37">{
+                durationStr := strings.Trim(parts[3], "()")
+                if d, err := time.ParseDuration(strings.Replace(durationStr, "s", "s", 1)); err == nil </span><span class="cov5" title="15">{
+                        duration = d
+                }</span>
+        }
+
+        <span class="cov7" title="38">return &amp;TestResult{
+                Name:     testName,
+                Package:  pkg,
+                Status:   status,
+                Duration: duration,
+                Output:   line,
+        }</span>
+}
+
+// setProcessGroup configures the command to run in a separate process group
+// This ensures that child processes can be properly terminated
+func setProcessGroup(cmd *exec.Cmd) <span class="cov6" title="17">{
+        // Initialize SysProcAttr for all platforms
+        cmd.SysProcAttr = &amp;syscall.SysProcAttr{}
+
+        if runtime.GOOS == "windows" </span><span class="cov6" title="17">{
+                // On Windows, set CREATE_NEW_PROCESS_GROUP flag for proper tree killing
+                // This ensures taskkill /T can kill the entire process tree
+                cmd.SysProcAttr.CreationFlags = syscall.CREATE_NEW_PROCESS_GROUP
+        }</span>
+        // For Unix systems, we can't use Setpgid/Pgid fields on this build
+        // The process will still be manageable through the context cancellation
+}
+
+// killProcessGroup terminates the process and its children
+func killProcessGroup(process *os.Process) <span class="cov5" title="15">{
+        if runtime.GOOS == "windows" </span><span class="cov5" title="15">{
+                // On Windows, we need to kill the entire process tree
+                // Use taskkill to kill the process and all its children
+                killCmd := exec.Command("taskkill", "/F", "/T", "/PID", fmt.Sprintf("%d", process.Pid))
+                killCmd.CombinedOutput() // Ignore output and errors - process may already be gone
+
+                // Also try direct process kill as fallback
+                process.Kill() // Ignore error - process may already be gone
+        }</span> else<span class="cov0" title="0"> {
+                // On Unix-like systems, kill the process group
+                // Send SIGTERM first for graceful shutdown
+                process.Signal(syscall.SIGTERM)
+
+                // Wait a bit and force kill if necessary
+                time.Sleep(100 * time.Millisecond)
+                process.Kill()
+        }</span>
+}
+
+// expandPackagePatterns expands package patterns like "./..." into individual package paths
+func (e *DefaultExecutor) expandPackagePatterns(ctx context.Context, packages []string) ([]string, error) <span class="cov5" title="13">{
+        var expandedPackages []string
+
+        for _, pkg := range packages </span><span class="cov5" title="13">{
+                if strings.Contains(pkg, "...") </span><span class="cov2" title="3">{
+                        // Use go list to expand the pattern
+                        cmd := exec.CommandContext(ctx, "go", "list", pkg)
+                        output, err := cmd.Output()
+                        if err != nil </span><span class="cov2" title="3">{
+                                return nil, fmt.Errorf("failed to expand package pattern %s: %w", pkg, err)
+                        }</span>
+
+                        // Parse the output to get individual packages
+                        <span class="cov0" title="0">scanner := bufio.NewScanner(strings.NewReader(string(output)))
+                        for scanner.Scan() </span><span class="cov0" title="0">{
+                                line := strings.TrimSpace(scanner.Text())
+                                if line != "" </span><span class="cov0" title="0">{
+                                        expandedPackages = append(expandedPackages, line)
+                                }</span>
+                        }
+
+                        <span class="cov0" title="0">if err := scanner.Err(); err != nil </span><span class="cov0" title="0">{
+                                return nil, fmt.Errorf("error reading go list output for %s: %w", pkg, err)
+                        }</span>
+                } else<span class="cov5" title="10"> {
+                        // Not a pattern, add as-is
+                        expandedPackages = append(expandedPackages, pkg)
+                }</span>
+        }
+
+        <span class="cov5" title="10">return expandedPackages, nil</span>
+}
+</pre>
+
+		<pre class="file" id="file2" style="display: none">package runner
+
+import (
+        "context"
+        "fmt"
+        "os"
+        "os/exec"
+        "path/filepath"
+        "strings"
+        "sync"
+        "time"
+
+        "github.com/newbpydev/go-sentinel/pkg/models"
+)
+
+// OptimizedTestRunner leverages Go's built-in test caching for maximum efficiency
+type OptimizedTestRunner struct {
+        cache               *SmartTestCache
+        mu                  sync.RWMutex
+        enableGoCache       bool
+        onlyRunChangedTests bool
+}
+
+// SmartTestCache tracks file dependencies and test relationships
+type SmartTestCache struct {
+        testDependencies map[string][]string  // test file -&gt; source files it depends on
+        packageCache     map[string]time.Time // package -&gt; last successful run time
+        fileModTimes     map[string]time.Time // file -&gt; last modification time
+        mu               sync.RWMutex
+}
+
+// OptimizedTestResult represents the result of an optimized test run
+type OptimizedTestResult struct {
+        TestsRun  int
+        CacheHits int
+        Output    string
+        ExitCode  int
+        Duration  time.Duration
+        StartTime time.Time
+        Message   string
+}
+
+// TestExecutionResult represents the result of test execution
+type TestExecutionResult struct {
+        Output   string
+        ExitCode int
+}
+
+// FileChangeInterface defines the interface for file changes
+type FileChangeInterface interface {
+        GetPath() string
+        GetType() ChangeType
+        IsNewChange() bool
+}
+
+// ChangeType represents different types of file changes
+type ChangeType int
+
+const (
+        ChangeTypeTest ChangeType = iota
+        ChangeTypeSource
+        ChangeTypeConfig
+        ChangeTypeDependency
+)
+
+// FileChangeAdapter adapts models.FileChange to our interface
+type FileChangeAdapter struct {
+        *models.FileChange
+}
+
+func (f *FileChangeAdapter) GetPath() string <span class="cov0" title="0">{
+        return f.FilePath
+}</span>
+
+func (f *FileChangeAdapter) GetType() ChangeType <span class="cov0" title="0">{
+        switch f.ChangeType </span>{
+        case models.ChangeTypeCreated, models.ChangeTypeModified:<span class="cov0" title="0">
+                // Determine type based on file path
+                if strings.HasSuffix(f.FilePath, "_test.go") </span><span class="cov0" title="0">{
+                        return ChangeTypeTest
+                }</span> else<span class="cov0" title="0"> if strings.HasSuffix(f.FilePath, ".go") </span><span class="cov0" title="0">{
+                        return ChangeTypeSource
+                }</span> else<span class="cov0" title="0"> if strings.Contains(f.FilePath, "go.mod") || strings.Contains(f.FilePath, "go.sum") </span><span class="cov0" title="0">{
+                        return ChangeTypeDependency
+                }</span>
+                <span class="cov0" title="0">return ChangeTypeConfig</span>
+        default:<span class="cov0" title="0">
+                return ChangeTypeConfig</span>
+        }
+}
+
+func (f *FileChangeAdapter) IsNewChange() bool <span class="cov0" title="0">{
+        return f.ChangeType == models.ChangeTypeCreated || f.ChangeType == models.ChangeTypeModified
+}</span>
+
+// NewOptimizedTestRunner creates a new optimized test runner
+func NewOptimizedTestRunner() *OptimizedTestRunner <span class="cov0" title="0">{
+        return &amp;OptimizedTestRunner{
+                cache:               NewSmartTestCache(),
+                enableGoCache:       true,
+                onlyRunChangedTests: true,
+        }
+}</span>
+
+// NewSmartTestCache creates a new smart test cache
+func NewSmartTestCache() *SmartTestCache <span class="cov0" title="0">{
+        return &amp;SmartTestCache{
+                testDependencies: make(map[string][]string),
+                packageCache:     make(map[string]time.Time),
+                fileModTimes:     make(map[string]time.Time),
+        }
+}</span>
+
+// RunOptimized runs tests with maximum efficiency using Go's caching
+func (r *OptimizedTestRunner) RunOptimized(ctx context.Context, changes []FileChangeInterface) (*OptimizedTestResult, error) <span class="cov0" title="0">{
+        r.mu.Lock()
+        defer r.mu.Unlock()
+
+        result := &amp;OptimizedTestResult{
+                StartTime: time.Now(),
+        }
+
+        // Step 1: Determine what actually needs to be tested
+        testTargets := r.determineTestTargets(changes)
+
+        if len(testTargets) == 0 </span><span class="cov0" title="0">{
+                result.CacheHits = len(changes)
+                result.TestsRun = 0
+                result.Message = "No test targets identified for the detected changes"
+                result.Duration = time.Since(result.StartTime)
+                return result, nil
+        }</span>
+
+        // Step 2: For any file changes detected, we should run tests (be less aggressive about caching)
+        <span class="cov0" title="0">needsExecution := r.determineNeedsExecution(testTargets, changes)
+
+        result.CacheHits = len(testTargets) - len(needsExecution)
+        result.TestsRun = len(needsExecution)
+
+        if len(needsExecution) == 0 </span><span class="cov0" title="0">{
+                result.Message = "All test targets already satisfied by cache"
+                result.Duration = time.Since(result.StartTime)
+                return result, nil
+        }</span>
+
+        // Step 3: Execute only what's needed
+        <span class="cov0" title="0">executionResult, err := r.executeMinimalTests(ctx, needsExecution)
+        if err != nil </span><span class="cov0" title="0">{
+                return result, fmt.Errorf("test execution failed: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">result.Output = executionResult.Output
+        result.ExitCode = executionResult.ExitCode
+        result.Duration = time.Since(result.StartTime)
+
+        // Step 4: Update our cache
+        r.updateCache(needsExecution)
+
+        return result, nil</span>
+}
+
+// determineTestTargets figures out exactly what needs to be tested
+func (r *OptimizedTestRunner) determineTestTargets(changes []FileChangeInterface) []string <span class="cov0" title="0">{
+        targets := make(map[string]bool)
+
+        for _, change := range changes </span><span class="cov0" title="0">{
+                switch change.GetType() </span>{
+                case ChangeTypeTest:<span class="cov0" title="0">
+                        // For test file changes, always run at package level to avoid compilation issues
+                        // Individual test files can't be compiled independently due to package dependencies
+                        targets[filepath.Dir(change.GetPath())] = true</span>
+
+                case ChangeTypeSource:<span class="cov0" title="0">
+                        // For source changes, find related test files
+                        relatedTests := r.findRelatedTestFiles(change.GetPath())
+                        for _, test := range relatedTests </span><span class="cov0" title="0">{
+                                targets[test] = true
+                        }</span>
+
+                        // If no specific tests found, test the package
+                        <span class="cov0" title="0">if len(relatedTests) == 0 </span><span class="cov0" title="0">{
+                                targets[filepath.Dir(change.GetPath())] = true
+                        }</span>
+
+                case ChangeTypeConfig, ChangeTypeDependency:<span class="cov0" title="0">
+                        // These affect everything - but let Go's cache handle most of it
+                        targets["./..."] = true</span>
+                }
+        }
+
+        <span class="cov0" title="0">result := make([]string, 0, len(targets))
+        for target := range targets </span><span class="cov0" title="0">{
+                result = append(result, target)
+        }</span>
+
+        <span class="cov0" title="0">return result</span>
+}
+
+// determineNeedsExecution determines what actually needs execution based on changes
+func (r *OptimizedTestRunner) determineNeedsExecution(targets []string, changes []FileChangeInterface) []string <span class="cov0" title="0">{
+        needsExecution := make([]string, 0, len(targets))
+
+        // If we have file changes, we should run tests - be less aggressive about caching during development
+        hasActualChanges := false
+        for _, change := range changes </span><span class="cov0" title="0">{
+                if change.IsNewChange() </span><span class="cov0" title="0">{
+                        hasActualChanges = true
+                        break</span>
+                }
+        }
+
+        // If we detected actual file changes, run the tests
+        <span class="cov0" title="0">if hasActualChanges </span><span class="cov0" title="0">{
+                return targets
+        }</span>
+
+        // Otherwise, check our cache but be conservative
+        <span class="cov0" title="0">r.cache.mu.RLock()
+        defer r.cache.mu.RUnlock()
+
+        for _, target := range targets </span><span class="cov0" title="0">{
+                // Only trust cache if it's very recent (less than 1 minute)
+                if lastRun, exists := r.cache.packageCache[target]; exists </span><span class="cov0" title="0">{
+                        if time.Since(lastRun) &lt; 1*time.Minute &amp;&amp; !r.haveDependenciesChanged(target, lastRun) </span><span class="cov0" title="0">{
+                                // This target can be cached
+                                continue</span>
+                        }
+                }
+                // Otherwise, we need to execute it
+                <span class="cov0" title="0">needsExecution = append(needsExecution, target)</span>
+        }
+
+        <span class="cov0" title="0">return needsExecution</span>
+}
+
+// haveDependenciesChanged checks if dependencies for a target have changed
+func (r *OptimizedTestRunner) haveDependenciesChanged(target string, since time.Time) bool <span class="cov0" title="0">{
+        deps, exists := r.cache.testDependencies[target]
+        if !exists </span><span class="cov0" title="0">{
+                return true // Unknown dependencies = assume changed
+        }</span>
+
+        <span class="cov0" title="0">for _, dep := range deps </span><span class="cov0" title="0">{
+                if modTime, exists := r.cache.fileModTimes[dep]; exists </span><span class="cov0" title="0">{
+                        if modTime.After(since) </span><span class="cov0" title="0">{
+                                return true
+                        }</span>
+                } else<span class="cov0" title="0"> {
+                        // Check actual file system
+                        if info, err := os.Stat(dep); err == nil </span><span class="cov0" title="0">{
+                                if info.ModTime().After(since) </span><span class="cov0" title="0">{
+                                        return true
+                                }</span>
+                        }
+                }
+        }
+
+        <span class="cov0" title="0">return false</span>
+}
+
+// executeMinimalTests runs only the tests that actually need execution
+func (r *OptimizedTestRunner) executeMinimalTests(ctx context.Context, targets []string) (*TestExecutionResult, error) <span class="cov0" title="0">{
+        if len(targets) == 0 </span><span class="cov0" title="0">{
+                return &amp;TestExecutionResult{
+                        Output:   "No tests needed execution\n",
+                        ExitCode: 0,
+                }, nil
+        }</span>
+
+        // Build the command with optimizations
+        <span class="cov0" title="0">args := r.buildOptimizedCommand(targets)
+
+        // Execute the command
+        cmd := exec.CommandContext(ctx, "go", args...)
+
+        // CRITICAL FIX: Set process group to ensure child processes are cleaned up
+        setProcessGroup(cmd)
+
+        output, err := cmd.CombinedOutput()
+
+        exitCode := 0
+        if err != nil </span><span class="cov0" title="0">{
+                if exitErr, ok := err.(*exec.ExitError); ok </span><span class="cov0" title="0">{
+                        exitCode = exitErr.ExitCode()
+                }</span> else<span class="cov0" title="0"> {
+                        return nil, fmt.Errorf("failed to execute test command: %w", err)
+                }</span>
+        }
+
+        <span class="cov0" title="0">return &amp;TestExecutionResult{
+                Output:   string(output),
+                ExitCode: exitCode,
+        }, nil</span>
+}
+
+// buildOptimizedCommand builds the optimized test command
+func (r *OptimizedTestRunner) buildOptimizedCommand(targets []string) []string <span class="cov0" title="0">{
+        args := []string{"test"}
+
+        if r.enableGoCache </span>{<span class="cov0" title="0">
+                // Go's built-in caching is enabled by default, no flag needed
+        }</span>
+
+        // Add JSON output for easier parsing
+        <span class="cov0" title="0">args = append(args, "-json")
+
+        // Add timeout to prevent hanging
+        args = append(args, "-timeout=30s")
+
+        // Add targets
+        args = append(args, targets...)
+
+        return args</span>
+}
+
+// findRelatedTestFiles finds test files related to a source file
+func (r *OptimizedTestRunner) findRelatedTestFiles(sourceFile string) []string <span class="cov0" title="0">{
+        var related []string
+
+        dir := filepath.Dir(sourceFile)
+        baseName := strings.TrimSuffix(filepath.Base(sourceFile), ".go")
+
+        // Look for corresponding test file
+        testFile := filepath.Join(dir, baseName+"_test.go")
+        if _, err := os.Stat(testFile); err == nil </span><span class="cov0" title="0">{
+                related = append(related, testFile)
+        }</span>
+
+        // Look for package test files in the same directory
+        <span class="cov0" title="0">entries, err := os.ReadDir(dir)
+        if err == nil </span><span class="cov0" title="0">{
+                for _, entry := range entries </span><span class="cov0" title="0">{
+                        if !entry.IsDir() &amp;&amp; strings.HasSuffix(entry.Name(), "_test.go") </span><span class="cov0" title="0">{
+                                testPath := filepath.Join(dir, entry.Name())
+                                if testPath != testFile </span><span class="cov0" title="0">{ // Don't duplicate
+                                        related = append(related, testPath)
+                                }</span>
+                        }
+                }
+        }
+
+        <span class="cov0" title="0">return related</span>
+}
+
+// updateCache updates the cache after successful test execution
+func (r *OptimizedTestRunner) updateCache(executedTargets []string) <span class="cov0" title="0">{
+        r.cache.mu.Lock()
+        defer r.cache.mu.Unlock()
+
+        now := time.Now()
+
+        for _, target := range executedTargets </span><span class="cov0" title="0">{
+                r.cache.packageCache[target] = now
+
+                // Scan dependencies for this target
+                deps := r.scanDependencies(target)
+                r.cache.testDependencies[target] = deps
+
+                // Update file modification times
+                for _, dep := range deps </span><span class="cov0" title="0">{
+                        if info, err := os.Stat(dep); err == nil </span><span class="cov0" title="0">{
+                                r.cache.fileModTimes[dep] = info.ModTime()
+                        }</span>
+                }
+        }
+}
+
+// scanDependencies scans for files that a test target depends on
+func (r *OptimizedTestRunner) scanDependencies(target string) []string <span class="cov0" title="0">{
+        var deps []string
+
+        // If target is a package path (directory), scan all Go files in it
+        if info, err := os.Stat(target); err == nil &amp;&amp; info.IsDir() </span><span class="cov0" title="0">{
+                entries, err := os.ReadDir(target)
+                if err == nil </span><span class="cov0" title="0">{
+                        for _, entry := range entries </span><span class="cov0" title="0">{
+                                if !entry.IsDir() &amp;&amp; strings.HasSuffix(entry.Name(), ".go") </span><span class="cov0" title="0">{
+                                        deps = append(deps, filepath.Join(target, entry.Name()))
+                                }</span>
+                        }
+                }
+        }
+
+        // Add go.mod and go.sum as dependencies
+        <span class="cov0" title="0">if _, err := os.Stat("go.mod"); err == nil </span><span class="cov0" title="0">{
+                deps = append(deps, "go.mod")
+        }</span>
+        <span class="cov0" title="0">if _, err := os.Stat("go.sum"); err == nil </span><span class="cov0" title="0">{
+                deps = append(deps, "go.sum")
+        }</span>
+
+        <span class="cov0" title="0">return deps</span>
+}
+
+// GetEfficiencyStats returns efficiency statistics
+func (r *OptimizedTestResult) GetEfficiencyStats() map[string]interface{} <span class="cov0" title="0">{
+        return map[string]interface{}{
+                "tests_run":             r.TestsRun,
+                "cache_hits":            r.CacheHits,
+                "duration_seconds":      r.Duration.Seconds(),
+                "efficiency_percentage": float64(r.CacheHits) / float64(r.TestsRun+r.CacheHits) * 100,
+        }
+}</span>
+
+// ClearCache clears the test cache
+func (r *OptimizedTestRunner) ClearCache() <span class="cov0" title="0">{
+        r.mu.Lock()
+        defer r.mu.Unlock()
+
+        r.cache.mu.Lock()
+        defer r.cache.mu.Unlock()
+
+        r.cache.packageCache = make(map[string]time.Time)
+        r.cache.fileModTimes = make(map[string]time.Time)
+        r.cache.testDependencies = make(map[string][]string)
+}</span>
+
+// SetCacheEnabled enables or disables Go's built-in test caching
+func (r *OptimizedTestRunner) SetCacheEnabled(enabled bool) <span class="cov0" title="0">{
+        r.mu.Lock()
+        defer r.mu.Unlock()
+        r.enableGoCache = enabled
+}</span>
+
+// SetOnlyRunChangedTests sets whether to only run tests for changed files
+func (r *OptimizedTestRunner) SetOnlyRunChangedTests(enabled bool) <span class="cov0" title="0">{
+        r.mu.Lock()
+        defer r.mu.Unlock()
+        r.onlyRunChangedTests = enabled
+}</span>
+
+// SetOptimizationMode sets the optimization mode
+func (r *OptimizedTestRunner) SetOptimizationMode(mode string) <span class="cov0" title="0">{
+        r.mu.Lock()
+        defer r.mu.Unlock()
+
+        switch mode </span>{
+        case "aggressive":<span class="cov0" title="0">
+                r.enableGoCache = true
+                r.onlyRunChangedTests = true</span>
+        case "conservative":<span class="cov0" title="0">
+                r.enableGoCache = true
+                r.onlyRunChangedTests = false</span>
+        case "none":<span class="cov0" title="0">
+                r.enableGoCache = false
+                r.onlyRunChangedTests = false</span>
+        default:<span class="cov0" title="0">
+                // Default mode
+                r.enableGoCache = true
+                r.onlyRunChangedTests = true</span>
+        }
+}
+</pre>
+
+		<pre class="file" id="file3" style="display: none">package runner
+
+import (
+        "context"
+        "fmt"
+        "sync"
+        "time"
+
+        "github.com/newbpydev/go-sentinel/internal/config"
+        "github.com/newbpydev/go-sentinel/internal/test/processor"
+        "github.com/newbpydev/go-sentinel/pkg/models"
+)
+
+// ParallelTestRunner executes multiple test packages in parallel
+type ParallelTestRunner struct {
+        maxConcurrency int
+        testRunner     TestRunnerInterface
+        cache          CacheInterface
+}
+
+// ParallelTestResult represents the result of a parallel test execution
+type ParallelTestResult struct {
+        TestPath  string
+        Suite     *models.TestSuite
+        Error     error
+        Duration  time.Duration
+        FromCache bool
+}
+
+// CacheInterface defines the interface for test result caching
+type CacheInterface interface {
+        GetCachedResult(testPath string) (*CachedResult, bool)
+        CacheResult(testPath string, suite *models.TestSuite)
+}
+
+// CachedResult represents a cached test result
+type CachedResult struct {
+        Suite *models.TestSuite
+}
+
+// ColorFormatterInterface defines the interface for color formatting
+type ColorFormatterInterface interface {
+        // Add methods as needed for color formatting
+}
+
+// IconProviderInterface defines the interface for icon provision
+type IconProviderInterface interface {
+        // Add methods as needed for icon provision
+}
+
+// NewParallelTestRunner creates a new parallel test runner
+func NewParallelTestRunner(maxConcurrency int, testRunner TestRunnerInterface, cache CacheInterface) *ParallelTestRunner <span class="cov10" title="9">{
+        if maxConcurrency &lt;= 0 </span><span class="cov3" title="2">{
+                maxConcurrency = 4 // Default concurrency
+        }</span>
+
+        <span class="cov10" title="9">return &amp;ParallelTestRunner{
+                maxConcurrency: maxConcurrency,
+                testRunner:     testRunner,
+                cache:          cache,
+        }</span>
+}
+
+// RunParallel executes multiple test packages in parallel
+func (r *ParallelTestRunner) RunParallel(ctx context.Context, testPaths []string, cfg *config.Config) ([]*ParallelTestResult, error) <span class="cov8" title="6">{
+        if len(testPaths) == 0 </span><span class="cov5" title="3">{
+                return nil, nil
+        }</span>
+
+        // Channel for results
+        <span class="cov5" title="3">results := make(chan *ParallelTestResult, len(testPaths))
+
+        // Worker pool with semaphore for concurrency control
+        semaphore := make(chan struct{}, r.maxConcurrency)
+
+        var wg sync.WaitGroup
+
+        // Start workers for each test path with proper context handling
+        for _, testPath := range testPaths </span><span class="cov8" title="6">{
+                wg.Add(1)
+                go func(path string) </span><span class="cov8" title="6">{
+                        defer wg.Done()
+
+                        // Check for context cancellation before acquiring semaphore
+                        select </span>{
+                        case &lt;-ctx.Done():<span class="cov0" title="0">
+                                results &lt;- &amp;ParallelTestResult{
+                                        TestPath: path,
+                                        Error:    fmt.Errorf("execution cancelled for %s: %w", path, ctx.Err()),
+                                        Duration: 0,
+                                }
+                                return</span>
+                        case semaphore &lt;- struct{}{}:<span class="cov8" title="6"></span>
+                                // Acquired semaphore, continue
+                        }
+
+                        <span class="cov8" title="6">defer func() </span><span class="cov8" title="6">{ &lt;-semaphore }</span>()
+
+                        // Execute with proper error handling
+                        <span class="cov8" title="6">result := r.executeTestPath(ctx, path, cfg)
+
+                        // Send result with timeout protection
+                        select </span>{
+                        case results &lt;- result:<span class="cov8" title="6"></span>
+                        case &lt;-ctx.Done():<span class="cov0" title="0">
+                                // Context cancelled while sending result
+                                return</span>
+                        }
+                }(testPath)
+        }
+
+        // Close results channel when all workers complete with timeout protection
+        <span class="cov5" title="3">go func() </span><span class="cov5" title="3">{
+                wg.Wait()
+                close(results)
+        }</span>()
+
+        // Collect results with context cancellation handling
+        <span class="cov5" title="3">allResults := make([]*ParallelTestResult, 0, len(testPaths))
+        for </span><span class="cov10" title="9">{
+                select </span>{
+                case result, ok := &lt;-results:<span class="cov10" title="9">
+                        if !ok </span><span class="cov5" title="3">{
+                                // Channel closed, all results collected
+                                return allResults, nil
+                        }</span>
+                        <span class="cov8" title="6">allResults = append(allResults, result)</span>
+                case &lt;-ctx.Done():<span class="cov0" title="0">
+                        // Context cancelled, return partial results
+                        return allResults, fmt.Errorf("parallel execution cancelled: %w", ctx.Err())</span>
+                }
+        }
+}
+
+// executeTestPath executes a single test path with caching
+func (r *ParallelTestRunner) executeTestPath(ctx context.Context, testPath string, cfg *config.Config) *ParallelTestResult <span class="cov8" title="6">{
+        startTime := time.Now()
+
+        // Check cache first
+        if r.cache != nil </span><span class="cov8" title="6">{
+                if cached, exists := r.cache.GetCachedResult(testPath); exists </span><span class="cov0" title="0">{
+                        return &amp;ParallelTestResult{
+                                TestPath:  testPath,
+                                Suite:     cached.Suite,
+                                Error:     nil,
+                                Duration:  time.Since(startTime),
+                                FromCache: true,
+                        }
+                }</span>
+        }
+
+        // Execute the test
+        <span class="cov8" title="6">suite, err := r.runSingleTestPath(ctx, testPath, cfg)
+        duration := time.Since(startTime)
+
+        // Cache the result if successful
+        if err == nil &amp;&amp; suite != nil &amp;&amp; r.cache != nil </span><span class="cov0" title="0">{
+                r.cache.CacheResult(testPath, suite)
+        }</span>
+
+        <span class="cov8" title="6">return &amp;ParallelTestResult{
+                TestPath:  testPath,
+                Suite:     suite,
+                Error:     err,
+                Duration:  duration,
+                FromCache: false,
+        }</span>
+}
+
+// runSingleTestPath executes a single test path and returns the suite
+func (r *ParallelTestRunner) runSingleTestPath(ctx context.Context, testPath string, cfg *config.Config) (*models.TestSuite, error) <span class="cov8" title="6">{
+        // Create a new test runner instance for this execution to avoid race conditions
+        testRunner := NewBasicTestRunner(cfg.Verbosity &gt; 0, true)
+
+        // Apply timeout if configured
+        testCtx := ctx
+        if cfg.Timeout &gt; 0 </span><span class="cov8" title="6">{
+                var cancel context.CancelFunc
+                testCtx, cancel = context.WithTimeout(ctx, cfg.Timeout)
+                defer cancel()
+        }</span>
+
+        // Execute test command using streaming approach
+        <span class="cov8" title="6">stream, err := testRunner.RunStream(testCtx, []string{testPath})
+        if err != nil </span><span class="cov8" title="6">{
+                return nil, fmt.Errorf("failed to start test stream for %s: %w", testPath, err)
+        }</span>
+        <span class="cov0" title="0">defer stream.Close()
+
+        // Create a processor for this test execution
+        testProcessor := processor.NewTestProcessor(
+                &amp;discardWriter{},      // Use discard writer for parallel execution
+                &amp;nullColorFormatter{}, // No colors for parallel processing
+                &amp;nullIconProvider{},   // No icons for parallel processing
+                80,
+        )
+
+        // Process the stream
+        progress := make(chan models.TestProgress, 10)
+
+        // CRITICAL FIX: Ensure proper goroutine cleanup with context cancellation
+        progressCtx, progressCancel := context.WithCancel(testCtx)
+        defer progressCancel()
+
+        // Start progress monitoring in background with proper cleanup
+        progressDone := make(chan struct{})
+        go func() </span><span class="cov0" title="0">{
+                defer close(progressDone)
+                for </span><span class="cov0" title="0">{
+                        select </span>{
+                        case &lt;-progressCtx.Done():<span class="cov0" title="0">
+                                // Drain remaining progress updates
+                                for len(progress) &gt; 0 </span><span class="cov0" title="0">{
+                                        &lt;-progress
+                                }</span>
+                                <span class="cov0" title="0">return</span>
+                        case _, ok := &lt;-progress:<span class="cov0" title="0">
+                                if !ok </span><span class="cov0" title="0">{
+                                        return
+                                }</span>
+                                // Consume progress updates without action for parallel execution
+                        }
+                }
+        }()
+
+        // Process the stream
+        <span class="cov0" title="0">if err := testProcessor.ProcessStream(stream, progress); err != nil </span><span class="cov0" title="0">{
+                close(progress)
+                progressCancel()
+                &lt;-progressDone // Wait for cleanup
+                return nil, fmt.Errorf("failed to process test stream for %s: %w", testPath, err)
+        }</span>
+
+        // Clean shutdown
+        <span class="cov0" title="0">close(progress)
+        progressCancel()
+        &lt;-progressDone // Wait for cleanup
+
+        // Extract the test suite for this path
+        if suite, exists := testProcessor.GetSuites()[testPath]; exists </span><span class="cov0" title="0">{
+                return suite, nil
+        }</span>
+
+        // If no suite found for exact path, look for first suite (fallback)
+        <span class="cov0" title="0">for _, suite := range testProcessor.GetSuites() </span><span class="cov0" title="0">{
+                return suite, nil
+        }</span>
+
+        <span class="cov0" title="0">return nil, fmt.Errorf("no test suite found for path %s", testPath)</span>
+}
+
+// discardWriter is a writer that discards all writes (for parallel execution)
+type discardWriter struct{}
+
+func (d *discardWriter) Write(p []byte) (n int, err error) <span class="cov6" title="4">{
+        return len(p), nil
+}</span>
+
+// nullColorFormatter implements a basic color formatter interface
+type nullColorFormatter struct{}
+
+func (n *nullColorFormatter) Red(text string) string                 <span class="cov0" title="0">{ return text }</span>
+func (n *nullColorFormatter) Green(text string) string               <span class="cov0" title="0">{ return text }</span>
+func (n *nullColorFormatter) Yellow(text string) string              <span class="cov0" title="0">{ return text }</span>
+func (n *nullColorFormatter) Blue(text string) string                <span class="cov0" title="0">{ return text }</span>
+func (n *nullColorFormatter) Magenta(text string) string             <span class="cov0" title="0">{ return text }</span>
+func (n *nullColorFormatter) Cyan(text string) string                <span class="cov0" title="0">{ return text }</span>
+func (n *nullColorFormatter) Gray(text string) string                <span class="cov0" title="0">{ return text }</span>
+func (n *nullColorFormatter) Bold(text string) string                <span class="cov0" title="0">{ return text }</span>
+func (n *nullColorFormatter) Dim(text string) string                 <span class="cov0" title="0">{ return text }</span>
+func (n *nullColorFormatter) White(text string) string               <span class="cov0" title="0">{ return text }</span>
+func (n *nullColorFormatter) Colorize(text, colorName string) string <span class="cov0" title="0">{ return text }</span>
+
+// nullIconProvider implements a basic icon provider interface
+type nullIconProvider struct{}
+
+func (n *nullIconProvider) CheckMark() string              <span class="cov0" title="0">{ return "✓" }</span>
+func (n *nullIconProvider) Cross() string                  <span class="cov0" title="0">{ return "✗" }</span>
+func (n *nullIconProvider) Skipped() string                <span class="cov0" title="0">{ return "-" }</span>
+func (n *nullIconProvider) Running() string                <span class="cov0" title="0">{ return "..." }</span>
+func (n *nullIconProvider) GetIcon(iconType string) string <span class="cov0" title="0">{ return "•" }</span>
+
+// MergeResults merges multiple parallel test results into processor suites
+func MergeResults(testProcessor *processor.TestProcessor, results []*ParallelTestResult) <span class="cov6" title="4">{
+        for _, result := range results </span><span class="cov8" title="7">{
+                if result.Error != nil </span><span class="cov6" title="4">{
+                        // Log error but continue with other results
+                        continue</span>
+                }
+
+                <span class="cov5" title="3">if result.Suite != nil </span><span class="cov5" title="3">{
+                        testProcessor.AddTestSuite(result.Suite)
+                }</span>
+        }
+}
+</pre>
+
+		<pre class="file" id="file4" style="display: none">package runner
+
+import (
+        "context"
+        "fmt"
+        "io"
+        "runtime"
+        "sync"
+        "time"
+
+        "github.com/newbpydev/go-sentinel/internal/test/processor"
+        "github.com/newbpydev/go-sentinel/pkg/models"
+)
+
+// OptimizedTestProcessor provides thread-safe test processing with performance optimizations
+type OptimizedTestProcessor struct {
+        mu              sync.RWMutex
+        outputMu        sync.Mutex // Separate mutex for output synchronization
+        output          io.Writer
+        processor       *processor.TestProcessor
+        memoryPool      sync.Pool
+        renderOptimized bool
+        maxConcurrency  int
+}
+
+// MemoryStats represents memory usage statistics
+type MemoryStats struct {
+        AllocBytes      uint64
+        TotalAllocBytes uint64
+        SysBytes        uint64
+        NumGC           uint32
+        LastGCTime      time.Time
+}
+
+// OptimizedStreamParser provides buffered stream parsing
+type OptimizedStreamParser struct {
+        bufferSize     int
+        maxLineLength  int
+        reusableBuffer []byte
+        mu             sync.Mutex
+}
+
+// BatchProcessor processes test results in batches for efficiency
+type BatchProcessor struct {
+        batchSize int
+        timeout   time.Duration
+        buffer    []*models.LegacyTestResult
+        mu        sync.Mutex
+}
+
+// LazyRenderer provides lazy rendering for large test suites
+type LazyRenderer struct {
+        threshold       int // Number of tests before switching to lazy mode
+        summaryOnly     bool
+        detailsOnDemand bool
+}
+
+// ProcessorInterface defines the interface for test processors
+type ProcessorInterface interface {
+        AddTestSuite(suite *models.TestSuite)
+        GetStats() *models.TestRunStats
+        GetSuites() map[string]*models.TestSuite
+}
+
+// NewOptimizedTestProcessor creates a new thread-safe optimized test processor
+func NewOptimizedTestProcessor(output io.Writer, proc *processor.TestProcessor) *OptimizedTestProcessor <span class="cov0" title="0">{
+        return &amp;OptimizedTestProcessor{
+                output:    output,
+                processor: proc,
+                memoryPool: sync.Pool{
+                        New: func() interface{} </span><span class="cov0" title="0">{
+                                return make([]byte, 0, 1024) // Pre-allocate 1KB buffer
+                        }</span>,
+                },
+                renderOptimized: true,
+                maxConcurrency:  runtime.NumCPU(),
+        }
+}
+
+// AddTestSuite adds a test suite with thread safety
+func (p *OptimizedTestProcessor) AddTestSuite(suite *models.TestSuite) <span class="cov0" title="0">{
+        p.mu.Lock()
+        defer p.mu.Unlock()
+
+        if p.processor != nil </span><span class="cov0" title="0">{
+                p.processor.AddTestSuite(suite)
+        }</span>
+}
+
+// GetStats returns current statistics with thread safety
+func (p *OptimizedTestProcessor) GetStats() *models.TestRunStats <span class="cov0" title="0">{
+        p.mu.RLock()
+        defer p.mu.RUnlock()
+
+        if p.processor != nil </span><span class="cov0" title="0">{
+                return p.processor.GetStats()
+        }</span>
+        <span class="cov0" title="0">return &amp;models.TestRunStats{}</span>
+}
+
+// GetSuites returns the test suites with thread safety
+func (p *OptimizedTestProcessor) GetSuites() map[string]*models.TestSuite <span class="cov0" title="0">{
+        p.mu.RLock()
+        defer p.mu.RUnlock()
+
+        if p.processor != nil </span><span class="cov0" title="0">{
+                return p.processor.GetSuites()
+        }</span>
+        <span class="cov0" title="0">return make(map[string]*models.TestSuite)</span>
+}
+
+// GetStatsOptimized returns current statistics with thread safety (alias for GetStats)
+func (p *OptimizedTestProcessor) GetStatsOptimized() *models.TestRunStats <span class="cov0" title="0">{
+        return p.GetStats()
+}</span>
+
+// RenderResultsOptimized renders results with performance optimizations
+func (p *OptimizedTestProcessor) RenderResultsOptimized(autoCollapse bool) error <span class="cov0" title="0">{
+        // Create context for cancellation
+        ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+        defer cancel()
+
+        // Get a snapshot of suites with minimal lock time
+        var suites []*models.TestSuite
+        func() </span><span class="cov0" title="0">{
+                p.mu.RLock()
+                defer p.mu.RUnlock()
+                testSuites := p.GetSuites()
+                suites = make([]*models.TestSuite, 0, len(testSuites))
+                for _, suite := range testSuites </span><span class="cov0" title="0">{
+                        suites = append(suites, suite)
+                }</span>
+        }()
+
+        <span class="cov0" title="0">if len(suites) &gt; 10 </span><span class="cov0" title="0">{
+                return p.renderWithWorkerPool(ctx, suites, autoCollapse)
+        }</span>
+
+        // For smaller numbers, render sequentially
+        <span class="cov0" title="0">return p.renderSequentially(suites, autoCollapse)</span>
+}
+
+// renderWithWorkerPool renders test suites using a worker pool
+func (p *OptimizedTestProcessor) renderWithWorkerPool(ctx context.Context, suites []*models.TestSuite, autoCollapse bool) error <span class="cov0" title="0">{
+        // Create work channel
+        work := make(chan *models.TestSuite, len(suites))
+        results := make(chan error, len(suites))
+
+        // Start workers
+        numWorkers := min(p.maxConcurrency, len(suites))
+        var wg sync.WaitGroup
+
+        for i := 0; i &lt; numWorkers; i++ </span><span class="cov0" title="0">{
+                wg.Add(1)
+                go func() </span><span class="cov0" title="0">{
+                        defer wg.Done()
+                        for suite := range work </span><span class="cov0" title="0">{
+                                select </span>{
+                                case &lt;-ctx.Done():<span class="cov0" title="0">
+                                        results &lt;- ctx.Err()
+                                        return</span>
+                                default:<span class="cov0" title="0">
+                                        // Get buffer from pool
+                                        bufferInterface := p.memoryPool.Get()
+                                        var buffer []byte
+                                        if bufferInterface != nil </span><span class="cov0" title="0">{
+                                                if buf, ok := bufferInterface.([]byte); ok </span><span class="cov0" title="0">{
+                                                        buffer = buf
+                                                }</span> else<span class="cov0" title="0"> if bufPtr, ok := bufferInterface.(*[]byte); ok </span><span class="cov0" title="0">{
+                                                        buffer = *bufPtr
+                                                }</span> else<span class="cov0" title="0"> {
+                                                        // Fallback: create new buffer if type assertion fails
+                                                        buffer = make([]byte, 0, 1024)
+                                                }</span>
+                                        } else<span class="cov0" title="0"> {
+                                                buffer = make([]byte, 0, 1024)
+                                        }</span>
+                                        <span class="cov0" title="0">buffer = buffer[:0] // Reset length but keep capacity
+
+                                        // Render with output synchronization only
+                                        // This ensures thread safety for output while allowing parallel processing
+                                        func() </span><span class="cov0" title="0">{
+                                                p.outputMu.Lock()
+                                                defer p.outputMu.Unlock()
+                                                // Simplified rendering - just output suite info
+                                                if suite != nil </span><span class="cov0" title="0">{
+                                                        fmt.Fprintf(p.output, "Suite: %s (%d tests)\n", suite.FilePath, suite.TestCount)
+                                                }</span>
+                                        }()
+
+                                        // Return buffer to pool
+                                        <span class="cov0" title="0">p.memoryPool.Put(&amp;buffer)
+                                        results &lt;- nil</span>
+                                }
+                        }
+                }()
+        }
+
+        // Send work
+        <span class="cov0" title="0">go func() </span><span class="cov0" title="0">{
+                defer close(work)
+                for _, suite := range suites </span><span class="cov0" title="0">{
+                        select </span>{
+                        case work &lt;- suite:<span class="cov0" title="0"></span>
+                        case &lt;-ctx.Done():<span class="cov0" title="0">
+                                return</span>
+                        }
+                }
+        }()
+
+        // Wait for workers and collect results
+        <span class="cov0" title="0">go func() </span><span class="cov0" title="0">{
+                wg.Wait()
+                close(results)
+        }</span>()
+
+        // Check for errors
+        <span class="cov0" title="0">for err := range results </span><span class="cov0" title="0">{
+                if err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// renderSequentially renders test suites one by one
+func (p *OptimizedTestProcessor) renderSequentially(suites []*models.TestSuite, autoCollapse bool) error <span class="cov0" title="0">{
+        for _, suite := range suites </span><span class="cov0" title="0">{
+                if suite != nil </span><span class="cov0" title="0">{
+                        fmt.Fprintf(p.output, "Suite: %s (%d tests)\n", suite.FilePath, suite.TestCount)
+                }</span>
+        }
+        <span class="cov0" title="0">return nil</span>
+}
+
+// Clear clears all test data
+func (p *OptimizedTestProcessor) Clear() <span class="cov0" title="0">{
+        p.mu.Lock()
+        defer p.mu.Unlock()
+
+        if p.processor != nil </span><span class="cov0" title="0">{
+                p.processor.Reset()
+        }</span>
+}
+
+// GetMemoryStats returns current memory usage statistics
+func (p *OptimizedTestProcessor) GetMemoryStats() MemoryStats <span class="cov0" title="0">{
+        var memStats runtime.MemStats
+        runtime.ReadMemStats(&amp;memStats)
+
+        return MemoryStats{
+                AllocBytes:      memStats.Alloc,
+                TotalAllocBytes: memStats.TotalAlloc,
+                SysBytes:        memStats.Sys,
+                NumGC:           memStats.NumGC,
+                LastGCTime:      time.Unix(0, int64(memStats.LastGC)),
+        }
+}</span>
+
+// ForceGarbageCollection forces a garbage collection cycle
+func (p *OptimizedTestProcessor) ForceGarbageCollection() <span class="cov0" title="0">{
+        runtime.GC()
+}</span>
+
+// NewOptimizedStreamParser creates a new optimized stream parser
+func NewOptimizedStreamParser() *OptimizedStreamParser <span class="cov0" title="0">{
+        return &amp;OptimizedStreamParser{
+                bufferSize:     8192,
+                maxLineLength:  65536,
+                reusableBuffer: make([]byte, 8192),
+        }
+}</span>
+
+// ParseOptimized parses a reader stream with optimizations
+func (p *OptimizedStreamParser) ParseOptimized(reader io.Reader, results chan&lt;- *models.LegacyTestResult) error <span class="cov0" title="0">{
+        p.mu.Lock()
+        defer p.mu.Unlock()
+
+        // Simple implementation - just read and process
+        // In a full implementation, this would use buffered reading and parsing
+        buffer := make([]byte, p.bufferSize)
+        for </span><span class="cov0" title="0">{
+                n, err := reader.Read(buffer)
+                if n &gt; 0 </span>{<span class="cov0" title="0">
+                        // Process the buffer content
+                        // This is a simplified version - would need actual JSON parsing
+                }</span>
+                <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
+                        if err == io.EOF </span><span class="cov0" title="0">{
+                                break</span>
+                        }
+                        <span class="cov0" title="0">return err</span>
+                }
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// NewBatchProcessor creates a new batch processor
+func NewBatchProcessor(batchSize int, timeout time.Duration) *BatchProcessor <span class="cov0" title="0">{
+        return &amp;BatchProcessor{
+                batchSize: batchSize,
+                timeout:   timeout,
+                buffer:    make([]*models.LegacyTestResult, 0, batchSize),
+        }
+}</span>
+
+// Add adds a test result to the batch
+func (bp *BatchProcessor) Add(result *models.LegacyTestResult) []*models.LegacyTestResult <span class="cov0" title="0">{
+        bp.mu.Lock()
+        defer bp.mu.Unlock()
+
+        bp.buffer = append(bp.buffer, result)
+
+        if len(bp.buffer) &gt;= bp.batchSize </span><span class="cov0" title="0">{
+                // Return the batch and reset
+                batch := make([]*models.LegacyTestResult, len(bp.buffer))
+                copy(batch, bp.buffer)
+                bp.buffer = bp.buffer[:0]
+                return batch
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// Flush returns all remaining results in the batch
+func (bp *BatchProcessor) Flush() []*models.LegacyTestResult <span class="cov0" title="0">{
+        bp.mu.Lock()
+        defer bp.mu.Unlock()
+
+        if len(bp.buffer) == 0 </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">batch := make([]*models.LegacyTestResult, len(bp.buffer))
+        copy(batch, bp.buffer)
+        bp.buffer = bp.buffer[:0]
+        return batch</span>
+}
+
+// NewLazyRenderer creates a new lazy renderer
+func NewLazyRenderer(threshold int) *LazyRenderer <span class="cov0" title="0">{
+        return &amp;LazyRenderer{
+                threshold:       threshold,
+                summaryOnly:     false,
+                detailsOnDemand: true,
+        }
+}</span>
+
+// ShouldUseLazyMode determines if lazy mode should be used
+func (lr *LazyRenderer) ShouldUseLazyMode(testCount int) bool <span class="cov0" title="0">{
+        return testCount &gt; lr.threshold
+}</span>
+
+// RenderSummaryOnly renders only a summary of the test suite
+func (lr *LazyRenderer) RenderSummaryOnly(suite *models.TestSuite) string <span class="cov0" title="0">{
+        if suite == nil </span><span class="cov0" title="0">{
+                return "No test suite data available"
+        }</span>
+
+        <span class="cov0" title="0">return fmt.Sprintf("Suite: %s - %d tests (%d passed, %d failed, %d skipped)",
+                suite.FilePath,
+                suite.TestCount,
+                suite.PassedCount,
+                suite.FailedCount,
+                suite.SkippedCount,
+        )</span>
+}
+
+// min returns the minimum of two integers
+func min(a, b int) int <span class="cov0" title="0">{
+        if a &lt; b </span><span class="cov0" title="0">{
+                return a
+        }</span>
+        <span class="cov0" title="0">return b</span>
+}
+</pre>
+
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
