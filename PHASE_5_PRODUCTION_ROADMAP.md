@@ -4,6 +4,8 @@
 
 **Objective**: Polish CLI for production use with comprehensive documentation, testing, CI/CD, and release preparation.
 
+**Visual Standards**: 📋 **MUST FOLLOW** → [Go Sentinel CLI Visual Guidelines](./GO_SENTINEL_CLI_VISUAL_GUIDELINES.md)
+
 **Current Status**: ✅ All core features complete, ✅ Advanced features implemented, 🎯 **PRODUCTION POLISH NEEDED**
 
 ---

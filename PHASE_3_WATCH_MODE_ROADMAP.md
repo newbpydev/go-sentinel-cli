@@ -4,6 +4,8 @@
 
 **Objective**: Integrate existing watch system components with CLI for intelligent file monitoring and test execution.
 
+**Visual Standards**: 📋 **MUST FOLLOW** → [Go Sentinel CLI Visual Guidelines](./GO_SENTINEL_CLI_VISUAL_GUIDELINES.md)
+
 **Current Status**: ✅ Watch components exist, ✅ Beautiful output ready, 🎯 **INTEGRATION NEEDED**
 
 ---

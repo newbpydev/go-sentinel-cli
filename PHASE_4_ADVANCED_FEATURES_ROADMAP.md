@@ -4,6 +4,8 @@
 
 **Objective**: Implement advanced CLI features, comprehensive configuration system, and performance optimizations.
 
+**Visual Standards**: 📋 **MUST FOLLOW** → [Go Sentinel CLI Visual Guidelines](./GO_SENTINEL_CLI_VISUAL_GUIDELINES.md)
+
 **Current Status**: ✅ Core functionality complete, ✅ Beautiful output working, ✅ Watch mode ready, 🎯 **ENHANCEMENT NEEDED**
 
 ---

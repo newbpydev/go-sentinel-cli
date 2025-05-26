@@ -4,6 +4,8 @@
 
 **Objective**: Implement Vitest-style beautiful output with colors, icons, and three-part structured display.
 
+**Visual Standards**: 📋 **MUST FOLLOW** → [Go Sentinel CLI Visual Guidelines](./GO_SENTINEL_CLI_VISUAL_GUIDELINES.md)
+
 **Current Status**: ✅ Clean UI package structure achieved, ✅ Basic renderer working, 🎯 **ENHANCEMENT NEEDED**
 
 ---
@@ -263,4 +265,29 @@ go build ./cmd/go-sentinel-cli/...
 - Live update system ready for file change notifications
 - Event system ready for watch coordination
 
-**Expected Timeline**: 46 hours (~1 week) to complete Phase 2, then Phase 3 can proceed immediately. 
+**Expected Timeline**: 46 hours (~1 week) to complete Phase 2, then Phase 3 can proceed immediately.
+
+---
+
+## 📋 **CRITICAL: VISUAL GUIDELINES COMPLIANCE**
+
+### **MANDATORY REFERENCE**: [Go Sentinel CLI Visual Guidelines](./GO_SENTINEL_CLI_VISUAL_GUIDELINES.md)
+
+**ALL implementations in this phase MUST:**
+- ✅ Follow the **three-part structure** (Header + Content + Summary)
+- ✅ Implement **Vitest color scheme** with terminal detection
+- ✅ Use **standardized icon system** with Unicode + ASCII fallbacks
+- ✅ Apply **consistent formatting standards** for all output types
+- ✅ Support **progressive enhancement** based on terminal capabilities
+
+**Implementation Validation**:
+```bash
+# Every task completion must verify output against guidelines:
+go run cmd/go-sentinel-cli/main.go run ./internal/config
+# Expected: Exact three-part structure with proper Vitest styling
+
+TERM=dumb go run cmd/go-sentinel-cli/main.go run ./internal/config  
+# Expected: ASCII fallback with guidelines compliance
+```
+
+**Quality Gate**: No task is complete until visual output matches the standardized guidelines exactly. 

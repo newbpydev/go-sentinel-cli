@@ -4,6 +4,8 @@
 
 **Objective**: Establish working CLI with basic test execution using clean modular architecture.
 
+**Visual Standards**: 📋 **MUST FOLLOW** → [Go Sentinel CLI Visual Guidelines](./GO_SENTINEL_CLI_VISUAL_GUIDELINES.md)
+
 **Current Status**: ✅ CLI structure complete, ✅ Configuration working, ✅ **DEPENDENCY INJECTION WIRING COMPLETE**
 
 ---
