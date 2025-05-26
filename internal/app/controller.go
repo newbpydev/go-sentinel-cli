@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/newbpydev/go-sentinel/internal/ui/display"
 	"github.com/newbpydev/go-sentinel/internal/watch/core"
 	"github.com/newbpydev/go-sentinel/pkg/models"
 )
@@ -39,10 +40,42 @@ type TestExecutor interface {
 	ExecuteWatch(ctx context.Context, config *Configuration) error
 }
 
-// DisplayRenderer interface for result display (will be defined in ui package)
+// NewDisplayRenderer creates a new display renderer using the factory.
+// This follows dependency injection principles and maintains package boundaries.
+func NewDisplayRenderer() DisplayRenderer {
+	factory := NewDisplayRendererFactory()
+	return &displayRendererAdapter{
+		factory: factory,
+	}
+}
+
+// DisplayRenderer interface for result display (will be moved to ui package)
 type DisplayRenderer interface {
 	RenderResults(ctx context.Context) error
 	SetConfiguration(config *Configuration) error
+}
+
+// displayRendererAdapter adapts the UI package renderer to the app package interface.
+// This adapter pattern allows us to maintain compatibility while moving to proper architecture.
+type displayRendererAdapter struct {
+	factory  *DisplayRendererFactory
+	renderer display.AppRenderer
+}
+
+func (a *displayRendererAdapter) RenderResults(ctx context.Context) error {
+	if a.renderer == nil {
+		return fmt.Errorf("renderer not configured")
+	}
+	return a.renderer.RenderResults(ctx)
+}
+
+func (a *displayRendererAdapter) SetConfiguration(config *Configuration) error {
+	renderer, err := a.factory.CreateDisplayRenderer(config)
+	if err != nil {
+		return err
+	}
+	a.renderer = renderer
+	return nil
 }
 
 // NewController creates a new application controller
