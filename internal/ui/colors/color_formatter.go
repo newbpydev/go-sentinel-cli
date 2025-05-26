@@ -189,6 +189,8 @@ func (f *ColorFormatter) Colorize(text, colorName string) string {
 type DetectorInterface interface {
 	SupportsColor() bool
 	SupportsUnicode() bool
+	SupportsTrueColor() bool
+	Supports256Color() bool
 	Width() int
 }
 
@@ -285,6 +287,77 @@ func (t *TerminalDetector) Width() int {
 		return 80 // Default width
 	}
 	return width
+}
+
+// SupportsTrueColor detects if the terminal supports 24-bit true color
+func (t *TerminalDetector) SupportsTrueColor() bool {
+	// Check if colors are supported at all
+	if !t.SupportsColor() {
+		return false
+	}
+
+	// Check for true color support via environment variables
+	colorTerm := os.Getenv("COLORTERM")
+	if colorTerm == "truecolor" || colorTerm == "24bit" {
+		return true
+	}
+
+	// Check terminal capabilities
+	termType := os.Getenv("TERM")
+	trueColorTerms := []string{
+		"xterm-direct", "tmux-direct", "screen-direct",
+	}
+
+	for _, term := range trueColorTerms {
+		if strings.Contains(termType, term) {
+			return true
+		}
+	}
+
+	// Modern terminals that support true color
+	if os.Getenv("WT_SESSION") != "" || // Windows Terminal
+		os.Getenv("ITERM_SESSION_ID") != "" || // iTerm2
+		os.Getenv("KITTY_WINDOW_ID") != "" { // Kitty
+		return true
+	}
+
+	// Check for modern terminal versions
+	if strings.Contains(termType, "256color") {
+		// Many modern 256-color terminals also support true color
+		return true
+	}
+
+	return false
+}
+
+// Supports256Color detects if the terminal supports 256-color palette
+func (t *TerminalDetector) Supports256Color() bool {
+	// Check if colors are supported at all
+	if !t.SupportsColor() {
+		return false
+	}
+
+	// Check terminal type
+	termType := os.Getenv("TERM")
+	color256Terms := []string{
+		"256color", "xterm-256", "screen-256", "tmux-256",
+	}
+
+	for _, term := range color256Terms {
+		if strings.Contains(termType, term) {
+			return true
+		}
+	}
+
+	// Modern terminals typically support 256 colors
+	if os.Getenv("WT_SESSION") != "" || // Windows Terminal
+		os.Getenv("ITERM_SESSION_ID") != "" || // iTerm2
+		os.Getenv("KITTY_WINDOW_ID") != "" { // Kitty
+		return true
+	}
+
+	// Fall back to true color support check
+	return t.SupportsTrueColor()
 }
 
 // Ensure ColorFormatter implements FormatterInterface
