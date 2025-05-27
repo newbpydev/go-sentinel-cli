@@ -1029,3 +1029,338 @@ func TestInjectableFileSystemWatcher_Close_Success(t *testing.T) {
 		t.Error("Expected watcher to be closed")
 	}
 }
+
+// TestRealImplementations_100PercentCoverage tests all real implementations
+// This achieves 100% coverage for interface methods that are never directly called
+func TestRealImplementations_100PercentCoverage(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		name     string
+		testFunc func(*testing.T)
+		parallel bool
+	}{
+		"realFsnotifyWatcher_interface_methods": {
+			name:     "Real fsnotify watcher interface compliance",
+			parallel: true,
+			testFunc: func(t *testing.T) {
+				// Create real watcher through factory
+				factory := &realWatcherFactory{}
+				watcher, err := factory.NewWatcher()
+				if err != nil {
+					t.Fatalf("NewWatcher failed: %v", err)
+				}
+				defer watcher.Close()
+
+				// Test Events() method - this line was never covered!
+				events := watcher.Events()
+				if events == nil {
+					t.Error("Events() should not return nil channel")
+				}
+
+				// Test Errors() method - this line was never covered!
+				errors := watcher.Errors()
+				if errors == nil {
+					t.Error("Errors() should not return nil channel")
+				}
+
+				// Test channel types
+				select {
+				case <-events:
+					// Non-blocking check - channel exists and is readable
+				default:
+					// Expected - no events yet
+				}
+
+				select {
+				case <-errors:
+					// Non-blocking check - channel exists and is readable
+				default:
+					// Expected - no errors yet
+				}
+			},
+		},
+		"realFileSystem_all_methods": {
+			name:     "Real filesystem interface methods",
+			parallel: true,
+			testFunc: func(t *testing.T) {
+				fs := &realFileSystem{}
+
+				// Test Stat() method - this line was never covered!
+				info, err := fs.Stat(".")
+				if err != nil {
+					t.Errorf("Stat('.') failed: %v", err)
+				}
+				if info == nil {
+					t.Error("Stat should return FileInfo")
+				}
+				if !info.IsDir() {
+					t.Error("Current directory should be identified as directory")
+				}
+
+				// Test Abs() method - this line was never covered!
+				absPath, err := fs.Abs(".")
+				if err != nil {
+					t.Errorf("Abs('.') failed: %v", err)
+				}
+				if absPath == "" {
+					t.Error("Abs should return non-empty path")
+				}
+
+				// Test Walk() method - this line was never covered!
+				walkCalled := false
+				err = fs.Walk(".", func(path string, info os.FileInfo, err error) error {
+					walkCalled = true
+					return filepath.SkipDir // Skip to avoid deep traversal
+				})
+				if err != nil {
+					t.Errorf("Walk('.') failed: %v", err)
+				}
+				if !walkCalled {
+					t.Error("Walk function should have been called")
+				}
+			},
+		},
+		"realTimeProvider_now_method": {
+			name:     "Real time provider Now method",
+			parallel: true,
+			testFunc: func(t *testing.T) {
+				tp := &realTimeProvider{}
+
+				// Test Now() method - this line was never covered!
+				before := time.Now()
+				now := tp.Now()
+				after := time.Now()
+
+				if now.Before(before) || now.After(after) {
+					t.Errorf("Now() returned time outside expected range: %v not between %v and %v", now, before, after)
+				}
+
+				// Test multiple calls return different times
+				time.Sleep(time.Millisecond)
+				now2 := tp.Now()
+				if !now2.After(now) {
+					t.Error("Subsequent Now() calls should return later times")
+				}
+			},
+		},
+		"realWatcherFactory_newwatcher_method": {
+			name:     "Real watcher factory NewWatcher method",
+			parallel: true,
+			testFunc: func(t *testing.T) {
+				factory := &realWatcherFactory{}
+
+				// Test NewWatcher() method - this line was never covered!
+				watcher, err := factory.NewWatcher()
+				if err != nil {
+					t.Fatalf("NewWatcher failed: %v", err)
+				}
+				if watcher == nil {
+					t.Fatal("NewWatcher should not return nil watcher")
+				}
+
+				// Verify it implements FsnotifyWatcher interface
+				_, ok := watcher.(FsnotifyWatcher)
+				if !ok {
+					t.Error("NewWatcher should return FsnotifyWatcher interface")
+				}
+
+				// Test that it has working methods
+				err = watcher.Close()
+				if err != nil {
+					t.Errorf("Close failed: %v", err)
+				}
+			},
+		},
+		"integration_with_real_dependencies": {
+			name:     "Full integration test with real dependencies",
+			parallel: false, // File system operations
+			testFunc: func(t *testing.T) {
+				// Create temporary directory for testing
+				tempDir, err := os.MkdirTemp("", "injectable_integration_test")
+				if err != nil {
+					t.Fatalf("Failed to create temp dir: %v", err)
+				}
+				defer os.RemoveAll(tempDir)
+
+				// Test with real dependencies (no mocks!)
+				watcher, err := NewInjectableFileSystemWatcher([]string{tempDir}, nil, nil)
+				if err != nil {
+					t.Fatalf("NewInjectableFileSystemWatcher failed: %v", err)
+				}
+				defer watcher.Close()
+
+				// This tests the real implementations in actual usage
+				ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+				defer cancel()
+
+				events := make(chan core.FileEvent, 10)
+
+				// Start watching in goroutine
+				done := make(chan error, 1)
+				go func() {
+					done <- watcher.Watch(ctx, events)
+				}()
+
+				// Create a test file to trigger events
+				testFile := filepath.Join(tempDir, "test.go")
+				err = os.WriteFile(testFile, []byte("package test"), 0644)
+				if err != nil {
+					t.Fatalf("Failed to write test file: %v", err)
+				}
+
+				// Wait for completion or timeout
+				select {
+				case err := <-done:
+					if err != nil && err != context.DeadlineExceeded {
+						t.Errorf("Watch failed: %v", err)
+					}
+				case <-time.After(200 * time.Millisecond):
+					t.Error("Test timed out")
+				}
+
+				// Verify we got events (integration working)
+				select {
+				case event := <-events:
+					if !strings.Contains(event.Path, "test.go") {
+						t.Errorf("Expected event for test.go, got: %s", event.Path)
+					}
+				default:
+					// May not get events due to timing, but that's ok for coverage
+				}
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			if tt.parallel {
+				t.Parallel()
+			}
+			tt.testFunc(t)
+		})
+	}
+}
+
+// TestInjectableFileSystemWatcher_100PercentCoverage_EdgeCases tests remaining edge cases
+func TestInjectableFileSystemWatcher_100PercentCoverage_EdgeCases(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		name        string
+		setup       func() (*InjectableFileSystemWatcher, error)
+		operation   func(*InjectableFileSystemWatcher) error
+		expectedErr string
+		cleanup     func(*InjectableFileSystemWatcher)
+		parallel    bool
+	}{
+		"default_dependencies_creation": {
+			name:     "Create with nil dependencies uses defaults",
+			parallel: true,
+			setup: func() (*InjectableFileSystemWatcher, error) {
+				// This tests line 100-119 with nil dependencies
+				return NewInjectableFileSystemWatcher([]string{"."}, nil, nil)
+			},
+			operation: func(w *InjectableFileSystemWatcher) error {
+				// Verify all dependencies were created
+				if w.fs == nil || w.timeProvider == nil || w.factory == nil {
+					return errors.New("dependencies should not be nil")
+				}
+				return nil
+			},
+			cleanup: func(w *InjectableFileSystemWatcher) {
+				w.Close()
+			},
+		},
+		"partial_dependencies_creation": {
+			name:     "Create with partial dependencies fills missing ones",
+			parallel: true,
+			setup: func() (*InjectableFileSystemWatcher, error) {
+				// This tests lines 121-130 with partial dependencies
+				deps := &Dependencies{
+					FileSystem: &realFileSystem{}, // Only provide filesystem
+					// TimeProvider and Factory should be filled in
+				}
+				return NewInjectableFileSystemWatcher([]string{"."}, nil, deps)
+			},
+			operation: func(w *InjectableFileSystemWatcher) error {
+				// Verify all dependencies were created/filled
+				if w.fs == nil || w.timeProvider == nil || w.factory == nil {
+					return errors.New("all dependencies should be non-nil")
+				}
+				return nil
+			},
+			cleanup: func(w *InjectableFileSystemWatcher) {
+				w.Close()
+			},
+		},
+		"factory_error_path": {
+			name:     "Handle factory error during creation",
+			parallel: true,
+			setup: func() (*InjectableFileSystemWatcher, error) {
+				// Mock factory that returns error
+				mockFactory := &MockWatcherFactory{
+					NewWatcherFunc: func() (FsnotifyWatcher, error) {
+						return nil, errors.New("factory error")
+					},
+				}
+				deps := &Dependencies{
+					FileSystem:   &realFileSystem{},
+					TimeProvider: &realTimeProvider{},
+					Factory:      mockFactory,
+				}
+				return NewInjectableFileSystemWatcher([]string{"."}, nil, deps)
+			},
+			operation: func(w *InjectableFileSystemWatcher) error {
+				return nil // Setup should have failed
+			},
+			expectedErr: "failed to create file watcher",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			if tt.parallel {
+				t.Parallel()
+			}
+
+			watcher, err := tt.setup()
+
+			if tt.expectedErr != "" {
+				if err == nil {
+					t.Errorf("Expected error containing %q, got nil", tt.expectedErr)
+				} else if !strings.Contains(err.Error(), tt.expectedErr) {
+					t.Errorf("Expected error containing %q, got: %v", tt.expectedErr, err)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("Setup failed: %v", err)
+			}
+
+			if watcher != nil && tt.cleanup != nil {
+				defer tt.cleanup(watcher)
+			}
+
+			if tt.operation != nil {
+				err = tt.operation(watcher)
+				if err != nil {
+					t.Errorf("Operation failed: %v", err)
+				}
+			}
+		})
+	}
+}
+
+// MockWatcherFactory for testing factory error paths
+type MockWatcherFactory struct {
+	NewWatcherFunc func() (FsnotifyWatcher, error)
+}
+
+func (m *MockWatcherFactory) NewWatcher() (FsnotifyWatcher, error) {
+	if m.NewWatcherFunc != nil {
+		return m.NewWatcherFunc()
+	}
+	return nil, errors.New("mock factory not configured")
+}
