@@ -372,6 +372,188 @@ func TestPatternMatcher_MatchesPattern_EdgeCases(t *testing.T) {
 	}
 }
 
+// Test MatchesPattern comprehensive edge cases for 100% coverage
+func TestPatternMatcher_MatchesPattern_ComprehensiveEdgeCases(t *testing.T) {
+	matcher := NewPatternMatcher()
+
+	tests := []struct {
+		name     string
+		path     string
+		pattern  string
+		expected bool
+	}{
+		// Recursive pattern edge cases
+		{
+			name:     "Recursive pattern with prefix match",
+			path:     "src/main/java/com/example/App.java",
+			pattern:  "src/**",
+			expected: true,
+		},
+		{
+			name:     "Recursive pattern with no prefix",
+			path:     "any/path/file.go",
+			pattern:  "**/file.go",
+			expected: true,
+		},
+		{
+			name:     "Recursive pattern with empty prefix",
+			path:     "file.go",
+			pattern:  "**/file.go",
+			expected: true,
+		},
+		{
+			name:     "Recursive pattern with multiple parts",
+			path:     "src/test/java/App.java",
+			pattern:  "src/**/java",
+			expected: true,
+		},
+		{
+			name:     "Recursive pattern no match",
+			path:     "other/path/file.go",
+			pattern:  "src/**",
+			expected: false,
+		},
+		// Directory contains edge cases
+		{
+			name:     "Directory contains at start",
+			path:     "node_modules/package/index.js",
+			pattern:  "node_modules",
+			expected: true,
+		},
+		{
+			name:     "Directory contains in middle",
+			path:     "src/node_modules/package/index.js",
+			pattern:  "node_modules",
+			expected: true,
+		},
+		{
+			name:     "Directory contains exact match",
+			path:     "node_modules",
+			pattern:  "node_modules",
+			expected: true,
+		},
+		{
+			name:     "Directory contains no match",
+			path:     "src/packages/index.js",
+			pattern:  "node_modules",
+			expected: false,
+		},
+		// Directory prefix edge cases
+		{
+			name:     "Directory prefix with trailing slash",
+			path:     "src/main.go",
+			pattern:  "src/",
+			expected: true,
+		},
+		{
+			name:     "Directory prefix exact match",
+			path:     "src",
+			pattern:  "src/",
+			expected: false, // src/ should not match just "src"
+		},
+		{
+			name:     "Directory prefix nested",
+			path:     "src/test/main.go",
+			pattern:  "src/",
+			expected: true,
+		},
+		// Wildcard edge cases with filepath.Match errors
+		{
+			name:     "Invalid wildcard pattern (malformed)",
+			path:     "test.go",
+			pattern:  "[",
+			expected: false, // Should handle filepath.Match error gracefully
+		},
+		{
+			name:     "Complex wildcard pattern",
+			path:     "test_file.go",
+			pattern:  "test_*.go",
+			expected: true,
+		},
+		{
+			name:     "Wildcard with directory components",
+			path:     "src/test/file.go",
+			pattern:  "*/test/*",
+			expected: true,
+		},
+		// Path normalization edge cases
+		{
+			name:     "Windows-style path normalization",
+			path:     "src\\main\\java\\App.java",
+			pattern:  "src/main",
+			expected: true,
+		},
+		{
+			name:     "Mixed path separators",
+			path:     "src/main\\java/App.java",
+			pattern:  "main",
+			expected: true,
+		},
+		// Component matching edge cases
+		{
+			name:     "Component wildcard match",
+			path:     "src/test_file/main.go",
+			pattern:  "test_*",
+			expected: true,
+		},
+		{
+			name:     "Component exact match in path",
+			path:     "very/long/path/with/many/components/target/file.go",
+			pattern:  "target",
+			expected: true,
+		},
+		{
+			name:     "Component no match",
+			path:     "src/main/java/App.java",
+			pattern:  "python",
+			expected: false,
+		},
+		// Filename base matching edge cases
+		{
+			name:     "Filename base exact match",
+			path:     "src/main/App.java",
+			pattern:  "App.java",
+			expected: true,
+		},
+		{
+			name:     "Filename base wildcard match",
+			path:     "src/main/TestApp.java",
+			pattern:  "Test*.java",
+			expected: true,
+		},
+		{
+			name:     "Filename base no match",
+			path:     "src/main/App.java",
+			pattern:  "Main.java",
+			expected: false,
+		},
+		// Full path wildcard matching edge cases
+		{
+			name:     "Full path wildcard complex",
+			path:     "src/test/java/com/example/App.java",
+			pattern:  "src/*/java/*/example/*",
+			expected: true,
+		},
+		{
+			name:     "Full path wildcard no match",
+			path:     "src/main/java/App.java",
+			pattern:  "src/test/*/App.java",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			result := matcher.MatchesPattern(tt.path, tt.pattern)
+			if result != tt.expected {
+				t.Errorf("Expected %v, got %v for path %q with pattern %q", tt.expected, result, tt.path, tt.pattern)
+			}
+		})
+	}
+}
+
 // Test AddPattern functionality
 func TestPatternMatcher_AddPattern(t *testing.T) {
 	tests := []struct {
