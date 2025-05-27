@@ -30,8 +30,30 @@ func TestWatchMode_String(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if string(tt.mode) != tt.want {
-				t.Errorf("WatchMode = %v, want %v", string(tt.mode), tt.want)
+			if tt.mode.String() != tt.want {
+				t.Errorf("WatchMode.String() = %v, want %v", tt.mode.String(), tt.want)
+			}
+		})
+	}
+}
+
+func TestWatchMode_IsValid(t *testing.T) {
+	tests := []struct {
+		name  string
+		mode  WatchMode
+		valid bool
+	}{
+		{"WatchAll valid", WatchAll, true},
+		{"WatchChanged valid", WatchChanged, true},
+		{"WatchRelated valid", WatchRelated, true},
+		{"Invalid mode", WatchMode("invalid"), false},
+		{"Empty mode", WatchMode(""), false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.mode.IsValid(); got != tt.valid {
+				t.Errorf("WatchMode.IsValid() = %v, want %v", got, tt.valid)
 			}
 		})
 	}
@@ -73,41 +95,134 @@ func TestFileEvent_IsValid(t *testing.T) {
 			},
 			valid: false,
 		},
+		{
+			name: "Both empty invalid",
+			event: FileEvent{
+				Path:      "",
+				Type:      "",
+				Timestamp: time.Now(),
+				IsTest:    false,
+			},
+			valid: false,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			isValid := tt.event.Path != "" && tt.event.Type != ""
-			if isValid != tt.valid {
-				t.Errorf("FileEvent.IsValid() = %v, want %v", isValid, tt.valid)
+			if got := tt.event.IsValid(); got != tt.valid {
+				t.Errorf("FileEvent.IsValid() = %v, want %v", got, tt.valid)
 			}
 		})
 	}
 }
 
-func TestChangeType_Values(t *testing.T) {
-	expectedTypes := []ChangeType{
-		ChangeTypeModified,
-		ChangeTypeAdded,
-		ChangeTypeDeleted,
-		ChangeTypeRenamed,
+func TestChangeType_String(t *testing.T) {
+	tests := []struct {
+		name       string
+		changeType ChangeType
+		want       string
+	}{
+		{"Modified", ChangeTypeModified, "modified"},
+		{"Added", ChangeTypeAdded, "added"},
+		{"Deleted", ChangeTypeDeleted, "deleted"},
+		{"Renamed", ChangeTypeRenamed, "renamed"},
 	}
 
-	expectedValues := []string{
-		"modified",
-		"added",
-		"deleted",
-		"renamed",
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.changeType.String(); got != tt.want {
+				t.Errorf("ChangeType.String() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestChangeType_IsValid(t *testing.T) {
+	tests := []struct {
+		name       string
+		changeType ChangeType
+		valid      bool
+	}{
+		{"Modified valid", ChangeTypeModified, true},
+		{"Added valid", ChangeTypeAdded, true},
+		{"Deleted valid", ChangeTypeDeleted, true},
+		{"Renamed valid", ChangeTypeRenamed, true},
+		{"Invalid type", ChangeType("invalid"), false},
+		{"Empty type", ChangeType(""), false},
 	}
 
-	if len(expectedTypes) != len(expectedValues) {
-		t.Fatalf("ChangeType count mismatch: %d types, %d values", len(expectedTypes), len(expectedValues))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.changeType.IsValid(); got != tt.valid {
+				t.Errorf("ChangeType.IsValid() = %v, want %v", got, tt.valid)
+			}
+		})
+	}
+}
+
+func TestChangePriority_GetPriorityLevel(t *testing.T) {
+	tests := []struct {
+		name     string
+		priority ChangePriority
+		want     int
+	}{
+		{"Low priority", PriorityLow, 0},
+		{"Medium priority", PriorityMedium, 1},
+		{"High priority", PriorityHigh, 2},
+		{"Critical priority", PriorityCritical, 3},
 	}
 
-	for i, changeType := range expectedTypes {
-		if string(changeType) != expectedValues[i] {
-			t.Errorf("ChangeType[%d] = %s, want %s", i, string(changeType), expectedValues[i])
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.priority.GetPriorityLevel(); got != tt.want {
+				t.Errorf("ChangePriority.GetPriorityLevel() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestChangePriority_String(t *testing.T) {
+	tests := []struct {
+		name     string
+		priority ChangePriority
+		want     string
+	}{
+		{"Low priority", PriorityLow, "low"},
+		{"Medium priority", PriorityMedium, "medium"},
+		{"High priority", PriorityHigh, "high"},
+		{"Critical priority", PriorityCritical, "critical"},
+		{"Unknown priority", ChangePriority(99), "unknown"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.priority.String(); got != tt.want {
+				t.Errorf("ChangePriority.String() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestChangePriority_IsValidPriority(t *testing.T) {
+	tests := []struct {
+		name     string
+		priority ChangePriority
+		valid    bool
+	}{
+		{"Low valid", PriorityLow, true},
+		{"Medium valid", PriorityMedium, true},
+		{"High valid", PriorityHigh, true},
+		{"Critical valid", PriorityCritical, true},
+		{"Below range invalid", ChangePriority(-1), false},
+		{"Above range invalid", ChangePriority(99), false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.priority.IsValidPriority(); got != tt.valid {
+				t.Errorf("ChangePriority.IsValidPriority() = %v, want %v", got, tt.valid)
+			}
+		})
 	}
 }
 
@@ -127,11 +242,11 @@ func TestChangePriority_Ordering(t *testing.T) {
 	}
 }
 
-func TestWatchOptions_Validation(t *testing.T) {
+func TestWatchOptions_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
 		options WatchOptions
-		isValid bool
+		wantErr bool
 	}{
 		{
 			name: "Valid options",
@@ -144,7 +259,7 @@ func TestWatchOptions_Validation(t *testing.T) {
 				ClearTerminal:    false,
 				RunOnStart:       true,
 			},
-			isValid: true,
+			wantErr: false,
 		},
 		{
 			name: "Empty paths invalid",
@@ -155,7 +270,7 @@ func TestWatchOptions_Validation(t *testing.T) {
 				Mode:             WatchAll,
 				DebounceInterval: 100 * time.Millisecond,
 			},
-			isValid: false,
+			wantErr: true,
 		},
 		{
 			name: "Invalid mode",
@@ -166,7 +281,18 @@ func TestWatchOptions_Validation(t *testing.T) {
 				Mode:             WatchMode("invalid"),
 				DebounceInterval: 100 * time.Millisecond,
 			},
-			isValid: false,
+			wantErr: true,
+		},
+		{
+			name: "Negative debounce interval invalid",
+			options: WatchOptions{
+				Paths:            []string{"./src"},
+				IgnorePatterns:   []string{"*.log"},
+				TestPatterns:     []string{"*_test.go"},
+				Mode:             WatchAll,
+				DebounceInterval: -100 * time.Millisecond,
+			},
+			wantErr: true,
 		},
 		{
 			name: "Zero debounce interval valid",
@@ -177,19 +303,15 @@ func TestWatchOptions_Validation(t *testing.T) {
 				Mode:             WatchAll,
 				DebounceInterval: 0,
 			},
-			isValid: true,
+			wantErr: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Basic validation logic
-			isValid := len(tt.options.Paths) > 0 &&
-				(tt.options.Mode == WatchAll || tt.options.Mode == WatchChanged || tt.options.Mode == WatchRelated) &&
-				tt.options.DebounceInterval >= 0
-
-			if isValid != tt.isValid {
-				t.Errorf("WatchOptions validation = %v, want %v", isValid, tt.isValid)
+			err := tt.options.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("WatchOptions.Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -216,6 +338,69 @@ func TestWatchStatus_Initialization(t *testing.T) {
 	}
 }
 
+func TestChangeImpact_HasHighPriority(t *testing.T) {
+	tests := []struct {
+		name     string
+		priority ChangePriority
+		want     bool
+	}{
+		{"Low priority not high", PriorityLow, false},
+		{"Medium priority not high", PriorityMedium, false},
+		{"High priority is high", PriorityHigh, true},
+		{"Critical priority is high", PriorityCritical, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			impact := &ChangeImpact{Priority: tt.priority}
+			if got := impact.HasHighPriority(); got != tt.want {
+				t.Errorf("ChangeImpact.HasHighPriority() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestChangeImpact_GetTestCount(t *testing.T) {
+	tests := []struct {
+		name          string
+		affectedTests []string
+		want          int
+	}{
+		{"No tests", []string{}, 0},
+		{"One test", []string{"test1.go"}, 1},
+		{"Multiple tests", []string{"test1.go", "test2.go", "test3.go"}, 3},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			impact := &ChangeImpact{AffectedTests: tt.affectedTests}
+			if got := impact.GetTestCount(); got != tt.want {
+				t.Errorf("ChangeImpact.GetTestCount() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestChangeImpact_IsTestChange(t *testing.T) {
+	tests := []struct {
+		name   string
+		isTest bool
+		want   bool
+	}{
+		{"Test file change", true, true},
+		{"Implementation file change", false, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			impact := &ChangeImpact{IsTest: tt.isTest}
+			if got := impact.IsTestChange(); got != tt.want {
+				t.Errorf("ChangeImpact.IsTestChange() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestChangeImpact_Priority(t *testing.T) {
 	impact := &ChangeImpact{
 		FilePath:      "/test/file.go",
@@ -233,6 +418,116 @@ func TestChangeImpact_Priority(t *testing.T) {
 
 	if len(impact.AffectedTests) != 2 {
 		t.Errorf("ChangeImpact.AffectedTests length = %d, want 2", len(impact.AffectedTests))
+	}
+}
+
+func TestBatchImpact_CalculateHighestPriority(t *testing.T) {
+	tests := []struct {
+		name    string
+		changes []*ChangeImpact
+		want    ChangePriority
+	}{
+		{
+			name: "Single low priority",
+			changes: []*ChangeImpact{
+				{Priority: PriorityLow},
+			},
+			want: PriorityLow,
+		},
+		{
+			name: "Mixed priorities",
+			changes: []*ChangeImpact{
+				{Priority: PriorityLow},
+				{Priority: PriorityHigh},
+				{Priority: PriorityMedium},
+			},
+			want: PriorityHigh,
+		},
+		{
+			name: "Critical priority highest",
+			changes: []*ChangeImpact{
+				{Priority: PriorityHigh},
+				{Priority: PriorityCritical},
+				{Priority: PriorityMedium},
+			},
+			want: PriorityCritical,
+		},
+		{
+			name:    "Empty changes",
+			changes: []*ChangeImpact{},
+			want:    PriorityLow,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			batch := &BatchImpact{Changes: tt.changes}
+			if got := batch.CalculateHighestPriority(); got != tt.want {
+				t.Errorf("BatchImpact.CalculateHighestPriority() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBatchImpact_GetUniqueTestCount(t *testing.T) {
+	tests := []struct {
+		name            string
+		uniqueTestFiles []string
+		want            int
+	}{
+		{"No tests", []string{}, 0},
+		{"One test", []string{"test1.go"}, 1},
+		{"Multiple tests", []string{"test1.go", "test2.go", "test3.go"}, 3},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			batch := &BatchImpact{UniqueTestFiles: tt.uniqueTestFiles}
+			if got := batch.GetUniqueTestCount(); got != tt.want {
+				t.Errorf("BatchImpact.GetUniqueTestCount() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBatchImpact_HasCriticalChanges(t *testing.T) {
+	tests := []struct {
+		name    string
+		changes []*ChangeImpact
+		want    bool
+	}{
+		{
+			name: "No critical changes",
+			changes: []*ChangeImpact{
+				{Priority: PriorityLow},
+				{Priority: PriorityMedium},
+				{Priority: PriorityHigh},
+			},
+			want: false,
+		},
+		{
+			name: "Has critical changes",
+			changes: []*ChangeImpact{
+				{Priority: PriorityLow},
+				{Priority: PriorityCritical},
+				{Priority: PriorityMedium},
+			},
+			want: true,
+		},
+		{
+			name:    "Empty changes",
+			changes: []*ChangeImpact{},
+			want:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			batch := &BatchImpact{Changes: tt.changes}
+			if got := batch.HasCriticalChanges(); got != tt.want {
+				t.Errorf("BatchImpact.HasCriticalChanges() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
@@ -268,6 +563,54 @@ func TestBatchImpact_Aggregation(t *testing.T) {
 	}
 }
 
+func TestWatchEventType_String(t *testing.T) {
+	tests := []struct {
+		name      string
+		eventType WatchEventType
+		want      string
+	}{
+		{"Started", WatchEventStarted, "started"},
+		{"Stopped", WatchEventStopped, "stopped"},
+		{"Error", WatchEventError, "error"},
+		{"File changed", WatchEventFileChanged, "file_changed"},
+		{"Tests triggered", WatchEventTestsTriggered, "tests_triggered"},
+		{"Config updated", WatchEventConfigUpdated, "config_updated"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.eventType.String(); got != tt.want {
+				t.Errorf("WatchEventType.String() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestWatchEventType_IsValid(t *testing.T) {
+	tests := []struct {
+		name      string
+		eventType WatchEventType
+		valid     bool
+	}{
+		{"Started valid", WatchEventStarted, true},
+		{"Stopped valid", WatchEventStopped, true},
+		{"Error valid", WatchEventError, true},
+		{"File changed valid", WatchEventFileChanged, true},
+		{"Tests triggered valid", WatchEventTestsTriggered, true},
+		{"Config updated valid", WatchEventConfigUpdated, true},
+		{"Invalid type", WatchEventType("invalid"), false},
+		{"Empty type", WatchEventType(""), false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.eventType.IsValid(); got != tt.valid {
+				t.Errorf("WatchEventType.IsValid() = %v, want %v", got, tt.valid)
+			}
+		})
+	}
+}
+
 func TestWatchEventType_Values(t *testing.T) {
 	eventTypes := []WatchEventType{
 		WatchEventStarted,
@@ -298,6 +641,48 @@ func TestWatchEventType_Values(t *testing.T) {
 	}
 }
 
+func TestPatternType_String(t *testing.T) {
+	tests := []struct {
+		name        string
+		patternType PatternType
+		want        string
+	}{
+		{"Glob", PatternTypeGlob, "glob"},
+		{"Regex", PatternTypeRegex, "regex"},
+		{"Exact", PatternTypeExact, "exact"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.patternType.String(); got != tt.want {
+				t.Errorf("PatternType.String() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPatternType_IsValid(t *testing.T) {
+	tests := []struct {
+		name        string
+		patternType PatternType
+		valid       bool
+	}{
+		{"Glob valid", PatternTypeGlob, true},
+		{"Regex valid", PatternTypeRegex, true},
+		{"Exact valid", PatternTypeExact, true},
+		{"Invalid type", PatternType("invalid"), false},
+		{"Empty type", PatternType(""), false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.patternType.IsValid(); got != tt.valid {
+				t.Errorf("PatternType.IsValid() = %v, want %v", got, tt.valid)
+			}
+		})
+	}
+}
+
 func TestPatternType_Values(t *testing.T) {
 	patternTypes := []PatternType{
 		PatternTypeGlob,
@@ -322,6 +707,97 @@ func TestPatternType_Values(t *testing.T) {
 	}
 }
 
+func TestTestExecutionResult_IsSuccessful(t *testing.T) {
+	tests := []struct {
+		name   string
+		result TestExecutionResult
+		want   bool
+	}{
+		{
+			name: "Successful with no error",
+			result: TestExecutionResult{
+				Success:      true,
+				ErrorMessage: "",
+			},
+			want: true,
+		},
+		{
+			name: "Not successful",
+			result: TestExecutionResult{
+				Success:      false,
+				ErrorMessage: "",
+			},
+			want: false,
+		},
+		{
+			name: "Success but has error message",
+			result: TestExecutionResult{
+				Success:      true,
+				ErrorMessage: "warning message",
+			},
+			want: false,
+		},
+		{
+			name: "Not successful with error",
+			result: TestExecutionResult{
+				Success:      false,
+				ErrorMessage: "test failed",
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.result.IsSuccessful(); got != tt.want {
+				t.Errorf("TestExecutionResult.IsSuccessful() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTestExecutionResult_GetTestCount(t *testing.T) {
+	tests := []struct {
+		name      string
+		testPaths []string
+		want      int
+	}{
+		{"No tests", []string{}, 0},
+		{"One test", []string{"test1.go"}, 1},
+		{"Multiple tests", []string{"test1.go", "test2.go", "test3.go"}, 3},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := TestExecutionResult{TestPaths: tt.testPaths}
+			if got := result.GetTestCount(); got != tt.want {
+				t.Errorf("TestExecutionResult.GetTestCount() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTestExecutionResult_HasOutput(t *testing.T) {
+	tests := []struct {
+		name   string
+		output string
+		want   bool
+	}{
+		{"No output", "", false},
+		{"Has output", "test output", true},
+		{"Whitespace output", "   ", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := TestExecutionResult{Output: tt.output}
+			if got := result.HasOutput(); got != tt.want {
+				t.Errorf("TestExecutionResult.HasOutput() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestTestExecutionResult_Duration(t *testing.T) {
 	result := TestExecutionResult{
 		TestPaths: []string{"test1.go", "test2.go"},
@@ -341,5 +817,106 @@ func TestTestExecutionResult_Duration(t *testing.T) {
 
 	if len(result.TestPaths) != 2 {
 		t.Errorf("TestExecutionResult.TestPaths length = %d, want 2", len(result.TestPaths))
+	}
+}
+
+func TestFilePattern_Matches(t *testing.T) {
+	tests := []struct {
+		name    string
+		pattern FilePattern
+		path    string
+		want    bool
+	}{
+		{
+			name: "Exact match",
+			pattern: FilePattern{
+				Pattern: "/test/file.go",
+				Type:    PatternTypeExact,
+			},
+			path: "/test/file.go",
+			want: true,
+		},
+		{
+			name: "Exact no match",
+			pattern: FilePattern{
+				Pattern: "/test/file.go",
+				Type:    PatternTypeExact,
+			},
+			path: "/test/other.go",
+			want: false,
+		},
+		{
+			name: "Glob match",
+			pattern: FilePattern{
+				Pattern: "*test*",
+				Type:    PatternTypeGlob,
+			},
+			path: "/some/test/file.go",
+			want: true,
+		},
+		{
+			name: "Glob no match",
+			pattern: FilePattern{
+				Pattern: "*test*",
+				Type:    PatternTypeGlob,
+			},
+			path: "/some/other/file.go",
+			want: false,
+		},
+		{
+			name: "Regex match",
+			pattern: FilePattern{
+				Pattern: "test",
+				Type:    PatternTypeRegex,
+			},
+			path: "/some/test/file.go",
+			want: true,
+		},
+		{
+			name: "Regex no match",
+			pattern: FilePattern{
+				Pattern: "test",
+				Type:    PatternTypeRegex,
+			},
+			path: "/some/other/file.go",
+			want: false,
+		},
+		{
+			name: "Invalid pattern type",
+			pattern: FilePattern{
+				Pattern: "test",
+				Type:    PatternType("invalid"),
+			},
+			path: "/some/test/file.go",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.pattern.Matches(tt.path); got != tt.want {
+				t.Errorf("FilePattern.Matches() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFilePattern_IsRecursive(t *testing.T) {
+	tests := []struct {
+		name      string
+		recursive bool
+		want      bool
+	}{
+		{"Recursive pattern", true, true},
+		{"Non-recursive pattern", false, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pattern := FilePattern{Recursive: tt.recursive}
+			if got := pattern.IsRecursive(); got != tt.want {
+				t.Errorf("FilePattern.IsRecursive() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
