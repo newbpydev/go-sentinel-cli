@@ -1,0 +1,369 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>lifecycle: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+
+				<option value="file0">github.com/newbpydev/go-sentinel/internal/lifecycle/factory.go (100.0%)</option>
+
+				<option value="file1">github.com/newbpydev/go-sentinel/internal/lifecycle/manager.go (87.3%)</option>
+
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+
+			</div>
+		</div>
+		<div id="content">
+
+		<pre class="file" id="file0" style="display: none">// Package lifecycle provides factory for creating lifecycle managers
+package lifecycle
+
+import (
+        "context"
+        "time"
+)
+
+// DefaultAppLifecycleManagerFactory implements the AppLifecycleManagerFactory interface.
+// This factory follows the Factory pattern and dependency injection principles.
+type DefaultAppLifecycleManagerFactory struct {
+        // Dependencies for creating lifecycle managers
+        defaultContext context.Context
+        defaultTimeout time.Duration
+}
+
+// NewAppLifecycleManagerFactory creates a new lifecycle manager factory.
+func NewAppLifecycleManagerFactory() AppLifecycleManagerFactory <span class="cov8" title="1">{
+        return &amp;DefaultAppLifecycleManagerFactory{
+                defaultContext: context.Background(),
+                defaultTimeout: 30 * time.Second,
+        }
+}</span>
+
+// NewAppLifecycleManagerFactoryWithDependencies creates a factory with injected dependencies.
+func NewAppLifecycleManagerFactoryWithDependencies(deps AppLifecycleManagerDependencies) AppLifecycleManagerFactory <span class="cov8" title="1">{
+        timeout := 30 * time.Second
+        if deps.ShutdownTimeout != "" </span><span class="cov8" title="1">{
+                if parsed, err := time.ParseDuration(deps.ShutdownTimeout); err == nil </span><span class="cov8" title="1">{
+                        timeout = parsed
+                }</span>
+        }
+
+        <span class="cov8" title="1">ctx := deps.Context
+        if ctx == nil </span><span class="cov8" title="1">{
+                ctx = context.Background()
+        }</span>
+
+        <span class="cov8" title="1">return &amp;DefaultAppLifecycleManagerFactory{
+                defaultContext: ctx,
+                defaultTimeout: timeout,
+        }</span>
+}
+
+// CreateLifecycleManager creates a new lifecycle manager with default configuration.
+func (f *DefaultAppLifecycleManagerFactory) CreateLifecycleManager() AppLifecycleManager <span class="cov8" title="1">{
+        manager := NewAppLifecycleManager()
+
+        // Apply factory defaults if we have a concrete implementation
+        if concrete, ok := manager.(*DefaultAppLifecycleManager); ok </span><span class="cov8" title="1">{
+                concrete.SetShutdownTimeout(f.defaultTimeout)
+        }</span>
+
+        <span class="cov8" title="1">return manager</span>
+}
+
+// CreateLifecycleManagerWithContext creates a new lifecycle manager with a custom context.
+func (f *DefaultAppLifecycleManagerFactory) CreateLifecycleManagerWithContext(ctx context.Context) AppLifecycleManager <span class="cov8" title="1">{
+        manager := NewAppLifecycleManagerWithContext(ctx)
+
+        // Apply factory defaults if we have a concrete implementation
+        if concrete, ok := manager.(*DefaultAppLifecycleManager); ok </span><span class="cov8" title="1">{
+                concrete.SetShutdownTimeout(f.defaultTimeout)
+        }</span>
+
+        <span class="cov8" title="1">return manager</span>
+}
+
+// CreateLifecycleManagerWithDefaults creates a lifecycle manager using factory defaults.
+// This method demonstrates the Factory pattern providing sensible defaults.
+func (f *DefaultAppLifecycleManagerFactory) CreateLifecycleManagerWithDefaults() AppLifecycleManager <span class="cov8" title="1">{
+        return f.CreateLifecycleManagerWithContext(f.defaultContext)
+}</span>
+
+// Ensure DefaultAppLifecycleManagerFactory implements AppLifecycleManagerFactory interface
+var _ AppLifecycleManagerFactory = (*DefaultAppLifecycleManagerFactory)(nil)
+</pre>
+
+		<pre class="file" id="file1" style="display: none">// Package lifecycle provides application lifecycle management implementation
+package lifecycle
+
+import (
+        "context"
+        "fmt"
+        "os"
+        "os/signal"
+        "sync"
+        "syscall"
+        "time"
+)
+
+// DefaultAppLifecycleManager implements the AppLifecycleManager interface.
+// This implementation follows the Single Responsibility Principle by focusing only on lifecycle management.
+type DefaultAppLifecycleManager struct {
+        mu              sync.RWMutex
+        isRunning       bool
+        shutdownHooks   []func() error
+        shutdownCh      chan struct{}
+        signalCh        chan os.Signal
+        ctx             context.Context
+        cancel          context.CancelFunc
+        shutdownTimeout time.Duration
+}
+
+// NewAppLifecycleManager creates a new application lifecycle manager with default configuration.
+func NewAppLifecycleManager() AppLifecycleManager <span class="cov8" title="1">{
+        ctx, cancel := context.WithCancel(context.Background())
+
+        return &amp;DefaultAppLifecycleManager{
+                shutdownHooks:   make([]func() error, 0),
+                shutdownCh:      make(chan struct{}),
+                signalCh:        make(chan os.Signal, 1),
+                ctx:             ctx,
+                cancel:          cancel,
+                shutdownTimeout: 30 * time.Second, // Default timeout
+        }
+}</span>
+
+// NewAppLifecycleManagerWithContext creates a new lifecycle manager with custom context.
+func NewAppLifecycleManagerWithContext(ctx context.Context) AppLifecycleManager <span class="cov8" title="1">{
+        managerCtx, cancel := context.WithCancel(ctx)
+
+        return &amp;DefaultAppLifecycleManager{
+                shutdownHooks:   make([]func() error, 0),
+                shutdownCh:      make(chan struct{}),
+                signalCh:        make(chan os.Signal, 1),
+                ctx:             managerCtx,
+                cancel:          cancel,
+                shutdownTimeout: 30 * time.Second, // Default timeout
+        }
+}</span>
+
+// Startup initializes the lifecycle manager and sets up signal handling
+func (lm *DefaultAppLifecycleManager) Startup(ctx context.Context) error <span class="cov8" title="1">{
+        lm.mu.Lock()
+        defer lm.mu.Unlock()
+
+        if lm.isRunning </span><span class="cov8" title="1">{
+                return fmt.Errorf("lifecycle manager is already running")
+        }</span>
+
+        // Setup signal handling for graceful shutdown
+        <span class="cov8" title="1">signal.Notify(lm.signalCh, os.Interrupt, syscall.SIGTERM)
+
+        // Start signal handler goroutine
+        go lm.handleSignals()
+
+        lm.isRunning = true
+        return nil</span>
+}
+
+// Shutdown gracefully stops the lifecycle manager and executes shutdown hooks
+func (lm *DefaultAppLifecycleManager) Shutdown(ctx context.Context) error <span class="cov8" title="1">{
+        lm.mu.Lock()
+        defer lm.mu.Unlock()
+
+        if !lm.isRunning </span><span class="cov8" title="1">{
+                return nil // Already shut down
+        }</span>
+
+        // Stop signal notifications
+        <span class="cov8" title="1">signal.Stop(lm.signalCh)
+
+        // Cancel context
+        lm.cancel()
+
+        // Create timeout context for shutdown
+        shutdownCtx, shutdownCancel := context.WithTimeout(ctx, lm.shutdownTimeout)
+        defer shutdownCancel()
+
+        // Execute shutdown hooks
+        if err := lm.executeShutdownHooks(shutdownCtx); err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("shutdown hooks failed: %w", err)
+        }</span>
+
+        // Close shutdown channel
+        <span class="cov8" title="1">close(lm.shutdownCh)
+
+        lm.isRunning = false
+        return nil</span>
+}
+
+// IsRunning returns whether the lifecycle manager is currently running
+func (lm *DefaultAppLifecycleManager) IsRunning() bool <span class="cov8" title="1">{
+        lm.mu.RLock()
+        defer lm.mu.RUnlock()
+        return lm.isRunning
+}</span>
+
+// RegisterShutdownHook adds a function to be called during shutdown
+func (lm *DefaultAppLifecycleManager) RegisterShutdownHook(hook func() error) <span class="cov8" title="1">{
+        lm.mu.Lock()
+        defer lm.mu.Unlock()
+        lm.shutdownHooks = append(lm.shutdownHooks, hook)
+}</span>
+
+// Context returns the lifecycle context
+func (lm *DefaultAppLifecycleManager) Context() context.Context <span class="cov8" title="1">{
+        return lm.ctx
+}</span>
+
+// ShutdownChannel returns a channel that closes when shutdown is initiated
+func (lm *DefaultAppLifecycleManager) ShutdownChannel() &lt;-chan struct{} <span class="cov8" title="1">{
+        return lm.shutdownCh
+}</span>
+
+// handleSignals handles OS signals for graceful shutdown
+func (lm *DefaultAppLifecycleManager) handleSignals() <span class="cov8" title="1">{
+        select </span>{
+        case sig := &lt;-lm.signalCh:<span class="cov0" title="0">
+                fmt.Printf("\n🛑 Received signal %s, shutting down gracefully...\n", sig)
+
+                // Create shutdown context with timeout
+                shutdownCtx, cancel := context.WithTimeout(context.Background(), lm.shutdownTimeout)
+                defer cancel()
+
+                // Shutdown the application
+                if err := lm.Shutdown(shutdownCtx); err != nil </span><span class="cov0" title="0">{
+                        fmt.Printf("Error during shutdown: %v\n", err)
+                        os.Exit(1)
+                }</span>
+
+                <span class="cov0" title="0">os.Exit(0)</span>
+
+        case &lt;-lm.ctx.Done():<span class="cov8" title="1">
+                // Context was cancelled, normal shutdown
+                return</span>
+        }
+}
+
+// executeShutdownHooks executes all registered shutdown hooks
+func (lm *DefaultAppLifecycleManager) executeShutdownHooks(ctx context.Context) error <span class="cov8" title="1">{
+        // Execute hooks in reverse order (LIFO)
+        for i := len(lm.shutdownHooks) - 1; i &gt;= 0; i-- </span><span class="cov8" title="1">{
+                hook := lm.shutdownHooks[i]
+
+                // Execute hook with timeout
+                done := make(chan error, 1)
+                go func() </span><span class="cov8" title="1">{
+                        done &lt;- hook()
+                }</span>()
+
+                <span class="cov8" title="1">select </span>{
+                case err := &lt;-done:<span class="cov8" title="1">
+                        if err != nil </span><span class="cov8" title="1">{
+                                return fmt.Errorf("shutdown hook failed: %w", err)
+                        }</span>
+                case &lt;-ctx.Done():<span class="cov8" title="1">
+                        return fmt.Errorf("shutdown hook timed out: %w", ctx.Err())</span>
+                }
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// SetShutdownTimeout sets the timeout for shutdown operations
+func (lm *DefaultAppLifecycleManager) SetShutdownTimeout(timeout time.Duration) <span class="cov8" title="1">{
+        lm.mu.Lock()
+        defer lm.mu.Unlock()
+        lm.shutdownTimeout = timeout
+}</span>
+
+// Ensure DefaultAppLifecycleManager implements AppLifecycleManager interface
+var _ AppLifecycleManager = (*DefaultAppLifecycleManager)(nil)
+</pre>
+
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
