@@ -102,7 +102,20 @@ func (d *DefaultAppDashboard) Stop(ctx context.Context) error {
 
 // GetDashboardMetrics returns dashboard metrics
 func (d *DefaultAppDashboard) GetDashboardMetrics() *AppDashboardMetrics {
-	baseMetrics := d.metricsCollector.GetMetrics()
+	var baseMetrics *AppMetrics
+	if d.metricsCollector != nil {
+		baseMetrics = d.metricsCollector.GetMetrics()
+	}
+
+	if baseMetrics == nil {
+		// Return empty metrics if collector is nil or fails
+		baseMetrics = &AppMetrics{
+			ErrorsByType:   make(map[string]int64),
+			CustomCounters: make(map[string]int64),
+			CustomGauges:   make(map[string]float64),
+			CustomTimers:   make(map[string]time.Duration),
+		}
+	}
 
 	return &AppDashboardMetrics{
 		Overview:     d.buildOverviewMetrics(baseMetrics),
@@ -209,9 +222,6 @@ func NewAppAlertManager() *AppAlertManager {
 }
 
 func NewAppTrendAnalyzer(maxDataPoints int) *AppTrendAnalyzer {
-	if maxDataPoints <= 0 {
-		maxDataPoints = 1000
-	}
 	return &AppTrendAnalyzer{
 		HistoricalData: make(map[string][]AppTimeSeriesPoint),
 		MaxDataPoints:  maxDataPoints,
@@ -238,14 +248,20 @@ func (d *DefaultAppDashboard) collectTrendData(ctx context.Context) {
 			return
 		case <-ticker.C:
 			// Collect current metrics and add to trend data
-			metrics := d.metricsCollector.GetMetrics()
-			now := time.Now()
+			if d.metricsCollector != nil {
+				metrics := d.metricsCollector.GetMetrics()
+				if metrics != nil {
+					now := time.Now()
 
-			// Add data points for key metrics
-			d.trendAnalyzer.addDataPoint("test_success_rate", float64(metrics.TestsSucceeded)/float64(metrics.TestsExecuted)*100, now)
-			d.trendAnalyzer.addDataPoint("error_rate", metrics.ErrorRate, now)
-			d.trendAnalyzer.addDataPoint("memory_usage", float64(metrics.MemoryUsage), now)
-			d.trendAnalyzer.addDataPoint("cpu_usage", metrics.CPUUsage, now)
+					// Add data points for key metrics
+					if metrics.TestsExecuted > 0 {
+						d.trendAnalyzer.addDataPoint("test_success_rate", float64(metrics.TestsSucceeded)/float64(metrics.TestsExecuted)*100, now)
+					}
+					d.trendAnalyzer.addDataPoint("error_rate", metrics.ErrorRate, now)
+					d.trendAnalyzer.addDataPoint("memory_usage", float64(metrics.MemoryUsage), now)
+					d.trendAnalyzer.addDataPoint("cpu_usage", metrics.CPUUsage, now)
+				}
+			}
 		}
 	}
 }
@@ -259,9 +275,11 @@ func (d *DefaultAppDashboard) processAlerts(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if d.config.EnableAlerts {
+			if d.config.EnableAlerts && d.metricsCollector != nil {
 				metrics := d.metricsCollector.GetMetrics()
-				d.alertManager.evaluateAlerts(metrics)
+				if metrics != nil {
+					d.alertManager.evaluateAlerts(metrics)
+				}
 			}
 		}
 	}
@@ -276,17 +294,19 @@ func (d *DefaultAppDashboard) updateRealTimeData(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if d.config.EnableRealTime {
+			if d.config.EnableRealTime && d.metricsCollector != nil {
 				metrics := d.metricsCollector.GetMetrics()
-				metricsMap := map[string]interface{}{
-					"tests_executed":  metrics.TestsExecuted,
-					"tests_succeeded": metrics.TestsSucceeded,
-					"tests_failed":    metrics.TestsFailed,
-					"memory_usage":    metrics.MemoryUsage,
-					"cpu_usage":       metrics.CPUUsage,
-					"error_rate":      metrics.ErrorRate,
+				if metrics != nil {
+					metricsMap := map[string]interface{}{
+						"tests_executed":  metrics.TestsExecuted,
+						"tests_succeeded": metrics.TestsSucceeded,
+						"tests_failed":    metrics.TestsFailed,
+						"memory_usage":    metrics.MemoryUsage,
+						"cpu_usage":       metrics.CPUUsage,
+						"error_rate":      metrics.ErrorRate,
+					}
+					d.realTimeData.update(metricsMap)
 				}
-				d.realTimeData.update(metricsMap)
 			}
 		}
 	}
@@ -393,6 +413,11 @@ func (d *DefaultAppDashboard) handleStatic(w http.ResponseWriter, r *http.Reques
 // Helper methods for internal components
 
 func (ta *AppTrendAnalyzer) addDataPoint(metric string, value float64, timestamp time.Time) {
+	// Don't store data if MaxDataPoints is 0 or negative
+	if ta.MaxDataPoints <= 0 {
+		return
+	}
+
 	if ta.HistoricalData[metric] == nil {
 		ta.HistoricalData[metric] = []AppTimeSeriesPoint{}
 	}
@@ -420,6 +445,8 @@ func (am *AppAlertManager) evaluateAlerts(metrics *AppMetrics) {
 			value = float64(metrics.MemoryUsage)
 		case "cpu_usage":
 			value = metrics.CPUUsage
+		case "tests_executed":
+			value = float64(metrics.TestsExecuted)
 		default:
 			continue
 		}
@@ -435,6 +462,8 @@ func (am *AppAlertManager) evaluateAlerts(metrics *AppMetrics) {
 			triggered = value >= rule.Threshold
 		case "lte":
 			triggered = value <= rule.Threshold
+		case "eq":
+			triggered = value == rule.Threshold
 		}
 
 		if triggered {
