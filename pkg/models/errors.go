@@ -275,7 +275,12 @@ func NewTestExecutionError(testPath string, cause error) *SentinelError {
 // NewWatchError creates a watch system error
 func NewWatchError(operation, path string, cause error) *SentinelError {
 	message := fmt.Sprintf("watch operation failed: %s", operation)
-	err := WrapError(cause, ErrorTypeWatch, SeverityError, message)
+	var err *SentinelError
+	if cause != nil {
+		err = WrapError(cause, ErrorTypeWatch, SeverityError, message)
+	} else {
+		err = NewError(ErrorTypeWatch, SeverityError, message)
+	}
 	err.Context.Operation = operation
 	err.Context.Resource = path
 	err.Context.Component = "watcher"

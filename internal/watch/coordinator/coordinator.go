@@ -70,7 +70,7 @@ func (c *Coordinator) Start(ctx context.Context) error {
 
 	// Start the file system watcher
 	if err := c.fsWatcher.Watch(c.ctx, c.eventChannel); err != nil && err != context.Canceled {
-		c.incrementErrorCount()
+		c.status.ErrorCount++ // Direct increment since we already hold the lock
 		return models.NewWatchError("start_file_watcher", "", err).
 			WithContext("component", "file_watcher")
 	}
@@ -124,9 +124,9 @@ func (c *Coordinator) Stop() error {
 // HandleFileChanges implements the WatchCoordinator interface
 func (c *Coordinator) HandleFileChanges(changes []core.FileEvent) error {
 	c.mu.RLock()
-	defer c.mu.RUnlock()
 
 	if !c.status.IsRunning {
+		c.mu.RUnlock()
 		return models.NewWatchError("handle_changes", "", nil).
 			WithContext("reason", "not_running").
 			WithContext("component", "coordinator")
@@ -135,11 +135,16 @@ func (c *Coordinator) HandleFileChanges(changes []core.FileEvent) error {
 	// Update last event time
 	c.status.LastEventTime = time.Now()
 
-	// Trigger tests based on watch mode
-	switch c.options.Mode {
+	// Get values we need while holding the lock
+	mode := c.options.Mode
+	ctx := c.ctx
+	c.mu.RUnlock()
+
+	// Trigger tests based on watch mode (without holding lock)
+	switch mode {
 	case core.WatchAll:
 		for _, change := range changes {
-			if err := c.testTrigger.TriggerTestsForFile(c.ctx, change.Path); err != nil {
+			if err := c.testTrigger.TriggerTestsForFile(ctx, change.Path); err != nil {
 				c.incrementErrorCount()
 				return models.NewWatchError("trigger_tests", change.Path, err).
 					WithContext("mode", "watch_all").
@@ -149,7 +154,7 @@ func (c *Coordinator) HandleFileChanges(changes []core.FileEvent) error {
 
 	case core.WatchChanged:
 		for _, change := range changes {
-			if err := c.testTrigger.TriggerTestsForFile(c.ctx, change.Path); err != nil {
+			if err := c.testTrigger.TriggerTestsForFile(ctx, change.Path); err != nil {
 				c.incrementErrorCount()
 				return models.NewWatchError("trigger_tests", change.Path, err).
 					WithContext("mode", "watch_changed").
@@ -159,7 +164,7 @@ func (c *Coordinator) HandleFileChanges(changes []core.FileEvent) error {
 
 	case core.WatchRelated:
 		for _, change := range changes {
-			if err := c.testTrigger.TriggerRelatedTests(c.ctx, change.Path); err != nil {
+			if err := c.testTrigger.TriggerRelatedTests(ctx, change.Path); err != nil {
 				c.incrementErrorCount()
 				return models.NewWatchError("trigger_related_tests", change.Path, err).
 					WithContext("mode", "watch_related").
@@ -170,7 +175,7 @@ func (c *Coordinator) HandleFileChanges(changes []core.FileEvent) error {
 	default:
 		return models.NewWatchError("handle_changes", "", nil).
 			WithContext("reason", "unknown_mode").
-			WithContext("mode", string(c.options.Mode))
+			WithContext("mode", string(mode))
 	}
 
 	return nil
