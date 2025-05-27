@@ -57,7 +57,7 @@
 
 				<option value="file0">github.com/newbpydev/go-sentinel/internal/watch/coordinator/coordinator.go (100.0%)</option>
 
-				<option value="file1">github.com/newbpydev/go-sentinel/internal/watch/coordinator/watch_coordinator.go (91.9%)</option>
+				<option value="file1">github.com/newbpydev/go-sentinel/internal/watch/coordinator/watch_coordinator.go (96.8%)</option>
 
 				</select>
 			</div>
@@ -452,7 +452,7 @@ func (w *TestWatchCoordinator) Start(ctx context.Context) error <span class="cov
                 case &lt;-ctx.Done():<span class="cov8" title="1">
                         return ctx.Err()</span>
 
-                case debouncedEvents := &lt;-w.debouncer.Events():<span class="cov0" title="0">
+                case debouncedEvents := &lt;-w.debouncer.Events():<span class="cov8" title="1">
                         if err := w.HandleFileChanges(debouncedEvents); err != nil </span><span class="cov0" title="0">{
                                 fmt.Fprintf(w.options.Writer, "Error handling file changes: %v\n", err)
                         }</span>
@@ -506,12 +506,12 @@ func (w *TestWatchCoordinator) HandleFileChanges(changes []core.FileEvent) error
                         w.runAllTests()</span>
 
                 case core.WatchChanged:<span class="cov8" title="1">
-                        if err := w.runTestsForFile(change.Path); err != nil </span><span class="cov0" title="0">{
+                        if err := w.runTestsForFile(change.Path); err != nil </span><span class="cov8" title="1">{
                                 fmt.Fprintf(w.options.Writer, "Error running tests for %s: %v\n", change.Path, err)
                         }</span>
 
                 case core.WatchRelated:<span class="cov8" title="1">
-                        if err := w.runRelatedTests(change.Path); err != nil </span><span class="cov0" title="0">{
+                        if err := w.runRelatedTests(change.Path); err != nil </span><span class="cov8" title="1">{
                                 fmt.Fprintf(w.options.Writer, "Error running related tests for %s: %v\n", change.Path, err)
                         }</span>
                 }
@@ -573,7 +573,7 @@ func (w *TestWatchCoordinator) runTestsForFile(filePath string) error <span clas
                 if err != nil </span><span class="cov8" title="1">{
                         // No specific test file found, run all tests in the package
                         testTargets = []string{filepath.Dir(filePath)}
-                }</span> else<span class="cov0" title="0"> {
+                }</span> else<span class="cov8" title="1"> {
                         testTargets = []string{filepath.Dir(testFile)}
                 }</span>
         }
@@ -647,12 +647,12 @@ func (w *TestWatchCoordinator) executeTests(targets []string) error <span class=
         }</span>
 
         // Process the JSON output if we have a processor configured and there's output
-        <span class="cov8" title="1">if w.processor != nil &amp;&amp; output != "" </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if w.processor != nil &amp;&amp; output != "" </span><span class="cov8" title="1">{
                 if err := w.processor.ProcessJSONOutput(output); err != nil </span><span class="cov0" title="0">{
                         fmt.Fprintf(w.options.Writer, "Error processing test output: %v\n", err)
                 }</span>
 
-                <span class="cov0" title="0">if err := w.processor.RenderResults(true); err != nil </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">if err := w.processor.RenderResults(true); err != nil </span><span class="cov0" title="0">{
                         fmt.Fprintf(w.options.Writer, "Error rendering results: %v\n", err)
                 }</span>
         }
