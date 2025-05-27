@@ -3,7 +3,7 @@
 <html>
 	<head>
 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-		<title>Go Coverage Report</title>
+		<title>monitoring: Go Coverage Report</title>
 		<style>
 			body {
 				background: black;
@@ -55,7 +55,9 @@
 			<div id="nav">
 				<select id="files">
 
-				<option value="file0">C:\Users\Remym\pythonProject\__personal-projects\go-sentinel-cli\internal\monitoring\collector.go (96.7%)</option>
+				<option value="file0">github.com/newbpydev/go-sentinel/internal/monitoring/collector.go (98.4%)</option>
+
+				<option value="file1">github.com/newbpydev/go-sentinel/internal/monitoring/dashboard.go (91.6%)</option>
 
 				</select>
 			</div>
@@ -415,7 +417,7 @@ func (c *DefaultAppMetricsCollector) setupDefaultHealthChecks() <span class="cov
         c.healthChecks["memory"] = func() error </span><span class="cov8" title="1">{
                 var m runtime.MemStats
                 runtime.ReadMemStats(&amp;m)
-                if m.Alloc &gt; 1024*1024*1024 </span><span class="cov0" title="0">{ // 1GB threshold
+                if m.Alloc &gt; 1024*1024*1024 </span><span class="cov8" title="1">{ // 1GB threshold
                         return fmt.Errorf("memory usage too high: %d bytes", m.Alloc)
                 }</span>
                 <span class="cov8" title="1">return nil</span>
@@ -524,7 +526,7 @@ func (c *DefaultAppMetricsCollector) handleMetrics(w http.ResponseWriter, r *htt
         }</span>
 
         <span class="cov8" title="1">data, err := c.ExportMetrics(format)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 http.Error(w, fmt.Sprintf("Error exporting metrics: %v", err), http.StatusInternalServerError)
                 return
         }</span>
@@ -556,6 +558,520 @@ func (c *DefaultAppMetricsCollector) handleReadiness(w http.ResponseWriter, r *h
 func (c *DefaultAppMetricsCollector) handleLiveness(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
         w.WriteHeader(http.StatusOK)
         w.Write([]byte("OK"))
+}</span>
+</pre>
+
+		<pre class="file" id="file1" style="display: none">package monitoring
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "log"
+        "net/http"
+        "sync"
+        "time"
+)
+
+// DefaultAppDashboard implements AppDashboard interface
+type DefaultAppDashboard struct {
+        mu               sync.RWMutex
+        metricsCollector AppMetricsCollector
+        alertManager     *AppAlertManager
+        trendAnalyzer    *AppTrendAnalyzer
+        config           *AppDashboardConfig
+        server           *http.Server
+        websocketClients map[string]*AppWebSocketClient
+        realTimeData     *AppRealTimeData
+}
+
+// DefaultAppDashboardFactory implements AppDashboardFactory interface
+type DefaultAppDashboardFactory struct{}
+
+// NewDefaultAppDashboardFactory creates a new dashboard factory
+func NewDefaultAppDashboardFactory() AppDashboardFactory <span class="cov8" title="1">{
+        return &amp;DefaultAppDashboardFactory{}
+}</span>
+
+// CreateDashboard creates a new dashboard
+func (f *DefaultAppDashboardFactory) CreateDashboard(collector AppMetricsCollector, config *AppDashboardConfig) AppDashboard <span class="cov8" title="1">{
+        if config == nil </span><span class="cov8" title="1">{
+                config = DefaultAppDashboardConfig()
+        }</span>
+
+        <span class="cov8" title="1">dashboard := &amp;DefaultAppDashboard{
+                metricsCollector: collector,
+                alertManager:     NewAppAlertManager(),
+                trendAnalyzer:    NewAppTrendAnalyzer(config.MaxDataPoints),
+                config:           config,
+                websocketClients: make(map[string]*AppWebSocketClient),
+                realTimeData:     NewAppRealTimeData(),
+        }
+
+        // Set up default alert rules
+        dashboard.setupDefaultAlertRules()
+
+        return dashboard</span>
+}
+
+// DefaultAppDashboardConfig returns a sensible default configuration
+func DefaultAppDashboardConfig() *AppDashboardConfig <span class="cov8" title="1">{
+        return &amp;AppDashboardConfig{
+                Port:                3000,
+                RefreshInterval:     5 * time.Second,
+                MaxDataPoints:       1000,
+                EnableRealTime:      true,
+                EnableAlerts:        true,
+                ChartRetentionHours: 24,
+                Theme:               "auto",
+        }
+}</span>
+
+// Start starts the dashboard
+func (d *DefaultAppDashboard) Start(ctx context.Context) error <span class="cov8" title="1">{
+        log.Printf("Starting dashboard on port %d", d.config.Port)
+
+        // Start background processes
+        go d.collectTrendData(ctx)
+        go d.processAlerts(ctx)
+        go d.updateRealTimeData(ctx)
+
+        // Start HTTP server
+        mux := http.NewServeMux()
+        d.setupRoutes(mux)
+
+        d.server = &amp;http.Server{
+                Addr:    fmt.Sprintf(":%d", d.config.Port),
+                Handler: mux,
+        }
+
+        go func() </span><span class="cov8" title="1">{
+                if err := d.server.ListenAndServe(); err != nil &amp;&amp; err != http.ErrServerClosed </span><span class="cov0" title="0">{
+                        log.Printf("Dashboard server error: %v", err)
+                }</span>
+        }()
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Stop stops the dashboard
+func (d *DefaultAppDashboard) Stop(ctx context.Context) error <span class="cov8" title="1">{
+        if d.server != nil </span><span class="cov8" title="1">{
+                log.Println("Shutting down dashboard server...")
+                return d.server.Shutdown(ctx)
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+// GetDashboardMetrics returns dashboard metrics
+func (d *DefaultAppDashboard) GetDashboardMetrics() *AppDashboardMetrics <span class="cov8" title="1">{
+        var baseMetrics *AppMetrics
+        if d.metricsCollector != nil </span><span class="cov8" title="1">{
+                baseMetrics = d.metricsCollector.GetMetrics()
+        }</span>
+
+        <span class="cov8" title="1">if baseMetrics == nil </span><span class="cov8" title="1">{
+                // Return empty metrics if collector is nil or fails
+                baseMetrics = &amp;AppMetrics{
+                        ErrorsByType:   make(map[string]int64),
+                        CustomCounters: make(map[string]int64),
+                        CustomGauges:   make(map[string]float64),
+                        CustomTimers:   make(map[string]time.Duration),
+                }
+        }</span>
+
+        <span class="cov8" title="1">return &amp;AppDashboardMetrics{
+                Overview:     d.buildOverviewMetrics(baseMetrics),
+                Performance:  d.buildPerformanceMetrics(baseMetrics),
+                TestMetrics:  d.buildTestMetrics(baseMetrics),
+                SystemHealth: d.buildSystemHealthMetrics(baseMetrics),
+                Trends:       d.buildTrendMetrics(),
+                Alerts:       []*AppAlert{},
+        }</span>
+}
+
+// ExportDashboardData exports dashboard data
+func (d *DefaultAppDashboard) ExportDashboardData(format string) ([]byte, error) <span class="cov8" title="1">{
+        metrics := d.GetDashboardMetrics()
+
+        switch format </span>{
+        case "json":<span class="cov8" title="1">
+                return json.MarshalIndent(metrics, "", "  ")</span>
+        default:<span class="cov8" title="1">
+                return json.MarshalIndent(metrics, "", "  ")</span>
+        }
+}
+
+// Private helper methods
+
+func (d *DefaultAppDashboard) buildOverviewMetrics(base *AppMetrics) *AppOverviewMetrics <span class="cov8" title="1">{
+        successRate := float64(0)
+        if base.TestsExecuted &gt; 0 </span><span class="cov8" title="1">{
+                successRate = float64(base.TestsSucceeded) / float64(base.TestsExecuted) * 100
+        }</span>
+
+        <span class="cov8" title="1">return &amp;AppOverviewMetrics{
+                SystemStatus:   "healthy",
+                Uptime:         base.Uptime,
+                TotalTests:     base.TestsExecuted,
+                SuccessRate:    successRate,
+                AverageTime:    base.AverageTestTime,
+                ActiveAlerts:   0,
+                CriticalAlerts: 0,
+                CurrentVersion: "1.0.0",
+        }</span>
+}
+
+func (d *DefaultAppDashboard) buildPerformanceMetrics(base *AppMetrics) *AppPerformanceMetrics <span class="cov8" title="1">{
+        cacheHitRate := float64(0)
+        total := base.CacheHits + base.CacheMisses
+        if total &gt; 0 </span><span class="cov8" title="1">{
+                cacheHitRate = float64(base.CacheHits) / float64(total) * 100
+        }</span>
+
+        <span class="cov8" title="1">return &amp;AppPerformanceMetrics{
+                MemoryUsage:    base.MemoryUsage / 1024 / 1024, // Convert to MB
+                CPUUsage:       base.CPUUsage,
+                GoroutineCount: base.GoroutineCount,
+                CacheHitRate:   cacheHitRate,
+                ResponseTime:   base.ProcessingDuration,
+                ErrorRate:      base.ErrorRate,
+        }</span>
+}
+
+func (d *DefaultAppDashboard) buildTestMetrics(base *AppMetrics) *AppTestSummaryMetrics <span class="cov8" title="1">{
+        return &amp;AppTestSummaryMetrics{
+                TotalExecutions: base.TestsExecuted,
+                PassedTests:     base.TestsSucceeded,
+                FailedTests:     base.TestsFailed,
+                SkippedTests:    base.TestsSkipped,
+                Flakiness:       2.5, // Placeholder
+                TopFailures:     []string{"test1", "test2"},
+                SlowestTests:    []string{"slow_test1", "slow_test2"},
+        }
+}</span>
+
+func (d *DefaultAppDashboard) buildSystemHealthMetrics(base *AppMetrics) *AppSystemHealthMetrics <span class="cov8" title="1">{
+        return &amp;AppSystemHealthMetrics{
+                NetworkStatus:    "CONNECTED",
+                DependencyStatus: map[string]string{"database": "HEALTHY"},
+                ServiceStatus:    map[string]string{"test_runner": "RUNNING"},
+                HealthScore:      95.5,
+                RecentIncidents:  []AppIncidentSummary{},
+        }
+}</span>
+
+func (d *DefaultAppDashboard) buildTrendMetrics() *AppTrendMetrics <span class="cov8" title="1">{
+        return &amp;AppTrendMetrics{
+                PerformanceTrend: "STABLE",
+                TestSuccessTrend: "IMPROVING",
+                ErrorTrend:       "STABLE",
+                UsageTrend:       "INCREASING",
+                TrendCharts:      make(map[string][]AppTimeSeriesPoint),
+                Predictions:      make(map[string]float64),
+        }
+}</span>
+
+// Constructor functions for dashboard components
+
+func NewAppAlertManager() *AppAlertManager <span class="cov8" title="1">{
+        return &amp;AppAlertManager{
+                ActiveAlerts:    make(map[string]*AppAlert),
+                AlertRules:      []*AppAlertRule{},
+                WebhookURLs:     []string{},
+                SilencedAlerts:  make(map[string]time.Time),
+                EscalationRules: make(map[string]*AppEscalationRule),
+        }
+}</span>
+
+func NewAppTrendAnalyzer(maxDataPoints int) *AppTrendAnalyzer <span class="cov8" title="1">{
+        return &amp;AppTrendAnalyzer{
+                HistoricalData: make(map[string][]AppTimeSeriesPoint),
+                MaxDataPoints:  maxDataPoints,
+        }
+}</span>
+
+func NewAppRealTimeData() *AppRealTimeData <span class="cov8" title="1">{
+        return &amp;AppRealTimeData{
+                CurrentMetrics: make(map[string]interface{}),
+                LastUpdate:     time.Now(),
+                Subscribers:    make(map[string][]*AppWebSocketClient),
+        }
+}</span>
+
+// Dashboard background processes
+
+func (d *DefaultAppDashboard) collectTrendData(ctx context.Context) <span class="cov8" title="1">{
+        // Ensure minimum interval to prevent panic
+        interval := d.config.RefreshInterval
+        if interval &lt;= 0 </span><span class="cov8" title="1">{
+                interval = 1 * time.Second // Default minimum interval
+        }</span>
+
+        <span class="cov8" title="1">ticker := time.NewTicker(interval)
+        defer ticker.Stop()
+
+        for </span><span class="cov8" title="1">{
+                select </span>{
+                case &lt;-ctx.Done():<span class="cov8" title="1">
+                        return</span>
+                case &lt;-ticker.C:<span class="cov8" title="1">
+                        // Collect current metrics and add to trend data
+                        if d.metricsCollector != nil </span><span class="cov8" title="1">{
+                                metrics := d.metricsCollector.GetMetrics()
+                                if metrics != nil </span><span class="cov8" title="1">{
+                                        now := time.Now()
+
+                                        // Add data points for key metrics
+                                        if metrics.TestsExecuted &gt; 0 </span><span class="cov8" title="1">{
+                                                d.trendAnalyzer.addDataPoint("test_success_rate", float64(metrics.TestsSucceeded)/float64(metrics.TestsExecuted)*100, now)
+                                        }</span>
+                                        <span class="cov8" title="1">d.trendAnalyzer.addDataPoint("error_rate", metrics.ErrorRate, now)
+                                        d.trendAnalyzer.addDataPoint("memory_usage", float64(metrics.MemoryUsage), now)
+                                        d.trendAnalyzer.addDataPoint("cpu_usage", metrics.CPUUsage, now)</span>
+                                }
+                        }
+                }
+        }
+}
+
+func (d *DefaultAppDashboard) processAlerts(ctx context.Context) <span class="cov8" title="1">{
+        ticker := time.NewTicker(30 * time.Second) // Check alerts every 30 seconds
+        defer ticker.Stop()
+
+        for </span><span class="cov8" title="1">{
+                select </span>{
+                case &lt;-ctx.Done():<span class="cov8" title="1">
+                        return</span>
+                case &lt;-ticker.C:<span class="cov0" title="0">
+                        if d.config.EnableAlerts &amp;&amp; d.metricsCollector != nil </span><span class="cov0" title="0">{
+                                metrics := d.metricsCollector.GetMetrics()
+                                if metrics != nil </span><span class="cov0" title="0">{
+                                        d.alertManager.evaluateAlerts(metrics)
+                                }</span>
+                        }
+                }
+        }
+}
+
+func (d *DefaultAppDashboard) updateRealTimeData(ctx context.Context) <span class="cov8" title="1">{
+        ticker := time.NewTicker(1 * time.Second) // Update real-time data every second
+        defer ticker.Stop()
+
+        for </span><span class="cov8" title="1">{
+                select </span>{
+                case &lt;-ctx.Done():<span class="cov8" title="1">
+                        return</span>
+                case &lt;-ticker.C:<span class="cov0" title="0">
+                        if d.config.EnableRealTime &amp;&amp; d.metricsCollector != nil </span><span class="cov0" title="0">{
+                                metrics := d.metricsCollector.GetMetrics()
+                                if metrics != nil </span><span class="cov0" title="0">{
+                                        metricsMap := map[string]interface{}{
+                                                "tests_executed":  metrics.TestsExecuted,
+                                                "tests_succeeded": metrics.TestsSucceeded,
+                                                "tests_failed":    metrics.TestsFailed,
+                                                "memory_usage":    metrics.MemoryUsage,
+                                                "cpu_usage":       metrics.CPUUsage,
+                                                "error_rate":      metrics.ErrorRate,
+                                        }
+                                        d.realTimeData.update(metricsMap)
+                                }</span>
+                        }
+                }
+        }
+}
+
+func (d *DefaultAppDashboard) setupRoutes(mux *http.ServeMux) <span class="cov8" title="1">{
+        mux.HandleFunc("/", d.handleDashboard)
+        mux.HandleFunc("/api/metrics", d.handleAPIMetrics)
+        mux.HandleFunc("/api/alerts", d.handleAPIAlerts)
+        mux.HandleFunc("/api/trends", d.handleAPITrends)
+        mux.HandleFunc("/api/export", d.handleAPIExport)
+        mux.HandleFunc("/ws", d.handleWebSocket)
+        mux.HandleFunc("/static/", d.handleStatic)
+}</span>
+
+func (d *DefaultAppDashboard) setupDefaultAlertRules() <span class="cov8" title="1">{
+        // Error rate alert
+        d.alertManager.AlertRules = append(d.alertManager.AlertRules, &amp;AppAlertRule{
+                Name:        "high_error_rate",
+                Description: "Error rate is above threshold",
+                Metric:      "error_rate",
+                Operator:    "gt",
+                Threshold:   5.0,
+                Duration:    5 * time.Minute,
+                Severity:    "HIGH",
+                Labels:      map[string]string{"component": "test_runner"},
+                Actions: []AppAlertAction{
+                        {Type: "log", Config: map[string]interface{}{"level": "warn"}},
+                },
+        })
+
+        // Memory usage alert
+        d.alertManager.AlertRules = append(d.alertManager.AlertRules, &amp;AppAlertRule{
+                Name:        "high_memory_usage",
+                Description: "Memory usage is above threshold",
+                Metric:      "memory_usage",
+                Operator:    "gt",
+                Threshold:   500 * 1024 * 1024, // 500MB
+                Duration:    2 * time.Minute,
+                Severity:    "MEDIUM",
+                Labels:      map[string]string{"component": "system"},
+                Actions: []AppAlertAction{
+                        {Type: "log", Config: map[string]interface{}{"level": "warn"}},
+                },
+        })
+}</span>
+
+// HTTP handlers
+
+func (d *DefaultAppDashboard) handleDashboard(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        w.Header().Set("Content-Type", "text/html")
+        w.Write([]byte(`&lt;!DOCTYPE html&gt;&lt;html&gt;&lt;head&gt;&lt;title&gt;Go Sentinel Dashboard&lt;/title&gt;&lt;/head&gt;&lt;body&gt;&lt;h1&gt;Go Sentinel Monitoring Dashboard&lt;/h1&gt;&lt;p&gt;Dashboard is running. Use /api/metrics for metrics data.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;`))
+}</span>
+
+func (d *DefaultAppDashboard) handleAPIMetrics(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        metrics := d.GetDashboardMetrics()
+        data, _ := json.MarshalIndent(metrics, "", "  ")
+        w.Header().Set("Content-Type", "application/json")
+        w.Write(data)
+}</span>
+
+func (d *DefaultAppDashboard) handleAPIAlerts(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        alerts := d.alertManager.getActiveAlerts()
+        data, _ := json.MarshalIndent(alerts, "", "  ")
+        w.Header().Set("Content-Type", "application/json")
+        w.Write(data)
+}</span>
+
+func (d *DefaultAppDashboard) handleAPITrends(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        trends := d.buildTrendMetrics()
+        data, _ := json.MarshalIndent(trends, "", "  ")
+        w.Header().Set("Content-Type", "application/json")
+        w.Write(data)
+}</span>
+
+func (d *DefaultAppDashboard) handleAPIExport(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        format := r.URL.Query().Get("format")
+        if format == "" </span><span class="cov0" title="0">{
+                format = "json"
+        }</span>
+
+        <span class="cov8" title="1">data, err := d.ExportDashboardData(format)
+        if err != nil </span><span class="cov0" title="0">{
+                http.Error(w, fmt.Sprintf("Export error: %v", err), http.StatusInternalServerError)
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+        w.Write(data)</span>
+}
+
+func (d *DefaultAppDashboard) handleWebSocket(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        // WebSocket placeholder - would implement with gorilla/websocket or similar
+        w.Header().Set("Content-Type", "application/json")
+        w.Write([]byte(`{"status":"websocket_not_implemented"}`))
+}</span>
+
+func (d *DefaultAppDashboard) handleStatic(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        // Static file serving placeholder
+        w.Header().Set("Content-Type", "text/plain")
+        w.Write([]byte("Static files not implemented"))
+}</span>
+
+// Helper methods for internal components
+
+func (ta *AppTrendAnalyzer) addDataPoint(metric string, value float64, timestamp time.Time) <span class="cov8" title="1">{
+        // Don't store data if MaxDataPoints is 0 or negative
+        if ta.MaxDataPoints &lt;= 0 </span><span class="cov8" title="1">{
+                return
+        }</span>
+
+        <span class="cov8" title="1">if ta.HistoricalData[metric] == nil </span><span class="cov8" title="1">{
+                ta.HistoricalData[metric] = []AppTimeSeriesPoint{}
+        }</span>
+
+        // Add new data point
+        <span class="cov8" title="1">ta.HistoricalData[metric] = append(ta.HistoricalData[metric], AppTimeSeriesPoint{
+                Timestamp: timestamp,
+                Value:     value,
+        })
+
+        // Trim to max data points
+        if len(ta.HistoricalData[metric]) &gt; ta.MaxDataPoints </span><span class="cov8" title="1">{
+                ta.HistoricalData[metric] = ta.HistoricalData[metric][1:]
+        }</span>
+}
+
+func (am *AppAlertManager) evaluateAlerts(metrics *AppMetrics) <span class="cov8" title="1">{
+        // Clear previous alerts to avoid accumulation
+        am.ActiveAlerts = make(map[string]*AppAlert)
+
+        for _, rule := range am.AlertRules </span><span class="cov8" title="1">{
+                var value float64
+
+                switch rule.Metric </span>{
+                case "error_rate":<span class="cov8" title="1">
+                        value = metrics.ErrorRate</span>
+                case "memory_usage":<span class="cov8" title="1">
+                        value = float64(metrics.MemoryUsage)</span>
+                case "cpu_usage":<span class="cov8" title="1">
+                        value = metrics.CPUUsage</span>
+                case "tests_executed":<span class="cov8" title="1">
+                        value = float64(metrics.TestsExecuted)</span>
+                case "tests_succeeded":<span class="cov8" title="1">
+                        value = float64(metrics.TestsSucceeded)</span>
+                case "tests_failed":<span class="cov8" title="1">
+                        value = float64(metrics.TestsFailed)</span>
+                case "goroutine_count":<span class="cov8" title="1">
+                        value = float64(metrics.GoroutineCount)</span>
+                default:<span class="cov8" title="1">
+                        continue</span>
+                }
+
+                // Simple threshold evaluation
+                <span class="cov8" title="1">triggered := false
+                switch rule.Operator </span>{
+                case "gt":<span class="cov8" title="1">
+                        triggered = value &gt; rule.Threshold</span>
+                case "lt":<span class="cov8" title="1">
+                        triggered = value &lt; rule.Threshold</span>
+                case "gte":<span class="cov8" title="1">
+                        triggered = value &gt;= rule.Threshold</span>
+                case "lte":<span class="cov8" title="1">
+                        triggered = value &lt;= rule.Threshold</span>
+                case "eq":<span class="cov8" title="1">
+                        triggered = value == rule.Threshold</span>
+                }
+
+                <span class="cov8" title="1">if triggered </span><span class="cov8" title="1">{
+                        alertID := fmt.Sprintf("%s-%d", rule.Name, time.Now().Unix())
+                        am.ActiveAlerts[alertID] = &amp;AppAlert{
+                                ID:          alertID,
+                                Name:        rule.Name,
+                                Description: rule.Description,
+                                Severity:    rule.Severity,
+                                Status:      "FIRING",
+                                StartTime:   time.Now(),
+                                Value:       value,
+                                Threshold:   rule.Threshold,
+                                Labels:      rule.Labels,
+                        }
+                }</span>
+        }
+}
+
+func (am *AppAlertManager) getActiveAlerts() []*AppAlert <span class="cov8" title="1">{
+        alerts := []*AppAlert{}
+        for _, alert := range am.ActiveAlerts </span><span class="cov8" title="1">{
+                alerts = append(alerts, alert)
+        }</span>
+        <span class="cov8" title="1">return alerts</span>
+}
+
+func (rtd *AppRealTimeData) update(metrics map[string]interface{}) <span class="cov8" title="1">{
+        rtd.CurrentMetrics = metrics
+        rtd.LastUpdate = time.Now()
 }</span>
 </pre>
 
