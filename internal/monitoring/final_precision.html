@@ -1,0 +1,591 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+
+				<option value="file0">C:\Users\Remym\pythonProject\__personal-projects\go-sentinel-cli\internal\monitoring\collector.go (96.7%)</option>
+
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+
+			</div>
+		</div>
+		<div id="content">
+
+		<pre class="file" id="file0" style="display: none">package monitoring
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "log"
+        "net/http"
+        "os"
+        "runtime"
+        "sync"
+        "time"
+
+        "github.com/newbpydev/go-sentinel/pkg/events"
+        "github.com/newbpydev/go-sentinel/pkg/models"
+)
+
+// DefaultAppMetricsCollector implements AppMetricsCollector interface
+type DefaultAppMetricsCollector struct {
+        mu           sync.RWMutex
+        metrics      *AppMetrics
+        startTime    time.Time
+        httpServer   *http.Server
+        healthChecks map[string]AppHealthCheckFunc
+        eventBus     events.EventBus
+        config       *AppMonitoringConfig
+}
+
+// DefaultAppMetricsCollectorFactory implements AppMetricsCollectorFactory interface
+type DefaultAppMetricsCollectorFactory struct{}
+
+// NewDefaultAppMetricsCollectorFactory creates a new metrics collector factory
+func NewDefaultAppMetricsCollectorFactory() AppMetricsCollectorFactory <span class="cov8" title="1">{
+        return &amp;DefaultAppMetricsCollectorFactory{}
+}</span>
+
+// CreateMetricsCollector creates a new metrics collector
+func (f *DefaultAppMetricsCollectorFactory) CreateMetricsCollector(config *AppMonitoringConfig, eventBus events.EventBus) AppMetricsCollector <span class="cov8" title="1">{
+        if config == nil </span><span class="cov8" title="1">{
+                config = DefaultAppMonitoringConfig()
+        }</span>
+
+        <span class="cov8" title="1">collector := &amp;DefaultAppMetricsCollector{
+                metrics: &amp;AppMetrics{
+                        ErrorsByType:   make(map[string]int64),
+                        CustomCounters: make(map[string]int64),
+                        CustomGauges:   make(map[string]float64),
+                        CustomTimers:   make(map[string]time.Duration),
+                },
+                startTime:    time.Now(),
+                healthChecks: make(map[string]AppHealthCheckFunc),
+                eventBus:     eventBus,
+                config:       config,
+        }
+
+        // Set up default health checks
+        collector.setupDefaultHealthChecks()
+
+        // Subscribe to events for automatic metrics collection
+        collector.subscribeToEvents()
+
+        return collector</span>
+}
+
+// DefaultAppMonitoringConfig returns a sensible default configuration
+func DefaultAppMonitoringConfig() *AppMonitoringConfig <span class="cov8" title="1">{
+        return &amp;AppMonitoringConfig{
+                Enabled:         true,
+                MetricsPort:     8080,
+                HealthPort:      8081,
+                MetricsInterval: 30 * time.Second,
+                EnableProfiling: false,
+                EnableTracing:   false,
+                ExportFormat:    "json",
+                RetentionPeriod: 24 * time.Hour,
+                AlertThresholds: AppAlertThresholds{
+                        ErrorRatePercent:    5.0,
+                        MemoryUsageMB:       500,
+                        ResponseTimeMs:      1000 * time.Millisecond,
+                        CacheHitRatePercent: 80.0,
+                },
+        }
+}</span>
+
+// Start starts the metrics collector
+func (c *DefaultAppMetricsCollector) Start(ctx context.Context) error <span class="cov8" title="1">{
+        if !c.config.Enabled </span><span class="cov8" title="1">{
+                log.Println("Monitoring disabled, skipping start")
+                return nil
+        }</span>
+
+        <span class="cov8" title="1">log.Printf("Starting monitoring system on ports %d (metrics) and %d (health)",
+                c.config.MetricsPort, c.config.HealthPort)
+
+        // Start metrics collection
+        go c.collectMetricsPeriodically(ctx)
+
+        // Start HTTP servers for metrics and health endpoints
+        if err := c.startHTTPServers(); err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to start HTTP servers: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">log.Println("Monitoring system started successfully")
+        return nil</span>
+}
+
+// Stop gracefully shuts down the monitoring system
+func (c *DefaultAppMetricsCollector) Stop(ctx context.Context) error <span class="cov8" title="1">{
+        if c.httpServer != nil </span><span class="cov8" title="1">{
+                log.Println("Shutting down monitoring HTTP server...")
+                return c.httpServer.Shutdown(ctx)
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+// RecordTestExecution records metrics for a test execution
+func (c *DefaultAppMetricsCollector) RecordTestExecution(result *models.TestResult, duration time.Duration) <span class="cov8" title="1">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+
+        c.metrics.TestsExecuted++
+        c.metrics.TotalExecutionTime += duration
+
+        // Handle nil result gracefully
+        if result != nil </span><span class="cov8" title="1">{
+                switch result.Status </span>{
+                case models.TestStatusPassed:<span class="cov8" title="1">
+                        c.metrics.TestsSucceeded++</span>
+                case models.TestStatusFailed:<span class="cov8" title="1">
+                        c.metrics.TestsFailed++</span>
+                case models.TestStatusSkipped:<span class="cov8" title="1">
+                        c.metrics.TestsSkipped++</span>
+                }
+        }
+
+        // Calculate average test time
+        <span class="cov8" title="1">if c.metrics.TestsExecuted &gt; 0 </span><span class="cov8" title="1">{
+                c.metrics.AverageTestTime = c.metrics.TotalExecutionTime / time.Duration(c.metrics.TestsExecuted)
+        }</span>
+
+        <span class="cov8" title="1">c.metrics.LastUpdate = time.Now()</span>
+}
+
+// RecordFileChange records metrics for file changes
+func (c *DefaultAppMetricsCollector) RecordFileChange(changeType string) <span class="cov8" title="1">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+
+        c.metrics.FileChangesDetected++
+        c.metrics.LastUpdate = time.Now()
+}</span>
+
+// RecordCacheOperation records cache hit/miss metrics
+func (c *DefaultAppMetricsCollector) RecordCacheOperation(hit bool) <span class="cov8" title="1">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+
+        if hit </span><span class="cov8" title="1">{
+                c.metrics.CacheHits++
+        }</span> else<span class="cov8" title="1"> {
+                c.metrics.CacheMisses++
+        }</span>
+        <span class="cov8" title="1">c.metrics.LastUpdate = time.Now()</span>
+}
+
+// RecordError records error metrics
+func (c *DefaultAppMetricsCollector) RecordError(errorType string, err error) <span class="cov8" title="1">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+
+        c.metrics.ErrorsTotal++
+        if c.metrics.ErrorsByType[errorType] == 0 </span><span class="cov8" title="1">{
+                c.metrics.ErrorsByType[errorType] = 0
+        }</span>
+        <span class="cov8" title="1">c.metrics.ErrorsByType[errorType]++
+
+        // Calculate error rate
+        if c.metrics.TestsExecuted &gt; 0 </span><span class="cov8" title="1">{
+                c.metrics.ErrorRate = float64(c.metrics.ErrorsTotal) / float64(c.metrics.TestsExecuted) * 100
+        }</span>
+
+        <span class="cov8" title="1">c.metrics.LastUpdate = time.Now()</span>
+}
+
+// IncrementCustomCounter increments a custom counter metric
+func (c *DefaultAppMetricsCollector) IncrementCustomCounter(name string, value int64) <span class="cov8" title="1">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+
+        c.metrics.CustomCounters[name] += value
+        c.metrics.LastUpdate = time.Now()
+}</span>
+
+// SetCustomGauge sets a custom gauge metric
+func (c *DefaultAppMetricsCollector) SetCustomGauge(name string, value float64) <span class="cov8" title="1">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+
+        c.metrics.CustomGauges[name] = value
+        c.metrics.LastUpdate = time.Now()
+}</span>
+
+// RecordCustomTimer records a custom timer metric
+func (c *DefaultAppMetricsCollector) RecordCustomTimer(name string, duration time.Duration) <span class="cov8" title="1">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+
+        c.metrics.CustomTimers[name] = duration
+        c.metrics.LastUpdate = time.Now()
+}</span>
+
+// GetMetrics returns a copy of current metrics
+func (c *DefaultAppMetricsCollector) GetMetrics() *AppMetrics <span class="cov8" title="1">{
+        c.mu.RLock()
+        defer c.mu.RUnlock()
+
+        // Update runtime metrics
+        c.updateRuntimeMetrics()
+
+        // Create a deep copy
+        metricsCopy := *c.metrics
+        metricsCopy.ErrorsByType = make(map[string]int64)
+        for k, v := range c.metrics.ErrorsByType </span><span class="cov8" title="1">{
+                metricsCopy.ErrorsByType[k] = v
+        }</span>
+
+        <span class="cov8" title="1">metricsCopy.CustomCounters = make(map[string]int64)
+        for k, v := range c.metrics.CustomCounters </span><span class="cov8" title="1">{
+                metricsCopy.CustomCounters[k] = v
+        }</span>
+
+        <span class="cov8" title="1">metricsCopy.CustomGauges = make(map[string]float64)
+        for k, v := range c.metrics.CustomGauges </span><span class="cov8" title="1">{
+                metricsCopy.CustomGauges[k] = v
+        }</span>
+
+        <span class="cov8" title="1">metricsCopy.CustomTimers = make(map[string]time.Duration)
+        for k, v := range c.metrics.CustomTimers </span><span class="cov8" title="1">{
+                metricsCopy.CustomTimers[k] = v
+        }</span>
+
+        <span class="cov8" title="1">return &amp;metricsCopy</span>
+}
+
+// ExportMetrics exports metrics in the specified format
+func (c *DefaultAppMetricsCollector) ExportMetrics(format string) ([]byte, error) <span class="cov8" title="1">{
+        metrics := c.GetMetrics()
+
+        switch format </span>{
+        case "json":<span class="cov8" title="1">
+                return json.MarshalIndent(metrics, "", "  ")</span>
+        default:<span class="cov8" title="1">
+                return json.MarshalIndent(metrics, "", "  ")</span>
+        }
+}
+
+// GetHealthStatus returns the current health status
+func (c *DefaultAppMetricsCollector) GetHealthStatus() *AppHealthStatus <span class="cov8" title="1">{
+        status := &amp;AppHealthStatus{
+                Status:      "healthy",
+                Checks:      make(map[string]AppCheckResult),
+                LastCheck:   time.Now(),
+                Uptime:      time.Since(c.startTime),
+                Version:     "1.0.0",
+                Environment: "development",
+        }
+
+        // Run all health checks
+        for name, check := range c.healthChecks </span><span class="cov8" title="1">{
+                start := time.Now()
+
+                // Handle nil check gracefully
+                if check == nil </span><span class="cov8" title="1">{
+                        status.Checks[name] = AppCheckResult{
+                                Status:  "unknown",
+                                Message: "Health check function is nil",
+                                Latency: time.Since(start),
+                        }
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">err := check()
+                latency := time.Since(start)
+
+                if err != nil </span><span class="cov8" title="1">{
+                        status.Checks[name] = AppCheckResult{
+                                Status:  "unhealthy",
+                                Message: err.Error(),
+                                Latency: latency,
+                        }
+                        status.Status = "unhealthy"
+                }</span> else<span class="cov8" title="1"> {
+                        status.Checks[name] = AppCheckResult{
+                                Status:  "healthy",
+                                Message: "OK",
+                                Latency: latency,
+                        }
+                }</span>
+        }
+
+        <span class="cov8" title="1">return status</span>
+}
+
+// AddHealthCheck adds a custom health check
+func (c *DefaultAppMetricsCollector) AddHealthCheck(name string, check AppHealthCheckFunc) <span class="cov8" title="1">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+        c.healthChecks[name] = check
+}</span>
+
+// Private methods
+
+func (c *DefaultAppMetricsCollector) updateRuntimeMetrics() <span class="cov8" title="1">{
+        var m runtime.MemStats
+        runtime.ReadMemStats(&amp;m)
+
+        c.metrics.MemoryUsage = int64(m.Alloc)
+        c.metrics.GoroutineCount = runtime.NumGoroutine()
+        c.metrics.Uptime = time.Since(c.startTime)
+}</span>
+
+func (c *DefaultAppMetricsCollector) collectMetricsPeriodically(ctx context.Context) <span class="cov8" title="1">{
+        // Ensure minimum interval to prevent panic
+        interval := c.config.MetricsInterval
+        if interval &lt;= 0 </span><span class="cov8" title="1">{
+                interval = 1 * time.Second // Default minimum interval
+        }</span>
+
+        <span class="cov8" title="1">ticker := time.NewTicker(interval)
+        defer ticker.Stop()
+
+        for </span><span class="cov8" title="1">{
+                select </span>{
+                case &lt;-ctx.Done():<span class="cov8" title="1">
+                        return</span>
+                case &lt;-ticker.C:<span class="cov8" title="1">
+                        c.updateRuntimeMetrics()</span>
+                }
+        }
+}
+
+func (c *DefaultAppMetricsCollector) setupDefaultHealthChecks() <span class="cov8" title="1">{
+        // Add basic system health checks
+        c.healthChecks["memory"] = func() error </span><span class="cov8" title="1">{
+                var m runtime.MemStats
+                runtime.ReadMemStats(&amp;m)
+                if m.Alloc &gt; 1024*1024*1024 </span><span class="cov0" title="0">{ // 1GB threshold
+                        return fmt.Errorf("memory usage too high: %d bytes", m.Alloc)
+                }</span>
+                <span class="cov8" title="1">return nil</span>
+        }
+
+        <span class="cov8" title="1">c.healthChecks["goroutines"] = func() error </span><span class="cov8" title="1">{
+                count := runtime.NumGoroutine()
+                if count &gt; 1000 </span><span class="cov8" title="1">{ // 1000 goroutines threshold
+                        return fmt.Errorf("too many goroutines: %d", count)
+                }</span>
+                <span class="cov8" title="1">return nil</span>
+        }
+
+        <span class="cov8" title="1">c.healthChecks["disk"] = func() error </span><span class="cov8" title="1">{
+                // Basic disk space check - can be enhanced
+                if _, err := os.Stat("."); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("cannot access current directory: %w", err)
+                }</span>
+                <span class="cov8" title="1">return nil</span>
+        }
+}
+
+func (c *DefaultAppMetricsCollector) subscribeToEvents() <span class="cov8" title="1">{
+        if c.eventBus == nil </span><span class="cov8" title="1">{
+                return
+        }</span>
+
+        // Subscribe to test events
+        <span class="cov8" title="1">testHandler := &amp;simpleEventHandler{
+                handlerFunc: func(ctx context.Context, event events.Event) error </span><span class="cov8" title="1">{
+                        if event.Type() == "test.completed" </span><span class="cov8" title="1">{
+                                // Extract test result from event data
+                                if data, ok := event.Data().(map[string]interface{}); ok </span><span class="cov8" title="1">{
+                                        if result, ok := data["result"].(*models.TestResult); ok </span><span class="cov8" title="1">{
+                                                if duration, ok := data["duration"].(time.Duration); ok </span><span class="cov8" title="1">{
+                                                        c.RecordTestExecution(result, duration)
+                                                }</span>
+                                        }
+                                }
+                        }
+                        <span class="cov8" title="1">return nil</span>
+                },
+        }
+
+        <span class="cov8" title="1">c.eventBus.Subscribe("test.completed", testHandler)
+
+        // Subscribe to file change events
+        fileHandler := &amp;simpleEventHandler{
+                handlerFunc: func(ctx context.Context, event events.Event) error </span><span class="cov8" title="1">{
+                        if event.Type() == "file.changed" </span><span class="cov8" title="1">{
+                                c.RecordFileChange("file_change")
+                        }</span>
+                        <span class="cov8" title="1">return nil</span>
+                },
+        }
+
+        <span class="cov8" title="1">c.eventBus.Subscribe("file.changed", fileHandler)</span>
+}
+
+type simpleEventHandler struct {
+        handlerFunc func(context.Context, events.Event) error
+}
+
+func (h *simpleEventHandler) Handle(ctx context.Context, event events.Event) error <span class="cov8" title="1">{
+        return h.handlerFunc(ctx, event)
+}</span>
+
+func (h *simpleEventHandler) CanHandle(event events.Event) bool <span class="cov8" title="1">{
+        return true
+}</span>
+
+func (h *simpleEventHandler) Priority() int <span class="cov8" title="1">{
+        return 0
+}</span>
+
+func (c *DefaultAppMetricsCollector) startHTTPServers() error <span class="cov8" title="1">{
+        mux := http.NewServeMux()
+        mux.HandleFunc("/metrics", c.handleMetrics)
+        mux.HandleFunc("/health", c.handleHealth)
+        mux.HandleFunc("/health/ready", c.handleReadiness)
+        mux.HandleFunc("/health/live", c.handleLiveness)
+
+        c.httpServer = &amp;http.Server{
+                Addr:    fmt.Sprintf(":%d", c.config.MetricsPort),
+                Handler: mux,
+        }
+
+        // Check if port is valid before starting server
+        if c.config.MetricsPort &lt; 0 || c.config.MetricsPort &gt; 65535 </span><span class="cov8" title="1">{
+                return fmt.Errorf("invalid port number: %d", c.config.MetricsPort)
+        }</span>
+
+        <span class="cov8" title="1">go func() </span><span class="cov8" title="1">{
+                if err := c.httpServer.ListenAndServe(); err != nil &amp;&amp; err != http.ErrServerClosed </span><span class="cov8" title="1">{
+                        log.Printf("HTTP server error: %v", err)
+                }</span>
+        }()
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+func (c *DefaultAppMetricsCollector) handleMetrics(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        format := r.URL.Query().Get("format")
+        if format == "" </span><span class="cov8" title="1">{
+                format = c.config.ExportFormat
+        }</span>
+
+        <span class="cov8" title="1">data, err := c.ExportMetrics(format)
+        if err != nil </span><span class="cov0" title="0">{
+                http.Error(w, fmt.Sprintf("Error exporting metrics: %v", err), http.StatusInternalServerError)
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+        w.Write(data)</span>
+}
+
+func (c *DefaultAppMetricsCollector) handleHealth(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        status := c.GetHealthStatus()
+        data, err := json.MarshalIndent(status, "", "  ")
+        if err != nil </span><span class="cov0" title="0">{
+                http.Error(w, fmt.Sprintf("Error marshaling health status: %v", err), http.StatusInternalServerError)
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+        if status.Status != "healthy" </span><span class="cov8" title="1">{
+                w.WriteHeader(http.StatusServiceUnavailable)
+        }</span>
+        <span class="cov8" title="1">w.Write(data)</span>
+}
+
+func (c *DefaultAppMetricsCollector) handleReadiness(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        w.WriteHeader(http.StatusOK)
+        w.Write([]byte("OK"))
+}</span>
+
+func (c *DefaultAppMetricsCollector) handleLiveness(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        w.WriteHeader(http.StatusOK)
+        w.Write([]byte("OK"))
+}</span>
+</pre>
+
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

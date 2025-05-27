@@ -239,7 +239,13 @@ func NewAppRealTimeData() *AppRealTimeData {
 // Dashboard background processes
 
 func (d *DefaultAppDashboard) collectTrendData(ctx context.Context) {
-	ticker := time.NewTicker(d.config.RefreshInterval)
+	// Ensure minimum interval to prevent panic
+	interval := d.config.RefreshInterval
+	if interval <= 0 {
+		interval = 1 * time.Second // Default minimum interval
+	}
+
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for {
@@ -435,6 +441,9 @@ func (ta *AppTrendAnalyzer) addDataPoint(metric string, value float64, timestamp
 }
 
 func (am *AppAlertManager) evaluateAlerts(metrics *AppMetrics) {
+	// Clear previous alerts to avoid accumulation
+	am.ActiveAlerts = make(map[string]*AppAlert)
+
 	for _, rule := range am.AlertRules {
 		var value float64
 
@@ -447,6 +456,12 @@ func (am *AppAlertManager) evaluateAlerts(metrics *AppMetrics) {
 			value = metrics.CPUUsage
 		case "tests_executed":
 			value = float64(metrics.TestsExecuted)
+		case "tests_succeeded":
+			value = float64(metrics.TestsSucceeded)
+		case "tests_failed":
+			value = float64(metrics.TestsFailed)
+		case "goroutine_count":
+			value = float64(metrics.GoroutineCount)
 		default:
 			continue
 		}

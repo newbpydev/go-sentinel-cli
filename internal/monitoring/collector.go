@@ -121,13 +121,16 @@ func (c *DefaultAppMetricsCollector) RecordTestExecution(result *models.TestResu
 	c.metrics.TestsExecuted++
 	c.metrics.TotalExecutionTime += duration
 
-	switch result.Status {
-	case models.TestStatusPassed:
-		c.metrics.TestsSucceeded++
-	case models.TestStatusFailed:
-		c.metrics.TestsFailed++
-	case models.TestStatusSkipped:
-		c.metrics.TestsSkipped++
+	// Handle nil result gracefully
+	if result != nil {
+		switch result.Status {
+		case models.TestStatusPassed:
+			c.metrics.TestsSucceeded++
+		case models.TestStatusFailed:
+			c.metrics.TestsFailed++
+		case models.TestStatusSkipped:
+			c.metrics.TestsSkipped++
+		}
 	}
 
 	// Calculate average test time
@@ -265,6 +268,17 @@ func (c *DefaultAppMetricsCollector) GetHealthStatus() *AppHealthStatus {
 	// Run all health checks
 	for name, check := range c.healthChecks {
 		start := time.Now()
+
+		// Handle nil check gracefully
+		if check == nil {
+			status.Checks[name] = AppCheckResult{
+				Status:  "unknown",
+				Message: "Health check function is nil",
+				Latency: time.Since(start),
+			}
+			continue
+		}
+
 		err := check()
 		latency := time.Since(start)
 
@@ -306,7 +320,13 @@ func (c *DefaultAppMetricsCollector) updateRuntimeMetrics() {
 }
 
 func (c *DefaultAppMetricsCollector) collectMetricsPeriodically(ctx context.Context) {
-	ticker := time.NewTicker(c.config.MetricsInterval)
+	// Ensure minimum interval to prevent panic
+	interval := c.config.MetricsInterval
+	if interval <= 0 {
+		interval = 1 * time.Second // Default minimum interval
+	}
+
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for {
@@ -338,7 +358,7 @@ func (c *DefaultAppMetricsCollector) setupDefaultHealthChecks() {
 		return nil
 	}
 
-	c.healthChecks["disk_space"] = func() error {
+	c.healthChecks["disk"] = func() error {
 		// Basic disk space check - can be enhanced
 		if _, err := os.Stat("."); err != nil {
 			return fmt.Errorf("cannot access current directory: %w", err)
@@ -397,7 +417,7 @@ func (h *simpleEventHandler) CanHandle(event events.Event) bool {
 }
 
 func (h *simpleEventHandler) Priority() int {
-	return 1
+	return 0
 }
 
 func (c *DefaultAppMetricsCollector) startHTTPServers() error {
@@ -410,6 +430,11 @@ func (c *DefaultAppMetricsCollector) startHTTPServers() error {
 	c.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%d", c.config.MetricsPort),
 		Handler: mux,
+	}
+
+	// Check if port is valid before starting server
+	if c.config.MetricsPort < 0 || c.config.MetricsPort > 65535 {
+		return fmt.Errorf("invalid port number: %d", c.config.MetricsPort)
 	}
 
 	go func() {
@@ -453,11 +478,11 @@ func (c *DefaultAppMetricsCollector) handleHealth(w http.ResponseWriter, r *http
 }
 
 func (c *DefaultAppMetricsCollector) handleReadiness(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"status":"ready"}`))
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
 }
 
 func (c *DefaultAppMetricsCollector) handleLiveness(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"status":"alive"}`))
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
 }
