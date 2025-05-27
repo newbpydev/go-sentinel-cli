@@ -35,38 +35,68 @@ func (pm *PatternMatcher) MatchesAny(path string, patterns []string) bool {
 
 // MatchesPattern implements the PatternMatcher interface
 func (pm *PatternMatcher) MatchesPattern(path string, pattern string) bool {
-	// Normalize pattern
-	pattern = filepath.ToSlash(pattern)
+	if path == "" || pattern == "" {
+		return false
+	}
 
-	// Try exact filename match first (most common case)
-	matched, err := filepath.Match(pattern, filepath.Base(path))
-	if err == nil && matched {
+	// Normalize paths for cross-platform compatibility
+	normalizedPath := filepath.ToSlash(path)
+	normalizedPattern := filepath.ToSlash(pattern)
+
+	// Exact match first
+	if normalizedPath == normalizedPattern {
 		return true
 	}
 
-	// Check for directory patterns with ** (recursive)
-	if strings.Contains(pattern, "**") {
-		parts := strings.Split(pattern, "**")
-		if len(parts) == 2 && strings.HasPrefix(path, parts[0]) {
+	// Check exact filename match
+	if filepath.Base(normalizedPath) == normalizedPattern {
+		return true
+	}
+
+	// Wildcard matching using filepath.Match for filename
+	if matched, err := filepath.Match(normalizedPattern, filepath.Base(normalizedPath)); err == nil && matched {
+		return true
+	}
+
+	// Full path wildcard matching
+	if matched, err := filepath.Match(normalizedPattern, normalizedPath); err == nil && matched {
+		return true
+	}
+
+	// Directory pattern matching
+	pathComponents := strings.Split(normalizedPath, "/")
+
+	// Check if pattern matches any directory component
+	for _, component := range pathComponents {
+		if component == normalizedPattern {
+			return true
+		}
+		// Wildcard match against directory component
+		if matched, err := filepath.Match(normalizedPattern, component); err == nil && matched {
 			return true
 		}
 	}
 
-	// Check for exact directory matches
-	if strings.Contains(path, "/"+pattern+"/") || strings.HasPrefix(path, pattern+"/") {
+	// Directory prefix matching (src/ should match src/main.go)
+	if strings.HasSuffix(normalizedPattern, "/") {
+		prefix := strings.TrimSuffix(normalizedPattern, "/")
+		if strings.HasPrefix(normalizedPath, prefix+"/") {
+			return true
+		}
+	}
+
+	// Directory contains matching (src should match src/main.go)
+	if strings.Contains(normalizedPath, "/"+normalizedPattern+"/") ||
+		strings.HasPrefix(normalizedPath, normalizedPattern+"/") {
 		return true
 	}
 
-	// Check for wildcard directory patterns (e.g., "*.log", ".git/*")
-	if strings.Contains(pattern, "*") {
-		if matched, err := filepath.Match(pattern, path); err == nil && matched {
-			return true
-		}
-
-		// Check if pattern matches any directory component
-		pathParts := strings.Split(path, "/")
-		for _, part := range pathParts {
-			if matched, err := filepath.Match(pattern, part); err == nil && matched {
+	// Recursive pattern matching (**)
+	if strings.Contains(normalizedPattern, "**") {
+		parts := strings.Split(normalizedPattern, "**")
+		if len(parts) >= 2 {
+			prefix := strings.TrimSuffix(parts[0], "/")
+			if prefix == "" || strings.Contains(normalizedPath, prefix) {
 				return true
 			}
 		}

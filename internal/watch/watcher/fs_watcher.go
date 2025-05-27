@@ -106,6 +106,10 @@ func (w *FileSystemWatcher) Watch(ctx context.Context, events chan<- core.FileEv
 // AddPath adds a new path to be monitored
 // Implements core.FileSystemWatcher.AddPath
 func (w *FileSystemWatcher) AddPath(path string) error {
+	if path == "" {
+		return fmt.Errorf("path cannot be empty")
+	}
+
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return fmt.Errorf("failed to get absolute path for %s: %w", path, err)
@@ -161,6 +165,10 @@ func (w *FileSystemWatcher) AddPath(path string) error {
 // RemovePath removes a path from monitoring
 // Implements core.FileSystemWatcher.RemovePath
 func (w *FileSystemWatcher) RemovePath(path string) error {
+	if path == "" {
+		return fmt.Errorf("path cannot be empty")
+	}
+
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return fmt.Errorf("failed to get absolute path for %s: %w", path, err)
@@ -190,27 +198,13 @@ func (w *FileSystemWatcher) Close() error {
 
 // matchesAnyPattern checks if a path matches any of the provided patterns
 func (w *FileSystemWatcher) matchesAnyPattern(path string, patterns []string) bool {
-	for _, pattern := range patterns {
-		// Simple pattern matching - could be enhanced with more sophisticated matching
-		if strings.Contains(path, pattern) {
-			return true
-		}
-
-		// Handle glob-like patterns
-		if strings.HasPrefix(pattern, "*") && strings.HasSuffix(path, pattern[1:]) {
-			return true
-		}
-
-		if strings.HasSuffix(pattern, "*") && strings.HasPrefix(path, pattern[:len(pattern)-1]) {
-			return true
-		}
-
-		// Exact match
-		if path == pattern {
-			return true
-		}
+	if len(patterns) == 0 {
+		return false
 	}
-	return false
+
+	// Use PatternMatcher for consistent pattern matching
+	matcher := NewPatternMatcher()
+	return matcher.MatchesAny(path, patterns)
 }
 
 // eventTypeString converts fsnotify operation to string
@@ -247,6 +241,10 @@ func NewTestFileFinder(rootDir string) *TestFileFinder {
 // FindTestFile finds the test file corresponding to the given implementation file
 // Implements core.TestFileFinder.FindTestFile
 func (f *TestFileFinder) FindTestFile(filePath string) (string, error) {
+	if filePath == "" {
+		return "", fmt.Errorf("file path cannot be empty")
+	}
+
 	// If it's already a test file, just return it
 	if strings.HasSuffix(filePath, "_test.go") {
 		return filePath, nil
@@ -271,6 +269,10 @@ func (f *TestFileFinder) FindTestFile(filePath string) (string, error) {
 // FindImplementationFile finds the implementation file for a given test file
 // Implements core.TestFileFinder.FindImplementationFile
 func (f *TestFileFinder) FindImplementationFile(testPath string) (string, error) {
+	if testPath == "" {
+		return "", fmt.Errorf("test path cannot be empty")
+	}
+
 	if !strings.HasSuffix(testPath, "_test.go") {
 		return "", fmt.Errorf("not a test file: %s", testPath)
 	}
@@ -293,6 +295,10 @@ func (f *TestFileFinder) FindImplementationFile(testPath string) (string, error)
 // FindPackageTests finds all test files in the same package as the given file
 // Implements core.TestFileFinder.FindPackageTests
 func (f *TestFileFinder) FindPackageTests(filePath string) ([]string, error) {
+	if filePath == "" {
+		return nil, fmt.Errorf("file path cannot be empty")
+	}
+
 	dir := filepath.Dir(filePath)
 
 	// Read all files in the directory
