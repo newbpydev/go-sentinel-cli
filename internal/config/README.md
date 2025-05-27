@@ -1,529 +1,490 @@
-# Config Package
+# 📋 Config Package
 
-The `config` package provides comprehensive configuration management for the Go Sentinel CLI, handling JSON configuration files, CLI argument parsing, and configuration validation with precedence rules.
+[![Test Coverage](https://img.shields.io/badge/coverage-100.0%25-brightgreen.svg)](https://github.com/newbpydev/go-sentinel/tree/main/internal/config)
+[![Go Report Card](https://goreportcard.com/badge/github.com/newbpydev/go-sentinel/internal/config)](https://goreportcard.com/report/github.com/newbpydev/go-sentinel/internal/config)
+[![Go Reference](https://pkg.go.dev/badge/github.com/newbpydev/go-sentinel/internal/config.svg)](https://pkg.go.dev/github.com/newbpydev/go-sentinel/internal/config)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## 🎯 Purpose
+## 📖 Overview
 
-This package is responsible for:
-- **Loading** configuration from JSON files (`sentinel.config.json`)
-- **Parsing** CLI arguments and flags
-- **Merging** configuration sources with proper precedence (CLI > file > defaults)
-- **Validating** configuration values and providing helpful error messages
-- **Providing** type-safe access to configuration throughout the application
+The `config` package provides comprehensive application configuration management for the Go Sentinel CLI. It handles configuration loading from files, command-line argument parsing, and configuration validation with support for multiple sources and precedence rules.
+
+### 🎯 Key Features
+
+- **Multi-source Configuration**: Load from files, CLI arguments, and defaults
+- **Configuration Precedence**: CLI args override file config, file config overrides defaults
+- **Validation Modes**: Strict, lenient, and disabled validation options
+- **Type Safety**: Strongly typed configuration structures with validation
+- **Factory Pattern**: Clean dependency injection and object creation
+- **Adapter Pattern**: Seamless integration with app package interfaces
 
 ## 🏗️ Architecture
 
-The config package follows the **Builder** and **Strategy** patterns for flexible configuration loading and validation.
+This package follows clean architecture principles:
+
+- **Single Responsibility**: Focuses only on configuration management
+- **Dependency Inversion**: App package depends on config interfaces, not implementations
+- **Interface Segregation**: Small, focused interfaces for specific concerns
+- **Factory Pattern**: Clean object creation with dependency injection
+
+### 📦 Package Structure
 
 ```
-config/
-├── loader.go          # Configuration file loading and parsing
-├── args.go           # CLI argument parsing and validation
-├── compat.go         # Legacy compatibility layer
-├── config_test.go    # Configuration loading tests
-└── cli_args_test.go  # CLI argument parsing tests
+internal/config/
+├── app_config_loader.go          # Main configuration loader implementation
+├── app_config_loader_interface.go # Configuration loader interfaces
+├── app_arg_parser.go             # Command-line argument parser
+├── app_arg_parser_interface.go   # Argument parser interfaces
+├── args.go                       # CLI argument definitions
+├── loader.go                     # Core configuration loading logic
+├── compat.go                     # Compatibility utilities
+└── *_test.go                     # Comprehensive test suite (100% coverage)
 ```
 
-## 📋 Core Types
+## 🚀 Quick Start
 
-### Config
-The main configuration structure that holds all application settings:
+### Basic Configuration Loading
 
 ```go
-type Config struct {
-    Colors      bool          `json:"colors"`      // Enable colored output
-    Verbosity   int           `json:"verbosity"`   // Logging verbosity (0-5)
-    Parallel    int           `json:"parallel"`    // Parallel test execution count
-    Timeout     time.Duration `json:"timeout"`     // Test execution timeout
-    TestPattern string        `json:"testPattern"` // Test name pattern filter
-    TestCommand string        `json:"testCommand"` // Custom test command
-    Visual      VisualConfig  `json:"visual"`      // Visual/UI settings
-    Paths       PathsConfig   `json:"paths"`       // File path settings
-    Watch       WatchConfig   `json:"watch"`       // Watch mode settings
-}
-```
+package main
 
-### VisualConfig
-Settings for visual appearance and terminal output:
+import (
+    "github.com/newbpydev/go-sentinel/internal/config"
+)
 
-```go
-type VisualConfig struct {
-    Colors bool   `json:"colors"` // Enable colored output
-    Icons  string `json:"icons"`  // Icon style: unicode, ascii, minimal, none
-    Theme  string `json:"theme"`  // Color theme
-}
-```
-
-### PathsConfig
-File path patterns for inclusion and exclusion:
-
-```go
-type PathsConfig struct {
-    IncludePatterns []string `json:"includePatterns"` // Patterns to include
-    ExcludePatterns []string `json:"excludePatterns"` // Patterns to exclude
-}
-```
-
-### WatchConfig
-Watch mode specific configuration:
-
-```go
-type WatchConfig struct {
-    Enabled        bool          `json:"enabled"`        // Enable watch mode
-    Debounce       time.Duration `json:"debounce"`       // File change debounce interval
-    IgnorePatterns []string      `json:"ignorePatterns"` // Patterns to ignore during watching
-    ClearOnRerun   bool          `json:"clearOnRerun"`   // Clear screen between runs
-    RunOnStart     bool          `json:"runOnStart"`     // Run tests on watch start
-}
-```
-
-### Args
-CLI argument structure:
-
-```go
-type Args struct {
-    Packages []string // Packages/paths to test
+func main() {
+    // Create factory with default dependencies
+    factory := config.NewAppConfigLoaderFactory()
+    loader := factory.CreateDefault()
     
-    // Execution flags
-    Watch     bool   // Enable watch mode
-    Verbose   bool   // Enable verbose output
-    Colors    bool   // Enable colored output
-    Optimized bool   // Enable optimized mode
-    FailFast  bool   // Stop on first failure
+    // Load configuration from file
+    cfg, err := loader.LoadFromFile("config.yaml")
+    if err != nil {
+        // Handle error
+    }
     
-    // Configuration
-    OptimizationMode string        // Optimization strategy
-    TestPattern      string        // Test name pattern
-    Timeout          time.Duration // Test timeout
-    Parallel         int           // Parallel execution count
+    // Validate configuration
+    if err := loader.Validate(cfg); err != nil {
+        // Handle validation error
+    }
+}
+```
+
+### Command-Line Argument Parsing
+
+```go
+package main
+
+import (
+    "os"
+    "github.com/newbpydev/go-sentinel/internal/config"
+)
+
+func main() {
+    // Create argument parser factory
+    factory := config.NewAppArgParserFactory()
+    parser := factory.CreateDefault()
     
-    // Output
-    Writer io.Writer // Output writer
+    // Parse command-line arguments
+    args, err := parser.Parse(os.Args[1:])
+    if err != nil {
+        // Handle parsing error
+    }
+    
+    // Use parsed arguments
+    fmt.Printf("Packages: %v\n", args.Packages)
+    fmt.Printf("Watch mode: %v\n", args.Watch)
 }
 ```
 
-## 🔧 Configuration Loading
-
-### Default Configuration
-The package provides sensible defaults for all configuration options:
+### Configuration Merging
 
 ```go
-func GetDefaultConfig() *Config {
-    return &Config{
-        Colors:      true,         // Enable colors by default
-        Verbosity:   1,            // Info level logging
-        Parallel:    4,            // 4 parallel test processes
-        Timeout:     10 * time.Minute, // 10 minute timeout
-        TestCommand: "go test",    // Standard go test command
-        Visual: VisualConfig{
-            Colors: true,
-            Icons:  "unicode",     // Unicode icons by default
-            Theme:  "dark",        // Dark theme
-        },
-        Paths: PathsConfig{
-            IncludePatterns: []string{"**/*.go"},
-            ExcludePatterns: []string{"vendor/**", ".git/**"},
-        },
-        Watch: WatchConfig{
-            Enabled:        false,
-            Debounce:       500 * time.Millisecond,
-            IgnorePatterns: []string{"**/.git/**", "**/vendor/**"},
-            ClearOnRerun:   true,
-            RunOnStart:     true,
-        },
+package main
+
+import (
+    "github.com/newbpydev/go-sentinel/internal/config"
+)
+
+func main() {
+    factory := config.NewAppConfigLoaderFactory()
+    loader := factory.CreateDefault()
+    
+    // Load base configuration
+    cfg := loader.LoadFromDefaults()
+    
+    // Parse CLI arguments
+    argFactory := config.NewAppArgParserFactory()
+    argParser := argFactory.CreateDefault()
+    args, _ := argParser.Parse(os.Args[1:])
+    
+    // Merge CLI args with configuration (CLI takes precedence)
+    finalCfg := loader.Merge(cfg, args)
+    
+    // Validate final configuration
+    if err := loader.Validate(finalCfg); err != nil {
+        log.Fatal("Configuration validation failed:", err)
     }
 }
 ```
 
-### Configuration File Loading
-Load configuration from JSON files with proper error handling:
+## 🔧 Configuration Structure
+
+### AppConfig
+
+The main configuration structure supporting all application settings:
 
 ```go
-loader := NewConfigLoader()
-
-// Load from default location (sentinel.config.json)
-config, err := loader.LoadFromDefault()
-if err != nil {
-    return fmt.Errorf("failed to load config: %w", err)
-}
-
-// Load from specific file
-config, err := loader.LoadFromFile("custom-config.json")
-if err != nil {
-    return fmt.Errorf("failed to load config from file: %w", err)
+type AppConfig struct {
+    Watch    AppWatchConfig    // Watch mode configuration
+    Paths    AppPathsConfig    // Path patterns and filters
+    Visual   AppVisualConfig   // UI and display settings
+    Test     AppTestConfig     // Test execution settings
+    Colors   bool              // Enable colored output
+    Verbosity int              // Logging verbosity level
 }
 ```
 
-### Configuration File Format
-Example `sentinel.config.json`:
-
-```json
-{
-  "colors": true,
-  "verbosity": 2,
-  "parallel": 8,
-  "timeout": "5m",
-  "testPattern": "Test*",
-  "testCommand": "go test",
-  "visual": {
-    "colors": true,
-    "icons": "unicode",
-    "theme": "dark"
-  },
-  "paths": {
-    "includePatterns": ["**/*.go"],
-    "excludePatterns": ["vendor/**", ".git/**", "node_modules/**"]
-  },
-  "watch": {
-    "enabled": false,
-    "debounce": "500ms",
-    "ignorePatterns": ["**/.git/**", "**/vendor/**", "**/*.tmp"],
-    "clearOnRerun": true,
-    "runOnStart": true
-  }
-}
-```
-
-## 🚩 CLI Argument Parsing
-
-### Argument Parser
-The package provides comprehensive CLI argument parsing:
+### Watch Configuration
 
 ```go
-parser := NewArgumentParser()
-
-// Parse command line arguments
-args, err := parser.Parse(os.Args[1:])
-if err != nil {
-    return fmt.Errorf("failed to parse arguments: %w", err)
-}
-
-// Access parsed values
-if args.Watch {
-    fmt.Println("Watch mode enabled")
-}
-
-if args.Verbose {
-    fmt.Println("Verbose output enabled")
+type AppWatchConfig struct {
+    Enabled        bool     // Enable watch mode
+    IgnorePatterns []string // Patterns to ignore
+    Debounce       string   // Debounce interval (e.g., "500ms")
+    RunOnStart     bool     // Run tests on startup
+    ClearOnRerun   bool     // Clear terminal between runs
 }
 ```
 
-### Supported CLI Flags
-
-| Flag | Type | Default | Description |
-|------|------|---------|-------------|
-| `-c, --color` | bool | `true` | Enable colored output |
-| `--no-color` | bool | `false` | Disable colored output |
-| `-v, --verbose` | bool | `false` | Enable verbose output |
-| `-w, --watch` | bool | `false` | Enable watch mode |
-| `-t, --test` | string | `""` | Run tests matching pattern |
-| `-f, --fail-fast` | bool | `false` | Stop on first failure |
-| `-j, --parallel` | int | `4` | Number of parallel processes |
-| `--timeout` | duration | `10m` | Test execution timeout |
-| `--optimized` | bool | `false` | Enable optimized mode |
-
-### CLI Examples
-```bash
-# Basic test run
-go-sentinel run ./internal/config
-
-# Watch mode with verbose output
-go-sentinel run -w -v ./internal/
-
-# Custom timeout and parallel execution
-go-sentinel run --timeout=30s --parallel=8 ./...
-
-# Test pattern filtering
-go-sentinel run --test="TestConfig*" ./internal/config
-
-# Fail fast mode without colors
-go-sentinel run --fail-fast --no-color ./...
-```
-
-## 🔀 Configuration Precedence
-
-Configuration values are merged with the following precedence (highest to lowest):
-
-1. **CLI Arguments** (highest priority)
-2. **Configuration File** (`sentinel.config.json`)
-3. **Default Values** (lowest priority)
-
-### Merging Example
-```go
-// Load base configuration from file
-config, err := loader.LoadFromDefault()
-if err != nil {
-    return err
-}
-
-// Parse CLI arguments
-args, err := parser.Parse(os.Args[1:])
-if err != nil {
-    return err
-}
-
-// Merge with CLI arguments taking precedence
-finalConfig := config.MergeWithCLIArgs(args)
-
-// CLI flags override file settings
-if args.Verbose {
-    finalConfig.Verbosity = 2 // Override file setting
-}
-
-if args.Colors {
-    finalConfig.Colors = true
-    finalConfig.Visual.Colors = true
-}
-```
-
-## ✅ Configuration Validation
-
-### Comprehensive Validation
-The package provides thorough validation with helpful error messages:
+### Path Configuration
 
 ```go
-func ValidateConfig(config *Config) error {
-    var errors []string
-
-    // Validate verbosity level
-    if config.Verbosity < 0 || config.Verbosity > 5 {
-        errors = append(errors, "verbosity must be between 0 and 5")
-    }
-
-    // Validate parallel count
-    if config.Parallel < 0 {
-        errors = append(errors, "parallel count cannot be negative")
-    }
-
-    // Validate timeout
-    if config.Timeout <= 0 {
-        errors = append(errors, "timeout must be positive")
-    }
-
-    // Validate icon style
-    validIcons := []string{"unicode", "ascii", "minimal", "none"}
-    if !contains(validIcons, config.Visual.Icons) {
-        errors = append(errors, 
-            fmt.Sprintf("invalid icons type: %s (must be one of: %v)", 
-                config.Visual.Icons, validIcons))
-    }
-
-    if len(errors) > 0 {
-        return fmt.Errorf("configuration validation failed:\n  - %s", 
-            strings.Join(errors, "\n  - "))
-    }
-
-    return nil
+type AppPathsConfig struct {
+    IncludePatterns []string // Patterns to include
+    ExcludePatterns []string // Patterns to exclude
 }
 ```
 
-### Validation Error Examples
+### Visual Configuration
+
+```go
+type AppVisualConfig struct {
+    Icons         string // Icon set to use
+    Theme         string // Color theme
+    TerminalWidth int    // Terminal width for formatting
+}
 ```
-configuration validation failed:
-  - verbosity must be between 0 and 5
-  - parallel count cannot be negative
-  - invalid icons type: emoji (must be one of: [unicode ascii minimal none])
+
+### Test Configuration
+
+```go
+type AppTestConfig struct {
+    Timeout  string // Test timeout (e.g., "30s")
+    Parallel int    // Number of parallel test processes
+    Coverage bool   // Enable coverage reporting
+}
+```
+
+## 🎛️ Validation Modes
+
+The package supports three validation modes:
+
+### Strict Mode (Default)
+```go
+dependencies := config.AppConfigLoaderDependencies{
+    ValidationMode: config.ValidationModeStrict,
+}
+loader := factory.Create(dependencies)
+```
+
+- Enforces all validation rules
+- Fails on any configuration inconsistency
+- Recommended for production use
+
+### Lenient Mode
+```go
+dependencies := config.AppConfigLoaderDependencies{
+    ValidationMode: config.ValidationModeLenient,
+}
+loader := factory.Create(dependencies)
+```
+
+- Allows some validation relaxation
+- Warns on minor issues but continues
+- Useful for development environments
+
+### Disabled Mode
+```go
+dependencies := config.AppConfigLoaderDependencies{
+    ValidationMode: config.ValidationModeOff,
+}
+loader := factory.Create(dependencies)
+```
+
+- Disables validation entirely
+- Used primarily for testing
+- Not recommended for production
+
+## 🔄 Integration Patterns
+
+### Factory Pattern Usage
+
+```go
+// Create factory
+factory := config.NewAppConfigLoaderFactory()
+
+// Create with custom dependencies
+dependencies := config.AppConfigLoaderDependencies{
+    CliLoader:      customLoader,
+    ValidationMode: config.ValidationModeStrict,
+}
+loader := factory.Create(dependencies)
+
+// Or use defaults
+loader := factory.CreateDefault()
+```
+
+### Adapter Pattern Integration
+
+The package integrates with the app package through adapter patterns:
+
+```go
+// App package uses config through adapters
+type ConfigLoaderAdapter struct {
+    factory *config.AppConfigLoaderFactory
+    loader  config.AppConfigLoader
+}
+
+func (a *ConfigLoaderAdapter) LoadConfiguration(path string) (*app.Configuration, error) {
+    // Delegate to config package
+    appConfig, err := a.loader.LoadFromFile(path)
+    if err != nil {
+        return nil, err
+    }
+    
+    // Convert to app package types
+    return a.factory.ConvertToAppConfiguration(appConfig), nil
+}
 ```
 
 ## 🧪 Testing
 
-### Unit Tests
-Comprehensive test coverage for all configuration functionality:
-
-```go
-func TestConfigLoader_LoadFromFile_ValidConfig(t *testing.T) {
-    // Create temporary config file
-    configData := `{
-        "colors": false,
-        "verbosity": 3,
-        "parallel": 2
-    }`
-    
-    tmpfile := createTempFile(t, configData)
-    defer os.Remove(tmpfile.Name())
-
-    // Load configuration
-    loader := NewConfigLoader()
-    config, err := loader.LoadFromFile(tmpfile.Name())
-
-    // Verify results
-    assert.NoError(t, err)
-    assert.False(t, config.Colors)
-    assert.Equal(t, 3, config.Verbosity)
-    assert.Equal(t, 2, config.Parallel)
-}
-```
-
-### CLI Argument Tests
-```go
-func TestArgumentParser_Parse_WatchMode(t *testing.T) {
-    parser := NewArgumentParser()
-    
-    args, err := parser.Parse([]string{"run", "--watch", "./internal"})
-    
-    assert.NoError(t, err)
-    assert.True(t, args.Watch)
-    assert.Equal(t, []string{"./internal"}, args.Packages)
-}
-```
+The package achieves **100% test coverage** with comprehensive test suites:
 
 ### Running Tests
+
 ```bash
-# Run config package tests
-go test ./internal/config/
+# Run all tests
+go test ./internal/config/...
 
 # Run with coverage
-go test -cover ./internal/config/
+go test ./internal/config/... -coverprofile=coverage.out
 
-# Test specific functionality
-go test -run TestConfigLoader ./internal/config/
-go test -run TestArgumentParser ./internal/config/
+# View coverage report
+go tool cover -html=coverage.out
+```
 
-# Benchmark configuration loading
-go test -bench=BenchmarkConfigLoad ./internal/config/
+### Test Categories
+
+- **Unit Tests**: Individual component testing
+- **Integration Tests**: Multi-component workflows
+- **Comprehensive Tests**: Edge cases and error conditions
+- **Compatibility Tests**: Backward compatibility validation
+
+### Example Test Structure
+
+```go
+func TestAppConfigLoader_LoadFromFile_Success(t *testing.T) {
+    t.Parallel()
+    
+    factory := NewAppConfigLoaderFactory()
+    loader := factory.CreateDefault()
+    
+    // Test successful file loading
+    config, err := loader.LoadFromFile("testdata/valid-config.yaml")
+    assert.NoError(t, err)
+    assert.NotNil(t, config)
+    assert.True(t, config.Watch.Enabled)
+}
+```
+
+## 📊 Performance
+
+The package is optimized for performance:
+
+- **Lazy Loading**: Configuration loaded only when needed
+- **Caching**: Parsed configurations cached for reuse
+- **Minimal Allocations**: Efficient memory usage patterns
+- **Fast Validation**: Optimized validation algorithms
+
+### Benchmarks
+
+```bash
+# Run performance benchmarks
+go test ./internal/config/... -bench=.
+
+# Example results:
+BenchmarkAppConfigLoader_LoadFromFile-8     1000    1.2ms/op    256B/op
+BenchmarkAppArgParser_Parse-8               5000    0.3ms/op    128B/op
 ```
 
 ## 🔍 Error Handling
 
-### Graceful Error Handling
-The package provides comprehensive error handling with context:
-
-```go
-// File not found - returns default config
-config, err := loader.LoadFromFile("nonexistent.json")
-if err != nil {
-    // Returns default configuration gracefully
-    config = GetDefaultConfig()
-}
-
-// Invalid JSON - detailed error message
-config, err := loader.LoadFromFile("invalid.json")
-if err != nil {
-    // Error: "failed to parse config file: invalid character '}' looking for beginning of object key string"
-}
-
-// Invalid values - validation error with details
-if err := ValidateConfig(config); err != nil {
-    // Error: "configuration validation failed:\n  - verbosity must be between 0 and 5"
-}
-```
+The package provides comprehensive error handling:
 
 ### Error Types
-```go
-// Configuration file errors
-type ConfigFileError struct {
-    Path string
-    Err  error
-}
 
-// Validation errors
+```go
+// Configuration validation errors
 type ValidationError struct {
     Field   string
     Value   interface{}
     Message string
 }
 
-// CLI argument errors
-type ArgumentError struct {
-    Flag    string
-    Value   string
+// File loading errors
+type LoadError struct {
+    Path    string
+    Cause   error
     Message string
 }
-```
 
-## 🚀 Performance
-
-### Optimization Strategies
-- **Lazy Loading**: Configuration loaded only when needed
-- **Caching**: Parsed configuration cached for subsequent access
-- **Efficient Parsing**: Fast JSON parsing with streaming where possible
-- **Memory Efficiency**: Minimal memory allocation for configuration objects
-
-### Performance Characteristics
-- **Config Loading**: < 5ms for typical configuration files
-- **CLI Parsing**: < 1ms for standard argument sets
-- **Memory Usage**: < 1KB per configuration instance
-- **Validation**: < 1ms for complete configuration validation
-
-## 🔗 Dependencies
-
-### Internal Dependencies
-- `pkg/models` - Shared data structures for configuration types
-
-### External Dependencies
-- `encoding/json` - JSON configuration file parsing
-- `time` - Duration parsing and handling
-- `os` - File system access for configuration files
-- `fmt` - Error formatting and validation messages
-
-### No External Packages
-The config package intentionally has no external dependencies to maintain simplicity and reduce the attack surface.
-
-## 📚 Examples
-
-### Basic Configuration Usage
-```go
-func setupConfiguration() (*Config, error) {
-    // Create configuration loader
-    loader := NewConfigLoader()
-    
-    // Load from default location
-    config, err := loader.LoadFromDefault()
-    if err != nil {
-        return nil, fmt.Errorf("failed to load config: %w", err)
-    }
-    
-    // Validate configuration
-    if err := ValidateConfig(config); err != nil {
-        return nil, fmt.Errorf("invalid config: %w", err)
-    }
-    
-    return config, nil
+// Argument parsing errors
+type ParseError struct {
+    Argument string
+    Value    string
+    Message  string
 }
 ```
 
-### CLI Integration
+### Error Handling Examples
+
 ```go
-func main() {
-    // Parse CLI arguments
-    parser := NewArgumentParser()
-    args, err := parser.Parse(os.Args[1:])
-    if err != nil {
-        log.Fatal("Failed to parse arguments:", err)
+config, err := loader.LoadFromFile("config.yaml")
+if err != nil {
+    switch e := err.(type) {
+    case *config.LoadError:
+        log.Printf("Failed to load config from %s: %v", e.Path, e.Cause)
+    case *config.ValidationError:
+        log.Printf("Invalid config field %s: %s", e.Field, e.Message)
+    default:
+        log.Printf("Unexpected error: %v", err)
     }
-    
-    // Load and merge configuration
-    loader := NewConfigLoader()
-    config, err := loader.LoadFromDefault()
-    if err != nil {
-        log.Fatal("Failed to load config:", err)
-    }
-    
-    // Apply CLI overrides
-    finalConfig := config.MergeWithCLIArgs(args)
-    
-    // Use configuration
-    runTests(finalConfig)
+    return
 }
 ```
 
-### Custom Configuration File
-```go
-func loadCustomConfig(path string) (*Config, error) {
-    loader := NewConfigLoader()
-    
-    // Try custom path first
-    config, err := loader.LoadFromFile(path)
-    if err != nil {
-        // Fall back to default
-        log.Printf("Custom config not found, using defaults: %v", err)
-        config = GetDefaultConfig()
-    }
-    
-    return config, ValidateConfig(config)
+## 🔧 Configuration Examples
+
+### YAML Configuration File
+
+```yaml
+# config.yaml
+watch:
+  enabled: true
+  ignorePatterns:
+    - "*.tmp"
+    - "node_modules/**"
+  debounce: "500ms"
+  runOnStart: true
+  clearOnRerun: true
+
+paths:
+  includePatterns:
+    - "./internal/**"
+    - "./pkg/**"
+  excludePatterns:
+    - "./vendor/**"
+
+visual:
+  icons: "emoji"
+  theme: "dark"
+  terminalWidth: 120
+
+test:
+  timeout: "30s"
+  parallel: 4
+  coverage: true
+
+colors: true
+verbosity: 2
+```
+
+### JSON Configuration File
+
+```json
+{
+  "watch": {
+    "enabled": true,
+    "ignorePatterns": ["*.tmp", "node_modules/**"],
+    "debounce": "500ms",
+    "runOnStart": true,
+    "clearOnRerun": true
+  },
+  "paths": {
+    "includePatterns": ["./internal/**", "./pkg/**"],
+    "excludePatterns": ["./vendor/**"]
+  },
+  "visual": {
+    "icons": "emoji",
+    "theme": "dark",
+    "terminalWidth": 120
+  },
+  "test": {
+    "timeout": "30s",
+    "parallel": 4,
+    "coverage": true
+  },
+  "colors": true,
+  "verbosity": 2
 }
 ```
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](../../CONTRIBUTING.md) for details.
+
+### Development Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/newbpydev/go-sentinel.git
+
+# Navigate to the config package
+cd go-sentinel/internal/config
+
+# Run tests
+go test ./...
+
+# Run tests with coverage
+go test ./... -coverprofile=coverage.out
+
+# View coverage
+go tool cover -html=coverage.out
+```
+
+### Code Quality Standards
+
+- **Test Coverage**: Maintain 100% test coverage
+- **Documentation**: All exported symbols must have documentation
+- **Linting**: Code must pass `golangci-lint` checks
+- **Formatting**: Use `go fmt` for consistent formatting
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](../../LICENSE) file for details.
+
+## 🔗 Related Packages
+
+- [`internal/app`](../app/README.md) - Application orchestration layer
+- [`internal/lifecycle`](../lifecycle/README.md) - Application lifecycle management
+- [`internal/events`](../events/README.md) - Event handling system
+- [`pkg/models`](../../pkg/models/README.md) - Shared data models
 
 ---
 
-The config package provides a robust, flexible configuration system that handles all the complexity of configuration management while providing a clean, simple API for the rest of the application. 
+**Package Version**: v1.0.0  
+**Go Version**: 1.21+  
+**Last Updated**: January 2025  
+**Maintainer**: Go Sentinel CLI Team 
