@@ -57,7 +57,7 @@
 
 				<option value="file0">github.com/newbpydev/go-sentinel/internal/watch/coordinator/coordinator.go (100.0%)</option>
 
-				<option value="file1">github.com/newbpydev/go-sentinel/internal/watch/coordinator/watch_coordinator.go (95.2%)</option>
+				<option value="file1">github.com/newbpydev/go-sentinel/internal/watch/coordinator/watch_coordinator.go (93.5%)</option>
 
 				</select>
 			</div>
@@ -351,7 +351,7 @@ type TestWatchCoordinator struct {
 
 // NewTestWatchCoordinator creates a new TestWatchCoordinator
 func NewTestWatchCoordinator(options core.WatchOptions) (*TestWatchCoordinator, error) <span class="cov8" title="1">{
-        if options.Writer == nil </span><span class="cov8" title="1">{
+        if options.Writer == nil </span><span class="cov0" title="0">{
                 options.Writer = os.Stdout
         }</span>
 
@@ -506,12 +506,12 @@ func (w *TestWatchCoordinator) HandleFileChanges(changes []core.FileEvent) error
                         w.runAllTests()</span>
 
                 case core.WatchChanged:<span class="cov8" title="1">
-                        if err := w.runTestsForFile(change.Path); err != nil </span><span class="cov8" title="1">{
+                        if err := w.runTestsForFile(change.Path); err != nil </span><span class="cov0" title="0">{
                                 fmt.Fprintf(w.options.Writer, "Error running tests for %s: %v\n", change.Path, err)
                         }</span>
 
                 case core.WatchRelated:<span class="cov8" title="1">
-                        if err := w.runRelatedTests(change.Path); err != nil </span><span class="cov8" title="1">{
+                        if err := w.runRelatedTests(change.Path); err != nil </span><span class="cov0" title="0">{
                                 fmt.Fprintf(w.options.Writer, "Error running related tests for %s: %v\n", change.Path, err)
                         }</span>
                 }
@@ -573,7 +573,7 @@ func (w *TestWatchCoordinator) runTestsForFile(filePath string) error <span clas
                 if err != nil </span><span class="cov8" title="1">{
                         // No specific test file found, run all tests in the package
                         testTargets = []string{filepath.Dir(filePath)}
-                }</span> else<span class="cov0" title="0"> {
+                }</span> else<span class="cov8" title="1"> {
                         testTargets = []string{filepath.Dir(testFile)}
                 }</span>
         }
