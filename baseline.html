@@ -1,0 +1,459 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>cache: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+
+				<option value="file0">github.com/newbpydev/go-sentinel/internal/test/cache/result_cache.go (75.9%)</option>
+
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+
+			</div>
+		</div>
+		<div id="content">
+
+		<pre class="file" id="file0" style="display: none">package cache
+
+import (
+        "crypto/md5"
+        "fmt"
+        "os"
+        "path/filepath"
+        "strings"
+        "sync"
+        "time"
+
+        "github.com/newbpydev/go-sentinel/pkg/models"
+)
+
+// TestResultCache manages cached test results for incremental testing
+type TestResultCache struct {
+        results   map[string]*CachedTestResult
+        fileTimes map[string]time.Time
+        testTimes map[string]time.Time
+        mutex     sync.RWMutex
+}
+
+// CachedTestResult represents a cached test result
+type CachedTestResult struct {
+        Suite     *models.TestSuite
+        FileHash  string
+        LastRun   time.Time
+        Duration  time.Duration
+        Status    models.TestStatus
+        DependsOn []string // Files this test depends on
+}
+
+// ChangeType represents the type of file change
+type ChangeType int
+
+const (
+        ChangeTypeTest ChangeType = iota
+        ChangeTypeSource
+        ChangeTypeConfig
+        ChangeTypeDependency
+)
+
+// FileChange represents a file change with analysis
+type FileChange struct {
+        Path          string
+        Type          ChangeType
+        IsNew         bool
+        Hash          string
+        Timestamp     time.Time
+        AffectedTests []string
+}
+
+// CacheInterface defines the interface for test result caching
+type CacheInterface interface {
+        AnalyzeChange(filePath string) (*FileChange, error)
+        MarkFileAsProcessed(filePath string, processTime time.Time)
+        ShouldRunTests(changes []*FileChange) (bool, []string)
+        GetStaleTests(changes []*FileChange) []string
+        CacheResult(testPath string, suite *models.TestSuite)
+        GetCachedResult(testPath string) (*CachedTestResult, bool)
+        Clear()
+        GetStats() map[string]interface{}
+}
+
+// NewTestResultCache creates a new test result cache
+func NewTestResultCache() *TestResultCache <span class="cov8" title="1">{
+        return &amp;TestResultCache{
+                results:   make(map[string]*CachedTestResult),
+                fileTimes: make(map[string]time.Time),
+                testTimes: make(map[string]time.Time),
+                mutex:     sync.RWMutex{},
+        }
+}</span>
+
+// AnalyzeChange analyzes a file change and determines its impact
+func (c *TestResultCache) AnalyzeChange(filePath string) (*FileChange, error) <span class="cov8" title="1">{
+        c.mutex.Lock()
+        defer c.mutex.Unlock()
+
+        // Get file info
+        info, err := os.Stat(filePath)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to stat file %s: %w", filePath, err)
+        }</span>
+
+        // Calculate file hash
+        <span class="cov8" title="1">hash, err := c.calculateFileHash(filePath)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to calculate hash for %s: %w", filePath, err)
+        }</span>
+
+        // Determine change type
+        <span class="cov8" title="1">changeType := c.determineChangeType(filePath)
+
+        // Check if file is new or changed (DON'T update the time yet)
+        lastTime, exists := c.fileTimes[filePath]
+        isNew := !exists || info.ModTime().After(lastTime)
+
+        change := &amp;FileChange{
+                Path:      filePath,
+                Type:      changeType,
+                IsNew:     isNew,
+                Hash:      hash,
+                Timestamp: info.ModTime(),
+        }
+
+        // Determine affected tests
+        change.AffectedTests = c.findAffectedTests(filePath, changeType)
+
+        return change, nil</span>
+}
+
+// MarkFileAsProcessed updates the file time after processing is complete
+func (c *TestResultCache) MarkFileAsProcessed(filePath string, processTime time.Time) <span class="cov8" title="1">{
+        c.mutex.Lock()
+        defer c.mutex.Unlock()
+        c.fileTimes[filePath] = processTime
+}</span>
+
+// ShouldRunTests determines if tests should run based on changes
+func (c *TestResultCache) ShouldRunTests(changes []*FileChange) (bool, []string) <span class="cov8" title="1">{
+        if len(changes) == 0 </span><span class="cov8" title="1">{
+                return false, nil
+        }</span>
+
+        <span class="cov8" title="1">staleTests := c.GetStaleTests(changes)
+
+        // If we have stale tests, we should run them
+        if len(staleTests) &gt; 0 </span><span class="cov8" title="1">{
+                return true, staleTests
+        }</span>
+
+        // Check if any change is actually new/modified
+        <span class="cov0" title="0">for _, change := range changes </span><span class="cov0" title="0">{
+                if change.IsNew </span><span class="cov0" title="0">{
+                        return true, []string{filepath.Dir(change.Path)}
+                }</span>
+        }
+
+        <span class="cov0" title="0">return false, nil</span>
+}
+
+// GetStaleTests returns tests that need to be re-run based on changes
+func (c *TestResultCache) GetStaleTests(changes []*FileChange) []string <span class="cov8" title="1">{
+        c.mutex.RLock()
+        defer c.mutex.RUnlock()
+
+        staleTests := make(map[string]bool)
+
+        for _, change := range changes </span><span class="cov8" title="1">{
+                switch change.Type </span>{
+                case ChangeTypeTest:<span class="cov8" title="1">
+                        // Test file changed - only run this specific test
+                        testPackage := filepath.Dir(change.Path)
+                        staleTests[testPackage] = true</span>
+
+                case ChangeTypeSource:<span class="cov0" title="0">
+                        // Source file changed - run tests in same package
+                        packageDir := filepath.Dir(change.Path)
+                        staleTests[packageDir] = true</span>
+
+                case ChangeTypeConfig:<span class="cov8" title="1">
+                        // Config changed - mark all tests as stale
+                        for testPath := range c.results </span><span class="cov8" title="1">{
+                                staleTests[testPath] = true
+                        }</span>
+
+                case ChangeTypeDependency:<span class="cov0" title="0">
+                        // Dependency changed - run affected tests
+                        for _, testPath := range change.AffectedTests </span><span class="cov0" title="0">{
+                                staleTests[testPath] = true
+                        }</span>
+                }
+        }
+
+        // Convert to slice
+        <span class="cov8" title="1">result := make([]string, 0, len(staleTests))
+        for testPath := range staleTests </span><span class="cov8" title="1">{
+                result = append(result, testPath)
+        }</span>
+
+        <span class="cov8" title="1">return result</span>
+}
+
+// CacheResult stores a test result in the cache
+func (c *TestResultCache) CacheResult(testPath string, suite *models.TestSuite) <span class="cov8" title="1">{
+        c.mutex.Lock()
+        defer c.mutex.Unlock()
+
+        // Calculate dependencies
+        dependencies := c.findDependencies(testPath)
+
+        cached := &amp;CachedTestResult{
+                Suite:     suite,
+                LastRun:   time.Now(),
+                Duration:  suite.Duration,
+                Status:    c.calculateSuiteStatus(suite),
+                DependsOn: dependencies,
+        }
+
+        c.results[testPath] = cached
+        c.testTimes[testPath] = time.Now()
+}</span>
+
+// GetCachedResult retrieves a cached test result if still valid
+func (c *TestResultCache) GetCachedResult(testPath string) (*CachedTestResult, bool) <span class="cov8" title="1">{
+        c.mutex.RLock()
+        defer c.mutex.RUnlock()
+
+        result, exists := c.results[testPath]
+        if !exists </span><span class="cov8" title="1">{
+                return nil, false
+        }</span>
+
+        // Check if dependencies have changed
+        <span class="cov8" title="1">for _, dep := range result.DependsOn </span><span class="cov0" title="0">{
+                if fileTime, exists := c.fileTimes[dep]; exists </span><span class="cov0" title="0">{
+                        if fileTime.After(result.LastRun) </span><span class="cov0" title="0">{
+                                return nil, false // Dependencies changed, cache invalid
+                        }</span>
+                }
+        }
+
+        <span class="cov8" title="1">return result, true</span>
+}
+
+// calculateFileHash calculates MD5 hash of a file
+func (c *TestResultCache) calculateFileHash(filePath string) (string, error) <span class="cov8" title="1">{
+        content, err := os.ReadFile(filePath)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov8" title="1">return fmt.Sprintf("%x", md5.Sum(content)), nil</span>
+}
+
+// determineChangeType determines the type of change based on file path
+func (c *TestResultCache) determineChangeType(filePath string) ChangeType <span class="cov8" title="1">{
+        base := filepath.Base(filePath)
+        ext := filepath.Ext(filePath)
+
+        switch </span>{
+        case base == "go.mod" || base == "go.sum":<span class="cov8" title="1">
+                return ChangeTypeDependency</span>
+        case base == "sentinel.config.json" || base == ".golangci.yml":<span class="cov0" title="0">
+                return ChangeTypeConfig</span>
+        case ext == ".go" &amp;&amp; filepath.Base(filePath) != "main.go":<span class="cov8" title="1">
+                if isTestFile(filePath) </span><span class="cov8" title="1">{
+                        return ChangeTypeTest
+                }</span>
+                <span class="cov8" title="1">return ChangeTypeSource</span>
+        default:<span class="cov0" title="0">
+                return ChangeTypeConfig</span> // Default to config for unknown files
+        }
+}
+
+// findAffectedTests finds tests that might be affected by a file change
+func (c *TestResultCache) findAffectedTests(filePath string, changeType ChangeType) []string <span class="cov8" title="1">{
+        var affected []string
+
+        switch changeType </span>{
+        case ChangeTypeTest:<span class="cov8" title="1">
+                // Only affects the test itself
+                affected = append(affected, filepath.Dir(filePath))</span>
+
+        case ChangeTypeSource:<span class="cov8" title="1">
+                // Affects tests in the same package
+                packageDir := filepath.Dir(filePath)
+                affected = append(affected, packageDir)</span>
+
+        case ChangeTypeDependency:<span class="cov8" title="1">
+                // Affects all tests that might import this dependency
+                for testPath, cached := range c.results </span><span class="cov0" title="0">{
+                        for _, dep := range cached.DependsOn </span><span class="cov0" title="0">{
+                                if dep == filePath </span><span class="cov0" title="0">{
+                                        affected = append(affected, testPath)
+                                        break</span>
+                                }
+                        }
+                }
+
+        case ChangeTypeConfig:<span class="cov0" title="0">
+                // Affects all tests
+                for testPath := range c.results </span><span class="cov0" title="0">{
+                        affected = append(affected, testPath)
+                }</span>
+        }
+
+        <span class="cov8" title="1">return affected</span>
+}
+
+// findDependencies finds files that a test depends on
+func (c *TestResultCache) findDependencies(testPath string) []string <span class="cov8" title="1">{
+        dependencies := make([]string, 0)
+
+        // Add go.mod and go.sum as dependencies
+        if _, err := os.Stat("go.mod"); err == nil </span><span class="cov0" title="0">{
+                dependencies = append(dependencies, "go.mod")
+        }</span>
+        <span class="cov8" title="1">if _, err := os.Stat("go.sum"); err == nil </span><span class="cov0" title="0">{
+                dependencies = append(dependencies, "go.sum")
+        }</span>
+
+        // Add source files in the same package
+        <span class="cov8" title="1">_ = filepath.Walk(testPath, func(path string, info os.FileInfo, err error) error </span><span class="cov8" title="1">{
+                if err != nil </span><span class="cov8" title="1">{
+                        return nil // Skip errors
+                }</span>
+
+                <span class="cov0" title="0">if filepath.Ext(path) == ".go" &amp;&amp; !isTestFile(path) </span><span class="cov0" title="0">{
+                        dependencies = append(dependencies, path)
+                }</span>
+
+                <span class="cov0" title="0">return nil</span>
+        })
+
+        // Always return a non-nil slice
+        <span class="cov8" title="1">return dependencies</span>
+}
+
+// calculateSuiteStatus calculates overall status of a test suite
+func (c *TestResultCache) calculateSuiteStatus(suite *models.TestSuite) models.TestStatus <span class="cov8" title="1">{
+        if suite.FailedCount &gt; 0 </span><span class="cov8" title="1">{
+                return models.StatusFailed
+        }</span>
+        <span class="cov8" title="1">if suite.SkippedCount &gt; 0 &amp;&amp; suite.PassedCount == 0 </span><span class="cov0" title="0">{
+                return models.StatusSkipped
+        }</span>
+        <span class="cov8" title="1">return models.StatusPassed</span>
+}
+
+// Clear clears all cached results
+func (c *TestResultCache) Clear() <span class="cov8" title="1">{
+        c.mutex.Lock()
+        defer c.mutex.Unlock()
+
+        c.results = make(map[string]*CachedTestResult)
+        c.fileTimes = make(map[string]time.Time)
+        c.testTimes = make(map[string]time.Time)
+}</span>
+
+// GetStats returns cache statistics
+func (c *TestResultCache) GetStats() map[string]interface{} <span class="cov8" title="1">{
+        c.mutex.RLock()
+        defer c.mutex.RUnlock()
+
+        return map[string]interface{}{
+                "cached_results": len(c.results),
+                "tracked_files":  len(c.fileTimes),
+                "tracked_tests":  len(c.testTimes),
+        }
+}</span>
+
+// isTestFile returns true if the file is a Go test file
+func isTestFile(filename string) bool <span class="cov8" title="1">{
+        return strings.HasSuffix(filename, "_test.go")
+}</span>
+</pre>
+
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

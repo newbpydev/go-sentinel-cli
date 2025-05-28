@@ -550,3 +550,326 @@ func TestCachedTestResult_StructFields(t *testing.T) {
 		t.Errorf("Expected 2 dependencies, got %d", len(result.DependsOn))
 	}
 }
+
+// TestShouldRunTests_TableDriven covers all edge cases for ShouldRunTests
+func TestShouldRunTests_TableDriven(t *testing.T) {
+	tempDir := t.TempDir()
+	cache := NewTestResultCache()
+
+	suite := &models.TestSuite{FilePath: filepath.Join(tempDir, "example_test.go"), Duration: time.Millisecond}
+	cache.CacheResult("pkg/example", suite)
+
+	tests := []struct {
+		name    string
+		changes []*FileChange
+		wantRun bool
+		wantLen int
+	}{
+		{
+			name:    "no changes",
+			changes: nil,
+			wantRun: false,
+			wantLen: 0,
+		},
+		{
+			name:    "all changes not new, no stale tests",
+			changes: []*FileChange{{Path: "sentinel.config.json", Type: ChangeTypeConfig, IsNew: false}},
+			wantRun: false,
+			wantLen: 0,
+		},
+		{
+			name:    "all changes not new, with stale tests",
+			changes: []*FileChange{{Path: "pkg/example/example_test.go", Type: ChangeTypeTest, IsNew: false}},
+			wantRun: true,
+			wantLen: 1,
+		},
+		{
+			name:    "all changes new",
+			changes: []*FileChange{{Path: "foo.go", Type: ChangeTypeSource, IsNew: true}},
+			wantRun: true,
+			wantLen: 1,
+		},
+		{
+			name:    "mixed changes, one new",
+			changes: []*FileChange{{Path: "foo.go", Type: ChangeTypeSource, IsNew: false}, {Path: "bar.go", Type: ChangeTypeSource, IsNew: true}},
+			wantRun: true,
+			wantLen: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.name == "all changes not new, no stale tests" {
+				cache.Clear()
+			}
+			shouldRun, testPaths := cache.ShouldRunTests(tt.changes)
+			if shouldRun != tt.wantRun {
+				t.Errorf("shouldRun: got %v, want %v", shouldRun, tt.wantRun)
+			}
+			if tt.wantLen == 0 && testPaths != nil && len(testPaths) != 0 {
+				t.Errorf("expected no testPaths, got %v", testPaths)
+			}
+			if tt.wantLen > 0 && len(testPaths) != tt.wantLen {
+				t.Errorf("expected %d testPaths, got %d", tt.wantLen, len(testPaths))
+			}
+			// For the "all changes not new, no stale tests" case, expect testPaths to be [.] if shouldRun is true
+			if tt.name == "all changes not new, no stale tests" && shouldRun && len(testPaths) == 1 && testPaths[0] == "." {
+				// Acceptable on some platforms
+			}
+		})
+	}
+}
+
+// TestGetStaleTests_TableDriven covers all edge cases for GetStaleTests
+func TestGetStaleTests_TableDriven(t *testing.T) {
+	cache := NewTestResultCache()
+	suite := &models.TestSuite{FilePath: "pkg/example/example_test.go", Duration: time.Millisecond}
+	cache.CacheResult("pkg/example", suite)
+	cache.CacheResult("pkg/other", suite)
+
+	tests := []struct {
+		name     string
+		changes  []*FileChange
+		wantLen  int
+		wantPath string
+	}{
+		{
+			name:    "empty changes",
+			changes: nil,
+			wantLen: 0,
+		},
+		{
+			name:     "test file change",
+			changes:  []*FileChange{{Path: "pkg/example/example_test.go", Type: ChangeTypeTest}},
+			wantLen:  1,
+			wantPath: "pkg/example",
+		},
+		{
+			name:     "source file change",
+			changes:  []*FileChange{{Path: "pkg/example/example.go", Type: ChangeTypeSource}},
+			wantLen:  1,
+			wantPath: "pkg/example",
+		},
+		{
+			name:    "config change with cached results",
+			changes: []*FileChange{{Path: "sentinel.config.json", Type: ChangeTypeConfig}},
+			wantLen: 2,
+		},
+		{
+			name:    "config change with no cached results",
+			changes: []*FileChange{{Path: "sentinel.config.json", Type: ChangeTypeConfig}},
+			wantLen: 0,
+		},
+		{
+			name:     "dependency change with affected tests",
+			changes:  []*FileChange{{Path: "go.mod", Type: ChangeTypeDependency, AffectedTests: []string{"pkg/example"}}},
+			wantLen:  1,
+			wantPath: "pkg/example",
+		},
+		{
+			name:    "dependency change with no affected tests",
+			changes: []*FileChange{{Path: "go.mod", Type: ChangeTypeDependency, AffectedTests: nil}},
+			wantLen: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.name == "config change with no cached results" {
+				cache.Clear()
+			}
+			staleTests := cache.GetStaleTests(tt.changes)
+			if len(staleTests) != tt.wantLen {
+				t.Errorf("expected %d stale tests, got %d", tt.wantLen, len(staleTests))
+			}
+			if tt.wantPath != "" && tt.wantLen > 0 {
+				actual := staleTests[0]
+				if filepath.ToSlash(actual) != tt.wantPath {
+					t.Errorf("expected path %q, got %q", tt.wantPath, actual)
+				}
+			}
+		})
+	}
+}
+
+// TestGetCachedResult_EdgeCases covers edge cases for GetCachedResult
+func TestGetCachedResult_EdgeCases(t *testing.T) {
+	cache := NewTestResultCache()
+	testPath := "pkg/example"
+	suite := &models.TestSuite{FilePath: "pkg/example/example_test.go", Duration: time.Millisecond}
+	cache.CacheResult(testPath, suite)
+
+	// No dependencies changed
+	result, exists := cache.GetCachedResult(testPath)
+	if !exists || result == nil {
+		t.Error("Expected cached result to exist and be valid")
+	}
+
+	// Add a dependency and mark it as changed
+	cache.mutex.Lock()
+	cache.results[testPath].DependsOn = []string{"dep.go"}
+	cache.mutex.Unlock()
+	cache.MarkFileAsProcessed("dep.go", time.Now().Add(time.Hour))
+	result, exists = cache.GetCachedResult(testPath)
+	if exists || result != nil {
+		t.Error("Expected cached result to be invalidated by changed dependency")
+	}
+
+	// No dependencies
+	cache.CacheResult("noDeps", suite)
+	cache.mutex.Lock()
+	cache.results["noDeps"].DependsOn = nil
+	cache.mutex.Unlock()
+	result, exists = cache.GetCachedResult("noDeps")
+	if !exists || result == nil {
+		t.Error("Expected cached result to exist with no dependencies")
+	}
+
+	// Multiple dependencies, one changed
+	cache.CacheResult("multiDeps", suite)
+	cache.mutex.Lock()
+	cache.results["multiDeps"].DependsOn = []string{"a.go", "b.go"}
+	cache.mutex.Unlock()
+	cache.MarkFileAsProcessed("a.go", time.Now().Add(time.Hour))
+	result, exists = cache.GetCachedResult("multiDeps")
+	if exists || result != nil {
+		t.Error("Expected cached result to be invalidated if any dependency changed")
+	}
+}
+
+// TestCalculateFileHash_EdgeCases covers edge cases for calculateFileHash
+func TestCalculateFileHash_EdgeCases(t *testing.T) {
+	cache := NewTestResultCache()
+	tempDir := t.TempDir()
+	file := filepath.Join(tempDir, "file.go")
+	os.WriteFile(file, []byte("hello world"), 0644)
+	hash, err := cache.calculateFileHash(file)
+	if err != nil || hash == "" {
+		t.Error("Expected hash for existing file")
+	}
+	// Nonexistent file
+	hash, err = cache.calculateFileHash(filepath.Join(tempDir, "nope.go"))
+	if err == nil {
+		t.Error("Expected error for nonexistent file")
+	}
+	// Empty file
+	emptyFile := filepath.Join(tempDir, "empty.go")
+	os.WriteFile(emptyFile, []byte(""), 0644)
+	hash, err = cache.calculateFileHash(emptyFile)
+	if err != nil || hash == "" {
+		t.Error("Expected hash for empty file")
+	}
+}
+
+// TestDetermineChangeType_AllCases covers all file type cases
+func TestDetermineChangeType_AllCases(t *testing.T) {
+	cache := NewTestResultCache()
+	tests := []struct {
+		file         string
+		typeExpected ChangeType
+	}{
+		{"go.mod", ChangeTypeDependency},
+		{"go.sum", ChangeTypeDependency},
+		{"sentinel.config.json", ChangeTypeConfig},
+		{".golangci.yml", ChangeTypeConfig},
+		{"foo_test.go", ChangeTypeTest},
+		{"foo.go", ChangeTypeSource},
+		{"main.go", ChangeTypeConfig},
+		{"unknown.txt", ChangeTypeConfig},
+	}
+	for _, tt := range tests {
+		t.Run(tt.file, func(t *testing.T) {
+			typeGot := cache.determineChangeType(tt.file)
+			if typeGot != tt.typeExpected {
+				t.Errorf("expected %v, got %v", tt.typeExpected, typeGot)
+			}
+		})
+	}
+}
+
+// TestFindAffectedTests_AllCases covers all change types for findAffectedTests
+func TestFindAffectedTests_AllCases(t *testing.T) {
+	cache := NewTestResultCache()
+	cache.CacheResult("pkg/example", &models.TestSuite{FilePath: "pkg/example/example_test.go"})
+	cache.mutex.Lock()
+	cache.results["pkg/example"].DependsOn = []string{"dep.go"}
+	cache.mutex.Unlock()
+
+	tests := []struct {
+		name       string
+		file       string
+		changeType ChangeType
+		expected   []string
+	}{
+		{"test file", "pkg/example/example_test.go", ChangeTypeTest, []string{"pkg/example"}},
+		{"source file", "pkg/example/example.go", ChangeTypeSource, []string{"pkg/example"}},
+		{"dependency match", "dep.go", ChangeTypeDependency, []string{"pkg/example"}},
+		{"dependency no match", "other.go", ChangeTypeDependency, []string{}},
+		{"config", "sentinel.config.json", ChangeTypeConfig, []string{"pkg/example"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := cache.findAffectedTests(tt.file, tt.changeType)
+			if len(got) != len(tt.expected) {
+				t.Errorf("expected %d, got %d", len(tt.expected), len(got))
+			}
+			for i := range got {
+				if filepath.ToSlash(got[i]) != tt.expected[i] {
+					t.Errorf("expected %q, got %q", tt.expected[i], got[i])
+				}
+			}
+		})
+	}
+}
+
+// TestFindDependencies_EdgeCases covers edge cases for findDependencies
+func TestFindDependencies_EdgeCases(t *testing.T) {
+	cache := NewTestResultCache()
+	tempDir := t.TempDir()
+	os.WriteFile(filepath.Join(tempDir, "foo.go"), []byte("package main"), 0644)
+	os.WriteFile(filepath.Join(tempDir, "bar.go"), []byte("package main"), 0644)
+	os.WriteFile("go.mod", []byte("module test"), 0644)
+	os.WriteFile("go.sum", []byte("sum"), 0644)
+	deps := cache.findDependencies(tempDir)
+	if len(deps) < 2 {
+		t.Error("Expected at least go.mod and go.sum as dependencies")
+	}
+	// Remove go.mod and go.sum
+	os.Remove("go.mod")
+	os.Remove("go.sum")
+	deps = cache.findDependencies(tempDir)
+	for _, dep := range deps {
+		if dep == "go.mod" || dep == "go.sum" {
+			t.Error("Did not expect go.mod or go.sum as dependencies after removal")
+		}
+	}
+	// testPath is a file
+	file := filepath.Join(tempDir, "foo.go")
+	deps = cache.findDependencies(file)
+	if len(deps) == 0 {
+		t.Error("Expected at least one dependency for file path")
+	}
+}
+
+// TestCalculateSuiteStatus_AllCases covers all status combinations
+func TestCalculateSuiteStatus_AllCases(t *testing.T) {
+	cache := NewTestResultCache()
+	tests := []struct {
+		name     string
+		suite    *models.TestSuite
+		expected models.TestStatus
+	}{
+		{"failed", &models.TestSuite{FailedCount: 1}, models.StatusFailed},
+		{"skipped", &models.TestSuite{SkippedCount: 1, PassedCount: 0}, models.StatusSkipped},
+		{"passed", &models.TestSuite{PassedCount: 1}, models.StatusPassed},
+		{"all zero", &models.TestSuite{}, models.StatusPassed},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := cache.calculateSuiteStatus(tt.suite)
+			if got != tt.expected {
+				t.Errorf("expected %v, got %v", tt.expected, got)
+			}
+		})
+	}
+}
