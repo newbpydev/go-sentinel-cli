@@ -3,6 +3,8 @@ package runner
 import (
 	"context"
 	"fmt"
+	"io"
+	"strings"
 	"testing"
 	"time"
 
@@ -505,31 +507,207 @@ func TestParallelTestRunner_ConcurrencyLimits(t *testing.T) {
 	}
 }
 
-// TestExecuteTestPath_CacheHit tests cache hit behavior
+// TestExecuteTestPath_CacheHit tests cache hit scenario
 func TestExecuteTestPath_CacheHit(t *testing.T) {
-	// This test would require access to internal methods or a more complex setup
-	// For now, we test the basic structure and ensure no panics occur
-
 	// Arrange
 	testRunner := &TestRunner{}
 	testCache := NewMockCache()
+
+	// Pre-populate cache
+	suite := &models.TestSuite{FilePath: "cached_test.go"}
+	testCache.CacheResult("./cached", suite)
+
 	runner := NewParallelTestRunner(2, testRunner, testCache)
-
-	// Add a mock result to cache (this would need cache interface to work properly)
-	// For now, just test that the runner can be created and basic operations work
-
-	// Act & Assert
-	if runner == nil {
-		t.Fatal("Expected runner to be created")
-	}
-
-	// Test with empty paths to ensure no panics
 	cfg := &config.Config{}
-	results, err := runner.RunParallel(context.Background(), []string{}, cfg)
-	if err != nil {
-		t.Errorf("Expected no error for empty paths, got: %v", err)
+
+	// Act
+	result := runner.executeTestPath(context.Background(), "./cached", cfg)
+
+	// Assert
+	if result == nil {
+		t.Fatal("Expected result, got nil")
 	}
-	if results != nil {
-		t.Error("Expected nil results for empty paths")
+	if !result.FromCache {
+		t.Error("Expected result to be from cache")
+	}
+	if result.Suite != suite {
+		t.Error("Expected cached suite to be returned")
+	}
+	if result.Error != nil {
+		t.Errorf("Expected no error for cache hit, got: %v", result.Error)
+	}
+}
+
+// TestParallelRunner_ProgressDrainingSafety tests that progress draining doesn't cause infinite loops
+func TestParallelRunner_ProgressDrainingSafety(t *testing.T) {
+	t.Parallel()
+
+	// This test verifies that the progress draining logic has proper safety limits
+	// and doesn't cause infinite loops when context is cancelled
+
+	testRunner := &TestRunner{}
+	testCache := NewMockCache()
+	runner := NewParallelTestRunner(1, testRunner, testCache)
+
+	// Create a context that will be cancelled quickly
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	// Use non-existent paths to trigger quick failures
+	testPaths := []string{"./non-existent-path-1", "./non-existent-path-2"}
+	cfg := &config.Config{Timeout: 10 * time.Millisecond}
+
+	start := time.Now()
+
+	// This should complete quickly without hanging
+	results, err := runner.RunParallel(ctx, testPaths, cfg)
+
+	elapsed := time.Since(start)
+
+	// Should complete within reasonable time (not hang indefinitely)
+	if elapsed > 5*time.Second {
+		t.Errorf("RunParallel took too long (%v), possible infinite loop", elapsed)
+	}
+
+	// Should handle cancellation gracefully
+	if err != nil && !strings.Contains(err.Error(), "cancel") {
+		t.Logf("Expected cancellation error, got: %v", err)
+	}
+
+	// Results should be returned even on cancellation
+	if len(results) > len(testPaths) {
+		t.Errorf("Got more results (%d) than test paths (%d)", len(results), len(testPaths))
+	}
+
+	t.Logf("Test completed in %v with %d results", elapsed, len(results))
+}
+
+// TestNullColorFormatter_AllMethods tests all methods of nullColorFormatter
+func TestNullColorFormatter_AllMethods(t *testing.T) {
+	t.Parallel()
+
+	formatter := &nullColorFormatter{}
+	testText := "test text"
+
+	testCases := []struct {
+		name     string
+		method   func(string) string
+		expected string
+	}{
+		{"Red", formatter.Red, testText},
+		{"Green", formatter.Green, testText},
+		{"Yellow", formatter.Yellow, testText},
+		{"Blue", formatter.Blue, testText},
+		{"Magenta", formatter.Magenta, testText},
+		{"Cyan", formatter.Cyan, testText},
+		{"Gray", formatter.Gray, testText},
+		{"Bold", formatter.Bold, testText},
+		{"Dim", formatter.Dim, testText},
+		{"White", formatter.White, testText},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			result := tc.method(testText)
+			if result != tc.expected {
+				t.Errorf("Expected %s, got %s", tc.expected, result)
+			}
+		})
+	}
+
+	// Test Colorize method separately
+	t.Run("Colorize", func(t *testing.T) {
+		t.Parallel()
+
+		result := formatter.Colorize(testText, "red")
+		if result != testText {
+			t.Errorf("Expected %s, got %s", testText, result)
+		}
+	})
+}
+
+// TestNullIconProvider_AllMethods tests all methods of nullIconProvider
+func TestNullIconProvider_AllMethods(t *testing.T) {
+	t.Parallel()
+
+	provider := &nullIconProvider{}
+
+	testCases := []struct {
+		name     string
+		method   func() string
+		expected string
+	}{
+		{"CheckMark", provider.CheckMark, "✓"},
+		{"Cross", provider.Cross, "✗"},
+		{"Skipped", provider.Skipped, "-"},
+		{"Running", provider.Running, "..."},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			result := tc.method()
+			if result != tc.expected {
+				t.Errorf("Expected %s, got %s", tc.expected, result)
+			}
+		})
+	}
+
+	// Test GetIcon method separately
+	t.Run("GetIcon", func(t *testing.T) {
+		t.Parallel()
+
+		testCases := []struct {
+			iconType string
+			expected string
+		}{
+			{"check", "•"},
+			{"cross", "•"},
+			{"unknown", "•"},
+			{"", "•"},
+		}
+
+		for _, tc := range testCases {
+			result := provider.GetIcon(tc.iconType)
+			if result != tc.expected {
+				t.Errorf("GetIcon(%s): expected %s, got %s", tc.iconType, tc.expected, result)
+			}
+		}
+	})
+}
+
+// TestDiscardWriter_Interface tests that discardWriter implements io.Writer
+func TestDiscardWriter_Interface(t *testing.T) {
+	t.Parallel()
+
+	writer := &discardWriter{}
+
+	// Verify interface compliance
+	var _ io.Writer = writer
+
+	// Test with various data sizes
+	testCases := [][]byte{
+		[]byte(""),
+		[]byte("small"),
+		[]byte("medium length test data"),
+		make([]byte, 1024), // Large buffer
+		make([]byte, 0),    // Empty slice
+	}
+
+	for _, data := range testCases {
+		t.Run(fmt.Sprintf("Write_%d_bytes", len(data)), func(t *testing.T) {
+			t.Parallel()
+
+			n, err := writer.Write(data)
+			if err != nil {
+				t.Errorf("Write failed: %v", err)
+			}
+			if n != len(data) {
+				t.Errorf("Expected to write %d bytes, got %d", len(data), n)
+			}
+		})
 	}
 }

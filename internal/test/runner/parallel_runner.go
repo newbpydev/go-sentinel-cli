@@ -209,9 +209,23 @@ func (r *ParallelTestRunner) runSingleTestPath(ctx context.Context, testPath str
 		for {
 			select {
 			case <-progressCtx.Done():
-				// Drain remaining progress updates
-				for len(progress) > 0 {
-					<-progress
+				// Drain remaining progress updates with safety limits
+				drainAttempts := 0
+				maxDrainAttempts := 100 // Prevent infinite draining
+				drainTimeout := time.NewTimer(100 * time.Millisecond)
+				defer drainTimeout.Stop()
+
+				for len(progress) > 0 && drainAttempts < maxDrainAttempts {
+					select {
+					case <-progress:
+						drainAttempts++
+					case <-drainTimeout.C:
+						// Timeout reached, stop draining
+						return
+					default:
+						// No more items to drain
+						return
+					}
 				}
 				return
 			case _, ok := <-progress:
