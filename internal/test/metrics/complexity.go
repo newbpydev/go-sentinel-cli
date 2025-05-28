@@ -206,6 +206,7 @@ func (a *DefaultComplexityAnalyzer) AnalyzePackage(packagePath string) (*Package
 			})
 			continue
 		}
+		// Only add successfully analyzed files
 		packageComplexity.Files = append(packageComplexity.Files, *fileComplexity)
 	}
 

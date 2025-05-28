@@ -134,54 +134,82 @@ func (a *DefaultComplexityAnalyzer) calculateTechnicalDebt(file *FileComplexity)
 			// High complexity functions take longer to understand and modify
 			if complexity, ok := violation.ActualValue.(int); ok {
 				excess := complexity - a.thresholds.CyclomaticComplexity
-				totalDebt += excess * 10 // 10 minutes per excess complexity point
+				if excess > 0 {
+					totalDebt += excess * 10 // 10 minutes per excess complexity point
+				}
 			}
 		case "FunctionLength":
 			// Long functions are harder to maintain
 			if length, ok := violation.ActualValue.(int); ok {
 				excess := length - a.thresholds.FunctionLength
-				totalDebt += excess / 2 // 0.5 minutes per excess line
+				if excess > 0 {
+					totalDebt += excess / 2 // 0.5 minutes per excess line
+				}
 			}
 		case "ParameterCount":
 			// Functions with many parameters are harder to use
 			if params, ok := violation.ActualValue.(int); ok {
-				excess := params - 5    // Standard threshold
-				totalDebt += excess * 5 // 5 minutes per excess parameter
+				excess := params - 5 // Standard threshold
+				if excess > 0 {
+					totalDebt += excess * 5 // 5 minutes per excess parameter
+				}
 			}
 		case "NestingDepth":
 			// Deep nesting makes code harder to follow
 			if nesting, ok := violation.ActualValue.(int); ok {
-				excess := nesting - 4    // Standard threshold
-				totalDebt += excess * 15 // 15 minutes per excess nesting level
+				excess := nesting - 4 // Standard threshold
+				if excess > 0 {
+					totalDebt += excess * 15 // 15 minutes per excess nesting level
+				}
 			}
 		}
 	}
 
+	if totalDebt < 0 {
+		totalDebt = 0
+	}
 	return totalDebt
 }
 
 // calculateQualityGrade assigns a letter grade based on overall project quality
 func (a *DefaultComplexityAnalyzer) calculateQualityGrade(summary *ComplexitySummary) string {
-	// Calculate complexity score with more reasonable scaling
-	// Excellent (1-3): 100-90, Good (4-7): 89-70, Fair (8-10): 69-50, Poor (>10): <50
-	var complexityScore float64
-	if summary.AverageCyclomaticComplexity <= 3.0 {
-		complexityScore = 100.0 - (summary.AverageCyclomaticComplexity-1.0)*5.0
-	} else if summary.AverageCyclomaticComplexity <= 7.0 {
-		complexityScore = 90.0 - (summary.AverageCyclomaticComplexity-3.0)*5.0
-	} else if summary.AverageCyclomaticComplexity <= 10.0 {
-		complexityScore = 70.0 - (summary.AverageCyclomaticComplexity-7.0)*6.67
-	} else {
-		complexityScore = 50.0 - (summary.AverageCyclomaticComplexity-10.0)*5.0
+	// Clamp negative/very high values to valid ranges
+	maintainability := summary.MaintainabilityIndex
+	if maintainability < 0 {
+		maintainability = 0
+	} else if maintainability > 100 {
+		maintainability = 100
+	}
+	avgComplexity := summary.AverageCyclomaticComplexity
+	if avgComplexity < 0 {
+		avgComplexity = 0
+	}
+	debtDays := summary.TechnicalDebtDays
+	if debtDays < 0 {
+		debtDays = 0
+	}
+	violationCount := summary.ViolationCount
+	if violationCount < 0 {
+		violationCount = 0
 	}
 
-	maintainabilityScore := summary.MaintainabilityIndex
+	// Calculate complexity score with more reasonable scaling
+	var complexityScore float64
+	if avgComplexity <= 3.0 {
+		complexityScore = 100.0 - (avgComplexity-1.0)*5.0
+	} else if avgComplexity <= 7.0 {
+		complexityScore = 90.0 - (avgComplexity-3.0)*5.0
+	} else if avgComplexity <= 10.0 {
+		complexityScore = 70.0 - (avgComplexity-7.0)*6.67
+	} else {
+		complexityScore = 50.0 - (avgComplexity-10.0)*5.0
+	}
 
 	// Technical debt score - more gradual penalty
-	debtScore := 100.0 - (summary.TechnicalDebtDays * 8.0) // 8 points per day instead of 10
+	debtScore := 100.0 - (debtDays * 8.0)
 
 	// Violation score - more reasonable penalty for small violation counts
-	violationScore := 100.0 - math.Min(float64(summary.ViolationCount)*1.5, 50.0) // Cap at 50 point penalty
+	violationScore := 100.0 - math.Min(float64(violationCount)*1.5, 50.0)
 
 	// Ensure scores don't go below 0
 	complexityScore = math.Max(0, complexityScore)
@@ -189,7 +217,7 @@ func (a *DefaultComplexityAnalyzer) calculateQualityGrade(summary *ComplexitySum
 	violationScore = math.Max(0, violationScore)
 
 	// Calculate weighted average (maintainability has highest weight)
-	overallScore := (maintainabilityScore*0.4 + complexityScore*0.3 + debtScore*0.2 + violationScore*0.1)
+	overallScore := (maintainability*0.4 + complexityScore*0.3 + debtScore*0.2 + violationScore*0.1)
 
 	// Assign letter grades
 	if overallScore >= 90 {
