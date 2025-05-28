@@ -385,7 +385,13 @@ func (pm *PerformanceMonitor) GenerateTextReport(report *PerformanceReport, outp
 		// Sort by severity and slowdown
 		sort.Slice(report.Regressions, func(i, j int) bool {
 			if report.Regressions[i].Severity != report.Regressions[j].Severity {
-				return report.Regressions[i].Severity == "CRITICAL"
+				// Define severity order: CRITICAL > MAJOR > MINOR
+				severityOrder := map[string]int{
+					"CRITICAL": 0,
+					"MAJOR":    1,
+					"MINOR":    2,
+				}
+				return severityOrder[report.Regressions[i].Severity] < severityOrder[report.Regressions[j].Severity]
 			}
 			return report.Regressions[i].SlowdownPercent > report.Regressions[j].SlowdownPercent
 		})
