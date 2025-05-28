@@ -256,13 +256,130 @@ func TestProcessJSONOutput_MultiplePackages(t *testing.T) {
 	}
 }
 
-// TestReset_ClearsState tests that Reset clears the processor state
+// TestReset_ClearsState tests that Reset properly clears processor state
 func TestReset_ClearsState(t *testing.T) {
+	t.Parallel()
+
 	// Arrange
 	var buf bytes.Buffer
 	processor := NewTestProcessor(&buf, &MockColorFormatter{}, &MockIconProvider{}, 80)
 
-	// Add some test data
+	// Add some test data first
+	suite := &models.TestSuite{
+		FilePath:     "test.go",
+		TestCount:    5,
+		PassedCount:  3,
+		FailedCount:  2,
+		SkippedCount: 0,
+	}
+	processor.AddTestSuite(suite)
+
+	// Verify data exists
+	if len(processor.GetSuites()) == 0 {
+		t.Fatal("Expected suite to be added before reset")
+	}
+	if processor.GetStats().TotalTests == 0 {
+		t.Fatal("Expected stats to have data before reset")
+	}
+
+	// Act
+	processor.Reset()
+
+	// Assert
+	suites := processor.GetSuites()
+	if len(suites) != 0 {
+		t.Errorf("Expected suites to be cleared after reset, got %d", len(suites))
+	}
+
+	stats := processor.GetStats()
+	if stats.TotalTests != 0 {
+		t.Errorf("Expected total tests to be 0 after reset, got %d", stats.TotalTests)
+	}
+	if stats.PassedTests != 0 {
+		t.Errorf("Expected passed tests to be 0 after reset, got %d", stats.PassedTests)
+	}
+	if stats.FailedTests != 0 {
+		t.Errorf("Expected failed tests to be 0 after reset, got %d", stats.FailedTests)
+	}
+	if stats.SkippedTests != 0 {
+		t.Errorf("Expected skipped tests to be 0 after reset, got %d", stats.SkippedTests)
+	}
+
+	// Verify timestamps are reset
+	if stats.StartTime.IsZero() {
+		t.Error("Expected start time to be set after reset")
+	}
+	if stats.Phases == nil {
+		t.Error("Expected phases map to be initialized after reset")
+	}
+}
+
+// TestGetStats_ReturnsCurrentStats tests GetStats method
+func TestGetStats_ReturnsCurrentStats(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	var buf bytes.Buffer
+	processor := NewTestProcessor(&buf, &MockColorFormatter{}, &MockIconProvider{}, 80)
+
+	// Act
+	stats := processor.GetStats()
+
+	// Assert
+	if stats == nil {
+		t.Fatal("Expected stats to be returned, got nil")
+	}
+
+	// Verify initial state
+	if stats.TotalTests != 0 {
+		t.Errorf("Expected initial total tests to be 0, got %d", stats.TotalTests)
+	}
+	if stats.StartTime.IsZero() {
+		t.Error("Expected start time to be set")
+	}
+	if stats.Phases == nil {
+		t.Error("Expected phases map to be initialized")
+	}
+}
+
+// TestGetWriter_ReturnsWriter tests GetWriter method
+func TestGetWriter_ReturnsWriter(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	var buf bytes.Buffer
+	processor := NewTestProcessor(&buf, &MockColorFormatter{}, &MockIconProvider{}, 80)
+
+	// Act
+	writer := processor.GetWriter()
+
+	// Assert
+	if writer != &buf {
+		t.Error("Expected GetWriter to return the same writer passed to constructor")
+	}
+}
+
+// TestGetSuites_ReturnsCurrentSuites tests GetSuites method
+func TestGetSuites_ReturnsCurrentSuites(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	var buf bytes.Buffer
+	processor := NewTestProcessor(&buf, &MockColorFormatter{}, &MockIconProvider{}, 80)
+
+	// Act
+	suites := processor.GetSuites()
+
+	// Assert
+	if suites == nil {
+		t.Fatal("Expected suites map to be returned, got nil")
+	}
+
+	if len(suites) != 0 {
+		t.Errorf("Expected initial suites to be empty, got %d", len(suites))
+	}
+
+	// Add a suite and verify it's returned
 	suite := &models.TestSuite{
 		FilePath:    "test.go",
 		TestCount:   1,
@@ -270,38 +387,88 @@ func TestReset_ClearsState(t *testing.T) {
 	}
 	processor.AddTestSuite(suite)
 
-	// Act
-	processor.Reset()
-
-	// Assert
-	stats := processor.GetStats()
-	if stats.TotalTests != 0 {
-		t.Errorf("Expected 0 total tests after reset, got %d", stats.TotalTests)
+	suites = processor.GetSuites()
+	if len(suites) != 1 {
+		t.Errorf("Expected 1 suite after adding, got %d", len(suites))
 	}
-	if len(processor.GetSuites()) != 0 {
-		t.Errorf("Expected 0 suites after reset, got %d", len(processor.GetSuites()))
+
+	if _, exists := suites["test.go"]; !exists {
+		t.Error("Expected suite with key 'test.go' to exist")
 	}
 }
 
-// TestGetTerminalWidthForProcessor_DefaultFallback tests terminal width fallback
-func TestGetTerminalWidthForProcessor_DefaultFallback(t *testing.T) {
+// TestRenderResults_WithSummary tests RenderResults with summary enabled
+func TestRenderResults_WithSummary(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	var buf bytes.Buffer
+	processor := NewTestProcessor(&buf, &MockColorFormatter{}, &MockIconProvider{}, 80)
+
+	// Add some test data
+	processor.GetStats().PassedTests = 5
+	processor.GetStats().FailedTests = 2
+	processor.GetStats().SkippedTests = 1
+
 	// Act
-	width := getTerminalWidthForProcessor()
+	err := processor.RenderResults(true)
 
 	// Assert
-	if width <= 0 {
-		t.Errorf("Expected positive width, got %d", width)
+	if err != nil {
+		t.Errorf("Expected no error from RenderResults, got: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "Tests completed") {
+		t.Error("Expected output to contain 'Tests completed'")
+	}
+	if !strings.Contains(output, "5 passed") {
+		t.Error("Expected output to contain '5 passed'")
+	}
+	if !strings.Contains(output, "2 failed") {
+		t.Error("Expected output to contain '2 failed'")
+	}
+	if !strings.Contains(output, "1 skipped") {
+		t.Error("Expected output to contain '1 skipped'")
 	}
 }
 
-// TestAddTestSuite_AddsToSuites tests adding test suites
-func TestAddTestSuite_AddsToSuites(t *testing.T) {
+// TestRenderResults_WithoutSummary tests RenderResults with summary disabled
+func TestRenderResults_WithoutSummary(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	var buf bytes.Buffer
+	processor := NewTestProcessor(&buf, &MockColorFormatter{}, &MockIconProvider{}, 80)
+
+	// Add some test data
+	processor.GetStats().PassedTests = 3
+	processor.GetStats().FailedTests = 1
+
+	// Act
+	err := processor.RenderResults(false)
+
+	// Assert
+	if err != nil {
+		t.Errorf("Expected no error from RenderResults, got: %v", err)
+	}
+
+	output := buf.String()
+	if output != "" {
+		t.Errorf("Expected no output when summary is disabled, got: %s", output)
+	}
+}
+
+// TestAddTestSuite_EmptyFilePath tests AddTestSuite with empty file path
+func TestAddTestSuite_EmptyFilePath(t *testing.T) {
+	t.Parallel()
+
 	// Arrange
 	var buf bytes.Buffer
 	processor := NewTestProcessor(&buf, &MockColorFormatter{}, &MockIconProvider{}, 80)
 
 	suite := &models.TestSuite{
-		FilePath:     "test.go",
+		FilePath:     "", // Empty file path
 		TestCount:    3,
 		PassedCount:  2,
 		FailedCount:  1,
@@ -316,49 +483,75 @@ func TestAddTestSuite_AddsToSuites(t *testing.T) {
 	if len(suites) != 1 {
 		t.Errorf("Expected 1 suite, got %d", len(suites))
 	}
-	if suites["test.go"] != suite {
-		t.Error("Expected suite to be added correctly")
+
+	// Should use "unknown" as default file path
+	if _, exists := suites["unknown"]; !exists {
+		t.Error("Expected suite with key 'unknown' to exist for empty file path")
 	}
 
 	stats := processor.GetStats()
-	if stats.TotalTests != 3 {
-		t.Errorf("Expected 3 total tests, got %d", stats.TotalTests)
+	if stats.TotalFiles != 1 {
+		t.Errorf("Expected 1 total file, got %d", stats.TotalFiles)
 	}
-	if stats.PassedTests != 2 {
-		t.Errorf("Expected 2 passed tests, got %d", stats.PassedTests)
+	if stats.FailedFiles != 1 {
+		t.Errorf("Expected 1 failed file (has failed tests), got %d", stats.FailedFiles)
 	}
-	if stats.FailedTests != 1 {
-		t.Errorf("Expected 1 failed test, got %d", stats.FailedTests)
+	if stats.PassedFiles != 0 {
+		t.Errorf("Expected 0 passed files (has failed tests), got %d", stats.PassedFiles)
 	}
 }
 
-// TestRenderResults_ShowsSummary tests result rendering
-func TestRenderResults_ShowsSummary(t *testing.T) {
+// TestAddTestSuite_PassedFile tests AddTestSuite with all tests passing
+func TestAddTestSuite_PassedFile(t *testing.T) {
+	t.Parallel()
+
 	// Arrange
 	var buf bytes.Buffer
 	processor := NewTestProcessor(&buf, &MockColorFormatter{}, &MockIconProvider{}, 80)
 
-	// Add some test statistics
-	processor.statistics.PassedTests = 5
-	processor.statistics.FailedTests = 2
-	processor.statistics.SkippedTests = 1
+	suite := &models.TestSuite{
+		FilePath:     "passed_test.go",
+		TestCount:    5,
+		PassedCount:  5,
+		FailedCount:  0, // No failed tests
+		SkippedCount: 0,
+	}
 
 	// Act
-	err := processor.RenderResults(true)
+	processor.AddTestSuite(suite)
 
 	// Assert
-	if err != nil {
-		t.Fatalf("Expected no error, got: %v", err)
+	stats := processor.GetStats()
+	if stats.PassedFiles != 1 {
+		t.Errorf("Expected 1 passed file (no failed tests), got %d", stats.PassedFiles)
+	}
+	if stats.FailedFiles != 0 {
+		t.Errorf("Expected 0 failed files (no failed tests), got %d", stats.FailedFiles)
+	}
+	if stats.TotalTests != 5 {
+		t.Errorf("Expected 5 total tests, got %d", stats.TotalTests)
+	}
+	if stats.PassedTests != 5 {
+		t.Errorf("Expected 5 passed tests, got %d", stats.PassedTests)
+	}
+}
+
+// TestGetTerminalWidthForProcessor_DefaultFallback tests terminal width detection
+func TestGetTerminalWidthForProcessor_DefaultFallback(t *testing.T) {
+	t.Parallel()
+
+	// Act
+	width := getTerminalWidthForProcessor()
+
+	// Assert
+	// Should return either detected width or default fallback (80)
+	if width <= 0 {
+		t.Errorf("Expected positive width, got %d", width)
 	}
 
-	output := buf.String()
-	if !strings.Contains(output, "5 passed") {
-		t.Error("Expected output to contain '5 passed'")
-	}
-	if !strings.Contains(output, "2 failed") {
-		t.Error("Expected output to contain '2 failed'")
-	}
-	if !strings.Contains(output, "1 skipped") {
-		t.Error("Expected output to contain '1 skipped'")
+	// In test environment, likely to get the default fallback
+	// but we can't guarantee it, so just check it's reasonable
+	if width < 20 || width > 1000 {
+		t.Errorf("Expected reasonable width (20-1000), got %d", width)
 	}
 }
