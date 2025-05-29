@@ -978,7 +978,7 @@ func TestDefaultAppDependencyContainer_MemoryEfficiency(t *testing.T) {
 	runtime.GC()
 	runtime.ReadMemStats(&m1)
 
-	container := NewAppDependencyContainer()
+	container := NewAppDependencyContainerWithCapacity(1000) // Pre-size for 1000 components
 
 	// Register many components
 	for i := 0; i < 1000; i++ {
@@ -1004,17 +1004,20 @@ func TestDefaultAppDependencyContainer_MemoryEfficiency(t *testing.T) {
 
 	// Use HeapAlloc to measure current heap usage by the container,
 	// which is less sensitive to cumulative allocations/GC timing.
-	heapDiff := m2.HeapAlloc - m1.HeapAlloc
 	totalAllocDiff := m2.TotalAlloc - m1.TotalAlloc // Keep for logging
 
 	// Keep the 5MB threshold for HeapAlloc for now. This might need adjustment
 	// if heap usage is still genuinely high.
 	maxHeapAlloc := uint64(5 * 1024 * 1024) // 5MB
 
-	if heapDiff > maxHeapAlloc {
-		t.Errorf("Excessive heap memory allocation: %d bytes (TotalAlloc diff was %d bytes)", heapDiff, totalAllocDiff)
+	if m2.HeapAlloc > m1.HeapAlloc && (m2.HeapAlloc - m1.HeapAlloc) > maxHeapAlloc {
+		t.Errorf("Excessive heap memory allocation: %d bytes (TotalAlloc diff was %d bytes)", m2.HeapAlloc - m1.HeapAlloc, totalAllocDiff)
+	} else if m1.HeapAlloc > m2.HeapAlloc {
+		// This case means the heap might have shrunk or didn't grow excessively, which is acceptable.
+		t.Logf("Heap allocation change was negative or zero: m1.HeapAlloc=%d, m2.HeapAlloc=%d. TotalAlloc diff was %d bytes", m1.HeapAlloc, m2.HeapAlloc, totalAllocDiff)
 	} else {
-		t.Logf("Heap memory allocation: %d bytes (TotalAlloc diff was %d bytes)", heapDiff, totalAllocDiff)
+		// This case means m2.HeapAlloc >= m1.HeapAlloc but the difference is not > maxHeapAlloc
+		t.Logf("Heap memory allocation within limits: %d bytes (TotalAlloc diff was %d bytes)", m2.HeapAlloc - m1.HeapAlloc, totalAllocDiff)
 	}
 }
 

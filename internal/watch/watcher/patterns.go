@@ -45,48 +45,65 @@ func (pm *PatternMatcher) MatchesAny(path string, patterns []string) bool {
 
 // MatchesPattern implements the PatternMatcher interface
 func (pm *PatternMatcher) MatchesPattern(path string, pattern string) bool {
-	if pattern == "" { // Empty pattern never matches anything.
+	// Ensure "fmt" is removed from imports if no longer needed (after removing debug statements).
+
+	if pattern == "" {
 		return false
 	}
-	// An empty path can only be matched by specific globs like "**" or by an empty pattern.
 	if path == "" {
-        // doublestar.Match("**", "") is true
-        // doublestar.Match("", "") is true only if pattern is "" (already handled)
+		// doublestar.Match can handle some empty path cases, e.g. pattern "**"
+		// An empty path string specifically should only match "**" or an empty pattern (already handled).
 		return pattern == "**" 
 	}
 
-	normalizedPath := pm.normalizePath(path)
-	normalizedPattern := pm.normalizePath(pattern) 
+	normalizedPath := pm.normalizePath(path) // e.g., path "src" -> "src"
 
-	// After normalization, if a pattern became empty (e.g., original was "." or similar), 
-	// and path is not empty, it's not a match.
-	if normalizedPattern == "" && normalizedPath != "" {
+	// Check for the specific case: original pattern "dir/" vs path "dir"
+	// This must happen BEFORE 'pattern' is normalized in a way that removes its trailing slash.
+	originalPatternEndsWithSlash := strings.HasSuffix(pattern, "/") || strings.HasSuffix(pattern, "\\")
+	
+	if originalPatternEndsWithSlash {
+		// Normalize the pattern *without* its trailing slash for comparison with normalizedPath
+		trimmedPatternBase := ""
+		if len(pattern) > 1 {
+			trimmedPatternBase = pm.normalizePath(pattern[:len(pattern)-1])
+		} else { // Original pattern was just "/" or ""
+			trimmedPatternBase = pm.normalizePath(pattern) // normalizePath("/") is "/"
+		}
+
+		if normalizedPath == trimmedPatternBase && normalizedPath != "" {
+			// This means path is "src" and original pattern was "src/" (or "src\").
+			// normalizedPath ("src") == trimmedPatternBase ("src") -> true.
+			// This should be false.
+			return false
+		}
+	}
+    
+	normalizedPattern := pm.normalizePath(pattern) // e.g., pattern "src/" becomes "src"; pattern "src" stays "src"
+
+	// Post-normalization checks for empty/'.' paths
+	if normalizedPattern == "" && normalizedPath != "" { // Pattern like "." normalized to "", path is not empty
 		return false
 	}
-    // If path normalized to empty (e.g. original was ".") and pattern is not, it's not a match unless pattern is "**"
-    if normalizedPath == "" && normalizedPattern != "" {
-        return normalizedPattern == "**"
+    if normalizedPath == "" && normalizedPattern != "" { // Path like "." normalized to "", pattern is not empty
+        return normalizedPattern == "**" // Only globstar matches effectively empty path
     }
-    // If both normalized to empty (e.g. path="." and pattern=".")
-    if normalizedPath == "" && normalizedPattern == "" { // This implies original path and pattern were like "." or ""
-        return false // "" vs "" test expects false. "." vs "." should be true via exact match if not caught here.
+    if normalizedPath == "" && normalizedPattern == "" { // Path and pattern were like "." or empty
+        return false // Considered not a match for "empty vs empty"
     }
 
-
-	// Explicit check for pattern "dir/" vs path "dir" -> should be false
-	if strings.HasSuffix(normalizedPattern, "/") && normalizedPath == strings.TrimSuffix(normalizedPattern, "/") {
-		return false
+	// 1. Exact match after full normalization (e.g., path "src", pattern "src")
+	if normalizedPath == normalizedPattern {
+		return true
 	}
-
-	// 1. Exact match after full normalization
-	if normalizedPath == normalizedPattern { return true }
 
 	// 2. Comprehensive glob match using doublestar.
 	if matched, _ := doublestar.Match(normalizedPattern, normalizedPath); matched {
 		return true
 	}
-
-	// 3. Fallback for simple "directory name" patterns (no globs, no slashes).
+    
+	// 3. Fallback for simple "directory name" patterns (original pattern had no globs, no slashes).
+	//    normalizedPattern will be the directory name.
 	if !strings.ContainsAny(normalizedPattern, "*?[]{}") && !strings.Contains(normalizedPattern, "/") {
 		pathComponents := strings.Split(normalizedPath, "/")
 		for _, component := range pathComponents {
@@ -97,6 +114,7 @@ func (pm *PatternMatcher) MatchesPattern(path string, pattern string) bool {
 	}
 
 	// 4. Fallback for "filename glob" or "directory component glob" patterns 
+	//    (original pattern had globs, but no slashes). normalizedPattern is the glob.
 	if !strings.Contains(normalizedPattern, "/") && strings.ContainsAny(normalizedPattern, "*?[]{}") {
 		baseName := filepath.Base(normalizedPath)
 		if baseMatch, _ := doublestar.Match(normalizedPattern, baseName); baseMatch {
@@ -110,20 +128,41 @@ func (pm *PatternMatcher) MatchesPattern(path string, pattern string) bool {
 		}
 	}
 	
-    // 5. Handle directory prefix patterns that end with a slash (e.g., "src/").
-    //    Path "src" should NOT match "src/". Path "src/foo" SHOULD match "src/".
-    if strings.HasSuffix(normalizedPattern, "/") {
-        // Ensure path is genuinely inside the directory or is the directory itself (if path also ends with /)
-        if strings.HasPrefix(normalizedPath, normalizedPattern) {
+    // 5. Handle directory prefix patterns where the original pattern ended with a slash (e.g., "src/").
+    //    The special check at the top already handled `path="src"` vs `pattern="src/"` (returned false).
+    //    This section is for `path="src/foo.go"` vs `pattern="src/"`.
+    if originalPatternEndsWithSlash {
+        // `normalizedPattern` for "src/" is "src".
+        // Path "src/foo.go" should match pattern "src/"
+        // Check if normalizedPath starts with normalizedPattern + "/"
+        // (or just normalizedPattern if normalizedPattern is already "/")
+        prefixToMatch := normalizedPattern
+        if prefixToMatch == "/" { // If original pattern was just "/"
+             // normalizedPath must start with "/" (it will if it's under root)
+            if strings.HasPrefix(normalizedPath, prefixToMatch) {
+                return true
+            }
+        } else if prefixToMatch != "" { // For patterns like "src/"
+            if strings.HasPrefix(normalizedPath, prefixToMatch + "/") {
+                 return true
+            }
+        }
+        // Also consider if normalizedPath is identical to normalizedPattern and original pattern was like "src/"
+        // e.g. path "src/", pattern "src/" -> normalizedPath="src/", normalizedPattern="src"
+        // This case should be true. The `normalizedPath == trimmedPatternBase` check at top returns false for this.
+        // `if normalizedPath == normalizedPattern` (src/ == src) is false.
+        // `doublestar.Match("src", "src/")` is false.
+        // So, if normalizedPath itself ends with a slash and matches the pattern base:
+        if strings.HasSuffix(normalizedPath, "/") && normalizedPath == normalizedPattern + "/" {
             return true
         }
     }
     
-    // 6. Handle directory prefix patterns that do NOT end with a slash (e.g. "src/main")
-    //    This should match paths that start with pattern + "/"
-    //    Example: pattern "src/main" should match "src/main/foo.go"
-    if !strings.ContainsAny(normalizedPattern, "*?[]{}") && strings.Contains(normalizedPattern, "/") && !strings.HasSuffix(normalizedPattern, "/"){
-        if strings.HasPrefix(normalizedPath, normalizedPattern+"/") {
+    // 6. Handle directory prefix patterns that did NOT originally end with a slash but contain slashes
+    //    (e.g. pattern "src/main" should match path "src/main/foo.go")
+    //    Here, normalizedPattern is "src/main".
+    if !originalPatternEndsWithSlash && strings.Contains(normalizedPattern, "/") {
+        if strings.HasPrefix(normalizedPath, normalizedPattern + "/") {
             return true
         }
     }

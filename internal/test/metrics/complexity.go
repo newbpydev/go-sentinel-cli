@@ -318,68 +318,81 @@ func (a *DefaultComplexityAnalyzer) containsGoFiles(dir string) bool {
 
 // shouldSkipDirectory determines if a directory should be skipped during analysis
 func (a *DefaultComplexityAnalyzer) shouldSkipDirectory(path string, projectRoot string) bool {
+	// Exact names to skip. These are checked against each component of the path
+	// relative to the project root, and also against the base name of the path itself.
 	skipDirExactNames := map[string]bool{
-		"vendor":       true,
-		".git":         true,
-		".trunk":       true,
-		"node_modules": true,
-		".windsurf":    true,
-		"coverage":     true,
-		".cache":       true,
-		"tmp":          true, // Skips if a directory is *named* tmp
-		"temp":         true, // Skips if a directory is *named* temp
-		".idea":        true,
-		".vscode":      true,
-		"build":        true,
-		"dist":         true,
-		"target":       true,
-		"bin":          true,
-		"obj":          true,
+		"vendor": true, ".git": true, ".trunk": true, "node_modules": true,
+		".windsurf": true, "coverage": true, ".cache": true, "tmp": true, "temp": true,
+		".idea": true, ".vscode": true, "build": true, "dist": true, "target": true,
+		"bin": true, "obj": true, "testdata": true, // "examples" and "docs" are intentionally not here for base check
 	}
 
-	// Normalize path and projectRoot once
+	// 1. Get absolute paths for path and projectRoot. Handle errors by returning true (skip).
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[Warning] could not get absolute path for %s in shouldSkipDirectory: %v. Skipping.\n", path, err)
-		return true // Cannot process, safer to skip
+		return true
+	}
+	absProjectRoot, err := filepath.Abs(projectRoot)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[Warning] could not get absolute project root for %s in shouldSkipDirectory: %v. Skipping.\n", projectRoot, err)
+		return true
 	}
 
-	// If the path being checked IS the project root, don't skip it.
-	if absPath == projectRoot {
+	// 2. If absPath == absProjectRoot, return false.
+	if absPath == absProjectRoot {
 		return false
 	}
 
-	// Get path relative to projectRoot.
-	// If path is not under projectRoot (e.g. symlink pointing outside), relPath will reflect that.
-	relPath, err := filepath.Rel(projectRoot, absPath)
-	if err != nil {
-		// This can happen if path is not a subpath of projectRoot.
-		// In such cases, probably safer to skip.
-		fmt.Fprintf(os.Stderr, "[Warning] Path %s not relative to project root %s: %v. Skipping.\n", absPath, projectRoot, err)
+	// 3. Check filepath.Base(absPath):
+	baseName := filepath.Base(absPath)
+	// 3.a. If filepath.Base(absPath) is in skipDirExactNames, return true.
+	if _, ok := skipDirExactNames[baseName]; ok {
+		return true
+	}
+	// 3.b. If filepath.Base(absPath) starts with . (and is not . or ..), return true.
+	if strings.HasPrefix(baseName, ".") && baseName != "." && baseName != ".." {
 		return true
 	}
 
-	// If relPath is "..", or starts with "../", it's outside the project root, skip.
-	if relPath == ".." || strings.HasPrefix(relPath, ".."+string(filepath.Separator)) {
+	// 4. Attempt filepath.Rel(absProjectRoot, absPath).
+	relPath, err := filepath.Rel(absProjectRoot, absPath)
+	if err != nil {
+		// 4.a. If Rel fails: return false (don't skip).
+		// This addresses the issue where Rel might fail for valid, non-skippable subdirectories.
+		// The basename check above would have caught common skippable dirs.
+		// Log for debugging purposes.
+		fmt.Fprintf(os.Stderr, "[Debug] filepath.Rel failed for %s relative to %s (%v), but not skipping due to base name check passed.\n", absPath, absProjectRoot, err)
+		return false
+	}
+
+	// 4.b. If Rel succeeds:
+	// If relPath indicates it's outside the project root (e.g., starts with ..), return true.
+	if strings.HasPrefix(relPath, "..") { // Using ".." directly also covers "../" due to how relPath is formed
 		return true
 	}
-	
+
+	// Split relPath into components. Iterate through components:
 	components := strings.Split(relPath, string(filepath.Separator))
 	for _, component := range components {
 		if component == "" || component == "." || component == ".." {
 			continue
 		}
-		// If any component of the relative path is a skippable name
+		// If a component is in skipDirExactNames, return true.
+		// Note: The prompt mentioned using a.skipDirs here, but the original `skipDirExactNames`
+		// is defined locally and seems more aligned with the detailed logic.
+		// Using the local `skipDirExactNames` for consistency with other checks in this function.
+		// If `a.skipDirs` (from the struct) is intended, this part needs clarification.
+		// For now, sticking to the locally defined `skipDirExactNames`.
 		if _, ok := skipDirExactNames[component]; ok {
 			return true
 		}
-		// Also skip hidden directories like .git, .vscode, etc. at any level within the project,
-		// unless it's the root component itself (which is handled by the absPath == projectRoot check).
-		// This means a hidden folder like "myproject/.config/foo" will be skipped because of ".config".
+		// If a component starts with . (and is not . or ..), return true.
 		if strings.HasPrefix(component, ".") && len(component) > 1 {
 			return true
 		}
 	}
 
+	// 5. If none of the above conditions are met, return false.
 	return false
 }

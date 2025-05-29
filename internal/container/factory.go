@@ -29,7 +29,7 @@ func NewAppDependencyContainerFactoryWithDependencies(deps AppDependencyContaine
 
 // CreateContainer creates a new dependency container with default configuration.
 func (f *DefaultAppDependencyContainerFactory) CreateContainer() AppDependencyContainer {
-	return NewAppDependencyContainer()
+	return NewAppDependencyContainerWithCapacity(f.defaultCapacity)
 }
 
 // CreateContainerWithDefaults creates a dependency container using factory defaults.
