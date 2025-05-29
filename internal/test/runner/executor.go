@@ -111,6 +111,11 @@ func (e *DefaultExecutor) Execute(ctx context.Context, packages []string, option
 func (e *DefaultExecutor) ExecutePackage(ctx context.Context, pkg string, options *ExecutionOptions) (*PackageResult, error) {
 	startTime := time.Now()
 
+	// Handle nil options
+	if options == nil {
+		return nil, fmt.Errorf("options cannot be nil")
+	}
+
 	// Build the go test command
 	args := []string{"test"}
 
@@ -308,7 +313,27 @@ func (e *DefaultExecutor) ExecutePackage(ctx context.Context, pkg string, option
 // ExecuteMultiplePackages executes tests for multiple packages in a single command
 // This prevents the resource leak caused by spawning many separate go test processes
 func (e *DefaultExecutor) ExecuteMultiplePackages(ctx context.Context, packages []string, options *ExecutionOptions) (*ExecutionResult, error) {
+	// Validate options
+	if options == nil {
+		return nil, fmt.Errorf("options cannot be nil")
+	}
+
 	startTime := time.Now()
+
+	// Handle empty packages case
+	if len(packages) == 0 {
+		return &ExecutionResult{
+			Packages:      make([]*PackageResult, 0),
+			StartTime:     startTime,
+			EndTime:       time.Now(),
+			Success:       true,
+			TotalTests:    0,
+			PassedTests:   0,
+			FailedTests:   0,
+			SkippedTests:  0,
+			TotalDuration: time.Since(startTime),
+		}, nil
+	}
 
 	// Build the go test command for multiple packages
 	args := []string{"test"}
@@ -507,6 +532,7 @@ func (e *DefaultExecutor) parseMultiplePackageResults(output string, packages []
 	result := &ExecutionResult{
 		Packages:    make([]*PackageResult, 0),
 		StartTime:   startTime,
+		EndTime:     time.Now(),
 		Success:     true,
 		TotalTests:  0,
 		PassedTests: 0,
@@ -525,9 +551,31 @@ func (e *DefaultExecutor) parseMultiplePackageResults(output string, packages []
 		}
 	}
 
+	// If output is empty but packages exist, return the empty package results
+	if strings.TrimSpace(output) == "" {
+		for _, pkg := range packages {
+			result.Packages = append(result.Packages, packageResults[pkg])
+		}
+		result.TotalDuration = time.Since(startTime)
+		return result
+	}
+
 	// Parse the output line by line
 	scanner := bufio.NewScanner(strings.NewReader(output))
 	currentPackage := ""
+	hasJSONMarkers := false
+
+	// First pass: check if we have JSON package markers
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.Contains(line, `"Package":`) {
+			hasJSONMarkers = true
+			break
+		}
+	}
+
+	// Reset scanner for actual parsing
+	scanner = bufio.NewScanner(strings.NewReader(output))
 
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -535,43 +583,46 @@ func (e *DefaultExecutor) parseMultiplePackageResults(output string, packages []
 			continue
 		}
 
-		// Try to detect package information from JSON output or test lines
-		if strings.Contains(line, "\"Package\":") {
-			// JSON format - extract package name
-			if packageName := e.extractPackageFromJSON(line); packageName != "" {
-				currentPackage = packageName
-			}
-		} else if strings.Contains(line, "--- PASS:") || strings.Contains(line, "--- FAIL:") || strings.Contains(line, "--- SKIP:") {
-			// Test result line - add to current package
-			if currentPackage != "" {
-				if pkgResult, exists := packageResults[currentPackage]; exists {
-					test := e.parseTestLineForPackage(line, currentPackage)
-					if test != nil {
-						pkgResult.Tests = append(pkgResult.Tests, test)
-						result.TotalTests++
-
-						switch test.Status {
-						case TestStatusPass:
-							result.PassedTests++
-						case TestStatusFail:
-							result.FailedTests++
-							pkgResult.Success = false
-							result.Success = false
-						case TestStatusSkip:
-							result.SkippedTests++
-						}
-					}
-				}
-			}
+		// Check for JSON package marker
+		if pkg := e.extractPackageFromJSON(line); pkg != "" {
+			currentPackage = pkg
+			hasJSONMarkers = true
+			continue
 		}
 
-		// Add line to current package output
-		if currentPackage != "" {
-			if pkgResult, exists := packageResults[currentPackage]; exists {
-				if pkgResult.Output == "" {
-					pkgResult.Output = line
-				} else {
-					pkgResult.Output += "\n" + line
+		// Parse test result line
+		if testResult := e.parseTestLineForPackage(line, currentPackage); testResult != nil {
+			// If no JSON markers and no current package, assign to first package
+			if !hasJSONMarkers && currentPackage == "" && len(packages) > 0 {
+				currentPackage = packages[0]
+				testResult.Package = currentPackage
+			}
+
+			if currentPackage != "" {
+				if _, exists := packageResults[currentPackage]; !exists {
+					packageResults[currentPackage] = &PackageResult{
+						Package:  currentPackage,
+						Success:  true,
+						Duration: 0,
+						Output:   "",
+						Tests:    make([]*TestResult, 0),
+					}
+				}
+
+				packageResults[currentPackage].Tests = append(packageResults[currentPackage].Tests, testResult)
+				packageResults[currentPackage].Output += line + "\n"
+
+				// Update result totals
+				result.TotalTests++
+				switch testResult.Status {
+				case TestStatusPass:
+					result.PassedTests++
+				case TestStatusFail:
+					result.FailedTests++
+					packageResults[currentPackage].Success = false
+					result.Success = false
+				case TestStatusSkip:
+					result.SkippedTests++
 				}
 			}
 		}
@@ -584,6 +635,9 @@ func (e *DefaultExecutor) parseMultiplePackageResults(output string, packages []
 		}
 	}
 
+	// Calculate total duration
+	result.TotalDuration = time.Since(startTime)
+
 	return result
 }
 
@@ -593,7 +647,17 @@ func (e *DefaultExecutor) extractPackageFromJSON(line string) string {
 	if start := strings.Index(line, "\"Package\":\""); start != -1 {
 		start += len("\"Package\":\"")
 		if end := strings.Index(line[start:], "\""); end != -1 {
-			return line[start : start+end]
+			packageName := line[start : start+end]
+
+			// Verify the JSON is well-formed by checking for proper closing
+			// Look for the closing quote and ensure there's a proper JSON structure
+			afterPackage := line[start+end:]
+			if !strings.Contains(afterPackage, "}") && !strings.Contains(afterPackage, ",") {
+				// Malformed JSON - missing proper closing
+				return ""
+			}
+
+			return packageName
 		}
 	}
 	return ""
@@ -673,6 +737,17 @@ func (e *DefaultExecutor) parseTestResults(output, pkg string) []*TestResult {
 
 // parseTestLine parses a single test result line
 func (e *DefaultExecutor) parseTestLine(line, pkg string, status TestStatus) *TestResult {
+	// Handle empty lines gracefully by creating a minimal test result
+	if strings.TrimSpace(line) == "" {
+		return &TestResult{
+			Name:     "EmptyLine",
+			Package:  pkg,
+			Status:   status,
+			Duration: 0,
+			Output:   line,
+		}
+	}
+
 	// Example: "--- PASS: TestName (0.00s)"
 	parts := strings.Fields(line)
 	if len(parts) < 3 {
@@ -702,6 +777,11 @@ func (e *DefaultExecutor) parseTestLine(line, pkg string, status TestStatus) *Te
 // setProcessGroup configures the command to run in a separate process group
 // This ensures that child processes can be properly terminated
 func setProcessGroup(cmd *exec.Cmd) {
+	// Check for nil command to prevent panic
+	if cmd == nil {
+		return
+	}
+
 	// Initialize SysProcAttr for all platforms
 	cmd.SysProcAttr = &syscall.SysProcAttr{}
 
@@ -716,6 +796,11 @@ func setProcessGroup(cmd *exec.Cmd) {
 
 // killProcessGroup terminates the process and its children
 func killProcessGroup(process *os.Process) {
+	// Check for nil process to prevent panic
+	if process == nil {
+		return
+	}
+
 	if runtime.GOOS == "windows" {
 		// On Windows, we need to kill the entire process tree
 		// Use taskkill to kill the process and all its children
@@ -737,6 +822,11 @@ func killProcessGroup(process *os.Process) {
 
 // expandPackagePatterns expands package patterns like "./..." into individual package paths
 func (e *DefaultExecutor) expandPackagePatterns(ctx context.Context, packages []string) ([]string, error) {
+	// Handle empty packages slice
+	if len(packages) == 0 {
+		return []string{}, nil
+	}
+
 	var expandedPackages []string
 
 	for _, pkg := range packages {
@@ -745,20 +835,31 @@ func (e *DefaultExecutor) expandPackagePatterns(ctx context.Context, packages []
 			cmd := exec.CommandContext(ctx, "go", "list", pkg)
 			output, err := cmd.Output()
 			if err != nil {
+				// Check if it's a "no packages found" scenario
+				if strings.Contains(err.Error(), "exit status 1") {
+					return nil, fmt.Errorf("no packages found for pattern %s", pkg)
+				}
 				return nil, fmt.Errorf("failed to expand package pattern %s: %w", pkg, err)
 			}
 
 			// Parse the output to get individual packages
 			scanner := bufio.NewScanner(strings.NewReader(string(output)))
+			packageCount := 0
 			for scanner.Scan() {
 				line := strings.TrimSpace(scanner.Text())
 				if line != "" {
 					expandedPackages = append(expandedPackages, line)
+					packageCount++
 				}
 			}
 
 			if err := scanner.Err(); err != nil {
 				return nil, fmt.Errorf("error reading go list output for %s: %w", pkg, err)
+			}
+
+			// If no packages were found, return specific error
+			if packageCount == 0 {
+				return nil, fmt.Errorf("no packages found for pattern %s", pkg)
 			}
 		} else {
 			// Not a pattern, add as-is

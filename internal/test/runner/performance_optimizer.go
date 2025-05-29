@@ -82,6 +82,11 @@ func (p *OptimizedTestProcessor) AddTestSuite(suite *models.TestSuite) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
+	// Handle nil suite gracefully
+	if suite == nil {
+		return
+	}
+
 	if p.processor != nil {
 		p.processor.AddTestSuite(suite)
 	}
@@ -299,6 +304,11 @@ func (p *OptimizedStreamParser) ParseOptimized(reader io.Reader, results chan<- 
 
 // NewBatchProcessor creates a new batch processor
 func NewBatchProcessor(batchSize int, timeout time.Duration) *BatchProcessor {
+	// Ensure batchSize is positive
+	if batchSize <= 0 {
+		batchSize = 10 // Default batch size
+	}
+
 	return &BatchProcessor{
 		batchSize: batchSize,
 		timeout:   timeout,

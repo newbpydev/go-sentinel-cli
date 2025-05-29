@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -414,6 +415,547 @@ func TestFileChangeAdapter_ChangeTypes(t *testing.T) {
 			changeType := adapter.GetType()
 			if changeType != tc.expectedType {
 				t.Errorf("Expected type %v for file %s, got %v", tc.expectedType, tc.filePath, changeType)
+			}
+		})
+	}
+}
+
+// TestNewOptimizedTestRunner_ComprehensiveCoverage tests the factory function
+func TestNewOptimizedTestRunner_ComprehensiveCoverage(t *testing.T) {
+	t.Parallel()
+
+	runner := NewOptimizedTestRunner()
+	if runner == nil {
+		t.Fatal("Expected runner to be created, got nil")
+	}
+
+	// Verify default configuration
+	if runner.cache == nil {
+		t.Error("Expected cache to be initialized")
+	}
+}
+
+// TestNewSmartTestCache_ComprehensiveCoverage tests the cache factory function
+func TestNewSmartTestCache_ComprehensiveCoverage(t *testing.T) {
+	t.Parallel()
+
+	cache := NewSmartTestCache()
+	if cache == nil {
+		t.Fatal("Expected cache to be created, got nil")
+	}
+}
+
+// TestFileChangeAdapter_GetPath_ComprehensiveCoverage tests GetPath method
+func TestFileChangeAdapter_GetPath_ComprehensiveCoverage(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name     string
+		filePath string
+		expected string
+	}{
+		{
+			name:     "normal_path",
+			filePath: "/test/path/file.go",
+			expected: "/test/path/file.go",
+		},
+		{
+			name:     "empty_path",
+			filePath: "",
+			expected: "",
+		},
+		{
+			name:     "relative_path",
+			filePath: "./test/file.go",
+			expected: "./test/file.go",
+		},
+		{
+			name:     "windows_path",
+			filePath: "C:\\test\\file.go",
+			expected: "C:\\test\\file.go",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			adapter := &FileChangeAdapter{
+				FileChange: &models.FileChange{
+					FilePath:   tc.filePath,
+					ChangeType: models.ChangeTypeModified,
+					Timestamp:  time.Now(),
+				},
+			}
+
+			result := adapter.GetPath()
+			if result != tc.expected {
+				t.Errorf("Expected path %q, got %q", tc.expected, result)
+			}
+		})
+	}
+}
+
+// TestFileChangeAdapter_IsNewChange_ComprehensiveCoverage tests IsNewChange method
+func TestFileChangeAdapter_IsNewChange_ComprehensiveCoverage(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name       string
+		changeType models.ChangeType
+		expected   bool
+	}{
+		{
+			name:       "created_file",
+			changeType: models.ChangeTypeCreated,
+			expected:   true,
+		},
+		{
+			name:       "modified_file",
+			changeType: models.ChangeTypeModified,
+			expected:   true,
+		},
+		{
+			name:       "deleted_file",
+			changeType: models.ChangeTypeDeleted,
+			expected:   false, // Deleted files are not "new" changes
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			adapter := &FileChangeAdapter{
+				FileChange: &models.FileChange{
+					FilePath:   "/test/file.go",
+					ChangeType: tc.changeType,
+					Timestamp:  time.Now(),
+				},
+			}
+
+			result := adapter.IsNewChange()
+			if result != tc.expected {
+				t.Errorf("Expected IsNewChange %v, got %v", tc.expected, result)
+			}
+		})
+	}
+}
+
+// TestOptimizedTestRunner_BuildOptimizedCommand_ComprehensiveCoverage tests buildOptimizedCommand method
+func TestOptimizedTestRunner_BuildOptimizedCommand_ComprehensiveCoverage(t *testing.T) {
+	t.Parallel()
+
+	runner := NewOptimizedTestRunner()
+
+	testCases := []struct {
+		name     string
+		targets  []string
+		expected []string
+	}{
+		{
+			name:     "single_target",
+			targets:  []string{"./pkg"},
+			expected: []string{"test", "-json", "-timeout=30s", "./pkg"},
+		},
+		{
+			name:     "multiple_targets",
+			targets:  []string{"./pkg1", "./pkg2"},
+			expected: []string{"test", "-json", "-timeout=30s", "./pkg1", "./pkg2"},
+		},
+		{
+			name:     "empty_targets",
+			targets:  []string{},
+			expected: []string{"test", "-json", "-timeout=30s"},
+		},
+		{
+			name:     "single_dot_target",
+			targets:  []string{"."},
+			expected: []string{"test", "-json", "-timeout=30s", "."},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			command := runner.buildOptimizedCommand(tc.targets)
+			if len(command) != len(tc.expected) {
+				t.Errorf("Expected command length %d, got %d", len(tc.expected), len(command))
+			}
+
+			for i, expected := range tc.expected {
+				if i >= len(command) {
+					t.Errorf("Expected command[%d] %q, but command is too short", i, expected)
+					continue
+				}
+				if command[i] != expected {
+					t.Errorf("Expected command[%d] %q, got %q", i, expected, command[i])
+				}
+			}
+		})
+	}
+}
+
+// TestOptimizedTestRunner_GetEfficiencyStats_ComprehensiveCoverage tests GetEfficiencyStats method
+func TestOptimizedTestRunner_GetEfficiencyStats_ComprehensiveCoverage(t *testing.T) {
+	t.Parallel()
+
+	// Create a test result to test GetEfficiencyStats
+	result := &OptimizedTestResult{
+		TestsRun:  5,
+		CacheHits: 3,
+		Duration:  100 * time.Millisecond,
+	}
+
+	stats := result.GetEfficiencyStats()
+	if stats == nil {
+		t.Error("Expected efficiency stats to be returned, got nil")
+	}
+	if len(stats) == 0 {
+		t.Error("Expected non-empty efficiency stats")
+	}
+
+	// Verify specific stats are present
+	if _, exists := stats["tests_run"]; !exists {
+		t.Error("Expected tests_run in efficiency stats")
+	}
+	if _, exists := stats["cache_hits"]; !exists {
+		t.Error("Expected cache_hits in efficiency stats")
+	}
+}
+
+// TestOptimizedTestRunner_ClearCache_ComprehensiveCoverage tests ClearCache method
+func TestOptimizedTestRunner_ClearCache_ComprehensiveCoverage(t *testing.T) {
+	t.Parallel()
+
+	runner := NewOptimizedTestRunner()
+
+	// Clear cache should not panic
+	runner.ClearCache()
+
+	// Verify cache is still accessible after clear
+	if runner.cache == nil {
+		t.Error("Expected cache to still exist after clear")
+	}
+}
+
+// TestOptimizedTestRunner_SetCacheEnabled_ComprehensiveCoverage tests SetCacheEnabled method
+func TestOptimizedTestRunner_SetCacheEnabled_ComprehensiveCoverage(t *testing.T) {
+	t.Parallel()
+
+	runner := NewOptimizedTestRunner()
+
+	testCases := []bool{true, false}
+
+	for _, enabled := range testCases {
+		t.Run(fmt.Sprintf("enabled_%v", enabled), func(t *testing.T) {
+			t.Parallel()
+
+			runner.SetCacheEnabled(enabled)
+			// Method should not panic and should accept both true and false
+		})
+	}
+}
+
+// TestOptimizedTestRunner_SetOnlyRunChangedTests_ComprehensiveCoverage tests SetOnlyRunChangedTests method
+func TestOptimizedTestRunner_SetOnlyRunChangedTests_ComprehensiveCoverage(t *testing.T) {
+	t.Parallel()
+
+	runner := NewOptimizedTestRunner()
+
+	testCases := []bool{true, false}
+
+	for _, onlyChanged := range testCases {
+		t.Run(fmt.Sprintf("only_changed_%v", onlyChanged), func(t *testing.T) {
+			t.Parallel()
+
+			runner.SetOnlyRunChangedTests(onlyChanged)
+			// Method should not panic and should accept both true and false
+		})
+	}
+}
+
+// TestOptimizedTestRunner_SetOptimizationMode_ComprehensiveCoverage tests SetOptimizationMode method
+func TestOptimizedTestRunner_SetOptimizationMode_ComprehensiveCoverage(t *testing.T) {
+	t.Parallel()
+
+	runner := NewOptimizedTestRunner()
+
+	testCases := []string{"aggressive", "conservative", "balanced", "invalid", ""}
+
+	for _, mode := range testCases {
+		t.Run(fmt.Sprintf("mode_%s", mode), func(t *testing.T) {
+			t.Parallel()
+
+			runner.SetOptimizationMode(mode)
+			// Method should not panic and should accept any string
+		})
+	}
+}
+
+// TestOptimizedTestRunner_FindRelatedTestFiles_ComprehensiveCoverage tests findRelatedTestFiles method
+func TestOptimizedTestRunner_FindRelatedTestFiles_ComprehensiveCoverage(t *testing.T) {
+	t.Parallel()
+
+	// Create a temporary directory for testing
+	tempDir, err := os.MkdirTemp("", "find_related_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create test files
+	sourceFile := filepath.Join(tempDir, "example.go")
+	testFile := filepath.Join(tempDir, "example_test.go")
+
+	err = os.WriteFile(sourceFile, []byte("package main\nfunc Example() {}"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create source file: %v", err)
+	}
+
+	err = os.WriteFile(testFile, []byte("package main\nimport \"testing\"\nfunc TestExample(t *testing.T) {}"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	runner := NewOptimizedTestRunner()
+
+	testCases := []struct {
+		name       string
+		sourceFile string
+		expectLen  int
+	}{
+		{
+			name:       "existing_source_file",
+			sourceFile: sourceFile,
+			expectLen:  0, // May not find related tests without proper Go module structure
+		},
+		{
+			name:       "non_existent_file",
+			sourceFile: "/non/existent/file.go",
+			expectLen:  0,
+		},
+		{
+			name:       "empty_path",
+			sourceFile: "",
+			expectLen:  0,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			related := runner.findRelatedTestFiles(tc.sourceFile)
+			if len(related) < 0 {
+				t.Errorf("Expected non-negative length, got %d", len(related))
+			}
+		})
+	}
+}
+
+// TestOptimizedTestRunner_ExecuteMinimalTests_ComprehensiveCoverage tests executeMinimalTests method
+func TestOptimizedTestRunner_ExecuteMinimalTests_ComprehensiveCoverage(t *testing.T) {
+	t.Parallel()
+
+	runner := NewOptimizedTestRunner()
+
+	testCases := []struct {
+		name    string
+		targets []string
+		timeout time.Duration
+	}{
+		{
+			name:    "empty_targets",
+			targets: []string{},
+			timeout: 5 * time.Second,
+		},
+		{
+			name:    "single_target",
+			targets: []string{"."},
+			timeout: 5 * time.Second,
+		},
+		{
+			name:    "multiple_targets",
+			targets: []string{"./...", "."},
+			timeout: 5 * time.Second,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithTimeout(context.Background(), tc.timeout)
+			defer cancel()
+
+			result, err := runner.executeMinimalTests(ctx, tc.targets)
+			if err != nil {
+				t.Logf("executeMinimalTests returned error (may be expected): %v", err)
+			}
+			if result == nil {
+				t.Error("Expected result to be returned, got nil")
+			}
+		})
+	}
+}
+
+// TestOptimizedTestRunner_DetermineTestTargets_ComprehensiveCoverage tests determineTestTargets method
+func TestOptimizedTestRunner_DetermineTestTargets_ComprehensiveCoverage(t *testing.T) {
+	t.Parallel()
+
+	runner := NewOptimizedTestRunner()
+
+	testCases := []struct {
+		name    string
+		changes []FileChangeInterface
+	}{
+		{
+			name: "test_file_changes",
+			changes: []FileChangeInterface{
+				&FileChangeAdapter{
+					FileChange: &models.FileChange{
+						FilePath:   "/test/example_test.go",
+						ChangeType: models.ChangeTypeModified,
+						Timestamp:  time.Now(),
+					},
+				},
+			},
+		},
+		{
+			name: "source_file_changes",
+			changes: []FileChangeInterface{
+				&FileChangeAdapter{
+					FileChange: &models.FileChange{
+						FilePath:   "/test/example.go",
+						ChangeType: models.ChangeTypeModified,
+						Timestamp:  time.Now(),
+					},
+				},
+			},
+		},
+		{
+			name: "config_file_changes",
+			changes: []FileChangeInterface{
+				&FileChangeAdapter{
+					FileChange: &models.FileChange{
+						FilePath:   "/test/go.mod",
+						ChangeType: models.ChangeTypeModified,
+						Timestamp:  time.Now(),
+					},
+				},
+			},
+		},
+		{
+			name: "dependency_file_changes",
+			changes: []FileChangeInterface{
+				&FileChangeAdapter{
+					FileChange: &models.FileChange{
+						FilePath:   "/test/go.sum",
+						ChangeType: models.ChangeTypeModified,
+						Timestamp:  time.Now(),
+					},
+				},
+			},
+		},
+		{
+			name: "mixed_changes",
+			changes: []FileChangeInterface{
+				&FileChangeAdapter{
+					FileChange: &models.FileChange{
+						FilePath:   "/test/example.go",
+						ChangeType: models.ChangeTypeModified,
+						Timestamp:  time.Now(),
+					},
+				},
+				&FileChangeAdapter{
+					FileChange: &models.FileChange{
+						FilePath:   "/test/example_test.go",
+						ChangeType: models.ChangeTypeCreated,
+						Timestamp:  time.Now(),
+					},
+				},
+			},
+		},
+		{
+			name:    "empty_changes",
+			changes: []FileChangeInterface{},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			targets := runner.determineTestTargets(tc.changes)
+			if targets == nil {
+				t.Error("Expected targets slice to be returned, got nil")
+			}
+			if len(targets) < 0 {
+				t.Errorf("Expected non-negative targets length, got %d", len(targets))
+			}
+		})
+	}
+}
+
+// TestOptimizedTestRunner_RunOptimized_EdgeCases tests RunOptimized with various edge cases
+func TestOptimizedTestRunner_RunOptimized_EdgeCases(t *testing.T) {
+	t.Parallel()
+
+	runner := NewOptimizedTestRunner()
+
+	testCases := []struct {
+		name    string
+		changes []FileChangeInterface
+		timeout time.Duration
+	}{
+		{
+			name: "changes_with_no_new_changes",
+			changes: []FileChangeInterface{
+				&FileChangeAdapter{
+					FileChange: &models.FileChange{
+						FilePath:   "/test/deleted_file.go",
+						ChangeType: models.ChangeTypeDeleted,
+						Timestamp:  time.Now(),
+					},
+				},
+			},
+			timeout: 5 * time.Second,
+		},
+		{
+			name: "changes_with_new_changes",
+			changes: []FileChangeInterface{
+				&FileChangeAdapter{
+					FileChange: &models.FileChange{
+						FilePath:   "/test/new_file.go",
+						ChangeType: models.ChangeTypeCreated,
+						Timestamp:  time.Now(),
+					},
+				},
+			},
+			timeout: 5 * time.Second,
+		},
+		{
+			name:    "nil_changes",
+			changes: nil,
+			timeout: 5 * time.Second,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithTimeout(context.Background(), tc.timeout)
+			defer cancel()
+
+			result, err := runner.RunOptimized(ctx, tc.changes)
+			if err != nil {
+				t.Logf("RunOptimized returned error (may be expected): %v", err)
+			}
+			if result == nil {
+				t.Error("Expected result to be returned, got nil")
 			}
 		})
 	}

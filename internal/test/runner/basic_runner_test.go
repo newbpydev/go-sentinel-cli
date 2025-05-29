@@ -1,9 +1,11 @@
 package runner
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -486,4 +488,316 @@ func TestAnotherExample(t *testing.T) {
 	}
 
 	return tempDir
+}
+
+// TestNewBasicTestRunner_ComprehensiveCoverage tests the NewBasicTestRunner factory function
+func TestNewBasicTestRunner_ComprehensiveCoverage(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		verbose    bool
+		jsonOutput bool
+		validate   func(*testing.T, *BasicTestRunner)
+	}{
+		"default_configuration": {
+			verbose:    false,
+			jsonOutput: false,
+			validate: func(t *testing.T, runner *BasicTestRunner) {
+				if runner.Verbose {
+					t.Error("Expected Verbose to be false")
+				}
+				if runner.JSONOutput {
+					t.Error("Expected JSONOutput to be false")
+				}
+			},
+		},
+		"verbose_enabled": {
+			verbose:    true,
+			jsonOutput: false,
+			validate: func(t *testing.T, runner *BasicTestRunner) {
+				if !runner.Verbose {
+					t.Error("Expected Verbose to be true")
+				}
+				if runner.JSONOutput {
+					t.Error("Expected JSONOutput to be false")
+				}
+			},
+		},
+		"json_output_enabled": {
+			verbose:    false,
+			jsonOutput: true,
+			validate: func(t *testing.T, runner *BasicTestRunner) {
+				if runner.Verbose {
+					t.Error("Expected Verbose to be false")
+				}
+				if !runner.JSONOutput {
+					t.Error("Expected JSONOutput to be true")
+				}
+			},
+		},
+		"both_enabled": {
+			verbose:    true,
+			jsonOutput: true,
+			validate: func(t *testing.T, runner *BasicTestRunner) {
+				if !runner.Verbose {
+					t.Error("Expected Verbose to be true")
+				}
+				if !runner.JSONOutput {
+					t.Error("Expected JSONOutput to be true")
+				}
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			runner := NewBasicTestRunner(tt.verbose, tt.jsonOutput)
+
+			if runner == nil {
+				t.Fatal("NewBasicTestRunner should not return nil")
+			}
+
+			// Verify it implements the TestRunnerInterface
+			var _ TestRunnerInterface = runner
+
+			tt.validate(t, runner)
+		})
+	}
+}
+
+// TestStreamReader_ComprehensiveCoverage tests the streamReader Read and Close methods
+func TestStreamReader_ComprehensiveCoverage(t *testing.T) {
+	t.Parallel()
+
+	// Test Read method with valid data
+	t.Run("read_method", func(t *testing.T) {
+		t.Parallel()
+
+		// Create test data
+		testData := "line 1\nline 2\nline 3\n"
+		reader := strings.NewReader(testData)
+
+		streamReader := &streamReader{
+			reader: io.NopCloser(reader),
+			cmd:    nil, // No command for this test
+			stderr: &bytes.Buffer{},
+		}
+
+		// Test Read method
+		buffer := make([]byte, 10)
+		n, err := streamReader.Read(buffer)
+		if err != nil && err != io.EOF {
+			t.Fatalf("Read should not error: %v", err)
+		}
+		if n == 0 {
+			t.Error("Read should return some bytes")
+		}
+	})
+
+	// Test Close method with nil command (should not panic)
+	t.Run("close_with_nil_command", func(t *testing.T) {
+		t.Parallel()
+
+		testData := "test data"
+		reader := strings.NewReader(testData)
+
+		streamReader := &streamReader{
+			reader: io.NopCloser(reader),
+			cmd:    nil, // No command
+			stderr: &bytes.Buffer{},
+		}
+
+		// Test Close method - should not panic with nil cmd
+		err := streamReader.Close()
+		if err != nil {
+			t.Errorf("Close should not error with nil cmd: %v", err)
+		}
+	})
+
+	// Test with actual command (integration test)
+	t.Run("close_with_real_command", func(t *testing.T) {
+		t.Parallel()
+
+		// Create a simple command that will complete quickly
+		cmd := exec.Command("go", "version")
+
+		// Start the command and get stdout
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			t.Fatalf("Failed to create stdout pipe: %v", err)
+		}
+
+		var stderr bytes.Buffer
+		cmd.Stderr = &stderr
+
+		if err := cmd.Start(); err != nil {
+			t.Fatalf("Failed to start command: %v", err)
+		}
+
+		streamReader := &streamReader{
+			reader: stdout,
+			cmd:    cmd,
+			stderr: &stderr,
+		}
+
+		// Read some data
+		buffer := make([]byte, 100)
+		_, err = streamReader.Read(buffer)
+		// Error is acceptable here (might be EOF)
+
+		// Test Close method with real command
+		err = streamReader.Close()
+		if err != nil {
+			t.Logf("Close returned error (acceptable for test command): %v", err)
+		}
+	})
+}
+
+// TestFileTypeCheckers_ComprehensiveCoverage tests IsGoTestFile and IsGoFile functions
+func TestFileTypeCheckers_ComprehensiveCoverage(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		filename       string
+		expectedGoTest bool
+		expectedGo     bool
+	}{
+		"go_test_file": {
+			filename:       "example_test.go",
+			expectedGoTest: true,
+			expectedGo:     true,
+		},
+		"go_source_file": {
+			filename:       "example.go",
+			expectedGoTest: false,
+			expectedGo:     true,
+		},
+		"non_go_file": {
+			filename:       "example.txt",
+			expectedGoTest: false,
+			expectedGo:     false,
+		},
+		"go_file_without_extension": {
+			filename:       "example",
+			expectedGoTest: false,
+			expectedGo:     false,
+		},
+		"test_file_without_go_extension": {
+			filename:       "example_test.txt",
+			expectedGoTest: false,
+			expectedGo:     false,
+		},
+		"empty_filename": {
+			filename:       "",
+			expectedGoTest: false,
+			expectedGo:     false,
+		},
+		"go_file_with_path": {
+			filename:       "/path/to/example.go",
+			expectedGoTest: false,
+			expectedGo:     true,
+		},
+		"test_file_with_path": {
+			filename:       "/path/to/example_test.go",
+			expectedGoTest: true,
+			expectedGo:     true,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			// Test IsGoTestFile
+			isGoTest := IsGoTestFile(tt.filename)
+			if isGoTest != tt.expectedGoTest {
+				t.Errorf("IsGoTestFile(%q) = %v, expected %v", tt.filename, isGoTest, tt.expectedGoTest)
+			}
+
+			// Test IsGoFile
+			isGo := IsGoFile(tt.filename)
+			if isGo != tt.expectedGo {
+				t.Errorf("IsGoFile(%q) = %v, expected %v", tt.filename, isGo, tt.expectedGo)
+			}
+		})
+	}
+}
+
+// TestNewTestRunner_BackwardCompatibilityComprehensive tests the NewTestRunner backward compatibility function
+func TestNewTestRunner_BackwardCompatibilityComprehensive(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		verbose    bool
+		jsonOutput bool
+		validate   func(*testing.T, *BasicTestRunner)
+	}{
+		"default_settings": {
+			verbose:    false,
+			jsonOutput: false,
+			validate: func(t *testing.T, runner *BasicTestRunner) {
+				if runner.Verbose {
+					t.Error("Expected Verbose to be false")
+				}
+				if runner.JSONOutput {
+					t.Error("Expected JSONOutput to be false")
+				}
+			},
+		},
+		"verbose_only": {
+			verbose:    true,
+			jsonOutput: false,
+			validate: func(t *testing.T, runner *BasicTestRunner) {
+				if !runner.Verbose {
+					t.Error("Expected Verbose to be true")
+				}
+				if runner.JSONOutput {
+					t.Error("Expected JSONOutput to be false")
+				}
+			},
+		},
+		"json_only": {
+			verbose:    false,
+			jsonOutput: true,
+			validate: func(t *testing.T, runner *BasicTestRunner) {
+				if runner.Verbose {
+					t.Error("Expected Verbose to be false")
+				}
+				if !runner.JSONOutput {
+					t.Error("Expected JSONOutput to be true")
+				}
+			},
+		},
+		"both_enabled": {
+			verbose:    true,
+			jsonOutput: true,
+			validate: func(t *testing.T, runner *BasicTestRunner) {
+				if !runner.Verbose {
+					t.Error("Expected Verbose to be true")
+				}
+				if !runner.JSONOutput {
+					t.Error("Expected JSONOutput to be true")
+				}
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			runner := NewTestRunner(tt.verbose, tt.jsonOutput)
+
+			if runner == nil {
+				t.Fatal("NewTestRunner should not return nil")
+			}
+
+			// Verify it implements the TestRunnerInterface
+			var _ TestRunnerInterface = runner
+
+			tt.validate(t, runner)
+		})
+	}
 }

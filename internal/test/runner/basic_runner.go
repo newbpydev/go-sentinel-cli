@@ -174,6 +174,11 @@ func (sr *streamReader) Close() error {
 	// Close the reader first
 	sr.reader.Close()
 
+	// Check if cmd is nil to prevent panic
+	if sr.cmd == nil {
+		return nil
+	}
+
 	// Wait for the command to finish
 	if err := sr.cmd.Wait(); err != nil {
 		// For test failures, this is expected
