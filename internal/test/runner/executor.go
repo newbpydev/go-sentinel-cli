@@ -699,21 +699,6 @@ func (e *DefaultExecutor) parseTestLine(line, pkg string, status TestStatus) *Te
 	}
 }
 
-// setProcessGroup configures the command to run in a separate process group
-// This ensures that child processes can be properly terminated
-func setProcessGroup(cmd *exec.Cmd) {
-	// Initialize SysProcAttr for all platforms
-	cmd.SysProcAttr = &syscall.SysProcAttr{}
-
-	if runtime.GOOS == "windows" {
-		// On Windows, set CREATE_NEW_PROCESS_GROUP flag for proper tree killing
-		// This ensures taskkill /T can kill the entire process tree
-		cmd.SysProcAttr.CreationFlags = syscall.CREATE_NEW_PROCESS_GROUP
-	}
-	// For Unix systems, we can't use Setpgid/Pgid fields on this build
-	// The process will still be manageable through the context cancellation
-}
-
 // killProcessGroup terminates the process and its children
 func killProcessGroup(process *os.Process) {
 	if runtime.GOOS == "windows" {

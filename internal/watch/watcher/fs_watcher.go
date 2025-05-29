@@ -125,7 +125,12 @@ func (w *FileSystemWatcher) AddPath(path string) error {
 		// Walk through all subdirectories
 		err = filepath.Walk(absPath, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
-				return err
+				// If filepath.Walk encounters an error trying to read/stat a path,
+				// log it and continue with other paths.
+				// This allows adding a directory even if some subdirectories are inaccessible.
+				// A more sophisticated error handling could be added here if needed.
+				fmt.Fprintf(os.Stderr, "[LOG] Error during walk at %s: %v. Skipping this entry.\n", path, err)
+				return nil // Returning nil tells filepath.Walk to continue.
 			}
 
 			if info.IsDir() {

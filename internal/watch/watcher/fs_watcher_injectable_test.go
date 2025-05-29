@@ -183,8 +183,11 @@ func (m *mockFileSystem) Abs(path string) (string, error) {
 		return "", errors.New("empty path")
 	}
 
-	// Use filepath.Join to get the correct path separator for the platform
-	return filepath.Join("\\abs", path), nil
+	// Consistently use forward slashes for mock absolute paths
+	if strings.HasPrefix(path, "/") {
+		return "/abs" + path, nil
+	}
+	return "/abs/" + path, nil
 }
 
 // mockTimeProvider provides controllable mock of time operations
@@ -471,7 +474,8 @@ func TestInjectableFileSystemWatcher_Watch_DirectoryCreation(t *testing.T) {
 	factory.watcher = mockWatcher
 
 	mockFS := newMockFileSystem()
-	mockFS.addFile("\\abs\\test\\newdir", true) // Use Windows-style path
+	// Ensure the path added to mockFS matches what Abs will produce if /test/newdir is passed to Abs
+	mockFS.addFile("/abs/test/newdir", true)
 
 	deps := &Dependencies{
 		FileSystem:   mockFS,
@@ -492,7 +496,7 @@ func TestInjectableFileSystemWatcher_Watch_DirectoryCreation(t *testing.T) {
 	go func() {
 		time.Sleep(10 * time.Millisecond)
 		mockWatcher.sendEvent(fsnotify.Event{
-			Name: "\\abs\\test\\newdir", // Use Windows-style path
+			Name: "/abs/test/newdir", // Path matches what Abs would produce for /test/newdir
 			Op:   fsnotify.Create,
 		})
 		time.Sleep(10 * time.Millisecond)
@@ -507,13 +511,15 @@ func TestInjectableFileSystemWatcher_Watch_DirectoryCreation(t *testing.T) {
 	// Verify the directory was added to the watcher
 	found := false
 	for _, path := range mockWatcher.addedPaths {
-		if path == "\\abs\\test\\newdir" {
+		// The path added to fsnotify watcher via watcher.Add() in addPathInternal
+		// is the absolute path derived from w.fs.Abs(path)
+		if path == "/abs/test/newdir" { 
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Error("Expected new directory to be added to watcher")
+		t.Errorf("Expected new directory /abs/test/newdir to be added to watcher, added paths: %v", mockWatcher.addedPaths)
 	}
 }
 
@@ -524,7 +530,8 @@ func TestInjectableFileSystemWatcher_Watch_DirectoryCreationError(t *testing.T) 
 	mockWatcher := newMockFsnotifyWatcher()
 	addError := errors.New("failed to add directory")
 	mockWatcher.addFunc = func(name string) error {
-		if name == "\\abs\\test\\newdir" {
+		// This name should be the absolute path from fs.Abs()
+		if name == "/abs/test/newdir" { 
 			return addError
 		}
 		return nil
@@ -534,7 +541,7 @@ func TestInjectableFileSystemWatcher_Watch_DirectoryCreationError(t *testing.T) 
 	factory.watcher = mockWatcher
 
 	mockFS := newMockFileSystem()
-	mockFS.addFile("\\abs\\test\\newdir", true) // Use Windows-style path
+	mockFS.addFile("/abs/test/newdir", true) // Path in mockFS
 
 	deps := &Dependencies{
 		FileSystem:   mockFS,
@@ -555,7 +562,7 @@ func TestInjectableFileSystemWatcher_Watch_DirectoryCreationError(t *testing.T) 
 	go func() {
 		time.Sleep(10 * time.Millisecond)
 		mockWatcher.sendEvent(fsnotify.Event{
-			Name: "\\abs\\test\\newdir", // Use Windows-style path
+			Name: "/abs/test/newdir", // Event name should match the path stored in mockFS for Stat
 			Op:   fsnotify.Create,
 		})
 	}()
@@ -576,7 +583,7 @@ func TestInjectableFileSystemWatcher_Watch_SuccessfulEventProcessing(t *testing.
 	factory.watcher = mockWatcher
 
 	mockFS := newMockFileSystem()
-	mockFS.addFile("\\abs\\test\\file.go", false) // Use Windows-style path
+	mockFS.addFile("/abs/test/file.go", false) // Path in mockFS
 
 	customTime := time.Date(2024, 12, 25, 10, 30, 0, 0, time.UTC)
 	timeProvider := newMockTimeProvider()
@@ -607,7 +614,7 @@ func TestInjectableFileSystemWatcher_Watch_SuccessfulEventProcessing(t *testing.
 	go func() {
 		time.Sleep(10 * time.Millisecond)
 		mockWatcher.sendEvent(fsnotify.Event{
-			Name: "\\abs\\test\\file.go", // Use Windows-style path
+			Name: "/abs/test/file.go", // Event name should match path in mockFS for Stat
 			Op:   fsnotify.Write,
 		})
 	}()
@@ -633,8 +640,10 @@ eventLoop:
 	}
 
 	event := receivedEvents[0]
-	if event.Path != "\\abs\\test\\file.go" {
-		t.Errorf("Expected path %q, got %q", "\\abs\\test\\file.go", event.Path)
+	// Path in event should be the one from fsnotify, which is the path added to the watcher.
+	// The watcher adds the absolute path.
+	if event.Path != "/abs/test/file.go" { 
+		t.Errorf("Expected path %q, got %q", "/abs/test/file.go", event.Path)
 	}
 
 	if event.Type != "write" {
@@ -777,15 +786,16 @@ func TestInjectableFileSystemWatcher_AddPath_FilesystemErrors(t *testing.T) {
 		{
 			name:          "Stat error",
 			path:          "/test",
-			setupMockFS:   func(fs *mockFileSystem) {},
-			expectedError: "failed to stat path",
+			setupMockFS:   func(fs *mockFileSystem) {}, // mockFS.Stat will be called with /abs/test
+			expectedError: "failed to stat path", 
 		},
 		{
 			name: "Walk error",
-			path: "/test",
+			path: "/test", // This path will be passed to AddPath
 			setupMockFS: func(fs *mockFileSystem) {
-				fs.addFile("\\abs\\test", true) // Use Windows-style path
+				fs.addFile("/abs/test", true) // mockFS.Abs("/test") -> "/abs/test". Stat("/abs/test") will find this.
 				fs.walkFunc = func(root string, walkFn filepath.WalkFunc) error {
+					// root here will be "/abs/test"
 					return errors.New("walk failed")
 				}
 			},
@@ -793,9 +803,11 @@ func TestInjectableFileSystemWatcher_AddPath_FilesystemErrors(t *testing.T) {
 		},
 		{
 			name: "Single file success",
-			path: "/test/file.go",
+			path: "/test/file.go", // This path will be passed to AddPath
 			setupMockFS: func(fs *mockFileSystem) {
-				fs.addFile("\\abs\\test\\file.go", false) // Use Windows-style path
+				// mockFS.Abs("/test/file.go") -> "/abs/test/file.go"
+				// Stat("/abs/test/file.go") will find this.
+				fs.addFile("/abs/test/file.go", false) 
 			},
 			expectedError: "", // No error expected
 		},
@@ -852,8 +864,11 @@ func TestInjectableFileSystemWatcher_AddPath_WatcherAddError(t *testing.T) {
 	factory.watcher = mockWatcher
 
 	mockFS := newMockFileSystem()
-	mockFS.addFile("\\abs\\test", true)         // Use Windows-style path
-	mockFS.addFile("\\abs\\test\\subdir", true) // Use Windows-style path
+	// mockFS.Abs("/test") -> "/abs/test". Stat will find this.
+	// Walk will then iterate. If it finds /abs/test/subdir, AddPathInternal will be called for it.
+	// Then watcher.Add("/abs/test/subdir") will be called.
+	mockFS.addFile("/abs/test", true)         
+	mockFS.addFile("/abs/test/subdir", true) 
 
 	deps := &Dependencies{
 		FileSystem:   mockFS,

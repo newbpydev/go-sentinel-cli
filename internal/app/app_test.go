@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"context"
+	"errors" // Added for errors.Is
 	"strings"
 	"testing"
 
@@ -182,7 +183,16 @@ func TestWatchCoordinator_Start_CancelledContext(t *testing.T) {
 	err = coordinator.Start(ctx)
 
 	// Assert
-	if err != nil {
-		t.Errorf("Start should handle cancelled context gracefully, got error: %v", err)
+	// When a context is canceled, functions respecting it should return context.Canceled.
+	// The previous placeholder implementation of Start might have returned nil.
+	// The current implementation of WatchCoordinatorAdapter.Start returns an error when context is canceled.
+	if err == nil {
+		t.Error("Start with cancelled context expected an error, got nil")
+	} else if !errors.Is(err, context.Canceled) && !strings.Contains(err.Error(), "context canceled") {
+		// Allow either context.Canceled directly or an error wrapping it (e.g. from fmt.Errorf)
+		t.Errorf("Start with cancelled context: expected context.Canceled or error containing 'context canceled', got: %v", err)
+	} else {
+		// If we got context.Canceled or a similar error, the test passes for this condition.
+		t.Logf("Start with cancelled context correctly returned: %v", err)
 	}
 }

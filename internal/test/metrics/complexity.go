@@ -223,16 +223,20 @@ func (a *DefaultComplexityAnalyzer) AnalyzeProject(projectRoot string) (*Project
 		Packages:    make([]PackageComplexity, 0),
 		GeneratedAt: time.Now(),
 	}
+	absProjectRoot, err := filepath.Abs(projectRoot)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get absolute project root for %s: %w", projectRoot, err)
+	}
 
 	// Find all Go packages in the project
-	err := filepath.Walk(projectRoot, func(path string, info os.FileInfo, err error) error {
+	err = filepath.Walk(absProjectRoot, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
 		if info.IsDir() && a.containsGoFiles(path) {
 			// Skip vendor, .git, and other excluded directories
-			if a.shouldSkipDirectory(path) {
+			if a.shouldSkipDirectory(path, absProjectRoot) { // Pass absProjectRoot
 				return filepath.SkipDir
 			}
 
@@ -313,16 +317,69 @@ func (a *DefaultComplexityAnalyzer) containsGoFiles(dir string) bool {
 }
 
 // shouldSkipDirectory determines if a directory should be skipped during analysis
-func (a *DefaultComplexityAnalyzer) shouldSkipDirectory(path string) bool {
-	skipDirs := []string{
-		"vendor", ".git", ".trunk", "node_modules", ".windsurf",
-		"coverage", ".cache", "tmp", "temp",
+func (a *DefaultComplexityAnalyzer) shouldSkipDirectory(path string, projectRoot string) bool {
+	skipDirExactNames := map[string]bool{
+		"vendor":       true,
+		".git":         true,
+		".trunk":       true,
+		"node_modules": true,
+		".windsurf":    true,
+		"coverage":     true,
+		".cache":       true,
+		"tmp":          true, // Skips if a directory is *named* tmp
+		"temp":         true, // Skips if a directory is *named* temp
+		".idea":        true,
+		".vscode":      true,
+		"build":        true,
+		"dist":         true,
+		"target":       true,
+		"bin":          true,
+		"obj":          true,
 	}
 
-	for _, skipDir := range skipDirs {
-		if strings.Contains(path, skipDir) {
+	// Normalize path and projectRoot once
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[Warning] could not get absolute path for %s in shouldSkipDirectory: %v. Skipping.\n", path, err)
+		return true // Cannot process, safer to skip
+	}
+
+	// If the path being checked IS the project root, don't skip it.
+	if absPath == projectRoot {
+		return false
+	}
+
+	// Get path relative to projectRoot.
+	// If path is not under projectRoot (e.g. symlink pointing outside), relPath will reflect that.
+	relPath, err := filepath.Rel(projectRoot, absPath)
+	if err != nil {
+		// This can happen if path is not a subpath of projectRoot.
+		// In such cases, probably safer to skip.
+		fmt.Fprintf(os.Stderr, "[Warning] Path %s not relative to project root %s: %v. Skipping.\n", absPath, projectRoot, err)
+		return true
+	}
+
+	// If relPath is "..", or starts with "../", it's outside the project root, skip.
+	if relPath == ".." || strings.HasPrefix(relPath, ".."+string(filepath.Separator)) {
+		return true
+	}
+	
+	components := strings.Split(relPath, string(filepath.Separator))
+	for _, component := range components {
+		if component == "" || component == "." || component == ".." {
+			continue
+		}
+		// If any component of the relative path is a skippable name
+		if _, ok := skipDirExactNames[component]; ok {
+			return true
+		}
+		// Also skip hidden directories like .git, .vscode, etc. at any level within the project,
+		// unless it's the root component itself (which is handled by the absPath == projectRoot check).
+		// This means a hidden folder like "myproject/.config/foo" will be skipped because of ".config".
+		if strings.HasPrefix(component, ".") && len(component) > 1 {
 			return true
 		}
 	}
+
 	return false
 }

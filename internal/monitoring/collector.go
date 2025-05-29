@@ -66,8 +66,8 @@ func (f *DefaultAppMetricsCollectorFactory) CreateMetricsCollector(config *AppMo
 func DefaultAppMonitoringConfig() *AppMonitoringConfig {
 	return &AppMonitoringConfig{
 		Enabled:         true,
-		MetricsPort:     8080,
-		HealthPort:      8081,
+		MetricsPort:     0,
+		HealthPort:      0,
 		MetricsInterval: 30 * time.Second,
 		EnableProfiling: false,
 		EnableTracing:   false,

@@ -96,8 +96,8 @@ func TestDefaultAppDashboardConfig_ValidDefaults(t *testing.T) {
 	}
 
 	// Verify sensible defaults
-	if config.Port <= 0 {
-		t.Error("Default port should be positive")
+	if config.Port != 0 {
+		t.Error("Default port should be 0 for dynamic allocation")
 	}
 	if config.RefreshInterval <= 0 {
 		t.Error("Default refresh interval should be positive")

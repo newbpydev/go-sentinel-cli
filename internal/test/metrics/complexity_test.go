@@ -911,7 +911,9 @@ func TestComplexityAnalyzer_ShouldSkipDirectory(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := analyzer.shouldSkipDirectory(tc.dirName)
+			// Provide a dummy projectRoot like "." because this test focuses on base directory names.
+			// The modified shouldSkipDirectory will correctly extract tc.dirName as a component.
+			result := analyzer.shouldSkipDirectory(tc.dirName, ".")
 			if result != tc.expected {
 				t.Errorf("Expected %v for directory %s, got %v", tc.expected, tc.dirName, result)
 			}

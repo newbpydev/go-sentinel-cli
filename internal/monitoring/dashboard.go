@@ -54,7 +54,7 @@ func (f *DefaultAppDashboardFactory) CreateDashboard(collector AppMetricsCollect
 // DefaultAppDashboardConfig returns a sensible default configuration
 func DefaultAppDashboardConfig() *AppDashboardConfig {
 	return &AppDashboardConfig{
-		Port:                3000,
+		Port:                0,
 		RefreshInterval:     5 * time.Second,
 		MaxDataPoints:       1000,
 		EnableRealTime:      true,
